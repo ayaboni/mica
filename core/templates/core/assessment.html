@@ -1,0 +1,90 @@
+{% load static %}
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Quick Check-In — MICA</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  body{margin:0; font-family:'Nunito', sans-serif; background:#FAF7EE; color:#3A2E28;}
+  .wrap{max-width:680px; margin:40px auto; padding:0 20px 60px;}
+  .card{background:#FBF2DE; border-radius:24px; padding:32px;}
+  h1{font-family:'Fredoka',sans-serif; margin-top:0;}
+  .intro{color:#7a6a5c; margin-bottom:28px;}
+  .section-label{font-weight:700; margin:28px 0 10px; font-size:15px;}
+  .checkbox-grid{display:grid; grid-template-columns:1fr 1fr; gap:8px 16px;}
+  .checkbox-grid label{display:flex; align-items:center; gap:8px; font-size:14px;}
+  .other-input{width:100%; margin-top:10px; padding:10px 14px; border-radius:10px; border:1px solid #ddd; box-sizing:border-box; font-family:inherit;}
+  table{width:100%; border-collapse:collapse; margin-top:10px; font-size:13px;}
+  table th{text-align:left; padding:8px 6px; font-size:13px;}
+  table td{text-align:center; padding:8px 4px;}
+  table tr:nth-child(even){background:rgba(0,0,0,0.03);}
+  .yesno{display:flex; gap:20px; margin-top:6px;}
+  .yesno label{display:flex; align-items:center; gap:6px; font-size:14px;}
+  .actions{display:flex; justify-content:space-between; align-items:center; margin-top:32px;}
+  button[type=submit]{background:#8B6F4E; color:#fff; border:none; padding:13px 28px; border-radius:999px; font-weight:700; cursor:pointer;}
+  .skip-link{background:none; border:none; color:#7a6a5c; text-decoration:underline; cursor:pointer; font-size:14px;}
+</style>
+</head>
+<body>
+  {% include 'core/_loader.html' %}
+
+  <div style="background:#8FA98C; padding:18px 34px; display:flex; align-items:center; justify-content:space-between;">
+    {% if is_retake %}
+      <a href="{% url 'account_settings' %}" style="color:#3A2E28; text-decoration:none; font-weight:700;">← Back to Account Settings</a>
+    {% else %}
+      <a href="{% url 'logout' %}" style="color:#3A2E28; text-decoration:none; font-weight:700;">Log out</a>
+    {% endif %}
+    <strong>MICA</strong>
+  </div>
+  
+  <div class="wrap"><div class="card">
+    <h1>Before we get started</h1>
+    <p class="intro">This quick check-in helps Mica understand you a little better. It is not a diagnosis, and only you can see your answers. You can leave any question blank if you'd rather not answer it.</p>
+
+    <form method="post">
+      {% csrf_token %}
+
+      <div class="section-label">Have you experienced or been diagnosed with any of the following? (check all that apply)</div>
+      <div class="checkbox-grid">
+        <label><input type="checkbox" name="conditions" value="Anxiety"> Anxiety</label>
+        <label><input type="checkbox" name="conditions" value="Depression"> Depression</label>
+        <label><input type="checkbox" name="conditions" value="ADHD"> ADHD / Attention difficulties</label>
+        <label><input type="checkbox" name="conditions" value="OCD"> OCD</label>
+        <label><input type="checkbox" name="conditions" value="Bipolar"> Bipolar Disorder</label>
+        <label><input type="checkbox" name="conditions" value="PTSD"> PTSD / Trauma-related stress</label>
+        <label><input type="checkbox" name="conditions" value="Eating"> Eating-related concerns</label>
+        <label><input type="checkbox" name="conditions" value="Sleep"> Sleep difficulties</label>
+      </div>
+      <input type="text" class="other-input" name="conditions_other" placeholder="Others (please specify)">
+
+      <div class="section-label">In the past few weeks, how often have you felt...</div>
+      <table>
+        <tr><th></th><th>Never</th><th>Rarely</th><th>Sometimes</th><th>Often</th><th>Always</th></tr>
+        {% for key, label in questions %}
+        <tr>
+          <td style="text-align:left;">{{ label }}</td>
+          <td><input type="radio" name="{{ key }}" value="Never"></td>
+          <td><input type="radio" name="{{ key }}" value="Rarely"></td>
+          <td><input type="radio" name="{{ key }}" value="Sometimes"></td>
+          <td><input type="radio" name="{{ key }}" value="Often"></td>
+          <td><input type="radio" name="{{ key }}" value="Always"></td>
+        </tr>
+        {% endfor %}
+      </table>
+
+      <div class="section-label">A few more questions</div>
+      <p style="font-size:14px; margin-bottom:4px;">Have you sought professional help for your mental health before?</p>
+      <div class="yesno">
+        <label><input type="radio" name="sought_help_before" value="yes"> Yes</label>
+        <label><input type="radio" name="sought_help_before" value="no"> No</label>
+      </div>
+      <p style="font-size:14px; margin:14px 0 4px;">Do you currently have a support system (friends, family, etc.)?</p>
+      <div class="yesno">
+        <label><input type="radio" name="has_support_system" value="yes"> Yes</label>
+        <label><input type="radio" name="has_support_system" value="no"> No</label>
+      </div>
+
+      <div class="actions" style="justify-content:flex-end;">
+        <button type="submit">Submit</button>
+      </div>
+    </form>
+  </div></div>
+</body></html>

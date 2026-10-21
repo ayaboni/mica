@@ -1,0 +1,75 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Finish Setting Up — MICA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --green:#93AF8C; --green-deep:#5F7F58; --cream-bg:#F9F6EC; --cream-card:#FCF0DA;
+          --brown:#8C6F52; --brown-dark:#745A41; --ink:#262420; --ink-soft:#55524B; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:'Inter',sans-serif; background:var(--cream-bg); color:var(--ink); -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:460px; margin:40px auto; padding:0 20px 60px; }
+  .card { background:var(--cream-card); border-radius:28px; padding:32px; box-shadow:0 10px 30px rgba(76,61,41,.12); }
+  h1 { font-family:'Fredoka',sans-serif; font-weight:600; margin:0 0 8px; text-align:center; }
+  .intro { color:var(--ink-soft); font-size:14px; line-height:1.6; margin:0 0 6px; text-align:center; }
+  .email { color:var(--ink-soft); font-size:13px; text-align:center; margin:0 0 20px; }
+  .error { color:#d9534f; font-weight:700; text-align:center; margin:0 0 14px; font-size:14px; }
+  .two-col { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .field { margin-bottom:14px; }
+  input, select { width:100%; padding:13px 16px; border-radius:999px; border:1.5px solid var(--brown);
+                  background:#fff; font-family:inherit; font-size:14px; color:var(--ink); }
+  input:focus, select:focus { outline:none; border-color:var(--green-deep); box-shadow:0 0 0 3px rgba(147,175,140,.35); }
+  button { width:100%; margin-top:10px; background:var(--brown); color:#fff; border:none; padding:14px 28px;
+           border-radius:999px; font-weight:700; font-size:15px; cursor:pointer; font-family:inherit; }
+  button:hover { background:var(--brown-dark); }
+  .hint { font-size:12px; color:var(--ink-soft); margin:-8px 0 14px 16px; }
+</style>
+</head>
+<body>
+{% include 'core/_loader.html' %}
+<div class="wrap"><div class="card">
+  <h1>One last step</h1>
+  <p class="intro">Tell us a little about you to finish creating your MICA account.</p>
+  <p class="email">Signed in with Google as {{ email }}</p>
+
+  <form method="POST" action="{% url 'complete_profile' %}">
+    {% csrf_token %}
+    {% if error %}<p class="error">{{ error }}</p>{% endif %}
+
+    <div class="two-col">
+      <div class="field"><input type="text" name="first_name" placeholder="First Name" value="{{ form.first_name }}" required></div>
+      <div class="field"><input type="text" name="last_name" placeholder="Last Name" value="{{ form.last_name }}" required></div>
+    </div>
+
+    <div class="field"><input type="text" name="student_number" placeholder="Student Number" value="{{ form.student_number }}" required></div>
+
+    <div class="field">
+      <select name="course" required>
+        <option value="" disabled {% if not form.course %}selected{% endif %} hidden>Select Course</option>
+        {% for value, label in course_choices %}
+          <option value="{{ value }}" {% if form.course == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="field">
+      <select name="year_level" required>
+        <option value="" disabled {% if not form.year_level %}selected{% endif %} hidden>Select Year Level</option>
+        {% for value, label in year_level_choices %}
+          <option value="{{ value }}" {% if form.year_level == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="field"><input type="text" name="username" placeholder="Username" value="{{ form.username }}" autocomplete="username" autofocus required></div>
+
+    <button type="submit">Continue</button>
+  </form>
+</div></div>
+</body>
+</html>

@@ -1,0 +1,1224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MICA — System Admin Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root{
+    --sage:#A1BFA9; --sage-deep:#6E9078; --sage-pale:#E9F0E7;
+    --cream:#FAFAF7; --paper:#FFFFFF;
+    --peach:#FFF8E7; --peach-deep:#F3E2B8; --peach-text:#5A4A3D;
+    --brown:#8A6F4E; --brown-deep:#5A4A3D;
+    --sky:#9CC5E8; --sky-deep:#3D6C8E; --sky-pale:#DCEBF6;
+    --alert:#C0684E; --alert-pale:#F5E3DD;
+    --ink:#181A17; --ink-soft:#6B6E66;
+    --line:#E6E3D8;
+    --shadow: 0 10px 30px rgba(30,34,26,0.08);
+    --shadow-sm: 0 2px 10px rgba(30,34,26,0.06);
+    --radius: 20px;
+  }
+  body.dark{
+    --cream:#14160F; --paper:#1D2018; --ink:#F3F2EA; --ink-soft:#A7AA9E;
+    --line:#2B2E23; --sage-pale:#28352A; --sky-pale:#20303B; --alert-pale:#3A2620;
+    --peach:#2A2A20; --peach-deep:#3A3826; --peach-text:#F1ECDD;
+    --shadow: 0 10px 30px rgba(0,0,0,0.35); --shadow-sm: 0 2px 10px rgba(0,0,0,0.3);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'Inter',sans-serif;background:var(--cream);color:var(--ink);transition:background .25s ease,color .25s ease;}
+  h1,h2,h3,.display{font-family:'Baloo 2',sans-serif;}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  ::selection{background:var(--sage-pale);}
+  a{color:inherit;}
+  button{font-family:inherit;cursor:pointer;}
+
+  .logo-mark{display:flex;align-items:center;gap:10px;}
+  .logo-mark svg{flex-shrink:0;}
+  .logo-mark span{font-family:'Baloo 2',sans-serif;font-weight:700;font-size:22px;letter-spacing:0.2px;}
+
+  .pill-btn{
+    font-family:'Baloo 2',sans-serif;
+    border:none; background:var(--peach); color:var(--peach-text);
+    padding:10px 20px; border-radius:999px; font-weight:600; font-size:14.5px;
+    display:inline-flex; align-items:center; gap:8px; transition:all .15s ease;
+    box-shadow:0 1px 0 rgba(0,0,0,.03);
+  }
+  .pill-btn:hover{background:var(--peach-deep);}
+  .pill-btn.solid{background:var(--sage-deep); color:#fff;}
+  .pill-btn.solid:hover{background:var(--brown-deep);}
+  .pill-btn.danger{background:var(--alert-pale); color:var(--alert);}
+  .pill-btn.danger:hover{background:var(--alert); color:#fff;}
+  .pill-btn.ghost{background:transparent; border:1.5px solid var(--line); color:var(--ink-soft);}
+  .pill-btn.ghost:hover{background:var(--peach); color:var(--peach-text); border-color:var(--peach-deep);}
+  .pill-btn.sm{padding:7px 14px; font-size:13px;}
+  .pill-btn:disabled{opacity:.4; cursor:not-allowed; pointer-events:none;}
+
+  .badge{display:inline-flex; align-items:center; gap:6px; padding:4px 12px; border-radius:999px; font-size:12px; font-weight:600;}
+  .badge .dot{width:7px; height:7px; border-radius:50%; background:currentColor;}
+  .badge.stable{background:var(--sage-pale); color:var(--sage-deep);}
+  .badge.watch{background:var(--sky-pale); color:var(--sky-deep);}
+  .badge.urgent{background:var(--alert-pale); color:var(--alert);}
+  .badge.neutral{background:var(--line); color:var(--ink-soft);}
+  .badge .dot.pulse{animation:pulseDot 1.8s ease-in-out infinite;}
+  @keyframes pulseDot{0%,100%{transform:scale(1); opacity:1;} 50%{transform:scale(1.7); opacity:.35;}}
+  @media (prefers-reduced-motion: reduce){ .badge .dot.pulse{animation:none;} }
+
+  .card{background:var(--paper); border-radius:var(--radius); box-shadow:var(--shadow-sm); border:1px solid var(--line);}
+
+  /* ---------- Login ---------- */
+  #loginScreen{min-height:100vh; display:flex; flex-direction:column;}
+  .login-nav{background:var(--sage); border-bottom:3px solid var(--sky); padding:18px 40px; display:flex; justify-content:space-between; align-items:center;}
+  .login-nav .logo-mark span{color:#0f130f;}
+  .login-wrap{flex:1; display:flex; align-items:center; justify-content:center; padding:40px 20px;}
+  .login-card{width:100%; max-width:420px; background:var(--paper); border-radius:24px; box-shadow:var(--shadow); padding:44px 40px; border:1px solid var(--line);}
+  .login-card h1{font-size:26px; font-weight:800; margin-bottom:6px;}
+  .login-card p.sub{color:var(--ink-soft); font-size:14.5px; margin-bottom:30px;}
+  .field{margin-bottom:18px;}
+  .field label{display:block; font-size:12.5px; font-weight:600; color:var(--ink-soft); margin-bottom:7px; text-transform:uppercase; letter-spacing:.04em;}
+  .field input, .field select{width:100%; padding:12px 14px; border:1.5px solid var(--line); border-radius:12px; font-size:14.5px; background:var(--cream); color:var(--ink); font-family:'Inter',sans-serif;}
+  .field input:focus, .field select:focus{outline:none; border-color:var(--sage-deep);}
+  .login-card .pill-btn{width:100%; justify-content:center; padding:13px; font-size:15px; margin-top:8px;}
+  .login-foot{margin-top:22px; font-size:12.5px; color:var(--ink-soft); text-align:center;}
+  .demo-note{margin-top:18px; padding:12px 14px; background:var(--peach); border-radius:14px; font-size:12.5px; color:var(--peach-text); line-height:1.5;}
+  .mfa-note{margin-top:14px; display:flex; align-items:center; gap:8px; font-size:12px; color:var(--sage-deep); font-weight:600;}
+
+  /* ---------- Shell ---------- */
+  #adminShell{display:flex; min-height:100vh; overflow:hidden;}
+  .sidebar{
+    width:264px; flex-shrink:0; background:var(--sage); color:var(--brown-deep);
+    display:flex; flex-direction:column; height:100vh; overflow-y:auto;
+  }.sidebar{transition:width .25s ease, opacity .25s ease; overflow-x:hidden;}
+  body.dark .sidebar{background:#233024;}
+  .sidebar.is-collapsed{width:0; opacity:0; overflow:hidden; pointer-events:none;}
+  .sidebar-top{display:flex; align-items:center; justify-content:space-between;}
+  .sidebar-top{padding:24px 20px 18px; display:flex; align-items:center; justify-content:space-between;}
+  .sidebar-top .logo-mark span{color:var(--brown-deep);}
+  .sidebar-top .tagline{font-size:11.5px; color:rgba(90,74,61,.75); margin-top:6px; letter-spacing:.03em;}
+  .collapse-btn{width:32px; height:32px; border-radius:8px; border:none; background:transparent; color:var(--brown-deep); display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0;}
+  .collapse-btn:hover{background:rgba(255,255,255,.35);}
+  .collapse-btn svg{width:18px; height:18px;}
+  .menu-btn{display:none; margin-right:14px; flex-shrink:0;}
+  .sidebar.is-collapsed ~ .main .menu-btn{display:flex;}
+  .sidebar-backdrop{display:none; position:fixed; inset:0; background:rgba(20,16,10,.4); z-index:55;}
+  .sidebar-backdrop.is-visible{display:block;}
+  @media (max-width:860px){
+    .sidebar{position:fixed; top:0; left:0; z-index:60; box-shadow:10px 0 30px rgba(0,0,0,.25);}
+    .sidebar.is-collapsed{box-shadow:none;}
+  }  .nav-group{padding:6px 16px;}
+  .nav-label{font-size:11px; text-transform:uppercase; letter-spacing:.09em; color:#FBFBF7; padding:14px 10px 8px; font-weight:700; text-shadow:0 1px 1px rgba(0,0,0,.06);}
+  .nav-item{
+    display:flex; align-items:center; gap:11px; padding:11px 14px; border-radius:999px; color:var(--brown-deep);
+    font-family:'Baloo 2',sans-serif; font-size:14.5px; font-weight:600; margin-bottom:6px; transition:all .15s ease;
+    position:relative; border:none; background:transparent; width:100%; text-align:left;
+  }
+  .nav-item svg{flex-shrink:0; opacity:.85;}
+  .nav-item:hover{background:rgba(255,248,231,.55);}
+  .nav-item.active{background:var(--peach); color:var(--brown-deep); box-shadow:0 2px 6px rgba(90,74,61,.12);}
+  .nav-item .count{margin-left:auto; font-size:11px; background:rgba(90,74,61,.12); padding:2px 8px; border-radius:999px; font-family:'IBM Plex Mono',monospace;}
+  .nav-item.active .count{background:var(--alert); color:#fff;}
+  .sidebar-bottom{margin-top:auto; padding:14px;}
+  .admin-chip{display:flex; align-items:center; gap:10px; background:var(--peach); border-radius:999px; padding:8px 12px 8px 8px;}
+  .avatar{width:34px; height:34px; border-radius:50%; background:var(--sky); color:#0f130f; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; flex-shrink:0;}
+  .admin-chip .who .name{font-size:13px; font-weight:700; color:var(--brown-deep); font-family:'Baloo 2',sans-serif;}
+  .admin-chip .who .role{font-size:11px; color:var(--ink-soft);}
+  .logout-btn{margin-left:auto; width:30px; height:30px; flex-shrink:0; display:flex; align-items:center; justify-content:center; border-radius:50%; background:transparent; color:var(--brown-deep); border:none;}
+  .logout-btn:hover{background:rgba(90,74,61,.12);}
+
+  body.dark .sidebar-top .logo-mark span,
+  body.dark .nav-item,
+  body.dark .admin-chip .who .name,
+  body.dark .logout-btn{ color:#F1ECDD; }
+  body.dark .sidebar-tagline,
+  body.dark .admin-chip .who .role{ color:rgba(241,236,221,.65); }
+  body.dark .nav-item:hover{ background:rgba(255,255,255,.08); }
+  body.dark .nav-item.active{ background:rgba(255,255,255,.16); color:#fff; box-shadow:none; }
+  body.dark .nav-item .count{ background:rgba(255,255,255,.18); }
+  body.dark .admin-chip{ background:rgba(255,255,255,.1); }
+  body.dark .logout-btn:hover{ background:rgba(255,255,255,.14); }
+
+  .main{flex:1; min-width:0; height:100vh; overflow-y:auto; display:flex; flex-direction:column;}
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between; padding:18px 34px;
+    background:var(--sage-deep); flex-shrink:0; z-index:20;
+  }
+  body.dark .topbar{background:#233024;}
+  .topbar .titlewrap .eyebrow{font-size:11.5px; color:rgba(255,255,255,.7); text-transform:uppercase; letter-spacing:.07em; font-weight:700;}
+  .topbar h2{font-size:21px; font-weight:700; color:#fff; font-family:'Baloo 2',sans-serif;}
+  .topbar-actions{display:flex; align-items:center; gap:12px;}
+  .searchbox{display:flex; align-items:center; gap:9px; background:var(--paper); border:none; border-radius:999px; padding:9px 16px; min-width:230px;}
+  .searchbox input{border:none; outline:none; background:none; font-size:13.5px; width:100%; color:var(--ink); font-family:'Inter',sans-serif;}
+  .icon-btn{width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,.16); border:none; display:flex; align-items:center; justify-content:center; position:relative; color:#fff;}
+  .icon-btn:hover{background:rgba(255,255,255,.28);}
+  .icon-btn .ping{position:absolute; top:-2px; right:-2px; background:var(--alert); color:#fff; font-size:9.5px; font-weight:700; width:16px; height:16px; border-radius:50%; display:flex; align-items:center; justify-content:center; border:2px solid var(--sage-deep);}
+
+  .content{padding:28px 34px 60px;}
+  .section{display:none; animation:fadeIn .35s ease;}
+  .section.active{display:block;}
+  @keyframes fadeIn{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  .stat-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:18px; margin-bottom:22px;}
+  .stat-card{padding:20px 22px; display:flex; flex-direction:column; gap:10px;}
+  .stat-card .icon-chip{width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center;}
+  .stat-card .label{font-size:12.5px; color:var(--ink-soft); font-weight:600; text-transform:uppercase; letter-spacing:.03em;}
+  .stat-card .value{font-family:'IBM Plex Mono',monospace; font-size:30px; font-weight:600; letter-spacing:-.5px;}
+  .stat-card .delta{font-size:12px; font-weight:600; display:flex; align-items:center; gap:4px;}
+  .stat-card .delta.up{color:var(--sage-deep);}
+  .stat-card .delta.down{color:var(--alert);}
+
+  .grid-2{display:grid; grid-template-columns:1.4fr 1fr; gap:18px; margin-bottom:22px;}
+  .panel{padding:22px 24px;}
+  .panel-head{display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:16px; gap:10px;}
+  .panel-head h3{font-size:16px; font-weight:700;}
+  .panel-head .sub{font-size:12px; color:var(--ink-soft); margin-top:2px;}
+  .legend-row{display:flex; gap:16px; font-size:12px; color:var(--ink-soft);}
+  .legend-row .dot{width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:5px;}
+
+  .feed-list{display:flex; flex-direction:column; gap:2px;}
+  .feed-item{display:flex; gap:12px; padding:12px 0; border-bottom:1px solid var(--line);}
+  .feed-item:last-child{border-bottom:none;}
+  .feed-item .fi-icon{width:32px; height:32px; border-radius:9px; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+  .feed-item .fi-text{font-size:13.5px; line-height:1.45;}
+  .feed-item .fi-text b{font-weight:600;}
+  .feed-item .fi-time{font-size:11px; color:var(--ink-soft); margin-top:2px; font-family:'IBM Plex Mono',monospace;}
+
+  .service-row{display:flex; align-items:center; justify-content:space-between; padding:13px 0; border-bottom:1px solid var(--line);}
+  .service-row:last-child{border-bottom:none;}
+  .service-row .s-left{display:flex; align-items:center; gap:11px;}
+  .service-row .s-icon{width:32px; height:32px; border-radius:9px; display:flex; align-items:center; justify-content:center; flex-shrink:0; background:var(--sage-pale); color:var(--sage-deep);}
+  .service-row .s-name{font-size:13.5px; font-weight:600;}
+  .service-row .s-meta{font-size:11.5px; color:var(--ink-soft); font-family:'IBM Plex Mono',monospace;}
+
+  .toolbar{display:flex; align-items:center; justify-content:space-between; gap:14px; margin-bottom:18px; flex-wrap:wrap;}
+  .toolbar-left{display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
+  .filter-select{padding:9px 14px; border-radius:999px; border:1.5px solid var(--line); background:var(--paper); font-size:13px; color:var(--ink); font-family:'Inter',sans-serif;}
+  table{width:100%; border-collapse:collapse;}
+  thead th{
+    text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-soft);
+    font-weight:700; padding:0 16px 12px; border-bottom:1.5px solid var(--line);
+  }
+  tbody td{padding:14px 16px; font-size:13.5px; border-bottom:1px solid var(--line); vertical-align:middle;}
+  tbody tr{transition:background .12s ease;}
+  tbody tr:hover{background:var(--sage-pale);}
+  body.dark tbody tr:hover{background:rgba(255,255,255,.04);}
+  .u-cell{display:flex; align-items:center; gap:11px;}
+  .u-cell .avatar{width:32px; height:32px; font-size:12px;}
+  .u-cell .name{font-weight:600; font-size:13.5px;}
+  .u-cell .email{font-size:11.5px; color:var(--ink-soft);}
+  .mono-cell{font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:var(--ink-soft);}
+  .row-actions{display:flex; gap:8px;}
+
+  .modal-overlay{display:none; position:fixed; inset:0; background:rgba(20,22,15,.5); z-index:100; align-items:flex-start; justify-content:center; padding:50px 20px; overflow:auto;}
+  .modal-overlay.active{display:flex;}
+  .modal{background:var(--paper); border-radius:22px; width:100%; max-width:640px; box-shadow:var(--shadow); border:1px solid var(--line); animation:fadeIn .25s ease;}
+  .modal-head{display:flex; justify-content:space-between; align-items:flex-start; padding:26px 28px 18px; border-bottom:1px solid var(--line);}
+  .modal-head h2{font-size:19px; font-weight:700;}
+  .modal-head .sub{font-size:12.5px; color:var(--ink-soft); margin-top:4px;}
+  .modal-close{width:32px; height:32px; border-radius:50%; border:1.5px solid var(--line); background:none; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+  .modal-close:hover{background:var(--line);}
+  .modal-body{padding:22px 28px 28px;}
+  .modal-foot{padding:18px 28px 26px; display:flex; gap:10px; flex-wrap:wrap; border-top:1px solid var(--line);}
+  .kv-grid{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:20px;}
+  .kv{background:var(--cream); border-radius:12px; padding:12px 14px;}
+  .kv .k{font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-soft); font-weight:600; margin-bottom:4px;}
+  .kv .v{font-size:14.5px; font-weight:600;}
+
+  .alert-card{display:flex; gap:16px; padding:16px 18px; margin-bottom:10px; align-items:flex-start;}
+  .alert-card .sev-strip{width:4px; align-self:stretch; border-radius:4px; flex-shrink:0;}
+  .alert-card .body{flex:1;}
+  .alert-card .top-row{display:flex; justify-content:space-between; gap:10px; margin-bottom:4px;}
+  .alert-card .reason{font-size:13px; line-height:1.5; color:var(--ink-soft);}
+
+  .tab-row{display:flex; gap:8px; margin-bottom:22px; border-bottom:1px solid var(--line); flex-wrap:wrap;}
+  .tab-btn{padding:11px 4px; margin-right:22px; background:none; border:none; border-bottom:2.5px solid transparent; font-size:14px; font-weight:600; color:var(--ink-soft);}
+  .tab-btn.active{color:var(--ink); border-color:var(--sage-deep);}
+  .subpanel{display:none;}
+  .subpanel.active{display:block;}
+  .toggle-row{display:flex; align-items:center; justify-content:space-between; padding:16px 0; border-bottom:1px solid var(--line); gap:20px;}
+  .toggle-row:last-child{border-bottom:none;}
+  .toggle-row .t-label{font-size:14px; font-weight:600;}
+  .toggle-row .t-desc{font-size:12.5px; color:var(--ink-soft); margin-top:3px; max-width:440px;}
+  .switch{width:44px; height:25px; border-radius:999px; background:var(--line); position:relative; border:none; flex-shrink:0;}
+  .switch.on{background:var(--sage-deep);}
+  .switch:disabled{opacity:.5; cursor:not-allowed;}
+  .switch .knob{position:absolute; top:3px; left:3px; width:19px; height:19px; border-radius:50%; background:#fff; transition:left .15s ease; box-shadow:0 1px 3px rgba(0,0,0,.3);}
+  .switch.on .knob{left:22px;}
+
+  .toast{position:fixed; bottom:28px; right:28px; background:var(--ink); color:var(--cream); padding:14px 22px; border-radius:12px; font-size:13.5px; font-weight:500; box-shadow:var(--shadow); z-index:200; display:flex; align-items:center; gap:10px; transform:translateY(120%); transition:transform .3s ease;}
+  .toast.show{transform:translateY(0);}
+
+  .role-perm-card{padding:20px 22px;}
+  .role-perm-card .rp-head{display:flex; align-items:center; gap:12px; margin-bottom:6px;}
+  .role-perm-card .rp-head .avatar{width:38px; height:38px;}
+  .role-perm-card .rp-title{font-size:15.5px; font-weight:700;}
+  .role-perm-card .rp-sub{font-size:12px; color:var(--ink-soft);}
+  .role-perm-card .rp-count{font-size:11px; color:var(--ink-soft); margin:14px 0 4px; text-transform:uppercase; letter-spacing:.04em; font-weight:700;}
+
+  .field-grid{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+
+  ::-webkit-scrollbar{width:9px; height:9px;}
+  ::-webkit-scrollbar-thumb{background:var(--line); border-radius:99px;}
+
+  @media (max-width: 1080px){
+    .stat-grid{grid-template-columns:repeat(2,1fr);}
+    .grid-2{grid-template-columns:1fr;}
+    .kv-grid{grid-template-columns:1fr;}
+    .field-grid{grid-template-columns:1fr;}
+  }
+  @media (max-width: 760px){
+    .sidebar{position:fixed; left:-280px; z-index:60; transition:left .2s ease; box-shadow:var(--shadow);}
+    .sidebar.open{left:0;}
+    .stat-grid{grid-template-columns:1fr;}
+    .searchbox{min-width:0; flex:1;}
+    .topbar{padding:16px 18px;}
+    .content{padding:20px 16px 50px;}
+  }
+</style>
+</head>
+<body>
+{% include 'core/_loader.html' %}
+
+<!-- ================= ADMIN SHELL ================= -->
+<div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+<div id="adminShell" class="active">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-top">
+      <a href="{% url 'admin_dashboard' %}" class="mica-logo-link" title="Back to Dashboard" aria-label="MICA, back to Dashboard" onclick="goTo('dashboard'); return false;">
+        {% include 'core/_logo.html' %}
+      </a>
+      <button class="collapse-btn" onclick="setSidebarOpen(false)" title="Collapse sidebar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="9" y1="4" x2="9" y2="20"/></svg>
+    </button>
+    </div>
+    <div class="sidebar-tagline" style="padding:0 24px 14px; font-size:11.5px; color:rgba(90,74,61,.75); letter-spacing:.03em; font-weight:600;">System Admin Console</div>
+
+    <div class="nav-group" style="flex:1; overflow-y:auto;">
+      <div class="nav-label">Monitor</div>
+      <button class="nav-item active" data-section="dashboard" onclick="goTo('dashboard')">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/></svg>
+        Dashboard
+      </button>
+
+      <div class="nav-label">Identity &amp; Access</div>
+      <button class="nav-item" data-section="accounts" onclick="goTo('accounts')">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17.5" cy="9" r="2.4"/><path d="M15.8 13a5 5 0 0 1 5.2 5"/></svg>
+        User Accounts
+        <span class="count" id="acctNavCount">0</span>
+      </button>
+      <button class="nav-item" data-section="roles" onclick="goTo('roles')">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+        Roles &amp; Permissions
+      </button>
+
+      <div class="nav-label">Security &amp; Compliance</div>
+      <button class="nav-item" data-section="logs" onclick="goTo('logs')">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 3h9l5 5v13H6z"/><path d="M15 3v5h5M9 13h6M9 17h6"/></svg>
+        Audit Logs
+      </button>
+      <button class="nav-item" data-section="privacy" onclick="goTo('privacy')">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2l8 3.5v6c0 5-3.4 8.9-8 10.5-4.6-1.6-8-5.5-8-10.5v-6L12 2z"/></svg>
+        Data Privacy
+        <span class="count" id="privNavCount">0</span>
+      </button>
+
+      <div class="nav-label">Operations</div>
+      <button class="nav-item" data-section="settings" onclick="goTo('settings')">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 13.5a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.9 2.9l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6V20a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.9-2.9l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.6-1H4a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.9-2.9l.1.1a1.7 1.7 0 0 0 1.9.3H10a1.7 1.7 0 0 0 1-1.6V4a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.9 2.9l-.1.1a1.7 1.7 0 0 0-.3 1.9V10c.1.7.6 1.3 1.6 1.4h.1a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.6 1.1z"/></svg>
+        System Settings
+      </button>
+    </div>
+
+    <div class="sidebar-bottom">
+      <div class="admin-chip">
+        <div class="avatar" style="background:var(--sky);">{{ request.user.first_name|slice:":1"|upper }}{{ request.user.last_name|slice:":1"|upper }}</div>
+          <div class="who">
+            <div class="name">{{ request.user.get_full_name|default:request.user.username }}</div>
+              <div class="role">System Admin</div>
+          </div>
+        <button class="logout-btn" onclick="doLogout()" title="Log out">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/></svg>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <button class="icon-btn menu-btn" onclick="setSidebarOpen(true)" title="Toggle sidebar">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+      <div class="titlewrap">
+        <div class="eyebrow" id="topEyebrow">Platform Overview</div>
+        <h2 id="topTitle">System Dashboard</h2>
+      </div>
+      <div class="topbar-actions">
+        <div class="searchbox">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--ink-soft)" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+          <input id="globalSearch" placeholder="Search accounts, logs, IDs..." oninput="handleGlobalSearch(this.value)">
+        </div>
+        <button class="icon-btn" onclick="toggleTheme()" title="Toggle theme">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></svg>
+        </button>
+        <button class="icon-btn" onclick="goTo('logs')" title="Security notifications">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2a6 6 0 0 0-6 6v3.4c0 .8-.3 1.6-.9 2.2L4 15h16l-1.1-1.4a3.2 3.2 0 0 1-.9-2.2V8a6 6 0 0 0-6-6z"/><path d="M9.5 19a2.5 2.5 0 0 0 5 0"/></svg>
+          <span class="ping" id="bellPing">2</span>
+        </button>
+        <div class="avatar" style="background:var(--sky); cursor:pointer;" onclick="goTo('settings')">{{ request.user.first_name|slice:":1"|upper }}{{ request.user.last_name|slice:":1"|upper }}</div>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- ============ DASHBOARD ============ -->
+      <section class="section active" id="sec-dashboard">
+        <div class="stat-grid">
+          <div class="card stat-card">
+            <div class="icon-chip" style="background:var(--sage-pale); color:var(--sage-deep);">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17.5" cy="9" r="2.4"/><path d="M15.8 13a5 5 0 0 1 5.2 5"/></svg>
+            </div>
+            <div class="label">Total Accounts</div>
+            <div class="value">1,240</div>
+            <div class="delta up">▲ 18 new this week</div>
+          </div>
+          <div class="card stat-card">
+            <div class="icon-chip" style="background:var(--sky-pale); color:var(--sky-deep);">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
+            </div>
+            <div class="label">System Uptime (30d)</div>
+            <div class="value">99.94<span style="font-size:15px; color:var(--ink-soft);">%</span></div>
+            <div class="delta up">▲ within SLA target</div>
+          </div>
+          <div class="card stat-card">
+            <div class="icon-chip" style="background:var(--peach-deep); color:var(--brown-deep);">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M8 12h8M12 8v8"/></svg>
+            </div>
+            <div class="label">Active Sessions</div>
+            <div class="value" id="dashSessionCount">312</div>
+            <div class="delta up">▲ peak 9:00–10:00 AM</div>
+          </div>
+          <div class="card stat-card">
+            <div class="icon-chip" style="background:var(--alert-pale); color:var(--alert);">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9L2.5 18a1.6 1.6 0 0 0 1.4 2.4h16.2a1.6 1.6 0 0 0 1.4-2.4L13.7 3.9a1.6 1.6 0 0 0-2.8 0z"/></svg>
+            </div>
+            <div class="label">Open Security Alerts</div>
+            <div class="value" id="dashAlertCount">2</div>
+            <div class="delta down">▲ 1 failed-login spike</div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card panel">
+            <div class="panel-head">
+              <div>
+                <h3>API Request Volume</h3>
+                <div class="sub">Requests per hour, last 24 hours</div>
+              </div>
+              <div class="legend-row"><span><span class="dot" style="background:var(--sage-deep);"></span>Requests</span></div>
+            </div>
+            <canvas id="trafficChart" height="150"></canvas>
+          </div>
+          <div class="card panel">
+            <div class="panel-head">
+              <div>
+                <h3>Recent System Activity</h3>
+                <div class="sub">Live event stream</div>
+              </div>
+            </div>
+            <div class="feed-list" id="activityFeed"></div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card panel">
+            <div class="panel-head">
+              <div>
+                <h3>Account Growth</h3>
+                <div class="sub">New registrations by role, last 6 weeks</div>
+              </div>
+            </div>
+            <canvas id="growthChart" height="150"></canvas>
+          </div>
+          <div class="card panel">
+            <div class="panel-head">
+              <div>
+                <h3>Service Health</h3>
+                <div class="sub">Core infrastructure &amp; integrations</div>
+              </div>
+            </div>
+            <div id="serviceList"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ USER ACCOUNTS ============ -->
+      <section class="section" id="sec-accounts">
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <select class="filter-select" id="acctRoleFilter" onchange="renderAccounts()">
+              <option value="all">All Roles</option>
+              <option value="Student">Students</option>
+              <option value="Counselor">Counselors / Psychiatrists</option>
+              <option value="Admin">System Admins</option>
+            </select>
+            <select class="filter-select" id="acctStatusFilter" onchange="renderAccounts()">
+              <option value="all">All Statuses</option>
+              <option value="Active">Active</option>
+              <option value="Suspended">Suspended</option>
+              <option value="Pending">Pending Verification</option>
+            </select>
+          </div>
+          <button class="pill-btn solid" onclick="openCreateAccount()">+ Create Account</button>
+        </div>
+
+        <div class="card" style="overflow-x:auto;">
+          <table>
+            <thead>
+              <tr><th>User</th><th>User ID</th><th>Role</th><th>Status</th><th>Last Login</th><th>Action</th></tr>
+            </thead>
+            <tbody id="acctTbody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ============ ROLES & PERMISSIONS ============ -->
+      <section class="section" id="sec-roles">
+        <p style="color:var(--ink-soft); font-size:13.5px; margin-bottom:20px; max-width:680px;">
+          MICA enforces role-based access control (RBAC). Permissions below govern which parts of the platform
+          each role may view or act on. Only System Admins may modify counselor-level permissions; the Super Admin
+          scope itself is fixed to preserve platform integrity.
+        </p>
+        <div class="grid-2" style="grid-template-columns:1fr 1fr 1fr;">
+          <div class="card role-perm-card">
+            <div class="rp-head">
+              <div class="avatar" style="background:var(--sky);">SA</div>
+              <div>
+                <div class="rp-title">Super Admin</div>
+                <div class="rp-sub">1 account · full platform scope</div>
+              </div>
+            </div>
+            <div id="permSuperAdmin"></div>
+          </div>
+          <div class="card role-perm-card">
+            <div class="rp-head">
+              <div class="avatar" style="background:var(--sage);">GC</div>
+              <div>
+                <div class="rp-title">Guidance Counselor / Psychiatrist</div>
+                <div class="rp-sub">12 accounts · clinical &amp; case scope</div>
+              </div>
+            </div>
+            <div id="permCounselor"></div>
+          </div>
+          <div class="card role-perm-card">
+            <div class="rp-head">
+              <div class="avatar" style="background:var(--peach-deep); color:var(--brown-deep);">ST</div>
+              <div>
+                <div class="rp-title">Student</div>
+                <div class="rp-sub">1,227 accounts · self-service scope</div>
+              </div>
+            </div>
+            <div id="permStudent"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ AUDIT LOGS ============ -->
+      <section class="section" id="sec-logs">
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <select class="filter-select" id="logRoleFilter" onchange="renderLogs()">
+              <option value="all">All Actors</option>
+              <option value="Admin">System Admin</option>
+              <option value="Counselor">Counselor</option>
+              <option value="Student">Student</option>
+              <option value="System">System / Automated</option>
+            </select>
+            <select class="filter-select" id="logStatusFilter" onchange="renderLogs()">
+              <option value="all">All Outcomes</option>
+              <option value="Success">Success</option>
+              <option value="Failed">Failed</option>
+            </select>
+          </div>
+          <button class="pill-btn ghost sm" onclick="showToast('Audit log export queued (CSV)')">Export Log</button>
+        </div>
+
+        <div class="card" style="overflow-x:auto;">
+          <table>
+            <thead>
+              <tr><th>Timestamp</th><th>Actor</th><th>Role</th><th>Action</th><th>IP Address</th><th>Outcome</th></tr>
+            </thead>
+            <tbody id="logsTbody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ============ DATA PRIVACY & COMPLIANCE ============ -->
+      <section class="section" id="sec-privacy">
+        <div class="stat-grid">
+          <div class="card stat-card">
+            <div class="icon-chip" style="background:var(--sage-pale); color:var(--sage-deep);">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>
+            </div>
+            <div class="label">Consent Forms on File</div>
+            <div class="value">1,203</div>
+            <div class="delta up">97.0% of active students</div>
+          </div>
+          <div class="card stat-card">
+            <div class="icon-chip" style="background:var(--alert-pale); color:var(--alert);">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l2.5 2.5"/></svg>
+            </div>
+            <div class="label">Pending Data Requests</div>
+            <div class="value" id="privNavCount2">3</div>
+            <div class="delta down">Avg. resolution 4.2 days</div>
+          </div>
+          <div class="card stat-card">
+            <div class="icon-chip" style="background:var(--sky-pale); color:var(--sky-deep);">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+            </div>
+            <div class="label">Encrypted Records</div>
+            <div class="value">100<span style="font-size:15px; color:var(--ink-soft);">%</span></div>
+            <div class="delta up">AES-256 at rest, TLS 1.3 in transit</div>
+          </div>
+          <div class="card stat-card">
+            <div class="icon-chip" style="background:var(--peach-deep); color:var(--brown-deep);">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/></svg>
+            </div>
+            <div class="label">Retention Window</div>
+            <div class="value">24<span style="font-size:15px; color:var(--ink-soft);"> mo</span></div>
+            <div class="delta up">Auto-anonymize after inactivity</div>
+          </div>
+        </div>
+
+        <div class="card panel" style="margin-bottom:22px;">
+          <div class="panel-head">
+            <div>
+              <h3>Data Subject Requests</h3>
+              <div class="sub">Access, correction &amp; erasure requests under the Data Privacy Act of 2012 (RA 10173)</div>
+            </div>
+          </div>
+          <div style="overflow-x:auto;">
+            <table>
+              <thead><tr><th>Request ID</th><th>Requestor</th><th>Type</th><th>Submitted</th><th>Status</th><th>Action</th></tr></thead>
+              <tbody id="privacyTbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card panel">
+          <div class="panel-head">
+            <div>
+              <h3>Privacy Controls</h3>
+              <div class="sub">Platform-wide safeguards for sensitive mental health data</div>
+            </div>
+          </div>
+          <div class="toggle-row">
+            <div><div class="t-label">Auto-anonymize inactive student identities</div><div class="t-desc">Strips directly identifying fields from accounts inactive for 24 months, retaining de-identified analytics only.</div></div>
+            <button class="switch on" onclick="toggleSwitch(this)"><span class="knob"></span></button>
+          </div>
+          <div class="toggle-row">
+            <div><div class="t-label">End-to-end encryption for journal &amp; chat entries</div><div class="t-desc">Encrypts free-text mood journal and AI coaching chat content so only the student and assigned counselor can decrypt it.</div></div>
+            <button class="switch on" onclick="toggleSwitch(this)"><span class="knob"></span></button>
+          </div>
+          <div class="toggle-row">
+            <div><div class="t-label">Explicit consent required before AI analysis</div><div class="t-desc">Blocks AI mood/risk scoring for a student until they have accepted the current consent form version.</div></div>
+            <button class="switch on" onclick="toggleSwitch(this)"><span class="knob"></span></button>
+          </div>
+          <div class="toggle-row">
+            <div><div class="t-label">Counselor access requires documented case reason</div><div class="t-desc">Counselors must log a reason before opening a student's full record; logged to the audit trail.</div></div>
+            <button class="switch" onclick="toggleSwitch(this)"><span class="knob"></span></button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ SYSTEM SETTINGS ============ -->
+      <section class="section" id="sec-settings">
+        <div class="tab-row">
+          <button class="tab-btn active" data-tab="general" onclick="goTab('general')">General</button>
+          <button class="tab-btn" data-tab="security" onclick="goTab('security')">Security</button>
+          <button class="tab-btn" data-tab="notifications" onclick="goTab('notifications')">Notifications</button>
+          <button class="tab-btn" data-tab="integrations" onclick="goTab('integrations')">Integrations</button>
+          <button class="tab-btn" data-tab="backup" onclick="goTab('backup')">Backup &amp; Recovery</button>
+        </div>
+
+        <!-- GENERAL -->
+        <div class="subpanel active" id="tab-general">
+          <div class="card panel">
+            <div class="panel-head"><div><h3>Platform Details</h3><div class="sub">Basic identity used across the app and notifications</div></div></div>
+            <div class="field-grid">
+              <div class="field"><label>Platform name</label><input value="MICA — Mind Care"></div>
+              <div class="field"><label>Institution name</label><input value="College of Arts and Sciences"></div>
+              <div class="field"><label>Support email</label><input value="support@mica.edu.ph"></div>
+              <div class="field">
+                <label>Timezone</label>
+                <select><option selected>Asia/Manila (GMT+8)</option><option>UTC</option></select>
+              </div>
+            </div>
+          </div>
+          <div class="card panel">
+            <div class="toggle-row">
+              <div><div class="t-label">Maintenance mode</div><div class="t-desc">Temporarily blocks student &amp; counselor logins while showing a maintenance notice. Admins retain access.</div></div>
+              <button class="switch" onclick="toggleSwitch(this)"><span class="knob"></span></button>
+            </div>
+            <div class="toggle-row">
+              <div><div class="t-label">New account self-registration</div><div class="t-desc">Allow students with a verified institutional email to self-register without admin approval.</div></div>
+              <button class="switch on" onclick="toggleSwitch(this)"><span class="knob"></span></button>
+            </div>
+          </div>
+        </div>
+
+        <!-- SECURITY -->
+        <div class="subpanel" id="tab-security">
+          <div class="card panel">
+            <div class="toggle-row">
+              <div><div class="t-label">Require MFA for staff accounts</div><div class="t-desc">Counselors and admins must verify with a 6-digit code at every sign-in.</div></div>
+              <button class="switch on" onclick="toggleSwitch(this)"><span class="knob"></span></button>
+            </div>
+            <div class="toggle-row">
+              <div><div class="t-label">Enforce strong password policy</div><div class="t-desc">Minimum 12 characters, mixed case, number, and symbol; rotation every 90 days for staff.</div></div>
+              <button class="switch on" onclick="toggleSwitch(this)"><span class="knob"></span></button>
+            </div>
+            <div class="toggle-row">
+              <div><div class="t-label">Lock account after repeated failed logins</div><div class="t-desc">Locks an account for 15 minutes after 5 consecutive failed attempts and flags it in the audit log.</div></div>
+              <button class="switch on" onclick="toggleSwitch(this)"><span class="knob"></span></button>
+            </div>
+          </div>
+          <div class="card panel">
+            <div class="panel-head"><div><h3>Session Policy</h3></div></div>
+            <div class="field-grid">
+              <div class="field"><label>Idle session timeout</label><select><option>15 minutes</option><option selected>30 minutes</option><option>60 minutes</option></select></div>
+              <div class="field"><label>Max failed attempts before lockout</label><select><option>3</option><option selected>5</option><option>10</option></select></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- NOTIFICATIONS -->
+        <div class="subpanel" id="tab-notifications">
+          <div class="card panel">
+            <div class="panel-head"><div><h3>Crisis &amp; Emergency Routing</h3><div class="sub">Numbers shown to students in-app during a crisis flow</div></div></div>
+            <div class="field-grid">
+              <div class="field"><label>Campus emergency hotline</label><input value="(02) 8888-1234"></div>
+              <div class="field"><label>National mental health crisis line</label><input value="1553 (NCMH Crisis Hotline)"></div>
+            </div>
+          </div>
+          <div class="card panel">
+            <div class="toggle-row">
+              <div><div class="t-label">SMS gateway alerts</div><div class="t-desc">Sends SMS to on-duty counselors when a student is flagged high-risk.</div></div>
+              <button class="switch on" onclick="toggleSwitch(this)"><span class="knob"></span></button>
+            </div>
+            <div class="toggle-row">
+              <div><div class="t-label">Email digest for admins</div><div class="t-desc">Daily summary of new accounts, security events, and pending privacy requests.</div></div>
+              <button class="switch on" onclick="toggleSwitch(this)"><span class="knob"></span></button>
+            </div>
+            <div class="toggle-row">
+              <div><div class="t-label">Escalate unacknowledged risk alerts</div><div class="t-desc">Automatically escalates to a supervising counselor if a risk alert is unacknowledged after 20 minutes.</div></div>
+              <button class="switch on" onclick="toggleSwitch(this)"><span class="knob"></span></button>
+            </div>
+          </div>
+        </div>
+
+        <!-- INTEGRATIONS -->
+        <div class="subpanel" id="tab-integrations">
+          <div class="card panel">
+            <div class="panel-head"><div><h3>Connected Services</h3><div class="sub">Third-party services powering AI coaching, messaging, and analytics</div></div></div>
+            <div id="integrationList"></div>
+          </div>
+          <div class="card panel">
+            <div class="panel-head"><div><h3>AI Coaching Model</h3><div class="sub">Credentials used for automated mood analysis &amp; chat coaching</div></div></div>
+            <div class="field-grid">
+              <div class="field"><label>API key</label><input class="mono" value="sk-••••••••••••7f2a" readonly></div>
+              <div class="field" style="display:flex; align-items:flex-end;"><button class="pill-btn ghost sm" onclick="showToast('New API key generated — update your deployment secrets')">Regenerate Key</button></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- BACKUP -->
+        <div class="subpanel" id="tab-backup">
+          <div class="card panel">
+            <div class="panel-head">
+              <div><h3>Automated Backups</h3><div class="sub">Last successful backup: Today, 03:00 AM · Next run in 19h 12m</div></div>
+              <button class="pill-btn solid sm" onclick="runBackupNow()">Run Backup Now</button>
+            </div>
+            <div class="field-grid">
+              <div class="field"><label>Backup frequency</label><select><option>Every 6 hours</option><option selected>Daily</option><option>Weekly</option></select></div>
+              <div class="field"><label>Retention period</label><select><option>30 days</option><option selected>90 days</option><option>1 year</option></select></div>
+            </div>
+          </div>
+          <div class="card panel">
+            <div class="panel-head"><div><h3>Recent Backups</h3></div></div>
+            <div style="overflow-x:auto;">
+              <table>
+                <thead><tr><th>Snapshot</th><th>Date</th><th>Size</th><th>Status</th><th>Action</th></tr></thead>
+                <tbody id="backupTbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<!-- ================= ACCOUNT MODAL ================= -->
+<div class="modal-overlay" id="acctModalOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <h2 id="acctModalTitle">Account Details</h2>
+        <div class="sub" id="acctModalSub">USR-000</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('acctModalOverlay')">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="kv-grid" id="acctModalKv"></div>
+      <div class="field">
+        <label>Role</label>
+        <select id="acctModalRole">
+          <option value="Student">Student</option>
+          <option value="Counselor">Counselor / Psychiatrist</option>
+          <option value="Admin">System Admin</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Status</label>
+        <select id="acctModalStatus">
+          <option value="Active">Active</option>
+          <option value="Suspended">Suspended</option>
+          <option value="Pending">Pending Verification</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="pill-btn solid" onclick="saveAccountChanges()">Save Changes</button>
+      <button class="pill-btn ghost" onclick="resetAccountPassword()">Reset Password</button>
+      <button class="pill-btn danger" onclick="suspendAccount()">Suspend Account</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= CREATE ACCOUNT MODAL ================= -->
+<div class="modal-overlay" id="createModalOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <div><h2>Create Account</h2><div class="sub">Provision a new student, counselor, or admin account</div></div>
+      <button class="modal-close" onclick="closeModal('createModalOverlay')">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="field-grid">
+        <div class="field"><label>Full name</label><input id="createName" placeholder="e.g. Maria Santos"></div>
+        <div class="field"><label>Institutional email</label><input id="createEmail" placeholder="name@mica.edu.ph"></div>
+      </div>
+      <div class="field-grid">
+        <div class="field">
+          <label>Role</label>
+          <select id="createRole">
+            <option value="Student">Student</option>
+            <option value="Counselor">Counselor / Psychiatrist</option>
+            <option value="Admin">System Admin</option>
+          </select>
+        </div>
+        <div class="field"><label>Program / department</label><input id="createDept" placeholder="e.g. BS Computer Science"></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="pill-btn solid" onclick="submitCreateAccount()">Create Account</button>
+      <button class="pill-btn ghost" onclick="closeModal('createModalOverlay')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* =========================================================
+   DATA
+========================================================= */
+let seq = 900;
+const programs = ['BS Computer Science','BS Psychology','BS Nursing','BS Business Administration','BS Architecture','BS Education'];
+
+let accounts = [
+  {id:'USR-001', name:'Dr. Jasmine Dela Cruz', email:'j.delacruz@mica.edu.ph', role:'Counselor', detail:'Guidance Counselor', status:'Active', lastLogin:'Today, 08:30 AM', joined:'2025-06-14'},
+  {id:'USR-002', name:'Mark Reyes, RPsy', email:'m.reyes@mica.edu.ph', role:'Counselor', detail:'Psychiatrist', status:'Active', lastLogin:'Yesterday', joined:'2025-06-20'},
+  {id:'USR-003', name:'Ana Bautista', email:'a.bautista@mica.edu.ph', role:'Admin', detail:'System Admin', status:'Active', lastLogin:'2 hours ago', joined:'2025-01-10'},
+  {id:'USR-004', name:'Leo Fernandez', email:'l.fernandez@mica.edu.ph', role:'Admin', detail:'Support Admin', status:'Active', lastLogin:'3 days ago', joined:'2025-03-02'},
+  {id:'USR-005', name:'Grace Tan, RPm', email:'g.tan@mica.edu.ph', role:'Counselor', detail:'Guidance Counselor', status:'Pending', lastLogin:'—', joined:'2026-08-28'},
+];
+for(let i=0;i<10;i++){
+  seq++;
+  accounts.push({
+    id:'USR-'+seq, name:'Student #'+seq, email:'stu-'+seq+'@student.edu.ph',
+    role:'Student', detail:programs[i%programs.length],
+    status:(i===3?'Suspended':(i===7?'Pending':'Active')),
+    lastLogin: i%2===0? (i+1)+' hours ago' : (i+1)+' days ago',
+    joined:'2025-08-0'+((i%9)+1)
+  });
+}
+
+let logs = [
+  {ts:'2026-09-03 08:30:12', actor:'j.delacruz@mica.edu.ph', role:'Counselor', action:'User login successful', ip:'192.168.1.45', status:'Success'},
+  {ts:'2026-09-03 07:58:41', actor:'System', role:'System', action:'Automated nightly backup completed', ip:'internal', status:'Success'},
+  {ts:'2026-09-02 22:14:03', actor:'unknown@mailinator.com', role:'Student', action:'Failed login attempt (5x) — account locked', ip:'203.177.20.19', status:'Failed'},
+  {ts:'2026-09-02 14:15:00', actor:'a.bautista@mica.edu.ph', role:'Admin', action:'Password reset issued for USR-908', ip:'192.168.1.10', status:'Success'},
+  {ts:'2026-09-02 11:02:37', actor:'m.reyes@mica.edu.ph', role:'Counselor', action:'Accessed student record with case reason logged', ip:'192.168.1.52', status:'Success'},
+  {ts:'2026-09-01 19:44:10', actor:'a.bautista@mica.edu.ph', role:'Admin', action:'Updated role permissions for Guidance Counselor', ip:'192.168.1.10', status:'Success'},
+  {ts:'2026-09-01 09:12:55', actor:'stu-905@student.edu.ph', role:'Student', action:'Submitted data access request', ip:'10.20.4.18', status:'Success'},
+  {ts:'2026-08-31 16:03:21', actor:'System', role:'System', action:'API rate limit exceeded — throttled requests', ip:'internal', status:'Failed'},
+];
+
+let privacyRequests = [
+  {id:'DSR-118', who:'Student #908 (anonymized)', type:'Data Access', submitted:'2026-08-30', status:'In Progress'},
+  {id:'DSR-117', who:'Student #874 (anonymized)', type:'Right to Erasure', submitted:'2026-08-27', status:'Pending Review'},
+  {id:'DSR-116', who:'Student #841 (anonymized)', type:'Data Correction', submitted:'2026-08-21', status:'Resolved'},
+];
+
+const backups = [
+  {name:'Full DB Snapshot', date:'2026-09-03 03:00 AM', size:'4.2 GB', status:'Success'},
+  {name:'Full DB Snapshot', date:'2026-09-02 03:00 AM', size:'4.1 GB', status:'Success'},
+  {name:'Full DB Snapshot', date:'2026-09-01 03:00 AM', size:'4.1 GB', status:'Success'},
+];
+
+const services = [
+  {name:'Authentication Service', meta:'Response time 112ms', status:'stable'},
+  {name:'Primary Database (PostgreSQL)', meta:'Replication lag 0.4s', status:'stable'},
+  {name:'AI Coaching / Mood Engine', meta:'Queue depth 3', status:'stable'},
+  {name:'SMS / Email Gateway', meta:'Degraded — retrying', status:'watch'},
+  {name:'Automated Backup Job', meta:'Last run: Today 03:00 AM', status:'stable'},
+];
+
+let activeAcctId = null;
+let charts = {};
+
+/* =========================================================
+   AUTH
+========================================================= */
+function doLogout(){
+  window.location.href = "{% url 'logout' %}";
+}
+
+document.addEventListener('DOMContentLoaded', initAll);
+
+/* =========================================================
+   NAVIGATION
+========================================================= */
+const sidebarEl = document.getElementById('sidebar');
+const sidebarBackdrop = document.getElementById('sidebarBackdrop');
+
+function isMobile(){ return window.innerWidth <= 860; }
+function setSidebarOpen(open){
+  sidebarEl.classList.toggle('is-collapsed', !open);
+  sidebarBackdrop.classList.toggle('is-visible', isMobile() && open);
+}
+sidebarBackdrop.addEventListener('click', ()=>setSidebarOpen(false));
+sidebarEl.addEventListener('click', e=>{
+  if(isMobile() && e.target.closest('.nav-item')) setSidebarOpen(false);
+});
+window.addEventListener('resize', ()=>{ if(!isMobile()) sidebarBackdrop.classList.remove('is-visible'); });
+if(isMobile()) setSidebarOpen(false);
+
+const eyebrows = {
+  dashboard:['Platform Overview','System Dashboard'],
+  accounts:['Identity & Access','User Accounts'],
+  roles:['Identity & Access','Roles & Permissions'],
+  logs:['Security & Compliance','Audit Logs'],
+  privacy:['Security & Compliance','Data Privacy & Requests'],
+  settings:['Operations','System Settings']
+};
+function goTo(section){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.getElementById('sec-'+section).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  const btn = document.querySelector('.nav-item[data-section="'+section+'"]');
+  if(btn) btn.classList.add('active');
+  document.getElementById('topEyebrow').textContent = eyebrows[section][0];
+  document.getElementById('topTitle').textContent = eyebrows[section][1];
+  document.getElementById('sidebar').classList.remove('open');
+}
+function goTab(tab){
+  document.querySelectorAll('#sec-settings .subpanel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+  document.querySelectorAll('#sec-settings .tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelector('#sec-settings .tab-btn[data-tab="'+tab+'"]').classList.add('active');
+}
+
+/* =========================================================
+   ACCOUNTS
+========================================================= */
+function renderAccounts(){
+  const roleF = document.getElementById('acctRoleFilter').value;
+  const statusF = document.getElementById('acctStatusFilter').value;
+  const list = accounts.filter(a=>
+    (roleF==='all'||a.role===roleF) && (statusF==='all'||a.status===statusF)
+  );
+  const initials = n=>n.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
+  const badgeClass = s=> s==='Active'?'stable':(s==='Suspended'?'urgent':'watch');
+  const avatarColor = r=> r==='Admin'?'var(--sky)':(r==='Counselor'?'var(--sage)':'var(--peach-deep)');
+
+  document.getElementById('acctTbody').innerHTML = list.map(a=>`
+    <tr>
+      <td>
+        <div class="u-cell">
+          <div class="avatar" style="background:${avatarColor(a.role)};">${initials(a.name)}</div>
+          <div><div class="name">${a.name}</div><div class="email">${a.email}</div></div>
+        </div>
+      </td>
+      <td class="mono-cell">${a.id}</td>
+      <td><span class="badge neutral">${a.role} — ${a.detail}</span></td>
+      <td><span class="badge ${badgeClass(a.status)}"><span class="dot"></span>${a.status}</span></td>
+      <td class="mono-cell">${a.lastLogin}</td>
+      <td class="row-actions"><button class="pill-btn ghost sm" onclick="openAccountModal('${a.id}')">Manage</button></td>
+    </tr>`).join('');
+
+  document.getElementById('acctNavCount').textContent = accounts.length;
+}
+
+function openAccountModal(id){
+  activeAcctId = id;
+  const a = accounts.find(x=>x.id===id);
+  document.getElementById('acctModalTitle').textContent = a.name;
+  document.getElementById('acctModalSub').textContent = a.id + ' · ' + a.email;
+  document.getElementById('acctModalKv').innerHTML = `
+    <div class="kv"><div class="k">Program / Detail</div><div class="v">${a.detail}</div></div>
+    <div class="kv"><div class="k">Joined</div><div class="v">${a.joined}</div></div>
+    <div class="kv"><div class="k">Last Login</div><div class="v">${a.lastLogin}</div></div>
+    <div class="kv"><div class="k">User ID</div><div class="v mono">${a.id}</div></div>
+  `;
+  document.getElementById('acctModalRole').value = a.role;
+  document.getElementById('acctModalStatus').value = a.status;
+  document.getElementById('acctModalOverlay').classList.add('active');
+}
+function saveAccountChanges(){
+  const a = accounts.find(x=>x.id===activeAcctId);
+  a.role = document.getElementById('acctModalRole').value;
+  a.status = document.getElementById('acctModalStatus').value;
+  renderAccounts();
+  closeModal('acctModalOverlay');
+  showToast('Account '+a.id+' updated');
+}
+function resetAccountPassword(){
+  showToast('Password reset link sent to '+accounts.find(x=>x.id===activeAcctId).email);
+}
+function suspendAccount(){
+  const a = accounts.find(x=>x.id===activeAcctId);
+  a.status = 'Suspended';
+  renderAccounts();
+  closeModal('acctModalOverlay');
+  showToast('Account '+a.id+' suspended');
+}
+function openCreateAccount(){ document.getElementById('createModalOverlay').classList.add('active'); }
+function submitCreateAccount(){
+  const name = document.getElementById('createName').value.trim() || 'New User';
+  const email = document.getElementById('createEmail').value.trim() || 'new.user@mica.edu.ph';
+  const role = document.getElementById('createRole').value;
+  const dept = document.getElementById('createDept').value.trim() || (role==='Student'?'Unassigned Program':role);
+  seq++;
+  accounts.unshift({id:'USR-'+seq, name, email, role, detail:dept, status:'Pending', lastLogin:'—', joined:new Date().toISOString().slice(0,10)});
+  document.getElementById('acctRoleFilter').value='all';
+  document.getElementById('acctStatusFilter').value='all';
+  renderAccounts();
+  closeModal('createModalOverlay');
+  showToast('Account created — verification email sent to '+email);
+  document.getElementById('createName').value='';
+  document.getElementById('createEmail').value='';
+  document.getElementById('createDept').value='';
+}
+function closeModal(id){ document.getElementById(id).classList.remove('active'); }
+
+/* =========================================================
+   ROLES & PERMISSIONS
+========================================================= */
+const permSets = {
+  super: [
+    ['Manage all user accounts', true], ['Configure system settings', true],
+    ['Access audit logs', true], ['Manage data privacy requests', true],
+    ['View full student clinical records', true], ['Manage roles & permissions', true]
+  ],
+  counselor: [
+    ['View assigned student records (with logged reason)', true], ['Manage appointments', true],
+    ['Issue & escalate risk alerts', true], ['Access AI coaching logs', true],
+    ['Export case reports', true], ['Manage user accounts', false]
+  ],
+  student: [
+    ['View own mood & journal history', true], ['Book appointments with counselors', true],
+    ['Manage own data & consent settings', true], ['View other students\' data', false]
+  ]
+};
+function renderPermList(targetId, list, editable){
+  document.getElementById(targetId).innerHTML = list.map(([label,on])=>`
+    <div class="toggle-row" style="padding:11px 0;">
+      <div class="t-label" style="font-size:13px;">${label}</div>
+      <button class="switch ${on?'on':''}" ${editable?'onclick="toggleSwitch(this)"':'disabled'}><span class="knob"></span></button>
+    </div>`).join('');
+}
+function renderRoles(){
+  renderPermList('permSuperAdmin', permSets.super, false);
+  renderPermList('permCounselor', permSets.counselor, true);
+  renderPermList('permStudent', permSets.student, false);
+}
+
+/* =========================================================
+   AUDIT LOGS
+========================================================= */
+function renderLogs(){
+  const roleF = document.getElementById('logRoleFilter').value;
+  const statusF = document.getElementById('logStatusFilter').value;
+  const list = logs.filter(l=> (roleF==='all'||l.role===roleF) && (statusF==='all'||l.status===statusF) );
+  document.getElementById('logsTbody').innerHTML = list.map(l=>`
+    <tr>
+      <td class="mono-cell">${l.ts}</td>
+      <td>${l.actor}</td>
+      <td><span class="badge neutral">${l.role}</span></td>
+      <td>${l.action}</td>
+      <td class="mono-cell">${l.ip}</td>
+      <td><span class="badge ${l.status==='Success'?'stable':'urgent'}"><span class="dot"></span>${l.status}</span></td>
+    </tr>`).join('');
+}
+
+/* =========================================================
+   DATA PRIVACY
+========================================================= */
+function renderPrivacy(){
+  document.getElementById('privacyTbody').innerHTML = privacyRequests.map(r=>`
+    <tr>
+      <td class="mono-cell">${r.id}</td>
+      <td>${r.who}</td>
+      <td>${r.type}</td>
+      <td class="mono-cell">${r.submitted}</td>
+      <td><span class="badge ${r.status==='Resolved'?'stable':(r.status==='Pending Review'?'watch':'watch')}"><span class="dot"></span>${r.status}</span></td>
+      <td><button class="pill-btn ghost sm" onclick="resolvePrivacyRequest('${r.id}')">${r.status==='Resolved'?'View':'Process'}</button></td>
+    </tr>`).join('');
+  const pending = privacyRequests.filter(r=>r.status!=='Resolved').length;
+  document.getElementById('privNavCount').textContent = pending;
+  document.getElementById('privNavCount2').textContent = pending;
+}
+function resolvePrivacyRequest(id){
+  const r = privacyRequests.find(x=>x.id===id);
+  if(r.status!=='Resolved'){ r.status='Resolved'; renderPrivacy(); showToast('Request '+id+' marked resolved'); }
+  else{ showToast('Request '+id+' — no further action needed'); }
+}
+
+/* =========================================================
+   SETTINGS: INTEGRATIONS & BACKUP
+========================================================= */
+function renderIntegrations(){
+  document.getElementById('integrationList').innerHTML = services.map(s=>`
+    <div class="service-row">
+      <div class="s-left">
+        <div class="s-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/></svg></div>
+        <div><div class="s-name">${s.name}</div><div class="s-meta">${s.meta}</div></div>
+      </div>
+      <span class="badge ${s.status==='stable'?'stable':'watch'}"><span class="dot ${s.status==='watch'?'pulse':''}"></span>${s.status==='stable'?'Operational':'Degraded'}</span>
+    </div>`).join('');
+}
+function renderServiceHealth(){
+  document.getElementById('serviceList').innerHTML = services.map(s=>`
+    <div class="service-row">
+      <div class="s-left">
+        <div class="s-icon" style="background:${s.status==='stable'?'var(--sage-pale)':'var(--sky-pale)'}; color:${s.status==='stable'?'var(--sage-deep)':'var(--sky-deep)'};">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/></svg>
+        </div>
+        <div><div class="s-name">${s.name}</div><div class="s-meta">${s.meta}</div></div>
+      </div>
+      <span class="badge ${s.status==='stable'?'stable':'watch'}"><span class="dot ${s.status==='watch'?'pulse':''}"></span>${s.status==='stable'?'Operational':'Degraded'}</span>
+    </div>`).join('');
+}
+function renderBackups(){
+  document.getElementById('backupTbody').innerHTML = backups.map(b=>`
+    <tr>
+      <td>${b.name}</td>
+      <td class="mono-cell">${b.date}</td>
+      <td class="mono-cell">${b.size}</td>
+      <td><span class="badge stable"><span class="dot"></span>${b.status}</span></td>
+      <td><button class="pill-btn ghost sm" onclick="showToast('Restore initiated from ${b.date}')">Restore</button></td>
+    </tr>`).join('');
+}
+function runBackupNow(){
+  backups.unshift({name:'Manual Snapshot', date:new Date().toLocaleString(), size:'4.2 GB', status:'Success'});
+  renderBackups();
+  showToast('Manual backup started');
+}
+
+/* =========================================================
+   ACTIVITY FEED (dashboard)
+========================================================= */
+function renderActivityFeed(){
+  const icons = {
+    Success:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>',
+    Failed:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01"/><circle cx="12" cy="12" r="9"/></svg>'
+  };
+  document.getElementById('activityFeed').innerHTML = logs.slice(0,5).map(l=>`
+    <div class="feed-item">
+      <div class="fi-icon" style="background:${l.status==='Success'?'var(--sage-pale)':'var(--alert-pale)'}; color:${l.status==='Success'?'var(--sage-deep)':'var(--alert)'};">${icons[l.status]}</div>
+      <div>
+        <div class="fi-text"><b>${l.actor}</b> — ${l.action}</div>
+        <div class="fi-time">${l.ts}</div>
+      </div>
+    </div>`).join('');
+}
+
+/* =========================================================
+   CHARTS
+========================================================= */
+const chartFont = {family:"'Inter',sans-serif", size:11};
+function baseGrid(){return {color: getComputedStyle(document.body).getPropertyValue('--line'), drawTicks:false};}
+function renderCharts(){
+  const ctx1 = document.getElementById('trafficChart');
+  if(charts.traffic) charts.traffic.destroy();
+  const hours = Array.from({length:24},(_,i)=> (i%12===0?12:i%12) + (i<12?'AM':'PM'));
+  const vals = hours.map((_,i)=> Math.round(180 + 260*Math.sin((i-6)/24*Math.PI*2) + Math.random()*40));
+  charts.traffic = new Chart(ctx1,{
+    type:'line',
+    data:{labels:hours, datasets:[{data:vals, borderColor:'#5F7F68', backgroundColor:'rgba(135,169,145,0.18)', fill:true, tension:.4, pointRadius:0, borderWidth:2.5}]},
+    options:{plugins:{legend:{display:false}}, scales:{y:{grid:baseGrid(), ticks:{font:chartFont}}, x:{grid:{display:false}, ticks:{font:chartFont, maxRotation:0, maxTicksLimit:8}}}}
+  });
+
+  const ctx2 = document.getElementById('growthChart');
+  if(charts.growth) charts.growth.destroy();
+  charts.growth = new Chart(ctx2,{
+    type:'bar',
+    data:{labels:['W1','W2','W3','W4','W5','W6'],
+      datasets:[
+        {label:'Students', data:[28,34,22,40,31,26], backgroundColor:'#9CC5E8', borderRadius:6, maxBarThickness:22},
+        {label:'Counselors', data:[1,0,2,0,1,0], backgroundColor:'#87A991', borderRadius:6, maxBarThickness:22}
+      ]},
+    options:{plugins:{legend:{position:'bottom', labels:{font:chartFont, boxWidth:10}}}, scales:{y:{grid:baseGrid(), ticks:{font:chartFont}}, x:{grid:{display:false}, ticks:{font:chartFont}}}}
+  });
+}
+
+/* =========================================================
+   MISC
+========================================================= */
+function toggleSwitch(el){ el.classList.toggle('on'); }
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(()=>t.classList.remove('show'), 2600);
+}
+function toggleTheme(){ document.body.classList.toggle('dark'); }
+function handleGlobalSearch(q){
+  q = q.trim();
+  if(!q) return;
+  const hit = accounts.find(a=> a.id.toLowerCase()===q.toLowerCase() || a.name.toLowerCase().includes(q.toLowerCase()) || a.email.toLowerCase().includes(q.toLowerCase()));
+  if(hit){ goTo('accounts'); document.getElementById('acctRoleFilter').value='all'; document.getElementById('acctStatusFilter').value='all'; renderAccounts(); showToast('Found match: '+hit.name); }
+}
+
+function initAll(){
+  renderAccounts();
+  renderRoles();
+  renderLogs();
+  renderPrivacy();
+  renderIntegrations();
+  renderServiceHealth();
+  renderBackups();
+  renderCharts();
+  renderActivityFeed();
+}
+</script>
+</body>
+</html>

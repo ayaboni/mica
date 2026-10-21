@@ -1,0 +1,218 @@
+{% load static %}
+<!-- =========================================================
+     MICA PAGE-TRANSITION LOADER
+     Shown on every full-page navigation (incoming + outgoing).
+     Include once, right after <body>, on every routed template:
+     ========================================================= -->
+<div id="micaLoader" class="mica-loader" role="status" aria-live="polite">
+  <div class="mica-loader-inner">
+    <div class="mica-loader-brand">MICA</div>
+    <div class="mica-loader-track" id="micaLoaderTrack">
+      <div class="mica-loader-fill" id="micaLoaderFill"></div>
+      <div class="mica-loader-walker" id="micaLoaderWalker">
+        <img src="{% static 'core/images/mica_walker.gif' %}" alt="">
+      </div>
+    </div>
+    <div class="mica-loader-meta">
+      <span class="mica-loader-label" id="micaLoaderLabel">Getting things ready…</span>
+      <span class="mica-loader-pct" id="micaLoaderPct">0%</span>
+    </div>
+  </div>
+</div>
+
+<style>
+  .mica-loader{
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    background: var(--cream-bg, #F9F6EC);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 1;
+    visibility: visible;
+    transition: opacity .4s ease, visibility .4s ease;
+  }
+  .mica-loader.is-hidden{
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+  .mica-loader-inner{
+    width: min(380px, 82vw);
+    text-align: center;
+  }
+  .mica-loader-brand{
+    font-family: var(--font-display, 'Fredoka', sans-serif);
+    font-weight: 700;
+    font-size: 1.5rem;
+    letter-spacing: 0.08em;
+    color: var(--green-deep, #5F7F58);
+    margin-bottom: 34px;
+  }
+  .mica-loader-track{
+    position: relative;
+    width: 100%;
+    height: 12px;
+    border-radius: 999px;
+    background: var(--cream-card, #FCF0DA);
+    border: 1.5px solid var(--line, #8C6F52);
+    box-shadow: inset 0 1px 3px rgba(76,61,41,0.15);
+    margin-bottom: 56px;
+  }
+  .mica-loader-fill{
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 4%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--green, #93AF8C) 0%, var(--green-dark, #7C9C74) 100%);
+    transition: width .25s ease-out;
+  }
+  .mica-loader-walker{
+    position: absolute;
+    top: 50%;
+    left: 4%;
+    width: 64px;
+    transform: translate(-46%, -86%);
+    transition: left .25s ease-out;
+    filter: drop-shadow(0 6px 10px rgba(76,61,41,0.28));
+  }
+  .mica-loader-walker img{
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+  .mica-loader-meta{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-family: var(--font-body, 'Inter', sans-serif);
+  }
+  .mica-loader-label{
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--brown-dark, #745A41);
+  }
+  .mica-loader-pct{
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--ink-soft, #55524B);
+    font-variant-numeric: tabular-nums;
+  }
+  @media (prefers-reduced-motion: reduce){
+    .mica-loader, .mica-loader-fill, .mica-loader-walker{ transition: none !important; }
+  }
+</style>
+
+<script>
+(function(){
+  var fillEl   = document.getElementById('micaLoaderFill');
+  var walkerEl = document.getElementById('micaLoaderWalker');
+  var pctEl    = document.getElementById('micaLoaderPct');
+  var labelEl  = document.getElementById('micaLoaderLabel');
+  var overlay  = document.getElementById('micaLoader');
+
+  var current = 4;     // current displayed percent
+  var trickleTimer = null;
+  var shownAt = Date.now();
+  var MIN_VISIBLE_MS = 450; // avoid an instant flash on very fast/cached loads
+
+  function setPercent(p){
+    current = Math.max(0, Math.min(100, p));
+    fillEl.style.width = current + '%';
+    walkerEl.style.left = current + '%';
+    pctEl.textContent = Math.round(current) + '%';
+  }
+
+  function startTrickle(){
+    clearInterval(trickleTimer);
+    trickleTimer = setInterval(function(){
+      // asymptotically creep toward ~90% while we wait for the real page load
+      var remaining = 90 - current;
+      if (remaining <= 0.5) return;
+      setPercent(current + remaining * 0.12);
+    }, 180);
+  }
+
+  function stopTrickle(){
+    clearInterval(trickleTimer);
+    trickleTimer = null;
+  }
+
+  function show(label){
+    overlay.classList.remove('is-hidden');
+    overlay.setAttribute('aria-hidden', 'false');
+    shownAt = Date.now();
+    labelEl.textContent = label || 'Getting things ready…';
+    setPercent(4);
+    startTrickle();
+  }
+
+  function finish(){
+    stopTrickle();
+    var elapsed = Date.now() - shownAt;
+    var wait = Math.max(0, MIN_VISIBLE_MS - elapsed);
+    setTimeout(function(){
+      setPercent(100);
+      setTimeout(function(){
+        overlay.classList.add('is-hidden');
+        overlay.setAttribute('aria-hidden', 'true');
+      }, 260);
+    }, wait);
+  }
+
+  function goTo(url){
+    show('Taking you there…');
+    // give the bar/mascot a quick, visible head start before the slower trickle takes over
+    setTimeout(function(){ setPercent(60); }, 20);
+    // let the motion read clearly before the browser actually navigates away
+    setTimeout(function(){
+      window.location.href = url;
+    }, 420);
+  }
+
+  // Expose a tiny public API other inline scripts on the page can use
+  // (e.g. a fetch-based login flow that redirects programmatically).
+  window.MicaLoader = { show: show, finish: finish, goTo: goTo, setPercent: setPercent };
+
+  // ---- Arrival animation: play on every fresh page load ----
+  document.addEventListener('DOMContentLoaded', function(){
+    startTrickle();
+  });
+  window.addEventListener('load', function(){
+    finish();
+  });
+  // Safety net in case 'load' never fires for some reason
+  setTimeout(finish, 4000);
+
+  // ---- Outgoing navigation: intercept same-site link clicks ----
+  document.addEventListener('click', function(e){
+    var a = e.target.closest('a');
+    if (!a) return;
+    if (a.hasAttribute('data-no-loader')) return;
+    if (a.target && a.target !== '' && a.target !== '_self') return;
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+
+    var href = a.getAttribute('href');
+    if (!href || href.charAt(0) === '#') return;
+    if (href.indexOf('mailto:') === 0 || href.indexOf('tel:') === 0) return;
+
+    var url;
+    try { url = new URL(href, window.location.href); } catch (err) { return; }
+    if (url.origin !== window.location.origin) return; // external link, leave alone
+
+    e.preventDefault();
+    goTo(url.href);
+  });
+
+  // ---- Outgoing navigation: intercept native form submits (login/register/etc.) ----
+  document.addEventListener('submit', function(e){
+    var form = e.target;
+    if (!(form instanceof HTMLFormElement)) return;
+    if (e.defaultPrevented) return;
+    if (form.hasAttribute('data-no-loader')) return;
+    if (form.target && form.target !== '' && form.target !== '_self') return;
+    show('Submitting…');
+  });
+})();
+</script>

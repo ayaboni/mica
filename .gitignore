@@ -225,3 +225,4 @@ firebase-service-account.json
 media/
 db.sqlite3
 vosk-model-small-en-us-0.15*/
+mica_project/openrouterai.js

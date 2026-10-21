@@ -1,0 +1,83 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <title>{% if step == 'sent' %}Check your email{% elif step == 'confirm' %}Confirm sign-in{% else %}Link expired{% endif %} — MICA</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { margin:0; font-family:'Nunito', sans-serif; background:#FAF7EE; color:#3A2E28; }
+    .topbar { background:#8FA98C; padding:18px 34px; display:flex; align-items:center; justify-content:space-between; }
+    .topbar a { color:#3A2E28; text-decoration:none; font-weight:700; }
+    .wrap { max-width:420px; margin:60px auto; padding:0 20px; text-align:center; }
+    .card { background:#FBF2DE; border-radius:24px; padding:32px; }
+    h2 { font-family:'Fredoka', sans-serif; margin-top:0; }
+    p { color:#7a6a5c; font-size:14px; line-height:1.55; }
+    strong { color:#3A2E28; }
+    button, .back-btn { display:inline-block; background:#8B6F4E; color:#fff; border:none; padding:13px 28px; border-radius:999px; font-weight:700; font-size:14px; font-family:inherit; cursor:pointer; text-decoration:none; box-sizing:border-box; }
+    button { width:100%; }
+    button:disabled { opacity:.55; cursor:not-allowed; }
+    .back-btn { margin-top:14px; }
+    .secondary { background:transparent; color:#7B5B3F; border:2px solid #8B6F4E; margin-top:6px; }
+    .msg-error { color:#d9534f; font-weight:bold; font-size:13px; }
+    .msg-success { color:#5f7f58; font-weight:bold; font-size:13px; }
+    .hint { font-size:12.5px; margin-top:18px; }
+    .envelope { font-size:44px; margin-bottom:6px; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <a href="{% url 'login' %}">← Back to Login</a>
+    <strong>MICA</strong>
+  </div>
+
+  <div class="wrap">
+    <div class="card">
+      {% if messages %}
+        {% for message in messages %}
+          <p class="{% if message.tags == 'success' %}msg-success{% else %}msg-error{% endif %}">{{ message }}</p>
+        {% endfor %}
+      {% endif %}
+
+      {% if step == 'sent' %}
+        <div class="envelope" aria-hidden="true">✉️</div>
+        <h2>Check your email</h2>
+        <p>We sent a sign-in link to <strong>{{ masked_email }}</strong>. Open it to finish signing in. It works once and expires in {{ ttl_minutes }} minutes.</p>
+        <form method="post" action="{% url 'login_resend' %}" id="resendForm">
+          {% csrf_token %}
+          <button type="submit" id="resendBtn" class="secondary" {% if cooldown %}disabled data-cooldown="{{ cooldown }}"{% endif %}>Resend link</button>
+        </form>
+        <p class="hint">Can't find it? Check your spam folder. You can open the link on any device, and that device is the one that gets signed in.</p>
+        <script>
+          (function(){
+            var btn = document.getElementById('resendBtn');
+            var left = parseInt(btn.getAttribute('data-cooldown') || '0', 10);
+            if (!left) return;
+            function tick(){
+              if (left <= 0) { btn.disabled = false; btn.textContent = 'Resend link'; return; }
+              btn.textContent = 'Resend link in ' + left + 's';
+              left--; setTimeout(tick, 1000);
+            }
+            tick();
+          })();
+        </script>
+
+      {% elif step == 'confirm' %}
+        <h2>Confirm sign-in</h2>
+        <p>Sign in to MICA as <strong>{{ display_name }}</strong>?</p>
+        <form method="post">
+          {% csrf_token %}
+          <button type="submit">Sign me in</button>
+        </form>
+        <p class="hint">Didn't try to sign in? Just close this page. Nothing will happen.</p>
+
+      {% else %}
+        <h2>This link has expired</h2>
+        <p>Sign-in links work once and only for {{ ttl_minutes }} minutes. Please sign in again to get a new one.</p>
+        <a href="{% url 'login' %}" class="back-btn">Back to Login</a>
+      {% endif %}
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,225 @@
+{% comment %}
+  Shared first-visit tour engine (used by the student and staff dashboards).
+  Include this once, then call MicaTour.run(config) from the page. config:
+    which  - name sent to the server when the tour ends ('dashboard', 'mood', 'staff')
+    steps  - [{welcome?, target?, fallback?, sidebar?, view?, title, body}]
+    env    - optional page hooks: isMobile(), sidebarClosed(), setSidebar(open), showView(view)
+    onEnd  - optional callback when the tour is finished or skipped
+{% endcomment %}
+<style>
+  .tour-root{position:fixed;inset:0;z-index:100000;font-family:'Nunito',sans-serif;}
+  .tour-spot{
+    position:fixed;top:50%;left:50%;width:0;height:0;border-radius:14px;
+    box-shadow:0 0 0 200vmax rgba(20,16,10,.62);
+    outline:3px solid var(--btn-hover,#F7D368);outline-offset:0;
+    pointer-events:none;
+    transition:top .3s ease,left .3s ease,width .3s ease,height .3s ease;
+  }
+  .tour-spot.is-centered{outline-color:transparent;}
+  .tour-card{
+    position:fixed;width:340px;max-width:calc(100vw - 24px);
+    background:var(--card-bg,#fff);color:var(--text-dark,#3E3226);
+    border-radius:var(--radius-lg,20px);padding:20px 20px 16px;
+    box-shadow:0 18px 50px rgba(20,16,10,.35);
+    transition:top .3s ease,left .3s ease,opacity .2s ease;
+  }
+  .tour-card.is-welcome{width:400px;text-align:center;padding:28px 26px 18px;}
+  .tour-step{font-size:11.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-mute,#6B5F4E);margin:0 0 6px;}
+  .tour-title{font-family:'Quicksand',sans-serif;font-size:19px;font-weight:700;margin:0 0 8px;color:var(--text-dark,#3E3226);}
+  .tour-body{font-size:14px;line-height:1.5;margin:0 0 16px;color:var(--text-mute,#6B5F4E);}
+  .tour-dots{display:flex;gap:6px;justify-content:center;margin:0 0 14px;}
+  .tour-card:not(.is-welcome) .tour-dots{justify-content:flex-start;}
+  .tour-dot{width:7px;height:7px;border-radius:50%;background:var(--btn-bg,#F3E9D2);border:1px solid rgba(0,0,0,.12);transition:background .2s ease,transform .2s ease;}
+  .tour-dot.is-on{background:var(--btn-active,#F0C13F);transform:scale(1.25);}
+  .tour-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+  .tour-actions .tour-nav{display:flex;gap:8px;}
+  .tour-skip{background:none;border:none;font-family:inherit;color:var(--text-mute,#6B5F4E);font-size:13px;font-weight:700;padding:8px 6px;text-decoration:underline;text-underline-offset:3px;}
+  .tour-skip:hover{color:var(--text-dark,#3E3226);}
+  .tour-btn{border:none;border-radius:999px;padding:10px 20px;font-family:inherit;font-weight:800;font-size:14px;cursor:pointer;background:#E5DAC3;color:#3E3226;}
+  .tour-btn:hover{filter:brightness(.96);}
+  .tour-next{background:#F0C13F;color:#3E3226;}
+  .tour-next:hover{background:#F7D368;filter:none;}
+  .tour-root button:focus-visible{outline:3px solid var(--blue,#6FA8DC);outline-offset:2px;}
+  @media (prefers-reduced-motion:reduce){.tour-spot,.tour-card,.tour-dot{transition:none;}}
+</style>
+
+<div class="tour-root" id="tour-root" role="dialog" aria-modal="true" aria-labelledby="tour-title" hidden>
+  <div class="tour-spot" id="tour-spot"></div>
+  <div class="tour-card" id="tour-card">
+    <p class="tour-step" id="tour-step"></p>
+    <h2 class="tour-title" id="tour-title"></h2>
+    <p class="tour-body" id="tour-body" aria-live="polite"></p>
+    <div class="tour-dots" id="tour-dots" aria-hidden="true"></div>
+    <div class="tour-actions">
+      <button type="button" class="tour-skip" id="tour-skip">Skip tutorial</button>
+      <div class="tour-nav">
+        <button type="button" class="tour-btn tour-back" id="tour-back">Back</button>
+        <button type="button" class="tour-btn tour-next" id="tour-next">Next</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+window.MicaTour = (function(){
+  const COMPLETE_URL = "{% url 'api_tutorial_complete' %}";
+
+  const root = document.getElementById('tour-root');
+  const spot = document.getElementById('tour-spot');
+  const card = document.getElementById('tour-card');
+  const elStep = document.getElementById('tour-step');
+  const elTitle = document.getElementById('tour-title');
+  const elBody = document.getElementById('tour-body');
+  const elDots = document.getElementById('tour-dots');
+  const btnSkip = document.getElementById('tour-skip');
+  const btnBack = document.getElementById('tour-back');
+  const btnNext = document.getElementById('tour-next');
+
+  let cfg = null, index = 0, active = false, sidebarWasClosed = false, token = 0;
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const env = () => (cfg && cfg.env) || {};
+  const sidebarClosed = () => !!(env().sidebarClosed && env().sidebarClosed());
+  const onMobile = () => !!(env().isMobile && env().isMobile());
+
+  function markSeen(which){
+    try {
+      fetch(COMPLETE_URL, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') || '' },
+        body: new URLSearchParams({ which }),
+        credentials: 'same-origin',
+        keepalive: true
+      }).catch(() => {});
+    } catch (e) {}
+  }
+
+  function resolveTarget(s){
+    // A step can name a smaller target for phones (mobileTarget) when the full one is too tall.
+    const sel = (onMobile() && s.mobileTarget) ? s.mobileTarget : s.target;
+    if (!sel) return null;
+    return document.querySelector(sel) || (s.fallback ? document.querySelector(s.fallback) : null);
+  }
+
+  function place(target){
+    const vw = window.innerWidth, vh = window.innerHeight, gap = 14, pad = 8, edge = 12;
+    const cw = card.offsetWidth, ch = card.offsetHeight;
+    let left, top;
+
+    if (!target) {
+      spot.classList.add('is-centered');
+      spot.style.cssText = 'top:50%;left:50%;width:0;height:0;';
+      left = (vw - cw) / 2; top = (vh - ch) / 2;
+    } else {
+      spot.classList.remove('is-centered');
+      const r = target.getBoundingClientRect();
+      spot.style.top = (r.top - pad) + 'px';
+      spot.style.left = (r.left - pad) + 'px';
+      spot.style.width = (r.width + pad * 2) + 'px';
+      spot.style.height = (r.height + pad * 2) + 'px';
+
+      if (vw - (r.right + pad) - gap >= cw) {            // room on the right
+        left = r.right + pad + gap; top = r.top + r.height / 2 - ch / 2;
+      } else if (vh - (r.bottom + pad) - gap >= ch) {    // room below
+        top = r.bottom + pad + gap; left = r.left + r.width / 2 - cw / 2;
+      } else if (r.top - pad - gap >= ch) {              // room above
+        top = r.top - pad - gap - ch; left = r.left + r.width / 2 - cw / 2;
+      } else {                                           // fall back to centered
+        left = (vw - cw) / 2; top = (vh - ch) / 2;
+      }
+    }
+    card.style.left = Math.max(edge, Math.min(left, vw - cw - edge)) + 'px';
+    card.style.top = Math.max(edge, Math.min(top, vh - ch - edge)) + 'px';
+  }
+
+  async function show(i){
+    const my = ++token;
+    index = i;
+    const steps = cfg.steps, s = steps[i];
+    const hasWelcome = !!steps[0].welcome;
+    const first = i === 0, last = i === steps.length - 1;
+
+    // Let the page switch to the screen this step is about.
+    if (s.view && env().showView) { env().showView(s.view); await sleep(80); }
+
+    // Sidebar steps need the sidebar open (it's a drawer on mobile).
+    if (env().setSidebar) {
+      if (s.sidebar && sidebarClosed()) { env().setSidebar(true); await sleep(340); }
+      else if (!s.sidebar && onMobile() && !sidebarClosed()) { env().setSidebar(false); await sleep(340); }
+    }
+    if (my !== token || !active) return;
+
+    card.classList.toggle('is-welcome', !!s.welcome);
+    const offset = hasWelcome ? 1 : 0;
+    elStep.style.display = s.welcome ? 'none' : '';
+    elStep.textContent = 'Step ' + (i + 1 - offset) + ' of ' + (steps.length - offset);
+    elTitle.textContent = s.title;
+    elBody.textContent = s.body;
+    [...elDots.children].forEach((d, n) => d.classList.toggle('is-on', n === i));
+    btnBack.style.display = first ? 'none' : '';
+    btnNext.textContent = s.welcome ? "Let's go" : (last ? 'Finish' : 'Next');
+
+    place(resolveTarget(s));
+    btnNext.focus({ preventScroll: true });
+  }
+
+  function end(){
+    if (!active) return;
+    const done = cfg;
+    active = false; token++;
+    root.hidden = true;
+    document.removeEventListener('keydown', onKey, true);
+    window.removeEventListener('resize', onResize);
+    if (done.onEnd) done.onEnd();
+    // put the sidebar back the way we found it
+    if (env().setSidebar && (onMobile() || sidebarWasClosed)) env().setSidebar(false);
+    markSeen(done.which);
+  }
+
+  function next(){ index < cfg.steps.length - 1 ? show(index + 1) : end(); }
+  function back(){ if (index > 0) show(index - 1); }
+
+  function onKey(e){
+    if (e.key === 'Escape') { e.preventDefault(); end(); }
+    else if (e.key === 'ArrowRight') { e.preventDefault(); next(); }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); back(); }
+    else if (e.key === 'Tab') {                       // keep focus inside the card
+      const f = [...card.querySelectorAll('button')].filter(b => b.offsetParent !== null);
+      if (!f.length) return;
+      const firstB = f[0], lastB = f[f.length - 1];
+      if (!card.contains(document.activeElement)) { e.preventDefault(); firstB.focus(); }
+      else if (e.shiftKey && document.activeElement === firstB) { e.preventDefault(); lastB.focus(); }
+      else if (!e.shiftKey && document.activeElement === lastB) { e.preventDefault(); firstB.focus(); }
+    }
+  }
+  function onResize(){ place(resolveTarget(cfg.steps[index])); }
+
+  function run(config){
+    if (active) return false;
+    cfg = config; active = true; index = 0;
+    sidebarWasClosed = sidebarClosed();
+    elDots.innerHTML = cfg.steps.map(() => '<span class="tour-dot"></span>').join('');
+    root.hidden = false;
+    document.addEventListener('keydown', onKey, true);
+    window.addEventListener('resize', onResize);
+    show(0);
+    return true;
+  }
+
+  btnNext.addEventListener('click', next);
+  btnBack.addEventListener('click', back);
+  btnSkip.addEventListener('click', end);
+
+  // Calls fn once the page loader (if any) has gone away.
+  function whenLoaderGone(fn){
+    let waited = 0;
+    (function check(){
+      const loader = document.getElementById('micaLoader');
+      const done = !loader || loader.classList.contains('is-hidden');
+      if (done || waited > 8000) { setTimeout(fn, 400); return; }
+      waited += 150; setTimeout(check, 150);
+    })();
+  }
+
+  return { run, whenLoaderGone, isActive: () => active };
+})();
+</script>

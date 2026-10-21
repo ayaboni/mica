@@ -1,0 +1,243 @@
+from django.db import models
+from django.db.models.functions import Lower
+from django.contrib.auth.models import User
+from django.utils import timezone
+
+COURSES = [
+    ("BSCS-DS", "BS Computer Science - Data Science"),
+    ("BSIT", "BS Information Technology - Game Development"),
+    ("BSME", "BS Mechanical Engineering"),
+    ("BSEE", "BS Electrical Engineering"),
+    ("BAPSY", "BA Psychology"),
+    ("BSBA", "BS Business Administration"),
+    ("BSN", "BS Nursing"),
+]
+
+class LoginThrottle(models.Model):
+    """Failed password-login attempts per (lower-cased) username.
+
+    Keyed on whatever username was typed, whether or not it exists, so the
+    "attempts left" counter doesn't reveal which usernames are registered.
+    """
+    username_key = models.CharField(max_length=150, unique=True)
+    failed_count = models.PositiveSmallIntegerField(default=0)
+    last_failed_at = models.DateTimeField(null=True, blank=True)
+    locked_until = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.username_key} ({self.failed_count} failed)"
+
+class AssessmentResponse(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='assessment')
+    conditions = models.JSONField(default=list, blank=True)
+    conditions_other = models.CharField(max_length=255, blank=True)
+    responses = models.JSONField(default=dict, blank=True)
+    sought_help_before = models.BooleanField(null=True, blank=True)
+    has_support_system = models.BooleanField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    skipped = models.BooleanField(default=False)
+
+class UserProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    student_number = models.CharField(max_length=50, blank=True)
+    course = models.CharField(max_length=50, blank=True)
+    year_level = models.CharField(max_length=10, blank=True)
+    nickname = models.CharField(max_length=50, blank=True, null=True)
+    contact_number = models.CharField(max_length=20, blank=True, null=True)
+    emergency_contact_name = models.CharField(max_length=100, blank=True, null=True)
+    emergency_contact_number = models.CharField(max_length=20, blank=True, null=True)
+    avatar = models.ImageField(upload_to='avatars/', blank=True, null=True)
+    guidance_notifications = models.BooleanField(default=True)
+    appointment_notifications = models.BooleanField(default=True)
+    mood_notifications = models.BooleanField(default=False)
+    mood_reminder_time = models.TimeField(default='20:00')
+    sound_notifications = models.BooleanField(default=True)
+    # Firebase UID of the linked Google account. Identity for Google sign-in is
+    # keyed on this, never on username/email alone.
+    firebase_uid = models.CharField(max_length=128, unique=True, null=True, blank=True)
+    # True for brand-new Google sign-ups until they fill in the registration details.
+    needs_profile_setup = models.BooleanField(default=False)
+    consent_given_at = models.DateTimeField(null=True, blank=True)
+    consent_version = models.CharField(max_length=10, blank=True)
+    share_assessment_with_guidance = models.BooleanField(default=False)
+    share_mica_topics = models.BooleanField(default=False)
+    has_seen_tutorial = models.BooleanField(default=False)
+    has_seen_mood_tutorial = models.BooleanField(default=False)
+
+    class Meta:
+        constraints = [
+            # One student number per student (case-insensitive); blanks are exempt.
+            models.UniqueConstraint(
+                Lower('student_number'),
+                condition=~models.Q(student_number=''),
+                name='unique_student_number_ci',
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.user.username} - {self.course} ({self.year_level})"
+
+class MoodEntry(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='mood_entries')
+    date = models.DateField(default=timezone.localdate)
+    mood = models.CharField(max_length=50)
+    note = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'date')
+        ordering = ['-date']
+
+class BreatheSession(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='breathe_sessions')
+    duration_seconds = models.PositiveIntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at']
+
+class ChatConversation(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='conversations')
+    title = models.CharField(max_length=100, default="New Chat")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    topics = models.JSONField(default=list, blank=True)
+    topics_updated_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-updated_at']
+
+class ChatMessage(models.Model):
+    conversation = models.ForeignKey(ChatConversation, on_delete=models.CASCADE, related_name='messages')
+    sender = models.CharField(max_length=10, choices=[('user', 'User'), ('bot', 'Bot')])
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at']
+
+class Notification(models.Model):
+    KIND_CHOICES = [('chat', 'Chat'), ('appointment', 'Appointment')]
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
+    message = models.CharField(max_length=255)
+    link = models.CharField(max_length=255, blank=True)
+    kind = models.CharField(max_length=20, choices=KIND_CHOICES, default='chat')   # <-- new
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+class StaffProfile(models.Model):
+    ROLE_CHOICES = [
+        ('counselor', 'Registered Guidance Counselor'),
+        ('psychometrician', 'Psychometrician'),
+        ('associate', 'Guidance Associate'),
+        ('other', 'Guidance Staff'),
+    ]
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='staff_profile')
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='counselor')
+    license_number = models.CharField(max_length=50, blank=True)
+    # Set once the staff member finishes or skips the first-visit Staff Console tour.
+    has_seen_tutorial = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.user.get_full_name() or self.user.username} ({self.get_role_display()})"
+
+class GuidanceThread(models.Model):
+    student = models.ForeignKey(User, on_delete=models.CASCADE, related_name='guidance_threads')
+    counselor = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='assigned_threads')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-updated_at']
+
+class GuidanceMessage(models.Model):
+    thread = models.ForeignKey(GuidanceThread, on_delete=models.CASCADE, related_name='messages')
+    sender = models.ForeignKey(User, on_delete=models.CASCADE)
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at']
+
+class Appointment(models.Model):
+    thread = models.ForeignKey(GuidanceThread, on_delete=models.CASCADE, related_name='appointments')
+    student = models.ForeignKey(User, on_delete=models.CASCADE, related_name='appointments')
+    counselor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='counselor_appointments')
+    scheduled_time = models.DateTimeField()
+    status = models.CharField(max_length=20, choices=[('pending', 'Pending'), ('confirmed', 'Confirmed'), ('declined', 'Declined'), ('completed', 'Completed'), ('cancelled', 'Cancelled')], default='pending')
+    reminded_24h = models.BooleanField(default=False)
+    reminded_1h = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['scheduled_time']
+
+class CounselorNote(models.Model):
+    thread = models.ForeignKey(GuidanceThread, on_delete=models.CASCADE, related_name='notes')
+    counselor = models.ForeignKey(User, on_delete=models.CASCADE)
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+class StudentNote(models.Model):
+    student = models.ForeignKey(User, on_delete=models.CASCADE, related_name='staff_notes')
+    author = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='written_student_notes')
+    topic = models.TextField(blank=True)
+    realizations = models.TextField(blank=True)
+    session_date = models.DateField(default=timezone.localdate)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-session_date', '-created_at']
+
+class StudentFlag(models.Model):
+    STATUS_CHOICES = [('new', 'New'), ('review', 'In Review'), ('resolved', 'Resolved')]
+    student = models.ForeignKey(User, on_delete=models.CASCADE, related_name='flags')
+    flagged_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='flags_raised')
+    assigned_to = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='flags_assigned')
+    reason = models.TextField()
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='new')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+class AccessLog(models.Model):
+    staff = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='access_logs')
+    student = models.ForeignKey(User, on_delete=models.CASCADE, related_name='access_logs_received')
+    action = models.CharField(max_length=30)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+
+class LoginVerification(models.Model):
+    """A single-use, e-mailed sign-in link.
+
+    Only a SHA-256 hash of the token is stored, so a database leak can't be
+    used to sign in. `used_at` is set when the link is used *or* replaced by a
+    newer one.
+    """
+    METHOD_CHOICES = [('password', 'Password'), ('google', 'Google')]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='login_verifications')
+    token_hash = models.CharField(max_length=64, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    used_at = models.DateTimeField(null=True, blank=True)
+    remember_me = models.BooleanField(default=False)
+    method = models.CharField(max_length=10, choices=METHOD_CHOICES, default='password')
+    request_ip = models.GenericIPAddressField(null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.user} ({self.method}) {self.created_at:%Y-%m-%d %H:%M}"

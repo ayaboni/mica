@@ -1,0 +1,2573 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MICA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --sidebar-bg:#A9C6A2;
+    --sidebar-bg-dark:#96B890;
+    --header-bg:#8EAE88;
+    --content-bg:#F7F4E9;
+    --card-bg:#FFFFFF;
+    --btn-bg:#F3E9D2;
+    --btn-hover:#F7D368;
+    --btn-active:#F0C13F;
+    --bubble-bg:#F6EAD0;
+    --text-dark:#3E3226;
+    --text-mute:#6B5F4E;
+    --brown:#7B5B3F;
+    --brown-dark:#5C4229;
+    --pink:#F3C6CE;
+    --danger:#D9534F;
+    --danger-dark:#B94440;
+    --blue:#6FA8DC;
+    --blue-dark:#4E86BE;
+    --radius-lg:20px;
+    --radius-md:14px;
+    --radius-sm:10px;
+    --shadow:0 2px 8px rgba(60,45,20,.08);
+    font-family:'Nunito',sans-serif;
+  }
+  *, *::before, *::after {box-sizing:border-box !important; }
+  html,body{
+    margin:0;
+    padding:0;
+    width:100%;
+    height:100vh;
+    overflow:hidden;
+  }
+  body{
+    background:var(--content-bg);
+    color:var(--text-dark);
+    font-family:'Nunito',sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3,.brand-title,.section-label{font-family:'Quicksand',sans-serif;}
+  button{font-family:inherit;cursor:pointer;border:none;}
+  input,textarea{font-family:inherit;}
+
+  /* Dark Mode */
+body.dark-mode {
+  --sidebar-bg: #222e22;
+  --sidebar-bg-dark: #192219;
+  --header-bg: #2d3b2b;
+  --content-bg: #1a1e1a;
+  --card-bg: #283227;
+  --btn-bg: #354233;
+  --btn-hover: #455643;
+  --btn-active: #586e56;
+  --bubble-bg: #2d382c;
+  --text-dark: #e6ede5;
+  --text-mute: #a3b0a2;
+  --brown: #a8bc9f;
+  --brown-dark: #e6ede5;
+  --shadow: 0 2px 8px rgba(0,0,0,.4);
+}
+
+body.dark-mode .settings-popover {
+  border: 1px solid #3d4f3b;
+}
+
+body.dark-mode .msg-row.user .msg-bubble {
+  background: #354233 !important;
+  color: #e6ede5 !important;
+}
+
+body.dark-mode .msg-avatar {
+  background: #283227;
+}
+
+body.dark-mode .search-wrap input::placeholder,
+body.dark-mode .composer input::placeholder,
+body.dark-mode .diary-box textarea::placeholder {
+  color: #798a78;
+}
+
+/* Dyslexic-friendly font */
+@font-face{font-family:'OpenDyslexic'; src:url("{% static 'core/fonts/OpenDyslexic-Regular.woff2' %}") format('woff2'); font-display:swap;}
+html.dyslexia, html.dyslexia *{font-family:'OpenDyslexic','Lexend',sans-serif !important; letter-spacing:.03em; word-spacing:.12em;}
+html.dyslexia body{line-height:1.7;}
+
+  /* ---------- App shell ---------- */
+  .app{
+    width:100%;
+    height:100%;
+    display:flex;
+    background:var(--content-bg);
+    overflow:hidden;
+  }
+
+  /* ---------- Sidebar ---------- */
+  .sidebar{
+    width:260px;
+    min-width:260px;
+    background:var(--sidebar-bg);
+    display:flex;
+    flex-direction:column;
+    padding:20px 16px;
+    gap:16px;
+    transition:all .25s ease;
+    flex-shrink:0;
+  }
+  .sidebar.is-collapsed{
+    width:0;
+    min-width:0;
+    padding:0;
+    margin:0;
+    overflow:hidden;
+    opacity:0;
+  }
+  .sidebar-top{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+  }
+  .brand-title{
+    font-weight:700;
+    font-size:18px;
+    color:var(--text-dark);
+  }
+  .icon-btn{
+    background:transparent;
+    width:30px;height:30px;
+    border-radius:8px;
+    display:flex;align-items:center;justify-content:center;
+    color:var(--text-dark);
+    transition:background .15s ease;
+  }
+  .icon-btn:hover{background:rgba(255,255,255,.35);}
+  .icon-btn svg{width:16px;height:16px;}
+
+  .nav-btn{
+    background:var(--btn-bg);
+    border-radius:999px;
+    padding:12px 14px;
+    font-weight:700;
+    font-size:13px;
+    color:var(--text-dark);
+    text-align:center;
+    transition:background .15s ease, transform .1s ease;
+    width:100%;
+    letter-spacing:.2px;
+  }
+  .nav-btn:hover{background:var(--btn-hover);}
+  .nav-btn:active{transform:scale(.97);}
+  .nav-btn.active{background:var(--btn-active);}
+
+  .nav-row{
+    display:flex;
+    gap:8px;
+  }
+  .nav-row .nav-btn{
+    padding:10px 6px;
+    font-size:12px;
+    line-height:1.2;
+  }
+
+  .search-wrap{
+    position:relative;
+  }
+  .search-wrap input{
+    width:100%;
+    padding:10px 14px 10px 34px;
+    border-radius:999px;
+    border:none;
+    background:var(--card-bg);
+    font-size:13px;
+    color:var(--text-dark);
+    outline:none;
+  }
+  .search-wrap input::placeholder{color:#9a9382;}
+  .search-wrap svg{
+    position:absolute;
+    left:12px;top:50%;
+    transform:translateY(-50%);
+    width:14px;height:14px;
+    color:#9a9382;
+  }
+
+  .chat-history{
+    flex:1;
+    overflow-y:auto;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    margin-top:2px;
+  }
+  .chat-history::-webkit-scrollbar{width:5px;}
+  .chat-history::-webkit-scrollbar-thumb{background:rgba(0,0,0,.15);border-radius:4px;}
+  .history-label{
+    font-size:12px;
+    font-weight:700;
+    color:#f3f0e4;
+    text-transform:uppercase;
+    letter-spacing:.5px;
+    opacity:.85;
+    margin:2px 2px;
+  }
+  .history-item{
+    background:var(--card-bg);
+    border-radius:var(--radius-sm);
+    padding:9px 12px;
+    text-align:left;
+    transition:background .15s ease, transform .1s ease;
+  }
+  .history-item:hover{background:#fffdf6;transform:translateX(2px);}
+  .history-item.active{background:var(--btn-active);}
+  .history-title{font-size:13px;font-weight:700;color:var(--text-dark);}
+  .history-time{font-size:11px;color:var(--text-mute);margin-top:1px;}
+
+  .sidebar-bottom{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    background:var(--card-bg);
+    border-radius:999px;
+    padding:6px;
+    position:relative;
+  }
+  .user-btn{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    background:transparent;
+    flex:1;
+    padding:4px 4px 4px 4px;
+    border-radius:999px;
+    font-weight:700;
+    font-size:13px;
+    color:var(--text-dark);
+  }
+  .user-btn:hover{background:var(--btn-bg);}
+  .avatar-round{
+    width:28px;height:28px;
+    border-radius:50%;
+    object-fit:cover;
+    background:var(--btn-bg);
+  }
+  .settings-btn{
+    width:32px;height:32px;
+    border-radius:50%;
+    background:transparent;
+    display:flex;align-items:center;justify-content:center;
+    color:var(--text-mute);
+    transition:background .15s ease, transform .3s ease;
+  }
+  .settings-btn:hover{background:var(--btn-bg);transform:rotate(35deg);}
+  .settings-btn svg{width:17px;height:17px;}
+
+  /* ---------- Settings popover ---------- */
+  .settings-popover{
+    position:absolute;
+    bottom:48px;
+    left:0;
+    width:196px;
+    background:var(--card-bg);
+    border-radius:var(--radius-md);
+    box-shadow:0 12px 30px rgba(60,45,20,.22);
+    padding:8px;
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+    z-index:40;
+  }
+  .settings-popover[hidden]{display:none;}
+  .popover-item{
+    background:none;
+    text-align:left;
+    padding:10px 12px;
+    border-radius:var(--radius-sm);
+    font-size:13px;
+    font-weight:700;
+    color:var(--text-dark);
+    transition:background .15s ease;
+  }
+  .popover-item:hover{background:var(--btn-bg);}
+  .popover-item.logout-item{
+    color:#fff;
+    background:var(--danger);
+    margin-top:4px;
+  }
+  .popover-item.logout-item:hover{background:var(--danger-dark);}
+
+  /* ---------- Main content ---------- */
+  .content{
+    flex:1;
+    min-width:0;
+    height:100vh;
+    display:flex;
+    flex-direction:column;
+    overflow-x:hidden;
+  }
+  .content-header{
+    background:var(--header-bg);
+    padding:24px 32px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+  }
+  .content-header h1{
+    margin:0;
+    font-size:20px;
+    font-weight:700;
+    color:#fff;
+    letter-spacing:.2px;
+  }
+  .content-header .live-time-clock{
+    font-size:14px;
+    font-weight:600;
+    color:#fff;
+    opacity:.9;
+  }
+  .content-header-left{
+    display:flex;
+    align-items:center;
+    gap:12px;
+  }
+  .mobile-menu-btn{ display:none !important; }
+  .mobile-menu-btn:hover{ background:rgba(255,255,255,.25); }
+  .mobile-menu-btn svg{ width:19px;height:19px; }
+
+  .sidebar-backdrop{
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(20,16,10,.4);
+    z-index:55;
+  }
+  .sidebar-backdrop.is-visible{ display:block; }
+
+  .view{
+    display:none;
+    flex:1;
+    min-height:0;
+    flex-direction:column;
+  }
+  .view.active{display:flex;}
+
+  /* ---------- Home ---------- */
+  #view-home .home-inner{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:22px;
+    padding:20px;
+  }
+  .greet-bubble{
+    background:var(--bubble-bg);
+    color:var(--brown-dark);
+    padding:14px 26px;
+    border-radius:var(--radius-lg);
+    font-weight:700;
+    font-size:14px;
+    text-align:center;
+    box-shadow:var(--shadow);
+    max-width:320px;
+  }
+  .mascot-hero{
+    max-width:100%;
+    width:300px;
+    height:auto;
+    object-fit:contain;
+    display:block;
+  }
+
+  /* ---------- Chat / Guidance ---------- */
+  .guidance-who{padding:10px 30px; font-size:12.5px; font-weight:700; color:var(--text-mute); border-bottom:1px solid rgba(0,0,0,.07);}
+  
+  .chat-view-inner{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    min-height:0;
+  }
+  .messages{
+    flex:1;
+    overflow-y:auto;
+    padding:26px 30px;
+    display:flex;
+    flex-direction:column;
+    gap:16px;
+  }
+  .messages::-webkit-scrollbar{width:6px;}
+  .messages::-webkit-scrollbar-thumb{background:rgba(0,0,0,.12);border-radius:4px;}
+
+  .msg-row{
+    display:flex;
+    align-items:flex-end;
+    gap:10px;
+    max-width:78%;
+  }
+  .msg-row.user{
+    align-self:flex-end;
+    flex-direction:row-reverse;
+  }
+  .msg-row.bot{align-self:flex-start;}
+  .msg-avatar{
+    width:34px;height:34px;
+    border-radius:50%;
+    flex-shrink:0;
+    object-fit:contain;
+    background:var(--card-bg);
+    padding:3px;
+  }
+  .msg-bubble{
+    background:var(--bubble-bg);
+    color:var(--brown-dark);
+    padding:12px 16px;
+    border-radius:var(--radius-md);
+    font-size:13.5px;
+    line-height:1.5;
+    box-shadow:var(--shadow);
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+  .msg-row.user .msg-bubble{background:#F6EAD0;}
+  .typing-dots{display:inline-flex;gap:4px;align-items:center;}
+  .typing-dots span{
+    width:6px;height:6px;border-radius:50%;
+    background:var(--brown);
+    animation:blink 1.2s infinite ease-in-out;
+  }
+  .typing-dots span:nth-child(2){animation-delay:.2s;}
+  .typing-dots span:nth-child(3){animation-delay:.4s;}
+  @keyframes blink{0%,80%,100%{opacity:.25;}40%{opacity:1;}}
+
+  .composer{
+    display:flex;
+    width:100%;
+    padding:16px 24px;
+    box-sizing:border-box;
+    align-items:center;
+    gap:12px;
+    background:var(--header-bg);
+  }
+
+  .composer input{
+    flex:1;
+    border:none;
+    outline:none;
+    border-radius:999px;
+    padding:14px 22px;
+    font-size:14px;
+    background:var(--card-bg);
+    color:var(--text-dark);
+    box-shadow:0 2px 6px rgba(0, 0, 0, 0.05);
+  }
+  .composer input::placeholder{color:#a89f8c;}
+  .composer .icon-btn{
+    background:var(--card-bg);
+    width:42px;
+    height:42px;
+    border-radius:50%;
+    flex-shrink:0;
+  }
+  .composer .icon-btn.send{color:#3f7d4a;}
+  .composer .icon-btn:hover{background:var(--btn-hover);}
+
+  /* ---------- Mood Diary: calendar ---------- */
+  .mood-inner{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:34px 20px;
+    overflow-y:auto;
+  }
+
+  .nav-dropdown {
+    background: var(--card-bg);
+    color: var(--brown);
+    border: none;
+    border-radius: 999px; /* Pill shape matching the theme */
+    padding: 6px 14px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    box-shadow: var(--shadow);
+    cursor: pointer;
+    outline: none;
+    transition: background 0.15s ease, transform 0.15s ease;
+    appearance: none; /* Cleans default browser arrow styling */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    text-align: center;
+  }
+  .month-nav{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-bottom:22px;
+  }
+  .month-nav h2{
+    margin:0;
+    font-size:19px;
+    font-weight:700;
+    letter-spacing:.5px;
+    color:var(--text-dark);
+    min-width:190px;
+    text-align:center;
+  }
+  .month-nav .icon-btn{
+    background: var(--card-bg);
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 50%;
+    color: var(--brown);
+    box-shadow: var(--shadow);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+  .month-nav .icon-btn:hover{background:var(--btn-hover);}
+
+  .calendar-card{
+    background:var(--bubble-bg);
+    border-radius:var(--radius-lg);
+    padding:14px;
+    box-shadow:var(--shadow);
+    width:100%;
+    max-width:620px;
+  }
+  .cal-grid{
+    display:grid;
+    grid-template-columns:repeat(7,1fr);
+    gap:4px;
+  }
+  .cal-head{
+    background:var(--brown);
+    color:#fff;
+    text-align:center;
+    padding:9px 0;
+    font-size:12px;
+    font-weight:700;
+    letter-spacing:.5px;
+  }
+  .cal-head:first-child{border-top-left-radius:10px;}
+  .cal-head:last-child{border-top-right-radius:10px;}
+  .cal-cell{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:5px;
+    padding:10px 0 6px;
+  }
+  .day-dot{
+    width:44px;height:44px;
+    border-radius:50%;
+    background:#D8D2C0;
+    display:flex;align-items:center;justify-content:center;
+    transition:transform .12s ease, box-shadow .12s ease;
+    overflow:hidden;
+  }
+  .cal-cell.current .day-dot,
+  .cal-cell.today .day-dot{cursor:pointer;}
+  .cal-cell.current .day-dot:hover,
+  .cal-cell.today .day-dot:hover{transform:scale(1.08);box-shadow:0 2px 6px rgba(0,0,0,.18);}
+  .cal-cell.other .day-dot{background:#6b6455;cursor:default;}
+  .day-dot img{width:100%;height:100%;object-fit:cover;}
+  .day-num{font-size:11px;font-weight:700;color:var(--text-mute);}
+  .cal-cell.other .day-num{color:#9a9382;}
+
+  /* ---------- Mood Diary: entry ---------- */
+  .entry-card{
+    background:#E7E1D2;
+    border-radius:var(--radius-lg);
+    padding:26px 30px;
+    box-shadow:var(--shadow);
+    width:100%;
+    max-width:520px;
+  }
+  .section-label{
+    font-size:13px;
+    font-weight:700;
+    letter-spacing:.6px;
+    color:var(--text-dark);
+    margin-bottom:10px;
+  }
+  .mood-picker{
+    display:flex;
+    gap:8px;
+    background:var(--card-bg);
+    border-radius:var(--radius-md);
+    padding:12px;
+    margin-bottom:20px;
+    justify-content:space-between;
+  }
+  .mood-opt{
+    flex:1;
+    height:96px;
+    border-radius:12px;
+    background:#F2EEE2;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:0;
+    transition:background .15s ease, transform .1s ease;
+  }
+  .mood-opt img{width:100%;height:100%;object-fit:contain;transform:scale(1.12);}
+  .mood-opt:hover{transform:translateY(-2px);}
+  .mood-opt.selected{background:var(--btn-active);}
+  .diary-box textarea{
+    width:100%;
+    min-height:150px;
+    resize:vertical;
+    border:none;
+    outline:none;
+    border-radius:var(--radius-md);
+    padding:16px;
+    font-size:13.5px;
+    color:var(--text-dark);
+    background:var(--card-bg);
+    line-height:1.6;
+  }
+  .diary-box textarea::placeholder{color:#a89f8c;}
+  .entry-actions{
+    display:flex;
+    justify-content:space-between;
+    gap:12px;
+    margin-top:20px;
+  }
+  .btn-pill{
+    padding:11px 24px;
+    border-radius:999px;
+    font-weight:700;
+    font-size:13px;
+    transition:background .15s ease, transform .1s ease;
+  }
+  .btn-pill:active{transform:scale(.96);}
+  .btn-back{background:#D8D2C0;color:var(--text-dark);}
+  .btn-back:hover{background:#c9c2ab;}
+  .btn-enter{background:var(--btn-active);color:var(--brown-dark);}
+  .btn-enter:hover{background:#e0af2c;}
+  .entry-delete{display:block; margin:16px auto 0; background:none; border:none; color:#A0523D; font-size:12.5px; font-weight:700; text-decoration:underline; cursor:pointer;}
+  .entry-delete:hover{color:#7d3b2a;}
+
+  /* ---------- Breathe ---------- */
+  .breathe-inner{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:30px;
+    padding:20px;
+  }
+  .breathe-inner h1{
+    margin:0;
+    font-size:17px;
+    letter-spacing:.5px;
+    font-weight:700;
+    color:var(--text-dark);
+    text-align:center;
+  }
+  .breathe-phase{
+    font-size:13px;
+    font-weight:700;
+    color:var(--text-mute);
+    letter-spacing:.3px;
+    height:16px;
+  }
+  .breathe-ring-wrap{
+    width:180px;height:180px;
+    display:flex;align-items:center;justify-content:center;
+    position:relative;
+  }
+  .breathe-ring-outer{
+    position:absolute;
+    width:180px;height:180px;
+    border-radius:50%;
+    background:radial-gradient(circle, rgba(111,168,220,.18) 60%, rgba(111,168,220,0) 72%);
+    transition:transform .5s ease;
+  }
+  .breathe-circle{
+    width:120px;height:120px;
+    border-radius:50%;
+    background:linear-gradient(160deg,var(--blue),var(--blue-dark));
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 4px 18px rgba(78,134,190,.45);
+    transform:scale(1);
+    transition:transform .3s ease;
+    z-index:1;
+  }
+  .breathe-circle.breathing{
+    animation:breatheCycle 16s ease-in-out infinite;
+  }
+  @keyframes breatheCycle{
+    0%{transform:scale(1);}
+    25%{transform:scale(1.55);}
+    50%{transform:scale(1.55);}
+    75%{transform:scale(1);}
+    100%{transform:scale(1);}
+  }
+  .breathe-ring-outer.breathing{
+    animation:breatheRingCycle 16s ease-in-out infinite;
+  }
+  @keyframes breatheRingCycle{
+    0%{transform:scale(1);}
+    25%{transform:scale(1.35);}
+    50%{transform:scale(1.35);}
+    75%{transform:scale(1);}
+    100%{transform:scale(1);}
+  }
+  .breathe-circle button{
+    width:100%;height:100%;
+    border-radius:50%;
+    background:transparent;
+    display:flex;align-items:center;justify-content:center;
+    color:#fff;
+  }
+  .breathe-circle svg{width:34px;height:34px;}
+
+  .breathe-msg-row{
+    display:flex;
+    align-items:flex-end;
+    gap:14px;
+    max-width:500px;
+    width:100%;
+  }
+  .breathe-msg-row img{
+    width:120px;
+    height:200px;
+    object-fit:contain;
+  }
+  .breathe-msg-row .msg-bubble{max-width:340px;}
+
+  /* ---------- Settings modal ---------- */
+  .overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(20,16,10,.5);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:50;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .18s ease;
+  }
+  .overlay.show{opacity:1;pointer-events:auto;}
+  .overlay-card{
+    background:var(--content-bg);
+    width:340px;
+    max-width:88vw;
+    border-radius:var(--radius-lg);
+    padding:38px 36px;
+    text-align:center;
+    box-shadow:0 20px 50px rgba(0,0,0,.35);
+    transform:translateY(14px) scale(.97);
+    transition:transform .18s ease;
+  }
+  .overlay.show .overlay-card{transform:translateY(0) scale(1);}
+  .overlay-card h2{margin:0 0 10px;font-size:19px;color:var(--text-dark);}
+  .overlay-card p{margin:0 0 22px;font-size:13.5px;color:var(--text-mute);}
+
+  /* ---------- Notification Settings Modal ---------- */
+.notif-settings-card {
+  width: 420px;
+  max-width: 90vw;
+  text-align: left;
+  padding: 28px 24px;
+}
+
+.notif-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.notif-modal-header h2 {
+  margin: 0;
+  font-size: 18px;
+  color: var(--text-dark);
+}
+
+.close-modal-btn {
+  background: transparent;
+  color: var(--text-mute);
+  cursor: pointer;
+  padding: 4px;
+}
+.close-modal-btn:hover {
+  color: var(--text-dark);
+}
+
+.notif-settings-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.notif-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+body.dark-mode .notif-option {
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+.notif-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.notif-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+
+.notif-desc {
+  font-size: 11.5px;
+  color: var(--text-mute);
+  line-height: 1.3;
+}
+
+.notif-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.appt-reminder{
+  position:fixed;
+  right:24px;
+  bottom:24px;
+  z-index:300;
+  width:300px;
+  background:#FBF2DE;
+  border:1.5px solid #8B6F4E;
+  border-radius:18px;
+  padding:16px 18px;
+  box-shadow:0 10px 30px rgba(60,40,20,.2);
+}
+
+.appt-reminder-title{
+  font-weight:700;
+  font-size:14px;
+  color:#3A2E28;
+  margin-bottom:4px;
+}
+
+.appt-reminder-text{
+  font-size:13.5px;
+  color:#5a4a3d;
+  margin-bottom:12px;
+}
+
+.appt-reminder button{
+  background:#8B6F4E;
+  color:#fff;
+  border:none;
+  padding:8px 18px;
+  border-radius:999px;
+  font-weight:700;
+  font-size:13px;
+  cursor:pointer;
+}
+
+/* Toggle Switch Styling */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background-color: #d8d2c0;
+  transition: 0.25s ease;
+  border-radius: 24px;
+}
+
+.toggle-slider::before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: 0.25s ease;
+  border-radius: 50%;
+}
+
+input:checked + .toggle-slider {
+  background-color: #8A6F4E;
+}
+
+body.dark-mode input:checked + .toggle-slider {
+  background-color: var(--btn-active);
+}
+
+input:checked + .toggle-slider::before {
+  transform: translateX(20px);
+}
+
+  /* ---------- Toast ---------- */
+  .toast{
+    position:fixed;
+    bottom:24px;left:50%;
+    transform:translate(-50%,20px);
+    background:var(--text-dark);
+    color:#fff;
+    padding:11px 20px;
+    border-radius:999px;
+    font-size:13px;
+    font-weight:600;
+    opacity:0;
+    pointer-events:none;
+    transition:all .25s ease;
+    z-index:99;
+  }
+  .toast.show{opacity:1;transform:translate(-50%,0);}
+
+  .hidden{display:none !important;}
+
+  /* ---------- Responsive ---------- */
+  @media(max-width:760px){
+    .content-header{padding:14px 16px;}
+    .messages{padding:18px 16px;}
+  }
+  @media(max-width:860px){
+    .app{ position:relative; }
+    .sidebar{
+      position:fixed;
+      z-index:60;
+      top:0; left:0;
+      height:100vh;
+      width:250px;
+      box-shadow:10px 0 30px rgba(0,0,0,.25);
+    }
+    .sidebar.is-collapsed{
+      width:0;
+      min-width:0;
+      padding:0;
+      margin:0;
+      box-shadow:none;
+    }
+  }
+
+  .sidebar.is-collapsed + .content .mobile-menu-btn,
+  .sidebar.is-collapsed ~ .content .mobile-menu-btn {
+    display:inline-flex !important;
+  }
+</style>
+<script>
+if(localStorage.getItem('dyslexia')==='1') document.documentElement.classList.add('dyslexia');
+function toggleDyslexia(){
+  const on = document.documentElement.classList.toggle('dyslexia');
+  localStorage.setItem('dyslexia', on ? '1' : '0');
+}
+</script>
+</head>
+<body>
+{% include 'core/_loader.html' %}
+
+<div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
+<div class="app">
+
+  <!-- ================= SIDEBAR ================= -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-top">
+      <a href="{% url 'student_dashboard' %}" class="mica-logo-link" id="logo-home" title="Back to Home" aria-label="MICA, back to Home">
+        {% include 'core/_logo.html' %}
+      </a>
+      <button class="icon-btn" id="collapse-btn" title="Collapse sidebar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="9" y1="4" x2="9" y2="20"/></svg>
+      </button>
+    </div>
+
+    <button class="nav-btn" id="btn-guidance">TALK TO GUIDANCE</button>
+
+    <div class="nav-row">
+      <button class="nav-btn active" id="btn-chat">Chat</button>
+      <button class="nav-btn" id="btn-mood">Mood<br>Diary</button>
+      <button class="nav-btn" id="btn-breathe">Breathe</button>
+    </div>
+
+    <div class="search-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" id="search-chats" placeholder="Search Chats">
+    </div>
+
+    <button class="nav-btn" id="btn-newchat">New Chat</button>
+
+    <span class="history-label">Chat History</span>
+      <div class="chat-history" id="chat-history-list">
+      {% for convo in conversations %}
+      <button class="history-item" data-title="{{ convo.title }}" data-id="{{ convo.id }}">
+        <div class="history-title">{{ convo.title }}</div>
+        <div class="history-time">{{ convo.updated_at|timesince }} ago</div>
+      </button>
+      {% endfor %}
+    </div>
+
+    <div class="sidebar-bottom">
+      <button class="user-btn" id="user-btn">
+          {% if request.user.profile.avatar %}
+            <img class="avatar-round" src="{{ request.user.profile.avatar.url }}" alt="User avatar">
+          {% else %}
+            <img class="avatar-round" src="{% static 'core/images/account_circle_icon.svg' %}" alt="User avatar">
+          {% endif %}
+        <span>{{ request.user.username }}</span>
+      </button>
+      <button class="settings-btn" id="settings-btn" title="Settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+
+      <div class="settings-popover" id="settings-popover" hidden>
+        <button class="popover-item" id="darkmode-toggle-btn">Dark Mode: Off</button>
+        <button class="popover-item" id="account-settings-btn">Account settings</button>
+        <button class="popover-item" id="notifications-item-btn">Notifications</button>
+        <button class="popover-item" onclick="toggleDyslexia()">Dyslexia-friendly font</button>
+        <a href="{% url 'logout' %}" class="popover-item logout-item">Log Out</a>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ================= MAIN CONTENT ================= -->
+  <main class="content">
+    <header class="content-header">
+      <div class="content-header-left">
+        <button class="icon-btn mobile-menu-btn" id="mobile-menu-btn" aria-label="Open menu">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
+        </button>
+        <h1 id="view-title">Home</h1>
+      </div>
+      <div class="live-time-clock" id="liveTime"></div>
+    </header>
+
+    <!-- ---------- HOME ---------- -->
+    <section class="view active" id="view-home">
+      <div class="home-inner">
+        <div class="greet-bubble" id="greet-text">Good evening, User!<br>How are you feeling?</div>
+        <img class="mascot-hero" src="{% static 'core/images/mascot_body.png' %}" alt="Mascot">
+      </div>
+      <div class="composer">
+        <input type="text" id="home-input" placeholder="Message...">
+        <button class="icon-btn" title="Voice message">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+        </button>
+        <button class="icon-btn send" id="home-send" title="Send">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
+        </button>
+      </div>
+    </section>
+
+    <!-- ---------- CHAT ---------- -->
+    <section class="view" id="view-chat">
+      <div class="chat-view-inner">
+        <div class="messages" id="chat-messages"></div>
+        <div class="composer">
+          <input type="text" id="chat-input" placeholder="Message...">
+          <button class="icon-btn" id="chat-mic" type="button" title="Speak in English" aria-label="Start English voice input" aria-pressed="false">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+          </button>
+          <button class="icon-btn send" id="chat-send" title="Send">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- TALK TO GUIDANCE ---------- -->
+    <section class="view" id="view-guidance">
+      <div class="chat-view-inner">
+        <div class="guidance-who" id="guidance-who">Guidance Office</div>
+        <div class="messages" id="guidance-messages"></div>
+        <div class="composer">
+          <input type="text" id="guidance-input" placeholder="Message...">
+          <button class="icon-btn" title="Voice message">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+          </button>
+          <button class="icon-btn send" id="guidance-send" title="Send">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- MOOD DIARY: CALENDAR ---------- -->
+    <section class="view" id="view-mood-calendar">
+      <div class="mood-inner">
+        <div class="month-nav" style="display:flex; align-items:center; gap:10px;">
+          <button id="month-prev" class="icon-btn">&lt;</button>
+  
+          <!-- Select Dropdowns -->
+          <select id="month-select" class="nav-dropdown"></select>
+          <select id="year-select" class="nav-dropdown"></select>
+  
+          <button id="month-next" class="icon-btn">&gt;</button>
+        </div>
+        <div class="calendar-card">
+          <div class="cal-grid" id="cal-grid"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- MOOD DIARY: ENTRY ---------- -->
+    <section class="view" id="view-mood-entry">
+      <div class="mood-inner">
+        <div class="month-nav">
+          <span style="width:32px;"></span>
+          <h2 id="entry-date-label">AUGUST 13</h2>
+          <span style="width:32px;"></span>
+        </div>
+        <div class="entry-card">
+          <div class="section-label">MOOD</div>
+          <div class="mood-picker" id="mood-picker">
+            <button class="mood-opt" data-mood="0"><img src="{% static 'core/images/mascot_happy.png' %}" alt="Happy"></button>
+            <button class="mood-opt" data-mood="1"><img src="{% static 'core/images/mascot_good.png' %}" alt="Good"></button>
+            <button class="mood-opt" data-mood="2"><img src="{% static 'core/images/mascot_neutral.png' %}" alt="Neutral"></button>
+            <button class="mood-opt" data-mood="3"><img src="{% static 'core/images/mascot_bad.png' %}" alt="Bad"></button>
+            <button class="mood-opt" data-mood="4"><img src="{% static 'core/images/mascot_sad.png' %}" alt="Sad"></button>
+          </div>
+          <div class="section-label">DIARY</div>
+          <div class="diary-box">
+            <textarea id="diary-text" placeholder="Tell me about your day."></textarea>
+          </div>
+          <div class="entry-actions">
+            <button class="btn-pill btn-back" id="entry-back">Back</button>
+            <button class="btn-pill btn-enter" id="entry-enter">Enter</button>
+          </div>
+          <button class="entry-delete" id="entry-delete" style="display:none;">Delete this entry</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- BREATHE ---------- -->
+    <section class="view" id="view-breathe">
+      <div class="breathe-inner">
+        <h1>1 MINUTE BREATHING EXERCISE</h1>
+        <div class="breathe-phase" id="breathe-phase">Press to Start</div>
+        <div class="breathe-ring-wrap">
+          <div class="breathe-ring-outer" id="breathe-ring"></div>
+          <div class="breathe-circle" id="breathe-circle">
+            <button id="breathe-btn" title="Start breathing exercise">
+              <svg id="breathe-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="breathe-msg-row">
+          <img class="mascot-hero" src="{% static 'core/images/mascot_body.png' %}" alt="Mascot">
+          <div class="msg-bubble">Welcome to the breathing exercise! Inhale for 4 seconds, hold for 4 seconds, exhale for 4 seconds, and hold empty for 4 seconds. Repeat this four-sided square pattern for a few minutes to lower stress and regain focus.</div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ================= NOTIFICATION SETTINGS MODAL ================= -->
+<div class="overlay" id="notif-settings-overlay">
+  <div class="overlay-card notif-settings-card">
+    <div class="notif-modal-header">
+      <h2>Notification Settings</h2>
+      <button class="icon-btn close-modal-btn" id="close-notif-modal" aria-label="Close modal">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <form id="notif-settings-form" class="notif-settings-body">
+      <div class="notif-option">
+        <div class="notif-info">
+          <span class="notif-title">Guidance Counselor Messages</span>
+          <span class="notif-desc">Get notified when a guidance counselor replies to your messages</span>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="notif-guidance" checked>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+
+      <div class="notif-option">
+        <div class="notif-info">
+          <span class="notif-title">Appointment Reminders</span>
+          <span class="notif-desc">Receive alerts for upcoming scheduled guidance appointments</span>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="notif-appointments" checked>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+
+      <div class="notif-option" style="flex-direction:column; align-items:stretch; gap:10px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:16px;">
+          <div class="notif-info">
+          <span class="notif-title">Daily Mood Check-in Reminders</span>
+          <span class="notif-desc">Get a friendly daily reminder to log your mood and diary entry</span>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="notif-mood">
+          <span class="toggle-slider"></span>
+      </label>
+      </div>
+      <div id="mood-reminder-time-row" style="display:none; align-items:center; gap:10px;">
+        <label for="mood-reminder-time" style="font-size:12.5px; font-weight:700; color:var(--text-dark);">Remind me at</label>
+        <input type="time" id="mood-reminder-time" value="20:00" style="padding:8px 12px; border-radius:10px; border:1px solid #ddd; font-family:inherit; font-size:13px; background:#fff; color:var(--text-dark);">
+      </div>
+    </div>
+
+      <div class="notif-option">
+        <div class="notif-info">
+          <span class="notif-title">Sound Alerts</span>
+          <span class="notif-desc">Play notification sound when receiving new messages</span>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="notif-sound" checked>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+
+      <div class="notif-actions">
+        <button type="button" class="btn-pill btn-back" id="cancel-notif-btn">Cancel</button>
+        <button type="submit" class="btn-pill btn-enter">Save Preferences</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ================= LOGOUT OVERLAY ================= -->
+<div class="appt-reminder" id="appt-reminder" style="display:none;">
+  <div class="appt-reminder-title">📅 Upcoming guidance session</div>
+  <div class="appt-reminder-text" id="appt-reminder-text"></div>
+  <button id="appt-reminder-close">Dismiss</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   PLACEHOLDER IMAGE GENERATOR
+   Any <img data-ph="LABEL" data-w="W" data-h="H"> gets an inline
+   SVG placeholder. To use real art, just delete the data-ph
+   attribute and set a normal src="yourfile.png" instead.
+============================================================ */
+function phImg(label, w, h){
+  const fontSize = Math.max(9, Math.min(w,h)/4.4);
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${w}' height='${h}'>
+    <rect width='100%' height='100%' rx='${Math.min(w,h)/2}' fill='#F3C6CE'/>
+    <rect x='2' y='2' width='${w-4}' height='${h-4}' rx='${Math.min(w,h)/2}' fill='none' stroke='#c98d99' stroke-width='1.5' stroke-dasharray='4 3'/>
+    <text x='50%' y='50%' font-family='Nunito, sans-serif' font-weight='700' font-size='${fontSize}' fill='#7a4750' text-anchor='middle' dominant-baseline='middle'>${label}</text>
+  </svg>`;
+  return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+}
+document.querySelectorAll('img[data-ph]').forEach(img=>{
+  const w = parseInt(img.dataset.w||80), h = parseInt(img.dataset.h||80);
+  img.src = phImg(img.dataset.ph, w, h);
+  img.width = w; img.height = h;
+});
+
+/* ============================================================
+   CLOCK
+============================================================ */
+function updateLiveClock() {
+    const now = new Date();
+    const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    let hours = now.getHours();
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12 || 12;
+    const el = document.getElementById('liveTime');
+    if (el) el.textContent = `${months[now.getMonth()]} ${now.getDate()}, ${now.getFullYear()} | ${hours}:${minutes}${ampm}`;
+  }
+  setInterval(updateLiveClock, 1000);
+  updateLiveClock();
+/* ============================================================
+   VIEW SWITCHING
+============================================================ */
+const views = document.querySelectorAll('.view');
+const viewTitle = document.getElementById('view-title');
+const navButtons = {
+  'view-chat': document.getElementById('btn-chat'),
+  'view-guidance': document.getElementById('btn-guidance'),
+  'view-mood-calendar': document.getElementById('btn-mood'),
+  'view-breathe': document.getElementById('btn-breathe'),
+};
+
+function switchView(id, title){
+  if(id !== 'view-breathe' && typeof resetBreathe === 'function') resetBreathe();
+  views.forEach(v=>v.classList.toggle('active', v.id===id));
+  viewTitle.textContent = title;
+  Object.entries(navButtons).forEach(([vid, btn])=>{
+    if(!btn) return;
+    btn.classList.toggle('active', vid===id);
+  });
+  settingsPopover.hidden = true;
+  if(isMobile()) setSidebarOpen(false);
+}
+
+document.getElementById('btn-chat').addEventListener('click', ()=>switchView('view-chat','Chat'));
+document.getElementById('btn-guidance').addEventListener('click', () =>{ switchView('view-guidance', 'Talk to Guidance') });
+document.getElementById('btn-mood').addEventListener('click', ()=>{ switchView('view-mood-calendar','Mood Diary'); loadCalendarData(); });
+document.getElementById('btn-breathe').addEventListener('click', ()=>{ switchView('view-breathe','Breathe'); resetBreathe(); });
+
+/* ============================================================
+   CHAT HISTORY (new chat + search + select)
+============================================================ */
+let currentConversationId = null;
+
+const historyList = document.getElementById('chat-history-list');
+
+function setActiveHistoryItem(el){
+  historyList.querySelectorAll('.history-item').forEach(i=>i.classList.remove('active'));
+  if(el) el.classList.add('active');
+}
+
+historyList.addEventListener('click', (e)=>{
+  const item = e.target.closest('.history-item');
+  if(!item) return;
+  setActiveHistoryItem(item);
+  currentConversationId = item.dataset.id;
+
+  fetch(`/api/conversations/${currentConversationId}/`)
+    .then(r => r.json())
+    .then(data => {
+      const container = document.getElementById('chat-messages');
+      container.innerHTML = '';
+        data.messages.forEach(m => {
+        addMessage('chat-messages', escapeHtml(m.content).replace(/\n/g, '<br>'), m.sender === 'user' ? 'user' : 'bot', 'MASCOT');
+      });
+
+      switchView('view-chat','Chat');
+    });
+  });
+
+document.getElementById('btn-newchat').addEventListener('click', ()=>{
+  currentConversationId = null;
+  setActiveHistoryItem(null);
+  document.getElementById('chat-messages').innerHTML = '';
+  switchView('view-chat','Chat');
+});
+
+document.getElementById('search-chats').addEventListener('input', (e)=>{
+  const q = e.target.value.trim().toLowerCase();
+  historyList.querySelectorAll('.history-item').forEach(item=>{
+    const match = item.dataset.title.toLowerCase().includes(q);
+    item.style.display = match ? 'block' : 'none';
+  });
+});
+
+/* ============================================================
+   CHAT ENGINE (shared by Chat + Talk to Guidance)
+============================================================ */
+function addMessage(containerId, text, sender, avatarLabel){
+  const container = document.getElementById(containerId);
+  const row = document.createElement('div');
+  row.className = 'msg-row ' + sender;
+  let avatarSrc;
+  if (sender === 'user') {
+    avatarSrc = "{% if request.user.profile.avatar %}{{ request.user.profile.avatar.url }}{% else %}{% static 'images/account_circle_icon.svg' %}{% endif %}";
+  } else if (avatarLabel === 'LEAF') {
+    avatarSrc = "{% static 'core/images/guidance_icon.svg' %}";
+  } else {
+    avatarSrc = "{% static 'core/images/mascot_good.png' %}";
+  }
+  row.innerHTML = `<img class="msg-avatar" src="${avatarSrc}" alt=""><div class="msg-bubble">${text}</div>`;
+  container.appendChild(row);
+  container.scrollTop = container.scrollHeight;
+  return row;
+}
+
+function addTyping(containerId, avatarLabel){
+  const container = document.getElementById(containerId);
+  const row = document.createElement('div');
+  row.className = 'msg-row bot';
+  const botAvatar = avatarLabel === 'LEAF' ? "{% static 'core/images/guidance_icon.svg' %}" : "{% static 'core/images/mascot_good.png' %}";
+  row.innerHTML = `<img class="msg-avatar" src="${botAvatar}" alt=""><div class="msg-bubble"><span class="typing-dots"><span></span><span></span><span></span></span></div>`;
+  container.appendChild(row);
+  container.scrollTop = container.scrollHeight;
+  return row;
+}
+
+const chatReplies = [
+  "I hear you. Want to tell me a bit more about what's going on?",
+  "That sounds like a lot to carry. Take a slow breath with me for a second.",
+  "Thank you for sharing that with me. What do you think would help right now?",
+  "I'm right here with you. Would it help to try the breathing exercise together?",
+  "That makes sense given everything you're dealing with. You're not alone in this."
+];
+const guidanceReplies = [
+  "Thank you for elaborating. Can you walk me through when this stress tends to peak?",
+  "That's a valid concern. Have you spoken with your professor or academic adviser about this?",
+  "Let's break this down together — what feels like the most urgent piece right now?",
+  "It's completely normal to feel this way during a demanding term. What support do you currently have in place?",
+  "I appreciate you trusting me with this. Let's figure out a plan that feels manageable for you."
+];
+
+function getCookie(name) {
+  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+  return match ? match[2] : null;
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) document.title = "MICA";
+});
+
+async function getAIReply(message) {
+  document.title = "Mica is typing... | MICA";
+  const response = await fetch("{% url 'chatbot_reply' %}", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    body: JSON.stringify({ message, conversation_id: currentConversationId })
+  });
+  const data = await response.json();
+
+  notifSound.play().catch(()=>{});
+
+  if (document.hidden) {
+    document.title = "Mica replied | MICA";
+  } else {
+    document.title = "MICA";
+  }
+
+  if (data.conversation_id && !currentConversationId) {
+    // brand-new conversation was just created — add it to the sidebar
+    currentConversationId = data.conversation_id;
+    const item = document.createElement('button');
+    item.className = 'history-item active';
+    item.dataset.title = data.title;
+    item.dataset.id = data.conversation_id;
+    item.innerHTML = `<div class="history-title">${escapeHtml(data.title)}</div><div class="history-time">Just now</div>`;
+    historyList.prepend(item);
+    setActiveHistoryItem(item);
+  }
+
+  return data.reply || "Sorry, something went wrong.";
+}
+
+function sendChat(containerId, inputEl, replies, avatarLabel){
+  const text = inputEl.value.trim();
+  if(!text) return;
+  addMessage(containerId, escapeHtml(text), 'user');
+  inputEl.value = '';
+  const typingRow = addTyping(containerId, avatarLabel);
+
+  if(avatarLabel === 'MASCOT'){
+    getAIReply(text).then(reply => {
+      typingRow.remove();
+      addMessage(containerId, escapeHtml(reply).replace(/\n/g, '<br>'), 'bot', avatarLabel);
+    }).catch(() => {
+      typingRow.remove();
+      addMessage(containerId, "Sorry, I'm having trouble connecting right now.", 'bot', avatarLabel);
+    });
+  } else {
+    setTimeout(()=>{
+      typingRow.remove();
+      const reply = replies[Math.floor(Math.random()*replies.length)];
+      addMessage(containerId, reply, 'bot', avatarLabel);
+    }, 900 + Math.random()*500);
+  }
+}
+
+function escapeHtml(str){
+  const d = document.createElement('div');
+  d.innerText = str;
+  return d.innerHTML;
+}
+
+// Chat view wiring
+const chatInput = document.getElementById('chat-input');
+document.getElementById('chat-send').addEventListener('click', ()=>sendChat('chat-messages', chatInput, chatReplies, 'MASCOT'));
+chatInput.addEventListener('keydown', e=>{ if(e.key==='Enter') sendChat('chat-messages', chatInput, chatReplies, 'MASCOT'); });
+
+const chatMicButton = document.getElementById('chat-mic');
+let mediaRecorder = null;
+let microphoneStream = null;
+let recordingChunks = [];
+let isTranscribingVoice = false;
+let isStartingVoiceRecording = false;
+let recordingTimer = null;
+let voiceInputBase = '';
+
+function setChatMicRecording(isRecording) {
+ chatMicButton.classList.toggle('mic-listening', isRecording);
+ chatMicButton.setAttribute('aria-pressed', String(isRecording));
+ chatMicButton.setAttribute('aria-label', isRecording ? 'Stop voice recording' : 'Start English voice input');
+ chatMicButton.title = isRecording ? 'Stop recording' : 'Speak in English';
+}
+
+function audioBufferToWav(audioBuffer) {
+ const targetSampleRate = 16000;
+ const outputLength = Math.ceil(audioBuffer.length * targetSampleRate / audioBuffer.sampleRate);
+ const pcm = new Int16Array(outputLength);
+ const channels = Array.from({length: audioBuffer.numberOfChannels}, (_, i) => audioBuffer.getChannelData(i));
+
+ for (let i = 0; i < outputLength; i++) {
+   const sourcePosition = i * audioBuffer.sampleRate / targetSampleRate;
+   const sourceIndex = Math.floor(sourcePosition);
+   const fraction = sourcePosition - sourceIndex;
+   let sample = 0;
+   for (const channel of channels) {
+     const first = channel[Math.min(sourceIndex, channel.length - 1)] || 0;
+     const second = channel[Math.min(sourceIndex + 1, channel.length - 1)] || 0;
+     sample += first + (second - first) * fraction;
+   }
+   sample /= channels.length;
+   pcm[i] = Math.max(-1, Math.min(1, sample)) * (sample < 0 ? 32768 : 32767);
+ }
+
+ const wav = new ArrayBuffer(44 + pcm.byteLength);
+ const view = new DataView(wav);
+ const writeText = (offset, text) => {
+   for (let i = 0; i < text.length; i++) view.setUint8(offset + i, text.charCodeAt(i));
+ };
+ writeText(0, 'RIFF');
+ view.setUint32(4, 36 + pcm.byteLength, true);
+ writeText(8, 'WAVE');
+ writeText(12, 'fmt ');
+ view.setUint32(16, 16, true);
+ view.setUint16(20, 1, true);
+ view.setUint16(22, 1, true);
+ view.setUint32(24, targetSampleRate, true);
+ view.setUint32(28, targetSampleRate * 2, true);
+ view.setUint16(32, 2, true);
+ view.setUint16(34, 16, true);
+ writeText(36, 'data');
+ view.setUint32(40, pcm.byteLength, true);
+ new Int16Array(wav, 44).set(pcm);
+ return new Blob([wav], {type: 'audio/wav'});
+}
+
+async function transcribeVoiceRecording(blob) {
+ const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+ let audioContext;
+ isTranscribingVoice = true;
+ try {
+   if (!blob.size) {
+     showToast('No audio was recorded. Please try again.');
+     return;
+   }
+
+   audioContext = new AudioContextClass();
+   const audioBuffer = await audioContext.decodeAudioData(await blob.arrayBuffer());
+   const wavBlob = audioBufferToWav(audioBuffer);
+   const formData = new FormData();
+   formData.append('audio', wavBlob, 'voice-input.wav');
+   showToast('Transcribing offline...');
+
+   const response = await fetch("{% url 'speech_to_text' %}", {
+     method: 'POST',
+     headers: {'X-CSRFToken': getCookie('csrftoken')},
+     body: formData
+   });
+   const data = await response.json();
+   if (!response.ok) {
+     showToast(data.error || 'Offline speech recognition failed.');
+     return;
+   }
+
+   const transcript = (data.text || '').trim();
+   if (!transcript) {
+     showToast('No speech was recognized. Please try again.');
+     return;
+   }
+   chatInput.value = `${voiceInputBase}${voiceInputBase ? ' ' : ''}${transcript}`;
+   chatInput.focus();
+ } catch (error) {
+   showToast(error.name === 'NotAllowedError'
+     ? 'Microphone permission was denied. Allow microphone access in your browser settings.'
+     : 'Could not transcribe the recording. Please try again.');
+ } finally {
+   isTranscribingVoice = false;
+   if (audioContext && audioContext.state !== 'closed') await audioContext.close();
+ }
+}
+
+chatMicButton.addEventListener('click', async () => {
+ if (isTranscribingVoice || isStartingVoiceRecording) return;
+ if (mediaRecorder && mediaRecorder.state === 'recording') {
+   clearTimeout(recordingTimer);
+   mediaRecorder.stop();
+   setChatMicRecording(false);
+   showToast('Recording received. Transcribing offline...');
+   return;
+ }
+ if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
+   showToast('Microphone access requires HTTPS (or localhost).');
+   return;
+ }
+ if (!window.MediaRecorder || !(window.AudioContext || window.webkitAudioContext)) {
+   showToast('Audio recording is not supported by this browser.');
+   return;
+ }
+
+ isStartingVoiceRecording = true;
+ try {
+   microphoneStream = await navigator.mediaDevices.getUserMedia({audio: true});
+   recordingChunks = [];
+   voiceInputBase = chatInput.value.trim();
+   mediaRecorder = new MediaRecorder(microphoneStream);
+   mediaRecorder.addEventListener('dataavailable', event => {
+     if (event.data.size) recordingChunks.push(event.data);
+   });
+   mediaRecorder.addEventListener('stop', () => {
+     const recording = new Blob(recordingChunks, {type: mediaRecorder.mimeType});
+     microphoneStream.getTracks().forEach(track => track.stop());
+     microphoneStream = null;
+     mediaRecorder = null;
+     transcribeVoiceRecording(recording);
+   }, {once: true});
+   mediaRecorder.start();
+   setChatMicRecording(true);
+   showToast('Recording... Click the mic again when you are done.');
+   recordingTimer = setTimeout(() => {
+     if (mediaRecorder && mediaRecorder.state === 'recording') {
+       mediaRecorder.stop();
+       setChatMicRecording(false);
+       showToast('Recording limit reached. Transcribing offline...');
+     }
+   }, 30000);
+ } catch (error) {
+   if (microphoneStream) microphoneStream.getTracks().forEach(track => track.stop());
+   microphoneStream = null;
+   showToast(error.name === 'NotAllowedError'
+     ? 'Microphone permission was denied. Allow microphone access in your browser settings.'
+     : 'Could not start recording. Check that a microphone is connected.');
+ } finally {
+  isStartingVoiceRecording = false;
+ }
+});
+
+function setGuidanceWho(role){
+  const el = document.getElementById('guidance-who');
+  if(el) el.textContent = role ? `You're talking with: ${role}` : 'Guidance Office · a staff member will reply soon';
+}
+
+// Guidance view wiring — loads and saves real messages now
+let guidanceLoaded = false;
+document.getElementById('btn-guidance').addEventListener('click', ()=>{
+  fetch("{% url 'mark_notifications_read' %}", {method: "POST", headers: {"X-CSRFToken": getCookie("csrftoken")}});
+  if(!guidanceLoaded){
+    fetch("{% url 'guidance_messages' %}")
+      .then(r => r.json())
+      .then(data => {
+        setGuidanceWho(data.counselor_name);
+        const container = document.getElementById('guidance-messages');
+        container.innerHTML = '';
+        if(data.messages.length === 0){
+          addMessage('guidance-messages', "Hi! Send a message here whenever you're ready to talk to someone from the Guidance Office. A counselor will get back to you as soon as they can.", 'bot', 'LEAF');
+        } else {
+          data.messages.forEach(m => {
+            if (m.appointment) {
+              const row = document.createElement('div');
+              row.className = 'msg-row ' + (m.sender === 'user' ? 'user' : 'bot');
+              const confirmedHtml = m.appointment.status === 'confirmed'
+                ? `<div style="margin-top:8px; color:#3c763d; font-weight:700;">✅ Confirmed</div>`
+                : `<div style="margin-top:10px;"><button onclick="confirmAppointment(${m.appointment.id})" style="background:#8B6F4E; color:#fff; border:none; padding:8px 18px; border-radius:999px; font-weight:700; cursor:pointer; display:block;">Confirm</button></div>`;
+              row.innerHTML = `<div class="msg-bubble">📅 <strong>${escapeHtml(m.content)}</strong><br>${m.appointment.scheduled_time}${confirmedHtml}</div>`;
+              container.appendChild(row);
+            } else {
+              addMessage('guidance-messages', escapeHtml(m.content).replace(/\n/g, '<br>'), m.sender === 'user' ? 'user' : 'bot', 'LEAF');
+            }
+          });
+        }
+      });
+    guidanceLoaded = true;
+  }
+});
+
+function sendGuidanceMessage(){
+  const text = guidanceInput.value.trim();
+  if(!text) return;
+  addMessage('guidance-messages', escapeHtml(text), 'user');
+  guidanceInput.value = '';
+
+  fetch("{% url 'guidance_send' %}", {
+    method: "POST",
+    headers: {"Content-Type": "application/json", "X-CSRFToken": getCookie("csrftoken")},
+    body: JSON.stringify({message: text}),
+  });
+}
+
+function reloadGuidanceMessages() {
+  fetch("{% url 'guidance_messages' %}")
+    .then(r => r.json())
+    .then(data => {
+      setGuidanceWho(data.counselor_name);
+      const container = document.getElementById('guidance-messages');
+      if (!container) return;
+      container.innerHTML = '';
+      if(data.messages.length === 0){
+        addMessage('guidance-messages', "Hi! Send a message here whenever you're ready to talk to someone from the Guidance Office. A counselor will get back to you as soon as they can.", 'bot', 'LEAF');
+        return;
+      }
+      data.messages.forEach(m => {
+        if (m.appointment) {
+          const row = document.createElement('div');
+          row.className = 'msg-row ' + (m.sender === 'user' ? 'user' : 'bot');
+          const confirmedHtml = m.appointment.status === 'confirmed'
+            ? `<div style="margin-top:8px; color:#3c763d; font-weight:700;">✅ Confirmed</div>`
+            : `<div style="margin-top:10px;"><button onclick="confirmAppointment(${m.appointment.id})" style="background:#8B6F4E; color:#fff; border:none; padding:8px 18px; border-radius:999px; font-weight:700; cursor:pointer; display:block;">Confirm</button></div>`;
+          row.innerHTML = `<div class="msg-bubble">📅 <strong>${escapeHtml(m.content)}</strong><br>${m.appointment.scheduled_time}${confirmedHtml}</div>`;
+          container.appendChild(row);
+        } else {
+          addMessage('guidance-messages', escapeHtml(m.content).replace(/\n/g, '<br>'), m.sender === 'user' ? 'user' : 'bot', 'LEAF');
+        }
+      });
+    });
+}
+
+function refreshGuidanceWho(){
+  fetch("{% url 'guidance_messages' %}").then(r => r.json()).then(d => setGuidanceWho(d.counselor_name));
+}
+document.getElementById('btn-guidance').addEventListener('click', refreshGuidanceWho);
+setInterval(() => {
+  if (document.getElementById('view-guidance').classList.contains('active')) refreshGuidanceWho();
+}, 10000);
+
+const guidanceInput = document.getElementById('guidance-input');
+document.getElementById('guidance-send').addEventListener('click', sendGuidanceMessage);
+guidanceInput.addEventListener('keydown', e=>{ if(e.key==='Enter') sendGuidanceMessage(); });
+
+// Home composer routes into Chat
+const homeInput = document.getElementById('home-input');
+
+function sendFromHome(){
+  const text = homeInput.value.trim();
+  if(!text) return;
+  switchView('view-chat','Chat');
+  addMessage('chat-messages', escapeHtml(text), 'user');
+  homeInput.value = '';
+  const typingRow = addTyping('chat-messages', 'MASCOT');
+  getAIReply(text).then(reply => {
+    typingRow.remove();
+    addMessage('chat-messages', escapeHtml(reply).replace(/\n/g, '<br>'), 'bot', 'MASCOT');
+  }).catch(() => {
+    typingRow.remove();
+    addMessage('chat-messages', "Sorry, I'm having trouble connecting right now.", 'bot', 'MASCOT');
+  });
+}
+
+document.getElementById('home-send').addEventListener('click', sendFromHome);
+homeInput.addEventListener('keydown', e=>{ if(e.key==='Enter') sendFromHome(); });
+
+function confirmAppointment(appointmentId){
+  fetch(`/api/appointments/${appointmentId}/confirm/`, {
+    method: "POST",
+    headers: {"X-CSRFToken": getCookie("csrftoken")},
+  }).then(() => {
+    guidanceLoaded = false;
+    document.getElementById('btn-guidance').click();
+  });
+}
+
+/* ============================================================
+   MOOD DIARY & CALENDAR
+============================================================ */
+let currentDate = new Date(); // Automatically defaults to current real-world date
+let viewYear = currentDate.getFullYear();
+let viewMonth = currentDate.getMonth();
+let activeEntryKey = null;
+
+const monthNames = [
+  'JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE',
+  'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'
+];
+
+const appointmentDates = {};
+
+const moodEntries = {};
+const moodImages = [
+  "{% static 'core/images/mascot_happy.png' %}",
+  "{% static 'core/images/mascot_good.png' %}",
+  "{% static 'core/images/mascot_neutral.png' %}",
+  "{% static 'core/images/mascot_bad.png' %}",
+  "{% static 'core/images/mascot_sad.png' %}"
+];
+
+function moodImg(i, size, drop){
+  return `<img src="${moodImages[i]}" alt="" style="width:${size}px; height:${size}px; object-fit:contain; display:block; transform:translateY(${drop || 0}px);">`;
+}
+
+// Populate Month and Year Select Dropdowns
+function initCalendarDropdowns() {
+  const monthSelect = document.getElementById('month-select');
+  const yearSelect = document.getElementById('year-select');
+
+  if (monthSelect) {
+    monthSelect.innerHTML = '';
+    monthNames.forEach((name, idx) => {
+      const opt = document.createElement('option');
+      opt.value = idx;
+      opt.textContent = name;
+      monthSelect.appendChild(opt);
+    });
+    monthSelect.value = viewMonth;
+    monthSelect.addEventListener('change', (e) => {
+      viewMonth = parseInt(e.target.value);
+      loadCalendarData();
+    });
+  }
+
+  if (yearSelect) {
+    yearSelect.innerHTML = '';
+    const startYear = viewYear - 5;
+    const endYear = viewYear + 5;
+    for (let y = startYear; y <= endYear; y++) {
+      const opt = document.createElement('option');
+      opt.value = y;
+      opt.textContent = y;
+      yearSelect.appendChild(opt);
+    }
+    yearSelect.value = viewYear;
+    yearSelect.addEventListener('change', (e) => {
+      viewYear = parseInt(e.target.value);
+      loadCalendarData();
+    });
+  }
+}
+
+function loadCalendarData(){
+  fetch(`/api/mood/?year=${viewYear}&month=${viewMonth + 1}`)
+    .then(r => r.json())
+    .then(data => {
+      data.entries.forEach(e => {
+        const d = new Date(e.date);
+        const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+        moodEntries[key] = { mood: e.mood, diary: e.note || '' };
+      });
+      Object.keys(appointmentDates).forEach(k => delete appointmentDates[k]);
+      (data.appointments || []).forEach(a => {
+        const [yy, mm, dd] = a.date.split('-').map(Number);
+        const key = `${yy}-${mm - 1}-${dd}`;
+        appointmentDates[key] = { time: a.time, status: a.status };
+      });
+      renderCalendarGrid();
+    });
+}
+
+function renderCalendarGrid() {
+  // Sync dropdowns if present
+  const monthSelect = document.getElementById('month-select');
+  const yearSelect = document.getElementById('year-select');
+  if (monthSelect) monthSelect.value = viewMonth;
+  if (yearSelect) yearSelect.value = viewYear;
+
+  // Sync text header fallback if present
+  const monthLabel = document.getElementById('month-label');
+  if (monthLabel) monthLabel.textContent = `${monthNames[viewMonth]} ${viewYear}`;
+
+  const grid = document.getElementById('cal-grid');
+  if (!grid) return;
+  
+  grid.innerHTML = '';
+
+  // Render Day Headers
+  ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].forEach(d => {
+    const h = document.createElement('div');
+    h.className = 'cal-head';
+    h.textContent = d;
+    grid.appendChild(h);
+  });
+
+  const firstWeekday = new Date(viewYear, viewMonth, 1).getDay();
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const prevMonthDays = new Date(viewYear, viewMonth, 0).getDate();
+  const today = new Date();
+
+  // Leading padding from previous month
+  for (let i = firstWeekday - 1; i >= 0; i--) {
+    const num = prevMonthDays - i;
+    const cell = document.createElement('div');
+    cell.className = 'cal-cell other';
+    cell.innerHTML = `<div class="day-dot"></div><div class="day-num">${num}</div>`;
+    grid.appendChild(cell);
+  }
+
+  // Current month days
+  for (let d = 1; d <= daysInMonth; d++) {
+    const key = `${viewYear}-${viewMonth}-${d}`;
+    const cell = document.createElement('div');
+
+    const isToday = 
+      d === today.getDate() && 
+      viewMonth === today.getMonth() && 
+      viewYear === today.getFullYear();
+
+    cell.className = `cal-cell ${isToday ? "today" : "current"}`;
+
+    const entry = moodEntries[key];
+    const hasAppt = appointmentDates[key];
+    let dotInner = entry !== undefined ? moodImg(entry.mood, 40, 4) : '';
+      if(hasAppt){
+        const icon = hasAppt.status === 'pending' ? '⏳' : '📅';
+        dotInner += entry !== undefined
+          ? `<span style="position:absolute; font-size:11px; bottom:0; right:2px; line-height:1;">${icon}</span>`
+          : `<span style="font-size:18px;">${icon}</span>`;
+      }
+
+    cell.innerHTML = `
+      <div class="day-dot" style="position:relative;">${dotInner}</div>
+      <div class="day-num">${d}</div>
+    `;
+
+    cell.addEventListener('click', () => {
+      const cellDate = new Date(viewYear, viewMonth, d);
+      const now = new Date(); now.setHours(0,0,0,0);
+      if (cellDate > now) { if (typeof showToast === 'function') showToast("You can't log a future day yet 🌱"); return; }
+      openMoodEntry(key, viewYear, viewMonth, d);
+    });
+
+    grid.appendChild(cell);
+  }
+}
+
+// Controls: Arrow Buttons
+const prevBtn = document.getElementById('month-prev') || document.querySelector(".month-nav .icon-btn:first-child");
+const nextBtn = document.getElementById('month-next') || document.querySelector(".month-nav .icon-btn:last-child");
+
+if (prevBtn) {
+  prevBtn.addEventListener('click', () => {
+    viewMonth--;
+    if (viewMonth < 0) {
+      viewMonth = 11;
+      viewYear--;
+    }
+    loadCalendarData();
+  });
+}
+
+if (nextBtn) {
+  nextBtn.addEventListener('click', () => {
+    viewMonth++;
+    if (viewMonth > 11) {
+      viewMonth = 0;
+      viewYear++;
+    }
+    loadCalendarData();
+  });
+}
+
+// Entry Modal Handling
+function openMoodEntry(key, y, m, d) {
+  activeEntryKey = key;
+  const label = document.getElementById('entry-date-label');
+  if (label) label.textContent = `${monthNames[m]} ${d}, ${y}`;
+
+  const entry = moodEntries[key];
+  document.querySelectorAll('.mood-opt').forEach(btn => btn.classList.remove('selected'));
+
+  const diaryText = document.getElementById('diary-text');
+  if (entry !== undefined) {
+    const selectedBtn = document.querySelector(`.mood-opt[data-mood="${entry.mood}"]`);
+    if (selectedBtn) selectedBtn.classList.add('selected');
+    if (diaryText) diaryText.value = entry.diary;
+  } else {
+    if (diaryText) diaryText.value = '';
+  }
+
+  const delBtn = document.getElementById('entry-delete');
+  if (delBtn) delBtn.style.display = (entry !== undefined) ? '' : 'none';
+
+  if (typeof switchView === 'function') {
+    switchView('view-mood-entry', 'Mood Diary');
+  }
+}
+
+// Mood Selector Options
+const moodPicker = document.getElementById('mood-picker');
+if (moodPicker) {
+  moodPicker.addEventListener('click', e => {
+    const btn = e.target.closest('.mood-opt');
+    if (!btn) return;
+    document.querySelectorAll('.mood-opt').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+  });
+}
+
+// Back Button
+const backBtn = document.getElementById('entry-back');
+if (backBtn) {
+  backBtn.addEventListener('click', () => {
+    if (typeof switchView === 'function') {
+      switchView('view-mood-calendar', 'Mood Diary');
+    }
+    loadCalendarData();
+  });
+}
+
+// Save Entry Button
+const enterBtn = document.getElementById('entry-enter');
+if (enterBtn) {
+  enterBtn.addEventListener('click', () => {
+    const selected = document.querySelector('.mood-opt.selected');
+    if (!selected) { if (typeof showToast === 'function') showToast('Pick a mood first'); return; }
+    const mood = parseInt(selected.dataset.mood);
+    const diaryText = document.getElementById('diary-text');
+    const diary = diaryText ? diaryText.value : '';
+
+    if (activeEntryKey) {
+      const [y, m, d] = activeEntryKey.split('-');
+      const isoDate = `${y}-${String(parseInt(m)+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      moodEntries[activeEntryKey] = { mood, diary };
+
+      fetch("{% url 'api_mood_save' %}", {
+        method: "POST",
+        headers: {"Content-Type": "application/json", "X-CSRFToken": getCookie("csrftoken")},
+        body: JSON.stringify({date: isoDate, mood: mood, note: diary}),
+      }).then(r => {
+        if (!r.ok) { if (typeof showToast === 'function') showToast('Could not save entry'); loadCalendarData(); return; }
+        if (typeof switchView === 'function') switchView('view-mood-calendar', 'Mood Diary');
+        renderCalendarGrid();
+        if (typeof showToast === 'function') showToast('Diary entry saved');
+      });
+    }
+  });
+}
+
+// Delete Entry Button
+const deleteBtn = document.getElementById('entry-delete');
+if (deleteBtn) {
+  deleteBtn.addEventListener('click', () => {
+    if (!activeEntryKey || moodEntries[activeEntryKey] === undefined) return;
+    if (!confirm('Delete this entry? Your mood and diary for this day will be removed.')) return;
+    const [y, m, d] = activeEntryKey.split('-');
+    const isoDate = `${y}-${String(parseInt(m)+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    fetch("{% url 'api_mood_delete' %}", {
+      method: "POST",
+      headers: {"Content-Type": "application/json", "X-CSRFToken": getCookie("csrftoken")},
+      body: JSON.stringify({date: isoDate}),
+    }).then(r => {
+      if (!r.ok) { if (typeof showToast === 'function') showToast('Could not delete entry'); return; }
+      delete moodEntries[activeEntryKey];
+      if (typeof switchView === 'function') switchView('view-mood-calendar', 'Mood Diary');
+      renderCalendarGrid();
+      if (typeof showToast === 'function') showToast('Entry deleted');
+    });
+  });
+}
+
+// Initialization on Load
+document.addEventListener('DOMContentLoaded', () => {
+  initCalendarDropdowns();
+  loadCalendarData();
+});
+
+/* ============================================================
+   BREATHE
+============================================================ */
+const breatheCircle = document.getElementById('breathe-circle');
+const breatheRing = document.getElementById('breathe-ring');
+const breatheBtn = document.getElementById('breathe-btn');
+const breatheIcon = document.getElementById('breathe-icon');
+const breathePhase = document.getElementById('breathe-phase');
+let breathing = false;
+let breatheTimers = [];
+let breatheStartTime = null;
+
+const playIcon = `<path d="M8 5v14l11-7z"/>`;
+const stopIcon = `<rect x="6" y="6" width="12" height="12" rx="2"/>`;
+
+function resetBreathe(){
+  if(breathing && breatheStartTime){
+    const elapsed = Math.round((Date.now() - breatheStartTime) / 1000);
+    if(elapsed >= 3){
+      saveBreatheSession(elapsed);
+    }
+  }
+  breathing = false;
+  breatheStartTime = null;
+  breatheTimers.forEach(t=>clearTimeout(t));
+  breatheTimers = [];
+  breatheCircle.classList.remove('breathing');
+  breatheRing.classList.remove('breathing');
+  breatheIcon.innerHTML = playIcon;
+  breathePhase.textContent = 'Press to Start';
+}
+
+function saveBreatheSession(durationSeconds){
+  fetch("{% url 'api_breathe_save' %}", {
+    method: "POST",
+    headers: {"Content-Type": "application/json", "X-CSRFToken": getCookie("csrftoken")},
+    body: JSON.stringify({duration_seconds: durationSeconds}),
+  });
+}
+
+function schedulePhases(){
+  const phases = ['Inhale…','Hold…','Exhale…','Hold…'];
+  let i = 0;
+  breathePhase.textContent = phases[0];
+  const tick = ()=>{
+    if(!breathing) return;
+    i = (i+1) % 4;
+    breathePhase.textContent = phases[i];
+    breatheTimers.push(setTimeout(tick, 4000));
+  };
+  breatheTimers.push(setTimeout(tick, 4000));
+}
+
+breatheBtn.addEventListener('click', ()=>{
+  breathing = !breathing;
+  if(breathing){
+    breatheStartTime = Date.now();
+    breatheCircle.classList.add('breathing');
+    breatheRing.classList.add('breathing');
+    breatheIcon.innerHTML = stopIcon;
+    schedulePhases();
+  } else {
+    resetBreathe();
+  }
+});
+
+
+/* ============================================================
+   SIDEBAR COLLAPSE / MOBILE DRAWER
+============================================================ */
+const sidebarEl = document.getElementById('sidebar');
+const collapseBtn = document.getElementById('collapse-btn');
+const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+const sidebarBackdrop = document.getElementById('sidebar-backdrop');
+
+function isMobile(){ return window.innerWidth <= 860; }
+
+function setSidebarOpen(open){
+  sidebarEl.classList.toggle('is-collapsed', !open);
+  sidebarBackdrop.classList.toggle('is-visible', isMobile() && open);
+}
+
+collapseBtn.addEventListener('click', ()=>{
+  setSidebarOpen(false);
+});
+mobileMenuBtn.addEventListener('click', ()=>{
+  setSidebarOpen(true);
+});
+sidebarBackdrop.addEventListener('click', ()=> setSidebarOpen(false));
+
+if(isMobile()) setSidebarOpen(false);
+window.addEventListener('resize', ()=>{
+  if(!isMobile()) sidebarBackdrop.classList.remove('is-visible');
+});
+
+/* ============================================================
+   SETTINGS POPOVER + LOGOUT
+============================================================ */
+const settingsBtn = document.getElementById('settings-btn');
+const userBtn = document.getElementById('user-btn');
+const settingsPopover = document.getElementById('settings-popover');
+
+function togglePopover(){ settingsPopover.hidden = !settingsPopover.hidden; }
+
+settingsBtn.addEventListener('click', e=>{ e.stopPropagation(); togglePopover(); });
+document.addEventListener('click', e=>{
+  if(!settingsPopover.hidden && !settingsPopover.contains(e.target) && e.target !== settingsBtn && e.target !== userBtn){
+    settingsPopover.hidden = true;
+  }
+});
+
+document.getElementById('account-settings-btn')?.addEventListener('click', ()=>{
+  window.location.href = "{% url 'account_settings' %}";
+});
+
+/* ============================================================
+   NOTIFICATION SETTINGS MODAL LOGIC
+============================================================ */
+/* seed settings from the database so every browser matches */
+localStorage.setItem('notif_guidance', '{{ profile.guidance_notifications|yesno:"true,false" }}');
+localStorage.setItem('notif_appointments', '{{ profile.appointment_notifications|yesno:"true,false" }}');
+localStorage.setItem('notif_mood', '{{ profile.mood_notifications|yesno:"true,false" }}');
+localStorage.setItem('notif_sound', '{{ profile.sound_notifications|yesno:"true,false" }}');
+localStorage.setItem('mood_reminder_time', '{{ profile.mood_reminder_time|time:"H:i"|default:"20:00" }}');
+
+const notifOverlay = document.getElementById('notif-settings-overlay');
+const closeNotifBtn = document.getElementById('close-notif-modal');
+const cancelNotifBtn = document.getElementById('cancel-notif-btn');
+const notifForm = document.getElementById('notif-settings-form');
+
+document.getElementById('notifications-item-btn')?.addEventListener('click', () => {
+  settingsPopover.hidden = true;
+  
+  document.getElementById('notif-guidance').checked = localStorage.getItem('notif_guidance') !== 'false';
+  document.getElementById('notif-appointments').checked = localStorage.getItem('notif_appointments') !== 'false';
+  document.getElementById('notif-mood').checked = localStorage.getItem('notif_mood') === 'true';
+  document.getElementById('notif-sound').checked = localStorage.getItem('notif_sound') !== 'false';
+  document.getElementById('mood-reminder-time').value = localStorage.getItem('mood_reminder_time') || '20:00';
+
+  document.getElementById('mood-reminder-time-row').style.display =
+    document.getElementById('notif-mood').checked ? 'flex' : 'none';
+
+  notifOverlay.classList.add('show');
+});
+
+// Close modal handlers
+function closeNotifModal() {
+  notifOverlay.classList.remove('show');
+}
+
+closeNotifBtn?.addEventListener('click', closeNotifModal);
+cancelNotifBtn?.addEventListener('click', closeNotifModal);
+
+notifOverlay?.addEventListener('click', (e) => {
+  if (e.target === notifOverlay) closeNotifModal();
+});
+
+document.getElementById('notif-mood')?.addEventListener('change', (e) => {
+  document.getElementById('mood-reminder-time-row').style.display = e.target.checked ? 'flex' : 'none';
+});
+
+// Preview the notif sound when a toggle is switched ON
+const previewKinds = {
+  'notif-guidance': 'chat',
+  'notif-appointments': 'appointment',
+  'notif-mood': 'mood',
+  'notif-sound': 'chat'
+};
+Object.entries(previewKinds).forEach(([id, kind]) => {
+  document.getElementById(id)?.addEventListener('change', (e) => {
+    const soundOn = document.getElementById('notif-sound').checked;
+    if (e.target.checked && soundOn) playNotificationSound(kind);
+  });
+});
+
+// Save notification settings
+notifForm?.addEventListener('submit', (e) => {
+  e.preventDefault();
+
+  const guidancePref = document.getElementById('notif-guidance').checked;
+  const apptPref = document.getElementById('notif-appointments').checked;
+  const moodPref = document.getElementById('notif-mood').checked;
+  const soundPref = document.getElementById('notif-sound').checked;
+  const moodTimePref = document.getElementById('mood-reminder-time').value || '20:00';
+
+  // Persist options in browser storage
+  localStorage.setItem('notif_guidance', guidancePref);
+  localStorage.setItem('notif_appointments', apptPref);
+  localStorage.setItem('notif_mood', moodPref);
+  localStorage.setItem('notif_sound', soundPref);
+  localStorage.setItem('mood_reminder_time', moodTimePref);
+
+  // Optional: Sync to backend Django API endpoint
+  fetch("{% url 'save_notification_settings' %}", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    body: JSON.stringify({
+      guidance_notifications: guidancePref,
+      appointment_notifications: apptPref,
+      mood_notifications: moodPref,
+      sound_notifications: soundPref,
+      mood_reminder_time: moodTimePref
+    })
+  }).catch(() => {
+    // Graceful fallback if Django endpoint is not implemented yet
+  });
+
+  closeNotifModal();
+  showToast('Notification preferences saved');
+});
+
+/* ============================================================
+   DARK MODE TOGGLE
+============================================================ */
+const darkModeBtn = document.getElementById('darkmode-toggle-btn');
+
+darkModeBtn?.addEventListener('click', () => {
+  document.body.classList.toggle('dark-mode');
+  const isDark = document.body.classList.contains('dark-mode');
+  darkModeBtn.textContent = `Dark Mode: ${isDark ? 'On' : 'Off'}`;
+  showToast(isDark ? 'Dark mode enabled' : 'Light mode enabled');
+});
+
+/* ============================================================
+   TOAST
+============================================================ */
+let toastTimer;
+function showToast(msg){
+  const t = document.getElementById('toast');
+  if (!t) return;
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+/* ============================================================
+   NOTIFICATIONS
+   Sound Effect by
+   <a href="https://pixabay.com/users/universfield-28281460/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=493469">Universfield</a>
+   from
+   <a href="https://pixabay.com//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=493469">Pixabay</a>
+============================================================ */
+const notifSound = new Audio("{% static 'core/sounds/chat.mp3' %}");
+let lastNotifId = 0;
+let audioUnlocked = false;
+let notifInitialized = false;
+
+const sounds = {
+  chat: notifSound,
+  appointment: new Audio("{% static 'core/sounds/appointment.mp3' %}"),
+  mood: new Audio("{% static 'core/sounds/mood.mp3' %}"),
+};
+
+function playNotificationSound(kind = 'chat') {
+  const s = sounds[kind] || notifSound;
+  s.currentTime = 0;
+  s.play().catch(err => console.log("Audio play blocked or failed:", err));
+}
+
+function unlockAudio() {
+  if (audioUnlocked) return;
+  notifSound.play().then(() => {
+    notifSound.pause();
+    notifSound.currentTime = 0;
+    audioUnlocked = true;
+  }).catch(() => {});
+}
+
+document.addEventListener('click', unlockAudio, { once: true });
+document.addEventListener('keydown', unlockAudio, { once: true });
+
+function todayKey(){ return 'mood_reminded_' + new Date().toLocaleDateString('en-CA'); }
+
+function handleMoodReminder(due, soundOn){
+  const popup = document.getElementById('mood-reminder-popup');
+  if (!popup) return;
+  if (!due) { popup.style.display = 'none'; return; }       // logged already, or not time yet
+  if (localStorage.getItem(todayKey())) return;              // already reminded today
+  popup.style.display = 'block';
+  if (soundOn) playNotificationSound('mood');
+  localStorage.setItem(todayKey(), '1');
+}
+
+document.addEventListener('click', (e) => {
+  const popup = document.getElementById('mood-reminder-popup');
+  if (!popup) return;
+  if (e.target.closest('#mood-reminder-later')) {
+    popup.style.display = 'none';
+  } else if (e.target.closest('#mood-reminder-go')) {
+    popup.style.display = 'none';
+    switchView('view-mood-calendar', 'Mood Diary');
+    loadCalendarData();
+  }
+});
+
+function handleApptReminder(a, soundOn){
+  const box = document.getElementById('appt-reminder');
+  const text = document.getElementById('appt-reminder-text');
+  if(!box || !text) return;
+  if(!a){ box.style.display = 'none'; return; }
+  const stage = a.minutes <= 10 ? 'soon' : 'hour';
+  const key = 'appt_' + a.id + '_' + stage;
+  if(localStorage.getItem(key + '_closed')){ box.style.display = 'none'; return; }
+  text.textContent = a.minutes > 1 ? `Your session starts in ${a.minutes} minutes (${a.time}).`
+                   : a.minutes >= 0 ? `Your session is starting now (${a.time}).`
+                   : `Your session started at ${a.time}.`;
+  box.dataset.key = key;
+  if(box.style.display === 'none' && !localStorage.getItem(key + '_played')){
+    localStorage.setItem(key + '_played', '1');
+    if(soundOn) playNotificationSound('appointment');
+  }
+  box.style.display = 'block';
+}
+
+document.addEventListener('click', function(e){
+  if(e.target.closest('#appt-reminder-close')){
+    const box = document.getElementById('appt-reminder');
+    localStorage.setItem(box.dataset.key + '_closed', '1');
+    box.style.display = 'none';
+  }
+});
+
+function pollNotifications(){
+  fetch("{% url 'get_notifications' %}")
+    .then(r => r.json())
+    .then(data => {
+      const newest = data.notifications.length ? data.notifications[0] : null;
+      const newestId = newest ? newest.id : 0;
+
+      if (notifInitialized && newest && newestId > lastNotifId) {
+        if (data.sound_enabled) playNotificationSound(newest.kind);
+        showToast(newest.message);
+        document.title = `(${data.count}) New message | MICA`;
+        if (guidanceLoaded) reloadGuidanceMessages();
+      }
+      if (newestId > lastNotifId) lastNotifId = newestId;
+      notifInitialized = true;
+
+      handleMoodReminder(data.mood_reminder_due, data.sound_enabled);
+
+      handleApptReminder(data.upcoming_appointment, data.sound_enabled);
+
+      const badge = document.getElementById('notifBadge');
+      if (badge) badge.textContent = data.count > 0 ? data.count : '';
+    });
+}
+
+setInterval(pollNotifications, 10000);
+pollNotifications();
+
+/* ============================================================
+   LOGIN & MASCOT GREETING
+============================================================ */
+function getGreetingPrefix() {
+  const hour = new Date().getHours();
+  if (hour >= 5 && hour < 12) {
+    return "Good morning";
+  } else if (hour >= 12 && hour < 18) {
+    return "Good afternoon";
+  } else {
+    return "Good evening";
+  }
+}
+
+function updateGreeting() {
+  const greetText = document.getElementById("greet-text");
+  if (greetText) {
+    const greetingPrefix = getGreetingPrefix();
+    greetText.innerHTML = `${greetingPrefix}, {{ request.user.username }}!<br>How are you feeling?`;
+  }
+}
+
+// Fire greeting check on load
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", updateGreeting);
+} else {
+    updateGreeting();
+}
+
+</script>
+
+<div id="mood-reminder-popup" style="display:none; position:fixed; right:20px; bottom:20px; z-index:9000; max-width:300px; background:#fff; color:#4c3d29; border-radius:16px; padding:16px 18px; box-shadow:0 8px 24px rgba(0,0,0,.18);">
+  <div style="font-weight:800; font-size:14px; margin-bottom:4px;">Hey {{ request.user.username }}, how's your day going? 🌿</div>
+  <div style="font-size:12.5px; margin-bottom:12px;">Got a minute for your mood diary?</div>
+  <div style="display:flex; gap:8px; justify-content:flex-end;">
+    <button type="button" class="btn-pill btn-back" id="mood-reminder-later">Later</button>
+    <button type="button" class="btn-pill" id="mood-reminder-go">Check in</button>
+  </div>
+</div>
+
+
+{% if show_tutorial or show_mood_tutorial %}
+{% include 'core/_tour.html' %}
+<script>
+(function(){
+  /* ---------- Mood Diary view helper ---------- */
+  function showMoodView(which){
+    const entryOpen = document.getElementById('view-mood-entry').classList.contains('active');
+    if (which === 'entry' && !entryOpen) {
+      const n = new Date();   // open today's entry so the form can be highlighted
+      openMoodEntry(`${n.getFullYear()}-${n.getMonth()}-${n.getDate()}`, n.getFullYear(), n.getMonth(), n.getDate());
+    } else if (which === 'cal' && (entryOpen || !document.getElementById('view-mood-calendar').classList.contains('active'))) {
+      switchView('view-mood-calendar', 'Mood Diary');
+      if (typeof loadCalendarData === 'function') loadCalendarData();
+    }
+  }
+
+  const PAGE_ENV = {
+    isMobile: () => isMobile(),
+    sidebarClosed: () => document.getElementById('sidebar').classList.contains('is-collapsed'),
+    setSidebar: open => setSidebarOpen(open),
+    showView: showMoodView
+  };
+
+  const DASHBOARD_TOUR = {
+    which: 'dashboard',
+    env: PAGE_ENV,
+    steps: [
+      { welcome: true, title: "Welcome to MICA, {{ request.user.username|escapejs }}! 👋",
+        body: "This is a safe space to talk about how you're feeling. Here's a quick look around so you know where everything is. It takes less than a minute." },
+      { target: '.composer', title: "Talk to Mica",
+        body: "Type (or use the mic) whenever something is on your mind. Mica, our AI companion, is here to listen first and can point you to a counselor when you need one." },
+      { target: '#btn-guidance', sidebar: true, title: "Talk to Guidance",
+        body: "Want a real person? Message a guidance counselor directly here. This is also where appointment requests and replies show up." },
+      { target: '#btn-chat', sidebar: true, title: "Chat",
+        body: "Your full conversation with Mica lives here. Jump back in any time." },
+      { target: '#btn-mood', sidebar: true, title: "Mood Diary",
+        body: "Log how you feel each day and add a short note. Over time, the calendar helps you spot patterns." },
+      { target: '#btn-breathe', sidebar: true, title: "Breathe",
+        body: "Feeling tense? Follow a guided breathing exercise to slow down and reset." },
+      { target: '.search-wrap', sidebar: true, title: "Your chats",
+        body: "Search past conversations here, start a fresh one with New Chat, and find your older chats listed underneath." },
+      { target: '#settings-btn', sidebar: true, title: "Settings",
+        body: "Switch to dark mode, update your account details, manage notifications, or log out. You're all set. Say hi to Mica whenever you're ready!" }
+    ]
+  };
+
+  const MOOD_TOUR = {
+    which: 'mood',
+    env: PAGE_ENV,
+    // After the tour, send the student back to the calendar.
+    onEnd(){ showMoodView('cal'); },
+    steps: [
+      { view: 'cal', target: '#view-mood-calendar .month-nav', title: "Your mood calendar",
+        body: "Every day of the month lives in the calendar below. Use the arrows to go back or ahead one month, or pick a month and year from the dropdowns to jump straight there." },
+      { view: 'cal', target: '.cal-cell.today', fallback: '.calendar-card', title: "Tap a day to log it",
+        body: "Today is highlighted. Tap any day to open its diary, whether it's today or a day you missed. Days with a logged mood show your face for it, and counselor appointments appear here too (⏳ pending, 📅 confirmed)." },
+      { view: 'entry', target: '#mood-picker', title: "Pick your mood",
+        body: "Choose the face that best matches how the day felt, from happy to sad. There's no wrong answer." },
+      { view: 'entry', target: '.diary-box', title: "Write it out",
+        body: "Add a few words about your day if you like: what happened, what's on your mind. It's optional, and it helps you look back and spot patterns later." },
+      { view: 'entry', target: '.entry-actions', title: "Save it",
+        body: "Press Enter to save the entry to your calendar, or Back to return without saving. You can reopen any day later to change it. Tip: turn on mood reminders under Settings → Notifications for a daily nudge." }
+    ]
+  };
+
+  /* ---------- Dashboard tour: starts once the page loader is gone ---------- */
+  function startDashboardTour(){
+    if (typeof switchView === 'function') switchView('view-home', 'Home');  // composer must be visible
+    MicaTour.run(DASHBOARD_TOUR);
+  }
+  if ("{{ show_tutorial|yesno:'true,false' }}") MicaTour.whenLoaderGone(startDashboardTour);
+
+  /* ---------- Mood tour: starts the first time Mood Diary is opened ---------- */
+  let moodPending = "{{ show_mood_tutorial|yesno:'true,false' }}" === "true";
+  if (moodPending) {
+    const originalSwitchView = window.switchView;
+    window.switchView = function(id, title){
+      const result = originalSwitchView.apply(this, arguments);
+      if (moodPending && !MicaTour.isActive() && id === 'view-mood-calendar') {
+        moodPending = false;                 // never re-trigger within this page load
+        setTimeout(() => MicaTour.run(MOOD_TOUR), 450);   // let the calendar finish drawing
+      }
+      return result;
+    };
+  }
+
+  window.startMicaTour = startDashboardTour;
+  window.startMicaMoodTour = () => { showMoodView('cal'); setTimeout(() => MicaTour.run(MOOD_TOUR), 450); };
+})();
+</script>
+{% endif %}
+
+</body>
+</html>

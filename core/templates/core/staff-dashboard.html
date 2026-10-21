@@ -1,0 +1,2289 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MICA | Staff Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --sage:#A9C6A2; --sage-deep:#96B890; --sage-pale:#8EAE88;
+    --cream:#F7F4E9; --paper:#FFFFFF;
+    --peach:#FFF8E7; --peach-deep:#F3E2B8; --peach-text:#5A4A3D;
+    --brown:#8A6F4E; --brown-deep:#5A4A3D;
+    --sky:#9CC5E8; --sky-deep:#3D6C8E; --sky-pale:#DCEBF6;
+    --alert:#C0684E; --alert-pale:#F5E3DD;
+    --ink:#181A17; --ink-soft:#6B6E66;
+    --line:#E6E3D8;
+    --shadow: 0 10px 30px rgba(30,34,26,0.08);
+    --shadow-sm: 0 2px 10px rgba(30,34,26,0.06);
+    --radius: 20px;
+  }
+  body.dark{
+    --cream:#14160F; --paper:#1D2018; --ink:#F3F2EA; --ink-soft:#A7AA9E;
+    --line:#2B2E23; --sage-pale:#28352A; --sky-pale:#20303B; --alert-pale:#3A2620;
+    --peach:#2A2A20; --peach-deep:#3A3826; --peach-text:#F1ECDD;
+    --shadow: 0 10px 30px rgba(0,0,0,0.35); --shadow-sm: 0 2px 10px rgba(0,0,0,0.3);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'Inter',sans-serif;background:var(--cream);color:var(--ink);transition:background .25s ease,color .25s ease;}
+  h1,h2,h3,.display{font-family:'Baloo 2',sans-serif;}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  ::selection{background:var(--sage-pale);}
+  a{color:inherit;}
+  button{font-family:inherit;cursor:pointer;}
+
+  /* ---------- Shared bits ---------- */
+  .logo-mark{display:flex;align-items:center;gap:10px;}
+  .logo-mark svg{flex-shrink:0;}
+  .logo-mark span{font-family:'Baloo 2',sans-serif;font-weight:700;font-size:22px;letter-spacing:0.2px;}
+
+  .pill-btn{
+    font-family:'Baloo 2',sans-serif;
+    border:none; background:var(--peach); color:var(--peach-text);
+    padding:10px 20px; border-radius:999px; font-weight:600; font-size:14.5px;
+    display:inline-flex; align-items:center; gap:8px; transition:all .15s ease;
+    box-shadow:0 1px 0 rgba(0,0,0,.03);
+  }
+  .pill-btn:hover{background:var(--peach-deep);}
+  .pill-btn.solid{background:var(--sage-deep); color:#fff;}
+  .pill-btn.solid:hover{background:var(--brown-deep);}
+  .pill-btn.ghost{background:transparent; border:1.5px solid var(--line); color:var(--ink-soft);}
+  .pill-btn.ghost:hover{background:var(--peach); color:var(--peach-text); border-color:var(--peach-deep);}
+  .pill-btn.sm{padding:7px 14px; font-size:13px;}
+  .pill-btn:disabled{opacity:.4; cursor:not-allowed; pointer-events:none;}
+
+  .badge{display:inline-flex; align-items:center; gap:6px; padding:4px 12px; border-radius:999px; font-size:12px; font-weight:600;}
+  .badge .dot{width:7px; height:7px; border-radius:50%; background:currentColor;}
+  .badge.stable{background:var(--sage-pale); color:var(--sage-deep);}
+  body:not(.dark) .badge.stable{background:#DDEBD9; color:#3F6B3A;}
+  .badge.watch{background:var(--sky-pale); color:var(--sky-deep);}
+  .badge.urgent{background:var(--alert-pale); color:var(--alert);}
+  .badge.neutral{background:var(--line); color:var(--ink-soft);}
+  .badge .dot.pulse{animation:pulseDot 1.8s ease-in-out infinite;}
+  @keyframes pulseDot{0%,100%{transform:scale(1); opacity:1;} 50%{transform:scale(1.7); opacity:.35;}}
+  @media (prefers-reduced-motion: reduce){ .badge .dot.pulse{animation:none;} }
+
+  .card{background:var(--paper); border-radius:var(--radius); box-shadow:var(--shadow-sm); border:1px solid var(--line);}
+  .offset-card{position:relative;}
+  .offset-card::before{
+    content:''; position:absolute; inset:10px -10px -10px 10px; background:var(--brown);
+    border-radius:var(--radius); z-index:0; opacity:.85;
+  }
+  .offset-card > .offset-inner{position:relative; z-index:1; background:var(--paper); border-radius:var(--radius); border:1px solid var(--line); box-shadow:var(--shadow);}
+
+  /* ---------- Login ---------- */
+  #loginScreen{min-height:100vh; display:flex; flex-direction:column;}
+  .login-nav{background:var(--sage); border-bottom:3px solid var(--sky); padding:18px 40px; display:flex; justify-content:space-between; align-items:center;}
+  .login-nav .logo-mark span{color:#0f130f;}
+  .login-wrap{flex:1; display:flex; align-items:center; justify-content:center; padding:40px 20px;}
+  .login-card{width:100%; max-width:420px; background:var(--paper); border-radius:24px; box-shadow:var(--shadow); padding:44px 40px; border:1px solid var(--line);}
+  .login-card h1{font-size:26px; font-weight:800; margin-bottom:6px;}
+  .login-card p.sub{color:var(--ink-soft); font-size:14.5px; margin-bottom:30px;}
+  .field{margin-bottom:18px;}
+  .field label{display:block; font-size:12.5px; font-weight:600; color:var(--ink-soft); margin-bottom:7px; text-transform:uppercase; letter-spacing:.04em;}
+  .field input, .field select{width:100%; padding:12px 14px; border:1.5px solid var(--line); border-radius:12px; font-size:14.5px; background:var(--cream); color:var(--ink); font-family:'Inter',sans-serif;}
+  .field input:focus, .field select:focus{outline:none; border-color:var(--sage-deep);}
+  .login-card .pill-btn{width:100%; justify-content:center; padding:13px; font-size:15px; margin-top:8px;}
+  .login-foot{margin-top:22px; font-size:12.5px; color:var(--ink-soft); text-align:center;}
+  .demo-note{margin-top:18px; padding:12px 14px; background:var(--peach); border-radius:14px; font-size:12.5px; color:var(--peach-text); line-height:1.5;}
+
+  /* ---------- Shell ---------- */
+  #adminShell{display:flex; min-height:100vh; overflow:hidden;}
+  .sidebar{
+    width:264px; flex-shrink:0; background:var(--sage); color:var(--brown-deep);
+    display:flex; flex-direction:column; height:100vh; overflow-y:auto;
+  }.sidebar{transition:width .25s ease, opacity .25s ease; overflow-x:hidden;}
+  body.dark .sidebar{background:#233024;}
+  .sidebar.is-collapsed{width:0; opacity:0; overflow:hidden; pointer-events:none;}
+  .sidebar-top{display:flex; align-items:center; justify-content:space-between;}
+  .sidebar-top{padding:24px 20px 18px; display:flex; align-items:center; justify-content:space-between;}
+  .sidebar-top .logo-mark span{color:var(--brown-deep);}
+  .sidebar-top .tagline{font-size:11.5px; color:rgba(90,74,61,.75); margin-top:6px; letter-spacing:.03em;}
+  .collapse-btn{width:32px; height:32px; border-radius:8px; border:none; background:transparent; color:var(--brown-deep); display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0;}
+  .collapse-btn:hover{background:rgba(255,255,255,.35);}
+  .collapse-btn svg{width:18px; height:18px;}
+  .icon-btn.menu-btn{display:none; margin-right:14px; flex-shrink:0;}
+  .sidebar.is-collapsed ~ .main .icon-btn.menu-btn{display:flex;}
+  .sidebar-backdrop{display:none; position:fixed; inset:0; background:rgba(20,16,10,.4); z-index:55;}
+  .sidebar-backdrop.is-visible{display:block;}
+  @media (max-width:860px){
+    .sidebar{position:fixed; top:0; left:0; z-index:60; box-shadow:10px 0 30px rgba(0,0,0,.25);}
+    .sidebar.is-collapsed{box-shadow:none;}
+  }
+  .nav-group{padding:6px 16px;}
+  .nav-label{font-size:11px; text-transform:uppercase; letter-spacing:.09em; color:#FBFBF7; padding:14px 10px 8px; font-weight:700; text-shadow:0 1px 1px rgba(0,0,0,.06);}
+  .nav-item{
+    display:flex; align-items:center; gap:11px; padding:11px 14px; border-radius:999px; color:var(--brown-deep);
+    font-family:'Baloo 2',sans-serif; font-size:14.5px; font-weight:600; margin-bottom:6px; transition:all .15s ease;
+    position:relative; border:none; background:transparent; width:100%; text-align:left;
+  }
+  .nav-item svg{flex-shrink:0; opacity:.85;}
+  .nav-item:hover{background:rgba(255,248,231,.55);}
+  .nav-item.active{background:var(--peach); color:var(--brown-deep); box-shadow:0 2px 6px rgba(90,74,61,.12);}
+  .nav-item .count{margin-left:auto; font-size:11px; background:rgba(90,74,61,.12); padding:2px 8px; border-radius:999px; font-family:'IBM Plex Mono',monospace;}
+  .nav-item.active .count{background:var(--alert); color:#fff;}
+  .sidebar-bottom{margin-top:auto; padding:14px; }
+  .admin-chip{display:flex; align-items:center; gap:10px; background:var(--peach); border-radius:999px; padding:8px 12px 8px 8px; margin-bottom:0;}
+  .avatar{width:34px; height:34px; border-radius:50%; background:var(--sky); color:#0f130f; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; flex-shrink:0;}
+  .admin-chip .who .name{font-size:13px; font-weight:700; color:var(--brown-deep); font-family:'Baloo 2',sans-serif;}
+  .admin-chip .who .role{font-size:11px; color:var(--ink-soft);}
+  .logout-btn{margin-left:auto; width:30px; height:30px; flex-shrink:0; display:flex; align-items:center; justify-content:center; border-radius:50%; background:transparent; color:var(--brown-deep); border:none;}
+  .logout-btn:hover{background:rgba(90,74,61,.12);}
+  .logout-btn svg{margin:0;}
+
+  /* Sidebar always sits on the sage/dark-sage chrome, independent of the peach token,
+     so it needs its own explicit dark-mode text treatment for contrast. */
+  body.dark .sidebar-top .logo-mark span,
+  body.dark .nav-item,
+  body.dark .admin-chip .who .name,
+  body.dark .logout-btn{ color:#F1ECDD; }
+  body.dark .sidebar-top .tagline,
+  body.dark .sidebar-tagline,
+  body.dark .admin-chip .who .role{ color:rgba(241,236,221,.65); }
+  body.dark .nav-item:hover{ background:rgba(255,255,255,.08); }
+  body.dark .nav-item.active{ background:rgba(255,255,255,.16); color:#fff; box-shadow:none; }
+  body.dark .nav-item .count{ background:rgba(255,255,255,.18); }
+  body.dark .admin-chip{ background:rgba(255,255,255,.1); }
+  body.dark .logout-btn:hover{ background:rgba(255,255,255,.14); }
+
+  .main{flex:1; min-width:0; height:100vh; overflow-y:auto; display:flex; flex-direction:column;}
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between; padding:18px 34px;
+    background:var(--sage-deep); flex-shrink:0; z-index:20;
+  }
+  body.dark .topbar{background:#233024;}
+  .topbar .titlewrap .eyebrow{font-size:11.5px; color:rgba(255,255,255,.7); text-transform:uppercase; letter-spacing:.07em; font-weight:700;}
+  .topbar h2{font-size:21px; font-weight:700; color:#fff; font-family:'Baloo 2',sans-serif;}
+  .topbar .titlewrap{margin-right:auto;}
+  .topbar-actions{display:flex; align-items:center; gap:12px;}
+  .searchbox{display:flex; align-items:center; gap:9px; background:var(--paper); border:none; border-radius:999px; padding:9px 16px; min-width:230px;}
+  .searchbox input{border:none; outline:none; background:none; font-size:13.5px; width:100%; color:var(--ink); font-family:'Inter',sans-serif;}
+  .icon-btn{width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,.16); border:none; display:flex; align-items:center; justify-content:center; position:relative; color:#fff;}
+  .icon-btn:hover{background:rgba(255,255,255,.28);}
+  .icon-btn .ping{position:absolute; top:-2px; right:-2px; background:var(--alert); color:#fff; font-size:9.5px; font-weight:700; width:16px; height:16px; border-radius:50%; display:flex; align-items:center; justify-content:center; border:2px solid var(--sage-deep);}
+
+  .content{padding:28px 34px 60px;}
+  .section{display:none; animation:fadeIn .35s ease;}
+  .section.active{display:block;}
+  @keyframes fadeIn{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* ---------- Dashboard ---------- */
+  .stat-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:18px; margin-bottom:22px;}
+  .stat-card{padding:20px 22px; display:flex; flex-direction:column; gap:10px;}
+  .stat-card .icon-chip{width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center;}
+  .stat-card .label{font-size:12.5px; color:var(--ink-soft); font-weight:600; text-transform:uppercase; letter-spacing:.03em;}
+  .stat-card .value{font-family:'IBM Plex Mono',monospace; font-size:30px; font-weight:600; letter-spacing:-.5px;}
+  .stat-card .delta{font-size:12px; font-weight:600; display:flex; align-items:center; gap:4px;}
+  .stat-card .delta.up{color:var(--sage-deep);}
+  .stat-card .delta.down{color:var(--alert);}
+  .stat-card svg.spark{margin-top:2px;}
+
+  .grid-2{display:grid; grid-template-columns:1.4fr 1fr; gap:18px; margin-bottom:22px;}
+  .panel{padding:22px 24px;}
+  .panel-head{display:flex; align-items:center; justify-content:between; justify-content:space-between; margin-bottom:16px;}
+  .panel-head h3{font-size:16px; font-weight:700;}
+  .panel-head .sub{font-size:12px; color:var(--ink-soft); margin-top:2px;}
+  .legend-row{display:flex; gap:16px; font-size:12px; color:var(--ink-soft);}
+  .legend-row .dot{width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:5px;}
+
+  .feed-list{display:flex; flex-direction:column; gap:2px;}
+  .feed-item{display:flex; gap:12px; padding:12px 0; border-bottom:1px solid var(--line);}
+  .feed-item:last-child{border-bottom:none;}
+  .feed-item .fi-icon{width:32px; height:32px; border-radius:9px; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+  .feed-item .fi-text{font-size:13.5px; line-height:1.45;}
+  .feed-item .fi-text b{font-weight:600;}
+  .feed-item .fi-time{font-size:11px; color:var(--ink-soft); margin-top:2px; font-family:'IBM Plex Mono',monospace;}
+
+  /* ---------- Tables ---------- */
+  .toolbar{display:flex; align-items:center; justify-content:space-between; gap:14px; margin-bottom:18px; flex-wrap:wrap;}
+  .toolbar-left{display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
+  .filter-select{padding:9px 14px; border-radius:999px; border:1.5px solid var(--line); background:var(--paper); font-size:13px; color:var(--ink); font-family:'Inter',sans-serif;}
+  table{width:100%; border-collapse:collapse;}
+  thead th{
+    text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-soft);
+    font-weight:700; padding:0 16px 12px; border-bottom:1.5px solid var(--line);
+  }
+  tbody td{padding:14px 16px; font-size:13.5px; border-bottom:1px solid var(--line); vertical-align:middle;}
+  tbody tr{transition:background .12s ease; cursor:pointer;}
+  tbody tr:hover{background:var(--sage-pale);}
+  body.dark tbody tr:hover{background:rgba(255,255,255,.04);}
+  .stu-cell{display:flex; align-items:center; gap:11px;}
+  .stu-cell .avatar{width:32px; height:32px; font-size:12px; background:var(--sky-pale); color:var(--sky-deep);}
+  .stu-cell .code{font-weight:600; font-size:13.5px;}
+  .stu-cell .prog{font-size:11.5px; color:var(--ink-soft);}
+  .mono-cell{font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:var(--ink-soft);}
+  .row-actions{display:flex; gap:8px;}
+
+  /* ---------- Modal ---------- */
+  .modal-overlay{display:none; position:fixed; inset:0; background:rgba(20,22,15,.5); z-index:100; align-items:flex-start; justify-content:center; padding:50px 20px; overflow:auto;}
+  .modal-overlay.active{display:flex;}
+  .modal{background:var(--paper); border-radius:22px; width:100%; max-width:640px; box-shadow:var(--shadow); border:1px solid var(--line); animation:fadeIn .25s ease;}
+  .modal-head{display:flex; justify-content:space-between; align-items:flex-start; padding:26px 28px 18px; border-bottom:1px solid var(--line);}
+  .modal-head h2{font-size:19px; font-weight:700;}
+  .modal-head .sub{font-size:12.5px; color:var(--ink-soft); margin-top:4px;}
+  .modal-close{width:32px; height:32px; border-radius:50%; border:1.5px solid var(--line); background:none; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+  .modal-close:hover{background:var(--line);}
+  .modal-body{padding:22px 28px 28px;}
+  .modal-foot{padding:18px 28px 26px; display:flex; gap:10px; flex-wrap:wrap; border-top:1px solid var(--line);}
+  .kv-grid{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:20px;}
+  .kv{background:var(--cream); border-radius:12px; padding:12px 14px;}
+  .kv .k{font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-soft); font-weight:600; margin-bottom:4px;}
+  .kv .v{font-size:14.5px; font-weight:600;}
+  .tag-row{display:flex; gap:7px; flex-wrap:wrap; margin-top:6px;}
+  .tag{background:#DDEBD9; color:#3F6B3A; font-size:11.5px; padding:4px 11px; border-radius:999px; font-weight:600;}
+  body.dark .tag{background:rgba(150,184,144,.22); color:#CFE5CA;}
+
+/* ---------- Student Messages (Talk to Guidance inbox) ---------- */
+.messages-layout{display:flex; gap:18px; height:calc(100vh - 170px); min-height:420px;}
+.thread-list-panel{width:300px; flex-shrink:0; display:flex; flex-direction:column; overflow:hidden;}
+.thread-list-head{padding:16px 18px; border-bottom:1px solid var(--line); font-weight:700; font-size:13.5px;}
+.thread-list{flex:1; overflow-y:auto;}
+.thread-item{display:flex; align-items:center; gap:10px; padding:12px 16px; cursor:pointer; border-bottom:1px solid var(--line); transition:background .15s ease;}
+.thread-item:hover{background:var(--peach);}
+.thread-item.active{background:var(--sky-pale);}
+.thread-item .avatar{width:36px; height:36px; border-radius:50%; background:var(--sky); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; flex-shrink:0;}
+.thread-item .t-info{min-width:0;}
+.thread-item .t-name{font-weight:700; font-size:13px; color:var(--ink);}
+.thread-item .t-preview{font-size:12px; color:var(--ink-soft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:190px;}
+.thread-item .t-counselor{font-size:10.5px; color:var(--ink-soft); margin-top:2px;}
+.thread-view-panel{flex:1; display:flex; flex-direction:column; overflow:hidden;}
+.thread-view-head{padding:16px 18px; border-bottom:1px solid var(--line); font-weight:700; font-size:14px;}
+.thread-messages{flex:1; overflow-y:auto; padding:18px; display:flex; flex-direction:column; gap:10px;}
+.tmsg-row{display:flex;}
+.tmsg-row.counselor{justify-content:flex-end;}
+.tmsg-bubble{max-width:65%; padding:10px 14px; border-radius:16px; font-size:13.5px; line-height:1.5;}
+.tmsg-row.student .tmsg-bubble{background:var(--peach); color:var(--ink); border-bottom-left-radius:4px;}
+.tmsg-row.counselor .tmsg-bubble{background:var(--sky-deep); color:#fff; border-bottom-right-radius:4px;}
+.thread-composer{display:flex; gap:10px; padding:14px 16px; border-top:1px solid var(--line);}
+.thread-composer input{flex:1; border:1px solid var(--line); border-radius:999px; padding:10px 16px; font-family:inherit; font-size:13.5px; background:var(--cream); color:var(--ink);}
+.thread-composer input:focus{outline:none; border-color:var(--sky-deep);}
+.thread-empty{flex:1; display:flex; align-items:center; justify-content:center; color:var(--ink-soft); font-size:13px;}
+.thread-info{padding:10px 18px; border-bottom:1px solid var(--line); font-size:12.5px; color:var(--ink-soft);}
+
+/* ---------- Notes ---------- */
+  .note-form label{display:block; font-size:12px; font-weight:700; color:var(--ink-soft); margin:12px 0 5px;}
+  .note-form input, .note-form textarea{width:100%; box-sizing:border-box; padding:10px 12px; border-radius:12px; border:1.5px solid var(--line); background:var(--cream); font-family:inherit; font-size:14px; color:inherit; resize:vertical;}
+  .note-card{background:var(--cream); border-radius:14px; padding:14px 16px; margin-bottom:12px;}
+  .note-meta{display:flex; justify-content:space-between; gap:10px; font-size:11.5px; color:var(--ink-soft);}
+  .note-card .lbl{font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-soft); font-weight:700; margin-top:10px;}
+  .note-card .txt{font-size:14px; white-space:pre-wrap; margin-top:2px;}
+  .note-actions{display:flex; gap:8px; margin-top:12px;}
+  .toast{position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px); background:#3A2E28; color:#fff; padding:11px 20px; border-radius:999px; font-size:13.5px; font-weight:600; opacity:0; pointer-events:none; transition:all .25s ease; z-index:300;}
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+  .notes-scroll{max-height:340px; overflow-y:auto; padding-right:4px;}
+  .note-row{display:block; width:100%; text-align:left; background:var(--cream); border:none; border-radius:12px; padding:11px 14px; margin-bottom:8px; cursor:pointer; color:inherit; font-family:inherit; transition:background .15s ease;}
+  .note-row:hover{background:var(--peach);}
+  .note-row .d{font-size:11.5px; font-weight:700; color:var(--ink-soft); display:flex; justify-content:space-between; gap:10px;}
+  .note-row .p{font-size:13.5px; margin-top:3px;}
+  .note-card .txt{max-height:240px; overflow-y:auto;}
+
+  /* ---------- Alerts / cards list ---------- */
+  .alert-card{display:flex; gap:16px; padding:18px 20px; margin-bottom:12px; align-items:flex-start;}
+  .alert-card .sev-strip{width:4px; align-self:stretch; border-radius:4px; flex-shrink:0;}
+  .alert-card .body{flex:1;}
+  .alert-card .top-row{display:flex; justify-content:space-between; gap:10px; margin-bottom:6px;}
+  .alert-card .reason{font-size:13.5px; line-height:1.5; color:var(--ink); margin:6px 0 10px;}
+  .alert-card .meta{font-size:11.5px; color:var(--ink-soft); display:flex; gap:14px; flex-wrap:wrap;}
+  .alert-card .actions{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;}
+
+  /* ---------- Settings tabs ---------- */
+  .tab-row{display:flex; gap:8px; margin-bottom:22px; border-bottom:1px solid var(--line); padding-bottom:0;}
+  .tab-btn{padding:11px 4px; margin-right:22px; background:none; border:none; border-bottom:2.5px solid transparent; font-size:14px; font-weight:600; color:var(--ink-soft);}
+  .tab-btn.active{color:var(--ink); border-color:var(--sage-deep);}
+  .subpanel{display:none;}
+  .subpanel.active{display:block;}
+  .toggle-row{display:flex; align-items:center; justify-content:space-between; padding:16px 0; border-bottom:1px solid var(--line);}
+  .toggle-row:last-child{border-bottom:none;}
+  .toggle-row .t-label{font-size:14px; font-weight:600;}
+  .toggle-row .t-desc{font-size:12.5px; color:var(--ink-soft); margin-top:3px; max-width:440px;}
+  .switch{width:44px; height:25px; border-radius:999px; background:var(--line); position:relative; border:none; flex-shrink:0;}
+  .switch.on{background:var(--sage-deep);}
+  .switch .knob{position:absolute; top:3px; left:3px; width:19px; height:19px; border-radius:50%; background:#fff; transition:left .15s ease; box-shadow:0 1px 3px rgba(0,0,0,.3);}
+  .switch.on .knob{left:22px;}
+
+  .empty-state{text-align:center; padding:50px 20px; color:var(--ink-soft);}
+  .empty-state svg{margin-bottom:14px; opacity:.5;}
+  .empty-state .e-title{font-weight:600; color:var(--ink); margin-bottom:4px;}
+
+  ::-webkit-scrollbar{width:9px; height:9px;}
+  ::-webkit-scrollbar-thumb{background:var(--line); border-radius:99px;}
+
+  @media (max-width: 1080px){
+    .stat-grid{grid-template-columns:repeat(2,1fr);}
+    .grid-2{grid-template-columns:1fr;}
+    .kv-grid{grid-template-columns:1fr;}
+  }
+  @media (max-width: 760px){
+    .stat-grid{grid-template-columns:1fr;}
+    .searchbox{min-width:0; flex:1;}
+    .topbar{padding:16px 18px;}
+    .content{padding:20px 16px 50px;}
+  }
+
+  /* ---------- Student waiting banner ---------- */
+  .waiting-banner-floating {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--brown, #8A6F4E);
+    color: #FFFFFF;
+    padding: 12px 18px;
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    z-index: 9999;
+    font-family: 'Inter', sans-serif;
+    font-size: 13.5px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    animation: bannerSlideUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .waiting-banner-floating:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.24);
+  }
+  .waiting-banner-floating .banner-dot {
+    width: 9px;
+    height: 9px;
+    background-color: #FFD166;
+    border-radius: 50%;
+    flex-shrink: 0;
+    animation: pulseDot 1.8s ease-in-out infinite;
+  }
+  @keyframes bannerSlideUp {
+    from { transform: translateY(100px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+</style>
+</head>
+<body>
+{% include 'core/_loader.html' %}
+
+<!-- ================= ADMIN SHELL ================= -->
+<div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+<div id="adminShell" class="active">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-top">
+      <a href="{% url 'staff_dashboard' %}" class="mica-logo-link" title="Back to Dashboard" aria-label="MICA, back to Dashboard" onclick="goTo('dashboard'); return false;">
+        {% include 'core/_logo.html' %}
+      </a>
+      <button class="collapse-btn" onclick="setSidebarOpen(false)" title="Collapse sidebar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="9" y1="4" x2="9" y2="20"/></svg>
+    </button>
+    </div>
+    <div class="sidebar-tagline" style="padding:0 24px 14px; font-size:11.5px; color:rgba(90,74,61,.75); letter-spacing:.03em; font-weight:600;">Staff Console</div>
+
+    <div class="nav-group" style="flex:1; overflow-y:auto;">
+      <div class="nav-label">Monitor</div>
+      <button class="nav-item active" data-section="dashboard" onclick="goTo('dashboard')">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/></svg>
+        Dashboard
+      </button>
+      <button class="nav-item" data-section="students" onclick="goTo('students')">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17.5" cy="9" r="2.4"/><path d="M15.8 13a5 5 0 0 1 5.2 5"/></svg>
+        Students
+      </button>
+      <button class="nav-item" data-section="mood" onclick="goTo('mood')">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12h4l2-7 4 14 2-9 2 2h4"/></svg>
+        Mood Monitoring
+      </button>
+      <button class="nav-item" data-section="summary" onclick="goTo('summary')">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 11.5a8.4 8.4 0 0 1-8.9 8.4 8.7 8.7 0 0 1-3.1-.6L3 21l1.8-5.4A8.4 8.4 0 0 1 3.6 11.5 8.4 8.4 0 0 1 12 3a8.6 8.6 0 0 1 9 8.5z"/></svg>
+        Chat &amp; Mood Summary
+      </button>
+      <button class="nav-item" data-section="alerts" onclick="goTo('alerts')">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v2M12 19v2M4.2 12H2.5M21.5 12h-1.7M6 6l1.2 1.2M18 6l-1.2 1.2M6 18l1.2-1.2M18 18l-1.2-1.2"/><circle cx="12" cy="12" r="3.2"/></svg>
+        Risk Alerts
+        <span class="count" id="alertNavCount">0</span>
+      </button>
+      <button class="nav-item" data-section="messages" onclick="goTo('messages')">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 11.5a8.4 8.4 0 0 1-8.9 8.4 8.7 8.7 0 0 1-3.1-.6L3 21l1.8-5.4A8.4 8.4 0 0 1 3.6 11.5 8.4 8.4 0 0 1 12 3a8.6 8.6 0 0 1 9 8.5z"/></svg>
+        Student Messages
+        <span class="count" id="guidanceNavCount">0</span>
+      </button>
+
+      <div class="nav-label">Operations</div>
+      <button class="nav-item" data-section="appointments" onclick="goTo('appointments')">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="5" width="17" height="16" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>
+        Appointments
+      </button>
+      <button class="nav-item" data-section="reports" onclick="goTo('reports')">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 3h9l5 5v13H6z"/><path d="M15 3v5h5M9 13h6M9 17h6"/></svg>
+        Reports &amp; Analytics
+      </button>
+      <button class="nav-item" data-section="settings" onclick="goTo('settings')">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 13.5a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.9 2.9l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6V20a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.9-2.9l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.6-1H4a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.9-2.9l.1.1a1.7 1.7 0 0 0 1.9.3H10a1.7 1.7 0 0 0 1-1.6V4a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.9 2.9l-.1.1a1.7 1.7 0 0 0-.3 1.9V10c.1.7.6 1.3 1.6 1.4h.1a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.6 1.1z"/></svg>
+        Settings
+      </button>
+    </div>
+
+    <div class="sidebar-bottom">
+      <div class="admin-chip">
+        <div class="avatar" style="background:var(--sky);">{{ request.user.first_name|slice:":1"|upper }}{{ request.user.last_name|slice:":1"|upper }}</div>
+        <div class="who">
+          <div class="name" id="sidebarUserName">{{ request.user.get_full_name|default:request.user.username }}</div>
+          <div class="role" id="sidebarUserRole">{{ staff_role }}</div>
+        </div>
+        <button class="logout-btn" onclick="doLogout()" title="Log out">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/></svg>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+        <button class="icon-btn menu-btn" onclick="setSidebarOpen(true)" title="Toggle sidebar">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+      <div class="titlewrap">
+        <div class="eyebrow" id="topEyebrow">Overview</div>
+        <h2 id="topTitle">Dashboard</h2>
+      </div>
+      <div class="topbar-actions">
+        <div class="searchbox">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--ink-soft)" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+          <input id="globalSearch" placeholder="Search students, codes..." oninput="handleGlobalSearch(this.value)">
+        </div>
+        <button class="icon-btn" onclick="toggleTheme()" title="Toggle theme">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></svg>
+        </button>
+        <button class="icon-btn" onclick="goTo('alerts')" title="Risk alerts">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2a6 6 0 0 0-6 6v3.4c0 .8-.3 1.6-.9 2.2L4 15h16l-1.1-1.4a3.2 3.2 0 0 1-.9-2.2V8a6 6 0 0 0-6-6z"/><path d="M9.5 19a2.5 2.5 0 0 0 5 0"/></svg>
+          <span class="ping" id="bellPing">3</span>
+        </button>
+        <div class="avatar" style="background:var(--sky); cursor:pointer;" onclick="goTo('settings')">{{ request.user.first_name|slice:":1"|upper }}{{ request.user.last_name|slice:":1"|upper }}</div>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- ============ DASHBOARD ============ -->
+      <section class="section active" id="sec-dashboard">
+        <div class="stat-grid">
+          <div class="card stat-card">
+            <div class="icon-chip" style="background:var(--sage-pale); color:var(--sage-deep);">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17.5" cy="9" r="2.4"/><path d="M15.8 13a5 5 0 0 1 5.2 5"/></svg>
+            </div>
+            <div class="label">Students Monitored</div>
+            <div class="value" id="dashStudents">–</div>
+            <div class="delta up" id="dashStudentsDelta"></div>
+          </div>
+          <div class="card stat-card">
+            <div class="icon-chip" style="background:var(--sky-pale); color:var(--sky-deep);">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
+            </div>
+            <div class="label">Active Check-ins Today</div>
+            <div class="value" id="dashCheckins">–</div>
+            <div class="delta up" id="dashCheckinsDelta"></div>
+          </div>
+          <div class="card stat-card">
+            <div class="icon-chip" style="background:var(--alert-pale); color:var(--alert);">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9L2.5 18a1.6 1.6 0 0 0 1.4 2.4h16.2a1.6 1.6 0 0 0 1.4-2.4L13.7 3.9a1.6 1.6 0 0 0-2.8 0z"/></svg>
+            </div>
+            <div class="label">Active Risk Flags</div>
+            <div class="value" id="dashRiskCount"></div>
+            <div class="delta down" id="dashRiskDelta"></div>
+          </div>
+          <div class="card stat-card">
+            <div class="icon-chip" style="background:var(--sage-pale); color:var(--sage-deep);">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12h4l2-7 4 14 2-9 2 2h4"/></svg>
+            </div>
+            <div class="label">Avg. Campus Mood</div>
+            <div class="value"><span id="dashMood">–</span><span style="font-size:15px; color:var(--ink-soft);">/5</span></div>
+            <div class="delta up" id="dashMoodDelta"></div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card panel">
+            <div class="panel-head">
+              <div>
+                <h3>Campus Mood Trend</h3>
+                <div class="sub">Average daily mood score, last 14 days</div>
+              </div>
+              <div class="legend-row">
+                <span><span class="dot" style="background:var(--sage-deep);"></span>Avg mood</span>
+              </div>
+            </div>
+            <canvas id="moodTrendChart" height="150"></canvas>
+          </div>
+          <div class="card panel">
+            <div class="panel-head">
+              <div>
+                <h3>Weekly Engagement</h3>
+                <div class="sub">Check-ins submitted per week</div>
+              </div>
+            </div>
+            <canvas id="engagementChart" height="150"></canvas>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card panel">
+            <div class="panel-head">
+              <div>
+                <h3>Priority Risk Flags</h3>
+                <div class="sub">Needs review from a counselor</div>
+              </div>
+              <button class="pill-btn ghost sm" onclick="goTo('alerts')">View all</button>
+            </div>
+            <div id="dashAlertPreview"></div>
+          </div>
+          <div class="card panel">
+            <div class="panel-head">
+              <div>
+                <h3>Recent Activity</h3>
+                <div class="sub">Live feed across the platform</div>
+              </div>
+            </div>
+            <div class="feed-list" id="activityFeed"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ STUDENTS ============ -->
+      <section class="section" id="sec-students">
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <select class="filter-select" id="studentRiskFilter" onchange="renderStudents()">
+              <option value="all">All risk levels</option>
+              <option value="stable">Stable</option>
+              <option value="watch">Watch</option>
+              <option value="urgent">Urgent</option>
+              <option value="nodata">No data yet</option>
+            </select>
+            <select class="filter-select" id="studentProgramFilter" onchange="renderStudents()">
+              <option value="all">All programs</option>
+            </select>
+          </div>
+          <button class="pill-btn solid sm" onclick="exportStudentsExcel()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v13m0 0l-4-4m4 4l4-4"/><path d="M4 21h16"/></svg>
+            Export list
+          </button>
+        </div>
+        <div class="card" style="overflow-x:auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>Student</th><th>Program / Year</th><th>Mood trend</th><th>Streak</th><th>Risk level</th><th>Last active</th><th></th>
+              </tr>
+            </thead>
+            <tbody id="studentsTbody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ============ MOOD MONITORING ============ -->
+      <section class="section" id="sec-mood">
+        <div class="grid-2">
+          <div class="card panel">
+            <div class="panel-head">
+              <div><h3>Mood Distribution</h3><div class="sub">Self-reported mood this week, campus-wide</div></div>
+            </div>
+            <canvas id="moodDistChart" height="200"></canvas>
+          </div>
+          <div class="card panel">
+            <div class="panel-head">
+              <div><h3>Mood by Course</h3><div class="sub">Average score out of 5, courses with 3+ students</div></div>
+            </div>
+            <canvas id="moodByCollegeChart" height="200"></canvas>
+          </div>
+        </div>
+        <div class="card panel">
+          <div class="panel-head">
+            <div><h3>30-Day Campus Mood &amp; Check-ins</h3><div class="sub">Average mood and number of check-ins per day</div></div>
+          </div>
+          <canvas id="moodJournalChart" height="90"></canvas>
+        </div>
+      </section>
+
+      <!-- ============ CHAT & MOOD SUMMARY ============ -->
+      <section class="section" id="sec-summary">
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <select class="filter-select" id="summaryChatFilter" onchange="renderSummary()">
+              <option value="all">All chat statuses</option>
+              <option value="awaiting">Awaiting reply</option>
+              <option value="replied">Replied</option>
+              <option value="sent">Check-in sent</option>
+              <option value="none">No guidance chat</option>
+            </select>
+            <select class="filter-select" id="summaryCourseFilter" onchange="renderSummary()">
+              <option value="all">All courses</option>
+            </select>
+          </div>
+          <span style="font-size:12.5px; color:var(--ink-soft);">Mood levels, guidance chat status, and opt-in topic tags only. Diary entries and Mica messages are never shown.</span>
+        </div>
+        <div class="card" style="overflow-x:auto;">
+          <table>
+            <thead><tr><th>Student</th><th>Mood (7d)</th><th>Check-ins</th><th>Mica topics (14d)</th><th>Guidance chat</th><th>Handled by</th><th>Next appointment</th><th></th></tr></thead>
+            <tbody id="summaryTbody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ============ RISK ALERTS ============ -->
+      <section class="section" id="sec-alerts">
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <select class="filter-select" id="alertStatusFilter" onchange="renderAlerts()">
+              <option value="all">All statuses</option>
+              <option value="New">New</option>
+              <option value="In Review">In Review</option>
+              <option value="Resolved">Resolved</option>
+            </select>
+            <select class="filter-select" id="alertSeverityFilter" onchange="renderAlerts()">
+              <option value="all">All severities</option>
+              <option value="urgent">Urgent</option>
+              <option value="watch">Watch</option>
+              <option value="stable">Stable</option>
+            </select>
+            <select class="filter-select" id="alertCourseFilter" onchange="renderAlerts()">
+              <option value="all">All courses</option>
+            </select>
+          </div>
+        </div>
+        <div id="suggestedBox"></div>
+        <div id="alertsList"></div>
+      </section>
+
+      <!-- ============ STUDENT MESSAGES ============ -->
+      <section class="section" id="sec-messages">
+        <div class="messages-layout">
+          <div class="card thread-list-panel">
+            <div class="thread-list-head">Conversations</div>
+              <div class="thread-list" id="threadList"></div>
+          </div>
+        <div class="card thread-view-panel" id="threadViewPanel">
+          <div class="thread-empty" id="threadEmptyState">Select a conversation to view messages</div>
+        </div>
+      </div>
+    </section>
+
+      <!-- ============ APPOINTMENTS ============ -->
+      <section class="section" id="sec-appointments">
+        <div class="tab-row" style="margin-bottom:18px;">
+          <button class="tab-btn active" data-status="all" onclick="filterAppts('all', this)">
+            All <span class="count" id="count-all" style="font-size:11px; background:var(--line); padding:2px 8px; border-radius:999px; margin-left:4px;">0</span>
+          </button>
+          <button class="tab-btn" data-status="Pending" onclick="filterAppts('Pending', this)">
+            Pending <span class="count" id="count-Pending" style="font-size:11px; background:#FEF3C7; color:#92400E; padding:2px 8px; border-radius:999px; margin-left:4px;">0</span>
+          </button>
+          <button class="tab-btn" data-status="Confirmed" onclick="filterAppts('Confirmed', this)">
+            Confirmed <span class="count" id="count-Confirmed" style="font-size:11px; background:#E0F2FE; color:#075985; padding:2px 8px; border-radius:999px; margin-left:4px;">0</span>
+          </button>
+          <button class="tab-btn" data-status="Completed" onclick="filterAppts('Completed', this)">
+            Completed <span class="count" id="count-Completed" style="font-size:11px; background:#DCFCE7; color:#166534; padding:2px 8px; border-radius:999px; margin-left:4px;">0</span>
+          </button>
+          <button class="tab-btn" data-status="Cancelled" onclick="filterAppts('Cancelled', this)">
+            Cancelled <span class="count" id="count-Cancelled" style="font-size:11px; background:#FEE2E2; color:#991B1B; padding:2px 8px; border-radius:999px; margin-left:4px;">0</span>
+          </button>
+        </div>
+
+        <div class="card" style="overflow-x:auto;">
+          <table>
+            <thead>
+              <tr>
+                <th><br>Student</th>
+                <th><br>Counselor</th>
+                <th><br>Date</th>
+                <th><br>Time</th>
+                <th><br>Status</th>
+                <th><br>Action</th>
+              </tr>
+            </thead>
+            <tbody id="appointmentsTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ============ REPORTS ============ -->
+      <section class="section" id="sec-reports">
+        <div class="grid-2" style="margin-bottom:22px;">
+          <div class="offset-card">
+            <div class="offset-inner panel">
+              <h3 style="margin-bottom:8px;">Generate Summary Report</h3>
+              <p style="font-size:13.5px; color:var(--ink-soft); line-height:1.6; margin-bottom:18px;">Export a printable PDF covering campus mood trends, engagement, and open risk flags for the selected period.</p>
+              <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                <select class="filter-select" id="reportPeriod"><option>Last 7 days</option><option selected>Last 30 days</option><option>This semester</option></select>
+                <button class="pill-btn solid sm" onclick="exportPdfReport()">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h9l5 5v13H6z"/><path d="M15 3v5h5"/></svg>
+                  Export PDF
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="card panel">
+            <h3 style="margin-bottom:8px;">Export Raw Data</h3>
+            <p style="font-size:13.5px; color:var(--ink-soft); line-height:1.6; margin-bottom:18px;">Download the full student monitoring table as a spreadsheet for institutional reporting.</p>
+            <button class="pill-btn ghost sm" onclick="exportStudentsExcel()">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v13m0 0l-4-4m4 4l4-4"/><path d="M4 21h16"/></svg>
+              Export Excel (.xlsx)
+            </button>
+          </div>
+        </div>
+        <div class="card panel">
+          <div class="panel-head"><div><h3>Engagement by Program</h3><div class="sub">Check-in completion rate</div></div></div>
+          <canvas id="programChart" height="110"></canvas>
+        </div>
+
+        <!-- hidden printable summary used for PDF export -->
+        <div id="printableReport" style="position:absolute; left:-9999px; top:0; width:700px; padding:30px; background:#fff; color:#111; font-family:Arial,sans-serif;">
+          <h1 style="font-size:22px; margin-bottom:2px;">MICA — Mental Health Monitoring Summary</h1>
+          <p style="font-size:12px; color:#555; margin-bottom:18px;" id="printDate"></p>
+          <table style="width:100%; border-collapse:collapse; font-size:13px;">
+            <tr><td style="padding:6px 0; border-bottom:1px solid #eee;">Students monitored</td><td style="text-align:right; border-bottom:1px solid #eee;">482</td></tr>
+            <tr><td style="padding:6px 0; border-bottom:1px solid #eee;">Avg. campus mood</td><td style="text-align:right; border-bottom:1px solid #eee;">3.4 / 5</td></tr>
+            <tr><td style="padding:6px 0; border-bottom:1px solid #eee;">Active risk flags</td><td style="text-align:right; border-bottom:1px solid #eee;" id="printRiskCount">9</td></tr>
+            <tr><td style="padding:6px 0; border-bottom:1px solid #eee;">Check-in completion rate</td><td style="text-align:right; border-bottom:1px solid #eee;">71%</td></tr>
+          </table>
+          <p style="font-size:11px; color:#888; margin-top:22px;">Generated by MICA Staff Dashboard · Thesis prototype · Confidential</p>
+        </div>
+      </section>
+
+      <!-- ============ SETTINGS ============ -->
+      <section class="section" id="sec-settings">
+        <div class="tab-row">
+          <button class="tab-btn active" data-tab="profile" onclick="showTab('profile', this)">My Profile</button>
+          <button class="tab-btn" data-tab="thresholds" onclick="showTab('thresholds', this)">Monitoring Thresholds</button>
+          <button class="tab-btn" data-tab="accounts" onclick="showTab('accounts', this)">Care Team</button>
+          <button class="tab-btn" data-tab="appearance" onclick="showTab('appearance', this)">Appearance</button>
+        </div>
+
+        <div class="subpanel active" id="tab-profile">
+          <div class="card panel" style="max-width:520px;">
+    
+          <div class="field"><label>First name</label><input type="text" id="profFirst" value="{{ request.user.first_name }}"></div>
+          <div class="field"><label>Last name</label><input type="text" id="profLast" value="{{ request.user.last_name }}"></div>
+          <div class="field"><label>Email</label><input type="email" value="{{ request.user.email }}" disabled></div>
+          <div class="field"><label>Role</label><input id="profileRoleInput" value="{{ staff_role }}" disabled></div>
+          <div class="field"><label>License / registration no.</label><input type="text" id="profLicense" value="{{ staff_license }}"></div>
+          <button class="pill-btn solid sm" onclick="saveStaffProfile()">Save changes</button>
+    
+          <p style="font-size:12px; color:var(--ink-soft); margin-top:14px;">
+            To change your email or role, or to deactivate this account, contact your System Admin.
+          </p>
+
+          <div style="margin-top:20px; padding-top:16px; border-top:1px solid var(--line, rgba(0,0,0,.08));">
+            <div style="font-weight:700; font-size:14px; margin-bottom:4px;">Staff Console tutorial</div>
+            <p style="font-size:12.5px; color:var(--ink-soft); margin:0 0 10px;">Want a refresher? Replay the quick tour of the console.</p>
+            <form method="post" action="{% url 'tutorial_reset' %}" style="margin:0;">
+              {% csrf_token %}
+              <button type="submit" class="pill-btn ghost sm">Replay tutorial</button>
+            </form>
+          </div>
+
+        </div>
+      </div>
+
+        <div class="subpanel" id="tab-thresholds">
+          <div class="stat-grid" style="margin-bottom:18px;">
+            <div class="card stat-card"><div class="label">Urgent now</div><div class="value" id="riskCount_urgent">0</div></div>
+            <div class="card stat-card"><div class="label">Watch now</div><div class="value" id="riskCount_watch">0</div></div>
+            <div class="card stat-card"><div class="label">Stable</div><div class="value" id="riskCount_stable">0</div></div>
+            <div class="card stat-card"><div class="label">No data yet</div><div class="value" id="riskCount_nodata">0</div></div>
+          </div>
+
+          <div class="card panel" style="margin-bottom:18px;">
+            <div class="panel-head"><div><h3>How risk levels are decided</h3><div class="sub">Mood check-ins from the last 14 days. Needs at least 3 check-ins for the average rules.</div></div></div>
+            <div style="overflow-x:auto;">
+              <table>
+                <thead><tr><th>Level</th><th>Rule</th><th>Suggested follow-up</th></tr></thead>
+                <tbody>
+                  <tr style="cursor:default;"><td><span class="badge urgent"><span class="dot"></span>Urgent</span></td><td>Last 3 check-ins are all 2 or below, OR the average is 2.0 or below</td><td>Review first. Consider a check-in message.</td></tr>
+                  <tr style="cursor:default;"><td><span class="badge watch"><span class="dot"></span>Watch</span></td><td>Average is 3.0 or below, OR no check-in for 5+ days</td><td>Review this week.</td></tr>
+                  <tr style="cursor:default;"><td><span class="badge stable"><span class="dot"></span>Stable</span></td><td>Everything else</td><td>No action needed.</td></tr>
+                  <tr style="cursor:default;"><td><span class="badge neutral"><span class="dot"></span>No data</span></td><td>Never checked in</td><td>Nothing to judge yet.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p style="font-size:12px; color:var(--ink-soft); margin-top:12px;">Confirm the follow-up timing with your guidance counselor. Going quiet is not the same as being in distress, which is why it only reaches Watch.</p>
+          </div>
+
+          <div class="grid-2" style="grid-template-columns:1fr 1fr;">
+            <div class="card panel">
+              <h3 style="margin-bottom:10px;">Mood score key</h3>
+              <ul style="font-size:13.5px; line-height:1.9; padding-left:20px;">
+                <li>5: Great</li><li>4: Good</li><li>3: Okay</li><li>2: Low</li><li>1: Struggling</li>
+              </ul>
+            </div>
+            <div class="card panel">
+              <h3 style="margin-bottom:10px;">What is and isn't used</h3>
+              <p style="font-size:13.5px; line-height:1.7;"><b>Used:</b> mood check-in levels only.<br><b>Never used:</b> diary text, Mica chats, check-in answers.<br><b>Who decides:</b> a staff member. The system only suggests; nobody is flagged automatically.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="subpanel" id="tab-accounts">
+          <div class="toolbar">
+            <div style="font-size:12.5px; color:var(--ink-soft); max-width:520px;">Everyone on the guidance team. Real names are visible to staff only. Students only see a role label. Accounts are added and removed by the System Admin.</div>
+          </div>
+          <div class="card" style="overflow-x:auto;">
+            <table>
+              <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Last active</th></tr></thead>
+              <tbody id="adminsTbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="subpanel" id="tab-appearance">
+          <div class="card panel" style="max-width:520px;">
+            <div class="toggle-row">
+              <div><div class="t-label">Dark mode</div><div class="t-desc">Switch the console to a low-light color scheme.</div></div>
+              <button class="switch" id="darkSwitch" onclick="toggleTheme()"><span class="knob"></span></button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<!-- ================= STUDENT MODAL ================= -->
+<div class="modal-overlay" id="studentModal">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <h2 id="modalStudentName">Student profile</h2>
+        <div class="sub" id="modalStudentSub">—</div>
+      </div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex; align-items:center; gap:8px; font-size:11.5px; color:var(--ink-soft); background:var(--cream); border-radius:10px; padding:9px 12px; margin-bottom:16px;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+          Your access to this record is logged with your name and the time, per the Data Privacy Act (RA 10173).
+      </div>
+      <div class="kv-grid">
+        <div class="kv"><div class="k">Risk level</div><div class="v" id="modalRisk">—</div></div>
+        <div class="kv"><div class="k">Check-in streak</div><div class="v" id="modalStreak">—</div></div>
+        <div class="kv"><div class="k">Avg mood (7d)</div><div class="v" id="modalMood">—</div></div>
+        <div class="kv"><div class="k">Last active</div><div class="v" id="modalLast">—</div></div>
+      </div>
+      <h3 style="font-size:14px; margin-bottom:10px;">Mood history — last 14 check-ins</h3>
+      <canvas id="modalMoodChart" height="90" style="margin-bottom:18px;"></canvas>
+    </div>
+    <div class="modal-foot">
+      <button class="pill-btn solid sm" onclick="flagCurrentStudent()">Flag for counselor</button>
+      <button class="pill-btn ghost sm" onclick="openStudentChat(false)">Send check-in</button>
+      <button class="pill-btn ghost sm" onclick="openStudentChat(true)">Schedule appointment</button>
+      <button class="pill-btn ghost sm" onclick="openNotesPanel()">Notes</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="notesModal" style="z-index:110;">
+  <div class="modal" style="max-width:640px;">
+    <div class="modal-head">
+      <div>
+        <h2 id="notesTitle">Notes</h2>
+        <div class="sub">Private to staff. Students can't see these.</div>
+      </div>
+      <button class="modal-close" onclick="closeNotes()">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <div id="notesListView">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <h3 style="font-size:14px;">Note history</h3>
+          <button class="pill-btn solid sm" onclick="newNote()">+ New note</button>
+        </div>
+        <div id="notesList" class="notes-scroll"></div>
+      </div>
+
+      <div id="notesFormView" style="display:none;">
+        <div class="note-form">
+          <input type="hidden" id="noteEditId">
+          <label>Session date</label>
+          <input type="date" id="noteDate">
+          <label>Topic discussed</label>
+          <textarea id="noteTopic" rows="4" placeholder="What did you talk about?"></textarea>
+          <label>Student's realizations</label>
+          <textarea id="noteReal" rows="4" placeholder="What did the student realize after the talk?"></textarea>
+          <div style="display:flex; gap:8px; margin-top:14px;">
+            <button class="pill-btn solid sm" id="noteSaveBtn" onclick="saveNote()">Save note</button>
+            <button class="pill-btn ghost sm" onclick="cancelNoteForm()">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="notesDetailView" style="display:none;"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="flagModal" style="z-index:110;">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-head">
+      <div>
+        <h2 id="flagTitle">Flag for counselor</h2>
+        <div class="sub">This creates an alert in Risk Alerts. The student is not notified.</div>
+      </div>
+      <button class="modal-close" onclick="closeFlagModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="note-form">
+        <label>Reason for flagging</label>
+        <textarea id="flagReason" rows="4" placeholder="What did you notice? (mood trend, chat summary, keywords...)"></textarea>
+        <div style="display:flex; gap:8px; margin-top:14px;">
+          <button class="pill-btn solid sm" onclick="submitFlag()">Flag student</button>
+          <button class="pill-btn ghost sm" onclick="closeFlagModal()">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<div id="studentWaitingBanner" class="waiting-banner-floating" style="display: none;" onclick="goTo('messages')">
+  <span class="banner-dot"></span>
+  <span>A student is waiting for a reply.</span>
+</div>
+
+<script>
+/* =========================================================
+   MOCK DATA
+========================================================= */
+const PROGRAMS = ["BS Computer Science","BS Psychology","BS Business Administration","BS Nursing","BS Architecture","BS Education"];
+const MOOD_TAGS = ["Anxious","Calm","Overwhelmed","Hopeful","Low energy","Motivated","Lonely","Grateful","Stressed","Content"];
+const FIRST = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O"];
+const RISK_LEVELS = ["stable","watch","urgent"];
+
+function rand(min,max){return Math.floor(Math.random()*(max-min+1))+min;}
+function pick(arr){return arr[Math.floor(Math.random()*arr.length)];}
+function sparkPath(vals,w,h){
+  const max=5,min=1; const step=w/(vals.length-1);
+  return vals.map((v,i)=>`${i*step},${h-((v-min)/(max-min))*h}`).join(' ');
+}
+
+let students = [];
+for(let i=1;i<=28;i++){
+  const risk = i<=4?"urgent":(i<=12?"watch":"stable");
+  const trend = Array.from({length:7},()=>rand(1,5));
+  students.push({
+    code:`MC-${1000+i*7}`,
+    initials: pick(FIRST)+pick(FIRST),
+    program: pick(PROGRAMS),
+    year: rand(1,4),
+    risk: risk,
+    mood: (trend.reduce((a,b)=>a+b,0)/trend.length).toFixed(1),
+    trend: trend,
+    streak: rand(0,32),
+    lastActive: rand(0,1)?`${rand(1,11)}h ago`:`${rand(1,6)}d ago`,
+    tags: [pick(MOOD_TAGS),pick(MOOD_TAGS),pick(MOOD_TAGS)]
+  });
+}
+
+let alerts = [];
+let suggested = [];
+
+let admins = [];
+
+let activity = [];
+let dashData = {trend:{labels:[], values:[]}, engagement:[]};
+
+let currentStudentCode = null;
+let charts = {};
+
+const MASCOT_SVG = `<svg width="52" height="52" viewBox="0 0 100 100" fill="none">
+  <path d="M18 46c-7-3-12-11-11-15 2-6 10-2 15 3" stroke="#EFC0C6" stroke-width="7" stroke-linecap="round" fill="#F6D3D8"/>
+  <path d="M82 46c7-3 12-11 11-15-2-6-10-2-15 3" stroke="#EFC0C6" stroke-width="7" stroke-linecap="round" fill="#F6D3D8"/>
+  <ellipse cx="50" cy="45" rx="27" ry="24" fill="#F6D3D8"/>
+  <ellipse cx="41" cy="45" rx="2.6" ry="3.2" fill="#3A2A2A"/>
+  <ellipse cx="59" cy="45" rx="2.6" ry="3.2" fill="#3A2A2A"/>
+  <path d="M45 53c1.6 1.6 6.4 1.6 8 0" stroke="#B5533C" stroke-width="2" stroke-linecap="round"/>
+  <path d="M25 58c0 16 11 28 25 28s25-12 25-28c0-3-2-6-6-6H31c-4 0-6 3-6 6z" fill="#FFFFFF"/>
+  <circle cx="50" cy="68" r="7" fill="#C0453A"/>
+  <path d="M50 65.2c-1.4-1.8-4.3-1.8-4.3.8 0 2 2.3 3.4 4.3 5.2 2-1.8 4.3-3.2 4.3-5.2 0-2.6-2.9-2.6-4.3-.8z" fill="#fff"/>
+</svg>`;
+
+/* =========================================================
+   AUTH
+========================================================= */
+function doLogout(){
+  window.location.href = "{% url 'logout' %}";
+}
+
+document.addEventListener('DOMContentLoaded', initAll);
+
+/* =========================================================
+   NAVIGATION
+========================================================= */
+const sidebarEl = document.getElementById('sidebar');
+const sidebarBackdrop = document.getElementById('sidebarBackdrop');
+
+function isMobile(){ return window.innerWidth <= 860; }
+function setSidebarOpen(open){
+  sidebarEl.classList.toggle('is-collapsed', !open);
+  sidebarBackdrop.classList.toggle('is-visible', isMobile() && open);
+}
+sidebarBackdrop.addEventListener('click', ()=>setSidebarOpen(false));
+sidebarEl.addEventListener('click', e=>{
+  if(isMobile() && e.target.closest('.nav-item')) setSidebarOpen(false);
+});
+window.addEventListener('resize', ()=>{ if(!isMobile()) sidebarBackdrop.classList.remove('is-visible'); });
+if(isMobile()) setSidebarOpen(false);
+
+const titles = {
+  dashboard:["Overview","Dashboard"],
+  students:["Monitor","Students"],
+  messages:["Monitor","Student Messages"],
+  mood:["Monitor","Mood Monitoring"],
+  summary:["Monitor","Chat & Mood Summary"],
+  alerts:["Monitor","Risk Alerts"],
+  appointments:["Operations","Appointments"],
+  reports:["Operations","Reports & Analytics"],
+  settings:["Operations","Settings"],
+};
+function goTo(section){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.getElementById('sec-'+section).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.querySelector(`.nav-item[data-section="${section}"]`).classList.add('active');
+  document.getElementById('topEyebrow').textContent = titles[section][0];
+  document.getElementById('topTitle').textContent = titles[section][1];
+  document.getElementById('sidebar').classList.remove('open');
+  if(section==='dashboard') setTimeout(renderCharts,10);
+  if(section === 'appointments'){ loadAppointments(); }
+  if(section==='messages'){
+    setTimeout(loadGuidanceInbox,10);
+    if(activeThreadId){
+      fetchThreadMessages();
+      clearInterval(threadPollTimer);
+      threadPollTimer = setInterval(fetchThreadMessages, 4000);
+    }
+  } else {
+    clearInterval(threadPollTimer);
+  }
+  if(section==='mood') setTimeout(renderMoodCharts,10);
+  if(section==='summary') loadSummary();
+  if(section==='reports') setTimeout(renderReportChart,10);
+}
+
+function showTab(tab, el){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.subpanel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+}
+
+/* =========================================================
+   RENDER: STUDENTS
+========================================================= */
+let studentsReal = [];
+let courseOptions = [];
+
+function riskBadge(risk, pulse){
+  const labelMap = {stable:"Stable", watch:"Watch", urgent:"Urgent", nodata:"No data"};
+  const cls = risk === 'nodata' ? 'neutral' : risk;
+  const dotClass = (risk!=='stable' && risk!=='nodata' && pulse!==false) ? 'dot pulse' : 'dot';
+  return `<span class="badge ${cls}"><span class="${dotClass}"></span>${labelMap[risk]}</span>`;
+}
+
+function courseLabel(c){
+  const f = courseOptions.find(x => x.code === c);
+  return f ? f.label : c;
+}
+
+function courseSelectHtml(extraCodes){
+  const known = courseOptions.map(c => c.code);
+  const extras = [...new Set(extraCodes)].filter(c => !known.includes(c)).sort();
+  const all = courseOptions.map(c => [c.code, c.label]).concat(extras.map(c => [c, c]));
+  return '<option value="all">All courses</option>' +
+    all.map(([v, l]) => `<option value="${escapeHtmlStaff(v)}">${escapeHtmlStaff(l)}</option>`).join('');
+}
+
+function populateProgramFilter(){
+  const sel = document.getElementById('studentProgramFilter');
+  PROGRAMS.forEach(p=>{
+    const o=document.createElement('option'); o.value=p; o.textContent=p; sel.appendChild(o);
+  });
+}
+
+function yearLabel(y){ return !y ? '' : (/^\d/.test(y) ? 'Year ' + y : y); }
+
+function loadStudents(){
+  document.getElementById('studentsTbody').innerHTML =
+    '<tr><td colspan="7" style="padding:24px; color:var(--ink-soft);">Loading students…</td></tr>';
+  return fetch("{% url 'staff_students_list' %}")
+    .then(r => r.json())
+    .then(data => {
+      studentsReal = data.students || [];
+      courseOptions = data.courses || courseOptions;
+      const sel = document.getElementById('studentProgramFilter');
+      const keep = sel.value || 'all';
+      sel.innerHTML = courseSelectHtml(studentsReal.map(s => s.program));
+      sel.value = [...sel.options].some(o => o.value === keep) ? keep : 'all';
+      renderStudents();
+      renderRiskRules();
+    })
+    .catch(() => {
+      document.getElementById('studentsTbody').innerHTML =
+        '<tr><td colspan="7" style="padding:24px; color:var(--ink-soft);">Could not load students. Try refreshing.</td></tr>';
+    });
+}
+
+function renderStudents(){
+  const riskF = document.getElementById('studentRiskFilter').value;
+  const progF = document.getElementById('studentProgramFilter').value;
+  const q = (document.getElementById('globalSearch').value||'').toLowerCase();
+  const tbody = document.getElementById('studentsTbody');
+  tbody.innerHTML='';
+  const filtered = studentsReal.filter(s=>
+    (riskF==='all'||s.risk===riskF) &&
+    (progF==='all'||s.program===progF) &&
+    (q===''||s.name.toLowerCase().includes(q)||s.student_number.toLowerCase().includes(q)||s.program.toLowerCase().includes(q))
+  );
+  if(filtered.length===0){
+    tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state">${MASCOT_SVG}<div class="e-title">No students match these filters</div>Try clearing a filter or search term.</div></td></tr>`;
+    return;
+  }
+  filtered.forEach(s=>{
+    const color = s.risk==='urgent'?'var(--alert)':s.risk==='watch'?'var(--sky-deep)':'var(--sage-deep)';
+    const spark = s.trend.length > 1
+      ? `<svg width="70" height="24" viewBox="0 0 70 24"><polyline points="${sparkPath(s.trend,70,24)}" fill="none" stroke="${color}" stroke-width="2"/></svg>`
+      : `<span style="color:var(--ink-soft);">—</span>`;
+    const tr = document.createElement('tr');
+    tr.onclick=()=>openStudentModal(s.code);
+    tr.innerHTML = `
+            <td><div class="stu-cell"><div class="avatar">${initials(s.name)}</div><div><div class="code">${escapeHtmlStaff(s.name)}</div><div class="prog">${escapeHtmlStaff(s.student_number)}</div></div></div></td>
+      <td>${escapeHtmlStaff(s.program)}<br><span class="prog" style="color:var(--ink-soft); font-size:11.5px;">${escapeHtmlStaff(yearLabel(s.year))}</span></td>
+      <td>${spark}</td>
+      <td class="mono-cell">${s.streak} ${s.streak===1?'day':'days'}</td>
+      <td>${riskBadge(s.risk)}</td>
+      <td class="mono-cell">${s.last_active}</td>
+      <td><button class="pill-btn ghost sm" onclick="event.stopPropagation(); openStudentModal('${s.code}')">View</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function renderRiskRules(){
+  const c = {urgent:0, watch:0, stable:0, nodata:0};
+  studentsReal.forEach(s => { if(c[s.risk] !== undefined) c[s.risk]++; });
+  Object.keys(c).forEach(k => {
+    const el = document.getElementById('riskCount_' + k);
+    if(el) el.textContent = c[k];
+  });
+}
+
+function handleGlobalSearch(v){
+  renderStudents();
+}
+
+/* =========================================================
+   STUDENT MESSAGES (Talk to Guidance — two-way chat)
+========================================================= */
+const THREAD_URL = "{% url 'staff_guidance_thread' 0 %}";   // -> "/api/staff/guidance/0/"
+const SEND_URL    = "{% url 'staff_guidance_send' 0 %}";    // -> "/api/staff/guidance/0/send/"
+
+let activeThreadId = null;
+let threadPollTimer = null;
+let scheduleSubmitting = false;
+let seenLastMsg = {};
+let threadsById = {};
+
+function initials(name){
+  return name.split(' ').filter(Boolean).map(w=>w[0]).join('').slice(0,2).toUpperCase();
+}
+
+function pollStaffNotifications(){
+  fetch("{% url 'staff_guidance_inbox' %}")
+    .then(r => r.json())
+    .then(data => {
+      const waiting = data.threads.filter(t => t.awaiting_reply).length;
+      const fresh = data.threads.filter(t => t.awaiting_reply && t.last_message_id > (seenLastMsg[t.id] || 0));
+      if(staffNotifInitialized && fresh.length){
+        notifSound.play().catch(()=>{});
+      }
+      data.threads.forEach(t => {
+        if(t.last_message_id > (seenLastMsg[t.id] || 0)) seenLastMsg[t.id] = t.last_message_id;
+      });
+      staffNotifInitialized = true;
+      lastStaffNotifCount = waiting;
+      document.getElementById('guidanceNavCount').textContent = waiting;
+
+      const banner = document.getElementById('studentWaitingBanner');
+      if (banner) {
+        if (waiting > 0) {
+          banner.style.display = 'flex';
+        } else {
+          banner.style.display = 'none';
+        }
+      }
+
+      const messagesSection = document.getElementById('sec-messages');
+      if(messagesSection && messagesSection.classList.contains('active')){
+        loadGuidanceInbox();
+      }
+
+      document.title = waiting ? `(${waiting}) Student waiting | MICA` : 'MICA | Staff Dashboard';
+    });
+}
+
+setInterval(pollStaffNotifications, 10000);
+pollStaffNotifications();
+
+function loadGuidanceInbox(){
+  return fetch("{% url 'staff_guidance_inbox' %}")
+    .then(r=>r.json())
+    .then(data=>{
+      threadsById = Object.fromEntries(data.threads.map(t => [t.id, t]));
+      const list = document.getElementById('threadList');
+      if(!data.threads.length){
+        list.innerHTML = `<div class="thread-empty" style="height:100%;">No student conversations yet</div>`;
+      } else {
+        list.innerHTML = data.threads.map(t => {
+          const owner = !t.claimed ? 'Unclaimed' : (t.mine ? 'Claimed by you' : 'Claimed by ' + escapeHtmlStaff(t.counselor_name) + ' · ' + escapeHtmlStaff(t.counselor_role));
+          return `
+          <div class="thread-item ${t.id===activeThreadId?'active':''}" onclick="openGuidanceThread(${t.id}, '${t.student_name.replace(/'/g,"\\'")}')">
+            <div class="avatar">${initials(t.student_name)}</div>
+            <div class="t-info">
+              <div class="t-name">${t.student_name} ${t.awaiting_reply && t.id !== activeThreadId ? '<span style="background:var(--alert); color:#fff; font-size:10px; padding:2px 7px; border-radius:999px; margin-left:6px;">New</span>' : ''}</div>
+              <div class="t-preview">${escapeHtmlStaff(t.last_message || 'No messages yet')}</div>
+              <div class="t-counselor">${owner}</div>
+            </div>
+          </div>`;
+        }).join('');
+      }
+      const waitingCount = data.threads.filter(t => t.awaiting_reply).length;
+      document.getElementById('guidanceNavCount').textContent = waitingCount;
+    });
+}
+
+function openGuidanceThread(threadId, studentName){
+  activeThreadId = threadId;
+  loadGuidanceInbox();
+  const t = threadsById[threadId];
+
+  // Locked: claimed by another counselor
+  if (t && t.claimed && !t.mine) {
+    clearInterval(threadPollTimer);
+    document.getElementById('threadViewPanel').innerHTML = `
+      <div class="thread-view-head">${studentName}</div>
+      <div class="thread-empty" style="flex:1; display:flex; flex-direction:column; gap:12px; text-align:center; padding:24px;">
+        <div>This conversation is handled by <b>${escapeHtmlStaff(t.counselor_name)}</b> (${escapeHtmlStaff(t.counselor_role)}).</div>
+        <div style="font-size:12.5px;">If they're unavailable, you can take it over. The conversation and the student's upcoming appointments will move to you.</div>
+        <button class="pill-btn solid sm" onclick="claimThread(${threadId}, true)">Take over</button>
+      </div>`;
+    return;
+  }
+
+  if (t) logRecordAccess(t.student_id, 'open_chat');
+
+  const panel = document.getElementById('threadViewPanel');
+  panel.innerHTML = `
+    <div class="thread-view-head" style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
+      <div style="min-width:0;">
+        <div>${studentName}</div>
+        <div id="threadStudentSub" style="font-size:12.5px; font-weight:500; color:var(--ink-soft); margin-top:2px;"></div>
+      </div>
+      <span style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
+        ${t && !t.claimed ? `<button class="pill-btn ghost sm" onclick="claimThread(${threadId}, false)">Claim</button>` : ''}
+        ${t && t.mine ? `<button class="pill-btn ghost sm" onclick="releaseThread(${threadId})">Release</button>` : ''}
+        <button class="pill-btn ghost sm" onclick="openThreadNotes(${threadId})">📝 Notes</button>
+        <button class="pill-btn solid sm" onclick="openScheduleModal()">📅 Schedule Appointment</button>
+      </span>
+    </div>
+    <div class="thread-info" id="threadStudentInfo"></div>
+    <div class="thread-messages" id="threadMessages"></div>
+    <div class="thread-composer">
+      <input type="text" id="threadInput" placeholder="Reply to ${studentName}...">
+      <button class="pill-btn solid sm" onclick="sendStaffGuidanceMessage()">Send</button>
+    </div>
+  `;
+  document.getElementById('threadInput').addEventListener('keydown', e=>{
+    if(e.key==='Enter') sendStaffGuidanceMessage();
+  });
+
+  fetchThreadMessages();
+  clearInterval(threadPollTimer);
+  threadPollTimer = setInterval(fetchThreadMessages, 4000);
+}
+
+function claimThread(threadId, takeover){
+  if (takeover && !confirm('Take over this conversation? The current counselor will lose access to it.')) return;
+  const name = threadsById[threadId]?.student_name || '';
+  fetch(`/api/staff/guidance/${threadId}/claim/`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken')},
+    body: JSON.stringify({ takeover })
+  })
+  .then(r => r.json().then(res => ({ ok: r.ok, res })))
+  .then(({ ok, res }) => {
+    if (!ok) { showToast(res.error || 'Could not claim this conversation'); return; }
+    showToast(takeover ? 'You took over this conversation' : 'Conversation claimed');
+    loadGuidanceInbox().then(() => openGuidanceThread(threadId, name));
+  });
+}
+
+function releaseThread(threadId){
+  if (!confirm('Release this conversation so another counselor can handle it?')) return;
+  const name = threadsById[threadId]?.student_name || '';
+  fetch(`/api/staff/guidance/${threadId}/release/`, {
+    method: 'POST',
+    headers: {'X-CSRFToken': getCookie('csrftoken')}
+  })
+  .then(r => {
+    if (!r.ok) { showToast('Could not release this conversation'); return; }
+    showToast('Conversation released');
+    loadGuidanceInbox().then(() => openGuidanceThread(threadId, name));
+  });
+}
+
+function fetchThreadMessages(){
+  if(!activeThreadId) return;
+  fetch(THREAD_URL.replace('0', activeThreadId))
+    .then(r=>r.json())
+    .then(data=>{
+      if(!data.messages) return;   // locked / error response
+      const container = document.getElementById('threadMessages');
+      if(!container) return; // panel may have changed since the fetch started
+      container.innerHTML = data.messages.map(m => `
+        <div class="tmsg-row ${m.sender}">
+          <div class="tmsg-bubble">${escapeHtmlStaff(m.content.replace(/\s*\[appointment:\d+\]/g, ''))}</div>
+        </div>
+      `).join('');
+      container.scrollTop = container.scrollHeight;
+      const i = data.student_info;
+      const sub = document.getElementById('threadStudentSub');
+      if(sub && i) sub.textContent = [i.course, i.year].filter(Boolean).join(' · ');
+      const infoBox = document.getElementById('threadStudentInfo');
+      if(infoBox && i){
+        if(!i.shared) infoBox.textContent = 'Check-in conditions: not shared by the student';
+        else if(!i.conditions.length) infoBox.textContent = 'Student shared their check-in: no conditions ticked';
+        else infoBox.innerHTML = '<div class="tag-row" style="margin-top:0;">' + i.conditions.map(c => `<span class="tag">${escapeHtmlStaff(c)}</span>`).join('') + '</div>';
+      }
+    });
+}
+
+function sendStaffGuidanceMessage(){
+  const input = document.getElementById('threadInput');
+  const text = input.value.trim();
+  if(!text || !activeThreadId) return;
+  input.value = '';
+
+  fetch(SEND_URL.replace('0', activeThreadId), {
+    method: "POST",
+    headers: {"Content-Type": "application/json", "X-CSRFToken": getCookie("csrftoken")},
+    body: JSON.stringify({message: text}),
+  }).then(fetchThreadMessages);
+}
+
+function openScheduleModal(){
+  const modal = document.createElement('div');
+  modal.id = 'scheduleModal';
+  modal.style = "position:fixed; inset:0; background:rgba(0,0,0,0.4); display:flex; align-items:center; justify-content:center; z-index:999;";
+  modal.innerHTML = `
+    <div style="background:#FBF2DE; border-radius:20px; padding:28px; width:320px; position:relative;">
+      <span onclick="document.getElementById('scheduleModal').remove()" style="position:absolute; top:14px; right:18px; cursor:pointer; font-size:20px;">✕</span>
+      <h3 style="margin-top:0;">Schedule Appointment</h3>
+      <label style="font-weight:700; font-size:13px;">Date</label>
+      <input type="date" id="apptDate" style="width:100%; padding:10px; margin:6px 0 14px; border-radius:10px; border:1px solid #ddd; box-sizing:border-box;">
+      <label style="font-weight:700; font-size:13px;">Time</label>
+      <input type="time" id="apptTime" style="width:100%; padding:10px; margin:6px 0 18px; border-radius:10px; border:1px solid #ddd; box-sizing:border-box;">
+      <button onclick="submitSchedule()" class="pill-btn solid sm" style="width:100%;">Confirm Schedule</button>
+    </div>
+  `;
+  document.body.appendChild(modal);
+}
+
+function submitSchedule(){
+  if(scheduleSubmitting) return;
+  const date = document.getElementById('apptDate').value;
+  const time = document.getElementById('apptTime').value;
+  if(!date || !time){ alert("Please pick both a date and a time."); return; }
+
+  scheduleSubmitting = true;
+  const btn = document.querySelector('#scheduleModal button[onclick="submitSchedule()"]');
+  if(btn){ btn.disabled = true; btn.textContent = "Scheduling..."; }
+
+  fetch(`/api/staff/guidance/${activeThreadId}/schedule/`, {
+    method: "POST",
+    headers: {"Content-Type": "application/json", "X-CSRFToken": getCookie("csrftoken")},
+    body: JSON.stringify({scheduled_time: `${date} ${time}`}),
+  }).then(r => r.json()).then(data => {
+    scheduleSubmitting = false;
+    document.getElementById('scheduleModal').remove();
+    if(data.error){ alert(data.error); return; }
+    fetchThreadMessages();
+  });
+}
+
+function getCookie(name) {
+  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+  return match ? match[2] : null;
+}
+
+function escapeHtmlStaff(str){
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML.replace(/\n/g, '<br>');
+}
+
+/* =========================================================
+   NOTES
+========================================================= */
+let notesStudent = null;
+let notesCache = [];
+
+function openThreadNotes(threadId){
+  const t = threadsById[threadId];
+  if(!t) return;
+  notesStudent = { id: t.student_id, name: t.student_name };
+  logRecordAccess(t.student_id, 'view_notes');
+  document.getElementById('notesTitle').textContent = 'Notes: ' + t.student_name;
+  showNotesView('list');
+  document.getElementById('notesModal').classList.add('active');
+  loadNotes();
+}
+
+function todayStr(){ return new Date().toLocaleDateString('en-CA'); }
+
+function showNotesView(v){
+  ['List','Form','Detail'].forEach(n=>{
+    document.getElementById('notes'+n+'View').style.display = (n.toLowerCase()===v) ? '' : 'none';
+  });
+}
+
+function previewText(t, n){
+  const words = (t||'').trim().split(/\s+/).filter(Boolean);
+  return words.length > n ? words.slice(0,n).join(' ') + '…' : words.join(' ');
+}
+
+function openNotesPanel(){
+  const s = studentsReal.find(x=>x.code===currentStudentCode);
+  if(!s) return;
+  notesStudent = s;
+  logRecordAccess(s.id, 'view_notes');
+  document.getElementById('notesTitle').textContent = 'Notes — ' + s.name;
+  showNotesView('list');
+  document.getElementById('notesModal').classList.add('active');
+  loadNotes();
+}
+function closeNotes(){ document.getElementById('notesModal').classList.remove('active'); }
+
+function resetNoteForm(){
+  document.getElementById('noteEditId').value = '';
+  document.getElementById('noteDate').value = todayStr();
+  document.getElementById('noteTopic').value = '';
+  document.getElementById('noteReal').value = '';
+  document.getElementById('noteSaveBtn').textContent = 'Save note';
+}
+function newNote(){ resetNoteForm(); showNotesView('form'); }
+function cancelNoteForm(){ resetNoteForm(); showNotesView('list'); }
+
+function loadNotes(){
+  const box = document.getElementById('notesList');
+  box.innerHTML = '<div style="color:var(--ink-soft); font-size:13px;">Loading…</div>';
+  fetch(`/api/staff/students/${notesStudent.id}/notes/`)
+    .then(r=>r.json())
+    .then(d=>{
+      notesCache = d.notes || [];
+      if(!notesCache.length){
+        box.innerHTML = '<div style="color:var(--ink-soft); font-size:13px;">No notes yet for this student.</div>';
+        return;
+      }
+      box.innerHTML = notesCache.map(n=>`
+        <button class="note-row" onclick="viewNote(${n.id})">
+          <div class="d"><span>${escapeHtmlStaff(n.date_label)}</span><span>${escapeHtmlStaff(n.author)}</span></div>
+          <div class="p">${escapeHtmlStaff(previewText(n.topic || n.realizations, 10))}</div>
+        </button>`).join('');
+    })
+    .catch(()=>{ box.innerHTML = '<div style="color:var(--alert); font-size:13px;">Could not load notes.</div>'; });
+}
+
+function viewNote(id){
+  const n = notesCache.find(x=>x.id===id);
+  if(!n) return;
+  document.getElementById('notesDetailView').innerHTML = `
+    <button class="pill-btn ghost sm" onclick="showNotesView('list')">← All notes</button>
+    <div class="note-card" style="margin-top:14px;">
+      <div class="note-meta"><b>${escapeHtmlStaff(n.date_label)}</b><span>${escapeHtmlStaff(n.author)}${n.edited ? ' · edited' : ''}</span></div>
+      ${n.topic ? `<div class="lbl">Topic discussed</div><div class="txt">${escapeHtmlStaff(n.topic)}</div>` : ''}
+      ${n.realizations ? `<div class="lbl">Student's realizations</div><div class="txt">${escapeHtmlStaff(n.realizations)}</div>` : ''}
+      ${n.can_edit ? `<div class="note-actions"><button class="pill-btn ghost sm" onclick="editNote(${n.id})">Edit</button><button class="pill-btn ghost sm" onclick="deleteNote(${n.id})">Delete</button></div>` : ''}
+    </div>`;
+  showNotesView('detail');
+}
+
+function editNote(id){
+  const n = notesCache.find(x=>x.id===id);
+  if(!n) return;
+  document.getElementById('noteEditId').value = n.id;
+  document.getElementById('noteDate').value = n.session_date;
+  document.getElementById('noteTopic').value = n.topic;
+  document.getElementById('noteReal').value = n.realizations;
+  document.getElementById('noteSaveBtn').textContent = 'Update note';
+  showNotesView('form');
+}
+
+function saveNote(){
+  const id = document.getElementById('noteEditId').value;
+  const payload = {
+    session_date: document.getElementById('noteDate').value,
+    topic: document.getElementById('noteTopic').value,
+    realizations: document.getElementById('noteReal').value
+  };
+  if(!payload.topic.trim() && !payload.realizations.trim()){ showToast('Write something first'); return; }
+  const url = id ? `/api/staff/notes/${id}/update/` : `/api/staff/students/${notesStudent.id}/notes/`;
+  fetch(url, {
+    method:'POST',
+    headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},
+    body: JSON.stringify(payload)
+  })
+    .then(r=>r.json().then(d=>({ok:r.ok, d})))
+    .then(({ok,d})=>{
+      if(!ok){ showToast(d.error || 'Could not save'); return; }
+      showToast(id ? 'Note updated' : 'Note saved');
+      resetNoteForm();
+      showNotesView('list');
+      loadNotes();
+    });
+}
+
+function deleteNote(id){
+  if(!confirm('Delete this note? This cannot be undone.')) return;
+  fetch(`/api/staff/notes/${id}/delete/`, {method:'POST', headers:{'X-CSRFToken':getCookie('csrftoken')}})
+    .then(r=>r.json().then(d=>({ok:r.ok, d})))
+    .then(({ok,d})=>{
+      if(!ok){ showToast(d.error || 'Could not delete'); return; }
+      showToast('Note deleted');
+      showNotesView('list');
+      loadNotes();
+    });
+}
+
+/* =========================================================
+   MODAL
+========================================================= */
+function openStudentModal(code){
+  const s = studentsReal.find(x=>x.code===code);
+  if(!s) return;
+  currentStudentCode = code;
+  document.getElementById('modalStudentName').textContent = s.name;
+  document.getElementById('modalStudentSub').textContent = `${s.student_number} · ${s.program}${s.year ? ' · ' + yearLabel(s.year) : ''}`;
+  document.getElementById('modalRisk').innerHTML = riskBadge(s.risk,false);
+  document.getElementById('modalStreak').textContent = s.streak + (s.streak===1?' day':' days');
+  document.getElementById('modalMood').textContent = s.mood === '-' ? 'No data yet' : s.mood + ' / 5';
+  document.getElementById('modalLast').textContent = s.last_active;
+  document.getElementById('studentModal').classList.add('active');
+  logRecordAccess(s.id, 'view_profile');
+
+  if(charts.modal) charts.modal.destroy();
+  const ctx = document.getElementById('modalMoodChart');
+  charts.modal = new Chart(ctx,{
+    type:'line',
+    data:{labels:s.history.map((_,i)=>i+1), datasets:[{data:s.history, borderColor:'#5F7F68', backgroundColor:'rgba(135,169,145,0.15)', fill:true, tension:.35, pointRadius:3}]},
+    options:{plugins:{legend:{display:false}}, scales:{y:{min:0,max:5,ticks:{stepSize:1}}, x:{display:false}}}
+  });
+}
+
+function closeModal(){document.getElementById('studentModal').classList.remove('active');}
+
+function logRecordAccess(studentId, action){
+  fetch(`/api/staff/students/${studentId}/access/`, {
+    method:'POST',
+    headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},
+    body: JSON.stringify({action})
+  }).catch(()=>{});
+}
+
+/* =========================================================
+   CHECK IN STUDENT
+========================================================= */
+
+function openStudentChat(schedule){
+  const s = studentsReal.find(x=>x.code===currentStudentCode);
+  if(!s) return;
+  fetch(`/api/staff/students/${s.id}/thread/`, {
+    method:'POST',
+    headers:{'X-CSRFToken':getCookie('csrftoken')}
+  })
+  .then(r => r.json().then(d => ({ok:r.ok, d})))
+  .then(({ok,d}) => {
+    if(!ok){ showToast(d.error || 'Could not open the chat'); return; }
+    closeModal();
+    goTo('messages');
+    loadGuidanceInbox().then(() => {
+      openGuidanceThread(d.thread_id, s.name);
+      const t = threadsById[d.thread_id];
+      if(t && t.claimed && !t.mine) return;      // locked by another counselor
+      if(schedule){
+        openScheduleModal();
+      } else {
+        const first = (s.name || '').split(' ')[0];
+        const input = document.getElementById('threadInput');
+        if(input){
+          input.value = `Hi ${first}! This is a gentle check-in from the guidance office. No pressure, but I'm here if you'd like to talk about how things have been. 💛`;
+          input.focus();
+        }
+      }
+    });
+  });
+}
+
+/* =========================================================
+   FLAG STUDENT
+========================================================= */
+
+let flagTarget = null;
+
+function flagCurrentStudent(){
+  const s = studentsReal.find(x=>x.code===currentStudentCode);
+  if(!s) return;
+  openFlagModal(s);
+}
+function openFlagModal(s){
+  if(s.flagged){ showToast('This student already has an open flag'); return; }
+  flagTarget = s;
+  document.getElementById('flagTitle').textContent = 'Flag — ' + s.name;
+  document.getElementById('flagReason').value = '';
+  document.getElementById('flagModal').classList.add('active');
+}
+function closeFlagModal(){ document.getElementById('flagModal').classList.remove('active'); }
+
+function submitFlag(){
+  const reason = document.getElementById('flagReason').value.trim();
+  if(!reason){ showToast('Please write a reason'); return; }
+  fetch(`/api/staff/students/${flagTarget.id}/flag/`, {
+    method:'POST',
+    headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},
+    body: JSON.stringify({reason})
+  })
+    .then(r=>r.json().then(d=>({ok:r.ok, d})))
+    .then(({ok,d})=>{
+      if(!ok){ showToast(d.error || 'Could not flag'); return; }
+      showToast('Student flagged');
+      closeFlagModal();
+      closeModal();
+      loadStudents();
+      loadAlerts();
+    });
+}
+
+/* =========================================================
+   RENDER: ALERTS + FEED
+========================================================= */
+let knownFlagIds = null;
+
+function loadAlerts(fromPoll){
+  return fetch("{% url 'staff_flags' %}")
+    .then(r=>r.json())
+    .then(d=>{
+      alerts = d.flags || [];
+      suggested = d.suggested || [];
+      courseOptions = d.courses || courseOptions;
+      if(fromPoll === true && knownFlagIds){
+        const fresh = alerts.filter(a=>a.status==='New' && !knownFlagIds.has(a.id));
+        if(fresh.length){
+          try{ notifSound.currentTime = 0; notifSound.play().catch(()=>{}); }catch(e){}
+          showToast('New flag: ' + fresh[0].name);
+        }
+      }
+      knownFlagIds = new Set(alerts.map(a=>a.id));
+      renderAlerts();
+      renderDashAlertPreview();
+    });
+}
+
+function renderAlerts(){
+  const statusF = document.getElementById('alertStatusFilter').value;
+  const sevF = document.getElementById('alertSeverityFilter').value;
+  const list = document.getElementById('alertsList');
+  const courseSel = document.getElementById('alertCourseFilter');
+  const keepCourse = courseSel.value || 'all';
+  courseSel.innerHTML = courseSelectHtml([...alerts, ...suggested].map(x => x.course));
+  courseSel.value = [...courseSel.options].some(o => o.value === keepCourse) ? keepCourse : 'all';
+  const courseF = courseSel.value;
+  const sugList = suggested.filter(s => courseF === 'all' || s.course === courseF);
+  const sbox = document.getElementById('suggestedBox');
+
+  sbox.innerHTML = sugList.length ? `
+    <div class="card" style="padding:16px 18px; margin-bottom:16px;">
+      <h3 style="font-size:14px; margin-bottom:4px;">Suggested for review</h3>
+      <div class="sub" style="font-size:12.5px; color:var(--ink-soft); margin-bottom:10px;">Based on mood check-ins only. Nobody is flagged until you decide.</div>
+      ${sugList.map(s=>`
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 0; border-top:1px solid var(--line);">
+          <div><b>${escapeHtmlStaff(s.name)}</b> <span style="color:var(--ink-soft); font-size:12px;">${escapeHtmlStaff(s.student_number)}</span> ${riskBadge(s.severity)}</div>
+          <div style="display:flex; gap:8px;">
+            <button class="pill-btn ghost sm" onclick="openStudentModal('${s.code}')">View</button>
+            <button class="pill-btn solid sm" onclick="openFlagModal(studentsReal.find(x=>x.code==='${s.code}'))">Flag</button>
+          </div>
+        </div>`).join('')}
+    </div>` : '';
+
+  list.innerHTML='';
+  const filtered = alerts.filter(a=>(statusF==='all'||a.status===statusF)&&(sevF==='all'||a.severity===sevF)&&(courseF==='all'||a.course===courseF));
+  if(filtered.length===0){
+    list.innerHTML = `<div class="card empty-state">${MASCOT_SVG}<div class="e-title">No alerts match these filters</div>Everything else is under control.</div>`;
+  }
+  filtered.forEach(a=>{
+    const div = document.createElement('div');
+    div.className='card alert-card';
+    const color = a.severity==='urgent' ? 'var(--alert)' : a.severity==='watch' ? 'var(--sky-deep)' : 'var(--sage-deep)';
+    div.innerHTML = `
+      <div class="sev-strip" style="background:${color};"></div>
+      <div class="body">
+        <div class="top-row">
+          <div>
+            <b style="font-size:14px;">${escapeHtmlStaff(a.name)}</b>
+            <span style="color:var(--ink-soft); font-size:12px;">${escapeHtmlStaff(a.student_number)}</span>
+            ${riskBadge(a.severity)}
+          </div>
+          ${statusBadge(a.status)}
+        </div>
+        <div class="reason">${escapeHtmlStaff(a.reason)}</div>
+        <div class="meta">
+          <span>Flagged ${escapeHtmlStaff(a.date)} by ${escapeHtmlStaff(a.flagged_by)}</span>
+          <span>Assigned: ${escapeHtmlStaff(a.assigned)}</span>
+        </div>
+        <div class="actions">
+          <button class="pill-btn ghost sm" onclick="openStudentModal('${a.code}')">View student</button>
+          ${a.status!=='Resolved' ? `${alertActionButton(a)}
+          <button class="pill-btn solid sm" onclick="updateAlertStatus(${a.id},'resolve')">Mark resolved</button>` : ''}
+        </div>
+      </div>`;
+    list.appendChild(div);
+  });
+  updateAlertCounts();
+}
+
+function alertActionButton(a){
+  if(a.status==='New') return `<button class="pill-btn ghost sm" onclick="updateAlertStatus(${a.id},'review')">Take case</button>`;
+  if(a.mine) return `<button class="pill-btn ghost sm" onclick="updateAlertStatus(${a.id},'release')">Release case</button>`;
+  return `<button class="pill-btn ghost sm" onclick="updateAlertStatus(${a.id},'review')">Take over</button>`;
+}
+
+function updateAlertStatus(id, action){
+  fetch(`/api/staff/flags/${id}/action/`, {
+    method:'POST',
+    headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},
+    body: JSON.stringify({action})
+  })
+    .then(r=>r.json().then(d=>({ok:r.ok, d})))
+    .then(({ok,d})=>{
+      if(!ok){ showToast(d.error || 'Could not update'); return; }
+      showToast(action==='resolve' ? 'Flag resolved' : action==='release' ? 'Case released' : 'Case assigned to you');
+      loadStudents();
+      loadAlerts();
+    });
+}
+
+function updateAlertCounts(){
+  const openCount = alerts.filter(a=>a.status!=='Resolved').length;
+  document.getElementById('alertNavCount').textContent = openCount;
+  document.getElementById('bellPing').textContent = openCount;
+  document.getElementById('dashRiskCount').textContent = openCount;
+  document.getElementById('printRiskCount').textContent = openCount;
+}
+
+function renderDashAlertPreview(){
+  const wrap = document.getElementById('dashAlertPreview');
+  wrap.innerHTML='';
+  const open = alerts.filter(a=>a.status!=='Resolved').slice(0,3);
+  if(!open.length){
+    wrap.innerHTML = '<div style="color:var(--ink-soft); font-size:13px; padding:8px 0;">No open flags right now.</div>';
+    return;
+  }
+  open.forEach(a=>{
+    const color = a.severity==='urgent' ? 'var(--alert)' : a.severity==='watch' ? 'var(--sky-deep)' : 'var(--sage-deep)';
+    const div = document.createElement('div');
+    div.className='alert-card';
+    div.style.padding='12px 0'; div.style.marginBottom='0'; div.style.borderBottom='1px solid var(--line)';
+    div.innerHTML = `
+      <div class="sev-strip" style="background:${color};"></div>
+      <div class="body">
+        <div class="top-row"><b style="font-size:13px;">${escapeHtmlStaff(a.name)}</b>${riskBadge(a.severity)}</div>
+        <div class="reason" style="font-size:12.5px; margin:4px 0 0;">${escapeHtmlStaff(a.reason)}</div>
+      </div>`;
+    wrap.appendChild(div);
+  });
+}
+
+function renderActivityFeed(){
+  const wrap = document.getElementById('activityFeed');
+  wrap.innerHTML = activity.map(a=>`
+    <div class="feed-item">
+      <div class="fi-icon" style="background:var(--sage-pale);">${a.icon}</div>
+      <div><div class="fi-text">${a.text}</div><div class="fi-time">${a.time}</div></div>
+    </div>`).join('');
+}
+
+function statusBadge(s){
+  const map = {
+    'New':       ['#F8DCD3', '#A8452F'],
+    'In Review': ['#DCE9F5', '#3F6F9A'],
+    'Resolved':  ['#DDEBDD', '#4F7A58']
+  };
+  const c = map[s] || ['#eee', '#555'];
+  return `<span class="badge" style="background:${c[0]}; color:${c[1]};"><span class="dot"></span>${escapeHtmlStaff(s)}</span>`;
+}
+
+/* =========================================================
+   RENDER: SUMMARY
+========================================================= */
+
+let summaryData = [];
+
+function loadSummary(){
+  document.getElementById('summaryTbody').innerHTML =
+    '<tr><td colspan="8" style="padding:24px; color:var(--ink-soft);">Loading…</td></tr>';
+  return fetch("{% url 'staff_summary' %}")
+    .then(r => r.json())
+    .then(d => {
+      summaryData = d.students || [];
+      courseOptions = d.courses || courseOptions;
+      const sel = document.getElementById('summaryCourseFilter');
+      const keep = sel.value || 'all';
+      sel.innerHTML = courseSelectHtml(summaryData.map(s => s.course));
+      sel.value = [...sel.options].some(o => o.value === keep) ? keep : 'all';
+      renderSummary();
+    })
+    .catch(() => {
+      document.getElementById('summaryTbody').innerHTML =
+        '<tr><td colspan="8" style="padding:24px; color:var(--ink-soft);">Could not load the summary. Try refreshing.</td></tr>';
+    });
+}
+
+function renderSummary(){
+  const chatF = document.getElementById('summaryChatFilter').value;
+  const courseF = document.getElementById('summaryCourseFilter').value;
+  const tbody = document.getElementById('summaryTbody');
+  const rows = summaryData.filter(s =>
+    (chatF === 'all' || s.chat_status === chatF) &&
+    (courseF === 'all' || s.course === courseF));
+
+  if(!rows.length){
+    tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state">${MASCOT_SVG}<div class="e-title">No students match these filters</div></div></td></tr>`;
+    return;
+  }
+
+  const chatBadge = {
+    awaiting: '<span class="badge urgent"><span class="dot pulse"></span>Awaiting reply</span>',
+    replied:  '<span class="badge stable"><span class="dot"></span>Replied</span>',
+    sent:     '<span class="badge watch"><span class="dot"></span>Check-in sent</span>',
+    none:     '<span class="badge neutral">No chat yet</span>'
+  };
+
+  tbody.innerHTML = rows.map(s => {
+    const spark = s.trend.length > 1
+      ? `<svg width="60" height="22" viewBox="0 0 60 22"><polyline points="${sparkPath(s.trend,60,22)}" fill="none" stroke="var(--sage-deep)" stroke-width="2"/></svg>`
+      : '';
+    const topicCell = !s.topics_shared
+      ? '<span style="color:var(--ink-soft); font-size:12px;">Not shared</span>'
+      : (s.topics.length
+          ? '<div class="tag-row" style="margin-top:0;">' + s.topics.map(t => `<span class="tag">${escapeHtmlStaff(t)}</span>`).join('') + '</div>'
+          : '<span style="color:var(--ink-soft); font-size:12px;">No topics yet</span>');
+    return `<tr onclick="openStudentModal('${s.code}')">
+      <td><div class="stu-cell"><div class="avatar">${initials(s.name)}</div><div><div class="code">${escapeHtmlStaff(s.name)}</div><div class="prog">${escapeHtmlStaff(courseLabel(s.course) || 'Not set')}</div></div></div></td>
+      <td><div style="display:flex; align-items:center; gap:10px;"><span class="mono-cell">${s.avg_mood_7d === null ? '-' : s.avg_mood_7d + ' / 5'}</span>${spark}</div></td>
+      <td class="mono-cell">${s.checkins_7d} / 7 days${s.last_checkin ? '<br>last: ' + escapeHtmlStaff(s.last_checkin) : ''}</td>
+      <td>${topicCell}</td>
+      <td>${chatBadge[s.chat_status]}${s.last_chat ? `<div style="margin-top:4px; font-size:11.5px; color:var(--ink-soft);">${escapeHtmlStaff(s.last_chat)}</div>` : ''}</td>
+      <td>${s.handled_by ? escapeHtmlStaff(s.handled_by) : '<span style="color:var(--ink-soft);">Unclaimed</span>'}</td>
+      <td class="mono-cell">${s.next_appt ? escapeHtmlStaff(s.next_appt) : '-'}</td>
+      <td><button class="pill-btn ghost sm" onclick="event.stopPropagation(); openStudentModal('${s.code}')">View</button></td>
+    </tr>`;
+  }).join('');
+}
+
+/* =========================================================
+   RENDER: APPOINTMENTS
+========================================================= */
+let rawAppointments = [];
+let activeApptStatus = 'all';
+
+function loadAppointments() {
+  fetch("{% url 'staff_appointments_list' %}")
+    .then(r => r.json())
+    .then(data => {
+      rawAppointments = data.appointments || [];
+      updateApptCounts();
+      renderAppointments();
+    })
+    .catch(err => {
+      console.error("Failed to fetch appointments:", err);
+      updateApptCounts();
+      renderAppointments();
+    });
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  loadAppointments();
+})
+
+function updateApptCounts() {
+  const counts = { all: rawAppointments.length, Pending: 0, Confirmed: 0, Completed: 0, Cancelled: 0 };
+  rawAppointments.forEach(a => {
+    if (counts[a.status] !== undefined) counts[a.status]++;
+  });
+
+  document.getElementById('count-all').textContent = counts.all;
+  document.getElementById('count-Pending').textContent = counts.Pending;
+  document.getElementById('count-Confirmed').textContent = counts.Confirmed;
+  document.getElementById('count-Completed').textContent = counts.Completed;
+  document.getElementById('count-Cancelled').textContent = counts.Cancelled;
+}
+
+function filterAppts(status, btn) {
+  activeApptStatus = status;
+  document.querySelectorAll('#sec-appointments .tab-btn').forEach(b => b.classList.remove('active'));
+  if (btn) {
+    btn.classList.add('active');
+  } else {
+    const targetBtn = document.querySelector(`#sec-appointments .tab-btn[data-status="${status}"]`);
+    if (targetBtn) targetBtn.classList.add('active');
+  }
+  renderAppointments();
+}
+
+function getApptBadge(status) {
+  const styles = {
+    Pending: 'background:#FEF3C7; color:#92400E;',
+    Confirmed: 'background:#E0F2FE; color:#075985;',
+    Completed: 'background:#DCFCE7; color:#166534;',
+    Cancelled: 'background:#FEE2E2; color:#991B1B;'
+  };
+  const style = styles[status] || 'background:var(--line); color:var(--ink-soft);';
+  return `<span class="badge" style="${style}">${status}</span>`;
+}
+
+function renderAppointments() {
+  const body = document.getElementById('appointmentsTableBody');
+  if (!body) return;
+  
+  const filtered = rawAppointments.filter(a => activeApptStatus === 'all' || a.status === activeApptStatus);
+
+  if (filtered.length === 0) {
+    const label = activeApptStatus === 'all' ? '' : activeApptStatus.toLowerCase() + ' ';
+    body.innerHTML = `<tr><td colspan="6"><div class="empty-state">${MASCOT_SVG}<div class="e-title">No ${label}appointments yet</div>Appointments you schedule will show up here.</div></td></tr>`;
+    return;
+  }
+
+  body.innerHTML = filtered.map(a => `
+    <tr>
+      <td style="font-weight:600;">${a.student_name}</td>
+      <td>${a.counselor_name}</td>
+      <td class="mono-cell">${a.date}</td>
+      <td class="mono-cell">${a.time}</td>
+      <td>${getApptBadge(a.status)}</td>
+      <td>
+        ${a.status === 'Pending'
+          ? `<button class="pill-btn ghost sm" onclick="updateApptStatus(${a.id}, 'cancelled')">Cancel</button>`
+          : a.status === 'Confirmed'
+          ? `<button class="pill-btn solid sm" onclick="updateApptStatus(${a.id}, 'completed')">Complete</button>
+             <button class="pill-btn ghost sm" onclick="updateApptStatus(${a.id}, 'cancelled')">Cancel</button>`
+          : `<span style="color:var(--ink-soft); font-size:12.5px;">—</span>`}
+      </td>
+    </tr>
+  `).join('');
+}
+
+function updateApptStatus(apptId, newStatus) {
+  if (newStatus === 'cancelled' && !confirm('Cancel this appointment? The student will be notified.')) return;
+
+  fetch(`/api/staff/appointments/${apptId}/status/`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': getCookie('csrftoken')
+    },
+    body: JSON.stringify({ status: newStatus })
+  })
+  .then(r => r.json().then(res => ({ ok: r.ok, res })))
+  .then(({ ok, res }) => {
+    if (!ok) { showToast(res.error || 'Could not update appointment'); return; }
+    showToast(newStatus === 'completed' ? 'Marked as completed' : 'Appointment cancelled');
+    loadAppointments();
+  })
+  .catch(() => showToast('Network error, try again'));
+}
+
+/* =========================================================
+   RENDER: ADMIN ACCOUNTS
+========================================================= */
+function loadCareTeam(){
+  return fetch("{% url 'staff_care_team' %}").then(r => r.json()).then(d => {
+    admins = d.members || [];
+    renderAdmins();
+  });
+}
+
+function renderAdmins(){
+  const tbody = document.getElementById('adminsTbody');
+  if(!admins.length){
+    tbody.innerHTML = '<tr><td colspan="5" style="padding:24px; color:var(--ink-soft);">No staff accounts yet.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = admins.map(a => `
+    <tr style="cursor:default;">
+      <td>${escapeHtmlStaff(a.name)}${a.me ? ' <span class="badge neutral">You</span>' : ''}</td>
+      <td class="mono-cell">${escapeHtmlStaff(a.email || '-')}</td>
+      <td><span class="badge neutral">${escapeHtmlStaff(a.role)}</span></td>
+      <td><span class="badge ${a.status === 'Active' ? 'stable' : 'watch'}">${escapeHtmlStaff(a.status)}</span></td>
+      <td class="mono-cell">${escapeHtmlStaff(a.last_active)}</td>
+    </tr>`).join('');
+}
+
+function saveStaffProfile(){
+  fetch("{% url 'staff_profile_update' %}", {
+    method:'POST',
+    headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},
+    body: JSON.stringify({
+      first_name: document.getElementById('profFirst').value,
+      last_name: document.getElementById('profLast').value,
+      license_number: document.getElementById('profLicense').value
+    })
+  })
+  .then(r => r.json().then(d => ({ok:r.ok, d})))
+  .then(({ok, d}) => {
+    if(!ok){ showToast(d.error || 'Could not save'); return; }
+    document.getElementById('sidebarUserName').textContent = d.full_name;
+    showToast('Profile saved');
+    loadCareTeam();
+  });
+}
+
+/* =========================================================
+   CHARTS
+========================================================= */
+function loadDashboard(){
+  return fetch("{% url 'staff_dashboard_stats' %}")
+    .then(r=>r.json())
+    .then(d=>{
+      dashData = d;
+      activity = d.feed || [];
+      document.getElementById('dashStudents').textContent = d.students_total;
+      document.getElementById('dashStudentsDelta').textContent = '▲ ' + d.new_students_month + ' new this month';
+      document.getElementById('dashCheckins').textContent = d.checkins_today;
+      const dc = document.getElementById('dashCheckinsDelta');
+      dc.textContent = d.checkins_yesterday + ' yesterday';
+      document.getElementById('dashRiskDelta').textContent = '▲ ' + d.flags_new_week + ' new this week';
+      document.getElementById('dashMood').textContent = d.avg_mood_7d === null ? '–' : d.avg_mood_7d.toFixed(1);
+      const dm = document.getElementById('dashMoodDelta');
+      if(d.avg_mood_7d !== null && d.avg_mood_prev7 !== null){
+        const diff = d.avg_mood_7d - d.avg_mood_prev7;
+        dm.className = 'delta ' + (diff >= 0 ? 'up' : 'down');
+        dm.textContent = (diff >= 0 ? '▲ ' : '▼ ') + Math.abs(diff).toFixed(1) + ' vs last week';
+      } else {
+        dm.textContent = 'Last 7 days';
+      }
+      renderCharts();
+    });
+}
+
+const chartFont = {family:"'Inter',sans-serif", size:11};
+function baseGrid(){return {color: getComputedStyle(document.body).getPropertyValue('--line'), drawTicks:false};}
+
+function renderCharts(){
+  const ctx1 = document.getElementById('moodTrendChart');
+  if(charts.moodTrend) charts.moodTrend.destroy();
+  const days = dashData.trend.labels;
+  const vals = dashData.trend.values;
+  charts.moodTrend = new Chart(ctx1,{
+    type:'line',
+    data:{labels:days, datasets:[{data:vals, spanGaps:true, borderColor:'#5F7F68', backgroundColor:'rgba(135,169,145,0.18)', fill:true, tension:.4, pointRadius:0, borderWidth:2.5}]},
+    options:{plugins:{legend:{display:false}}, scales:{y:{min:1,max:5, grid:baseGrid(), ticks:{font:chartFont}}, x:{grid:{display:false}, ticks:{font:chartFont, maxRotation:0}}}}
+  });
+
+  const ctx2 = document.getElementById('engagementChart');
+  if(charts.engagement) charts.engagement.destroy();
+  charts.engagement = new Chart(ctx2,{
+    type:'bar',
+    data:{labels:dashData.engagement.map(w=>w.label), datasets:[{data:dashData.engagement.map(w=>w.count), backgroundColor:'#9CC5E8', borderRadius:8, maxBarThickness:34}]},
+    options:{plugins:{legend:{display:false}}, scales:{y:{grid:baseGrid(), ticks:{font:chartFont}}, x:{grid:{display:false}, ticks:{font:chartFont}}}}
+  });
+
+  renderDashAlertPreview();
+  renderActivityFeed();
+}
+
+function renderMoodCharts(){
+  fetch("{% url 'staff_mood_stats' %}").then(r=>r.json()).then(d=>{
+    if(charts.moodDist) charts.moodDist.destroy();
+    charts.moodDist = new Chart(document.getElementById('moodDistChart'),{
+      type:'doughnut',
+      data:{labels:['Great','Good','Okay','Low','Struggling'], datasets:[{data:d.distribution, backgroundColor:['#5F7F68','#87A991','#9CC5E8','#D9A46B','#B5533C'], borderWidth:0}]},
+      options:{plugins:{legend:{position:'bottom', labels:{font:chartFont, boxWidth:10, padding:16}}}, cutout:'62%'}
+    });
+
+    if(charts.moodByCollege) charts.moodByCollege.destroy();
+    charts.moodByCollege = new Chart(document.getElementById('moodByCollegeChart'),{
+      type:'bar',
+      data:{labels:d.by_course.map(c=>c.code), datasets:[{data:d.by_course.map(c=>c.avg), backgroundColor:'#87A991', borderRadius:8, maxBarThickness:30}]},
+      options:{indexAxis:'y', plugins:{legend:{display:false}}, scales:{x:{min:0,max:5, grid:baseGrid(), ticks:{font:chartFont}}, y:{grid:{display:false}, ticks:{font:chartFont}}}}
+    });
+
+    if(charts.moodJournal) charts.moodJournal.destroy();
+    charts.moodJournal = new Chart(document.getElementById('moodJournalChart'),{
+      data:{labels:d.daily.labels, datasets:[
+        {type:'line', label:'Avg mood', data:d.daily.avg, spanGaps:true, borderColor:'#5F7F68', yAxisID:'y', tension:.4, pointRadius:0, borderWidth:2},
+        {type:'bar', label:'Check-ins', data:d.daily.count, backgroundColor:'rgba(156,197,232,0.55)', yAxisID:'y1', borderRadius:5, maxBarThickness:10}
+      ]},
+      options:{
+        scales:{
+          y:{min:1,max:5, position:'left', grid:baseGrid(), ticks:{font:chartFont}},
+          y1:{min:0, position:'right', grid:{display:false}, ticks:{font:chartFont, precision:0}},
+          x:{grid:{display:false}, ticks:{font:chartFont, maxTicksLimit:10}}
+        },
+        plugins:{legend:{position:'bottom', labels:{font:chartFont, boxWidth:10}}}
+      }
+    });
+  });
+}
+
+function renderReportChart(){
+  const ctx = document.getElementById('programChart');
+  if(charts.program) charts.program.destroy();
+  charts.program = new Chart(ctx,{
+    type:'bar',
+    data:{labels:PROGRAMS, datasets:[{data:[74,81,66,69,72,78], backgroundColor:'#786251', borderRadius:8, maxBarThickness:34}]},
+    options:{plugins:{legend:{display:false}}, scales:{y:{min:0,max:100, grid:baseGrid(), ticks:{font:chartFont, callback:v=>v+'%'}}, x:{grid:{display:false}, ticks:{font:chartFont}}}}
+  });
+}
+
+/* =========================================================
+   EXPORTS
+========================================================= */
+function exportStudentsExcel(){
+  const rows = studentsReal.map(s=>({
+    "Student Code":s.code, "Program":s.program, "Year":s.year, "Risk Level":s.risk,
+    "Avg Mood (7d)":s.mood, "Check-in Streak":s.streak, "Last Active":s.last_active
+  }));
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Students");
+  XLSX.writeFile(wb, "MICA_students_export.xlsx");
+  showToast('Excel file downloaded');
+}
+
+function exportPdfReport(){
+  document.getElementById('printDate').textContent = "Period: "+document.getElementById('reportPeriod').value+" · Generated "+new Date().toLocaleDateString();
+  const el = document.getElementById('printableReport');
+  el.style.left='0'; el.style.position='fixed'; el.style.top='-3000px';
+  html2pdf().from(el).set({filename:'MICA_summary_report.pdf', margin:10}).save().then(()=>{
+    el.style.position='absolute'; el.style.left='-9999px'; el.style.top='0';
+  });
+  showToast('PDF report generated');
+}
+
+/* =========================================================
+   MISC
+========================================================= */
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(()=>t.classList.remove('show'), 2600);
+}
+function toggleTheme(){
+  document.body.classList.toggle('dark');
+  const sw = document.getElementById('darkSwitch');
+  if(sw) sw.classList.toggle('on', document.body.classList.contains('dark'));
+}
+
+function initAll(){
+  loadStudents();
+  loadAlerts();
+  setInterval(()=>loadAlerts(true), 20000);
+  loadCareTeam();
+  loadDashboard();
+  loadAppointments();
+}
+
+/* ============================================================
+   NOTIFICATIONS
+   Sound Effect by
+   <a href="https://pixabay.com/users/universfield-28281460/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=493469">Universfield</a>
+   from
+   <a href="https://pixabay.com//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=493469">Pixabay</a>
+============================================================ */
+const notifSound = new Audio("{% static 'core/sounds/chat.mp3' %}");
+let lastNotifCount = 0;
+let audioUnlocked = false;
+
+function playNotificationSound() {
+  if (notifSound) {
+    notifSound.currentTime = 0;
+    notifSound.play().catch(err => console.log("Audio play blocked or failed:", err));
+  }
+}
+
+function unlockAudio() {
+  if (audioUnlocked) return;
+  notifSound.play().then(() => {
+    notifSound.pause();
+    notifSound.currentTime = 0;
+    audioUnlocked = true;
+  }).catch(() => {});
+}
+
+document.addEventListener('click', unlockAudio, { once: true });
+document.addEventListener('keydown', unlockAudio, { once: true });
+
+let staffNotifInitialized = false;
+
+</script>
+
+{% if show_staff_tutorial %}
+{% include 'core/_tour.html' %}
+<script>
+(function(){
+  const STAFF_TOUR = {
+    which: 'staff',
+    env: {
+      isMobile: () => isMobile(),
+      sidebarClosed: () => document.getElementById('sidebar').classList.contains('is-collapsed'),
+      setSidebar: open => setSidebarOpen(open),
+      showView: section => goTo(section)
+    },
+    steps: [
+      { welcome: true, title: "Welcome to the MICA Staff Console, {{ request.user.first_name|default:request.user.username|escapejs }}! 👋",
+        body: "Here's a quick look at the tools you'll use to look after students. It takes about a minute." },
+      { view: 'dashboard', target: '#sec-dashboard .stat-grid', mobileTarget: '#sec-dashboard .stat-card', title: "Your dashboard at a glance",
+        body: "Cards like these show how many students are being monitored, today's check-ins, active risk flags and more, so you can see how things are going the moment you sign in." },
+      { target: '.nav-item[data-section="students"]', sidebar: true, title: "Students",
+        body: "See every student with their mood trend, streak and risk level. Filter by risk or program, then open a student to see their mood history, flag them for a counselor, send a check-in, schedule an appointment or keep notes." },
+      { target: '.nav-item[data-section="mood"]', sidebar: true, title: "Mood Monitoring",
+        body: "Charts of how students' moods are trending over time, so you can spot dips early." },
+      { target: '.nav-item[data-section="summary"]', sidebar: true, title: "Chat & Mood Summary",
+        body: "One table per student with their recent mood, check-ins, Mica chat topics, guidance chat status, who is handling them and their next appointment." },
+      { target: '.nav-item[data-section="alerts"]', sidebar: true, title: "Risk Alerts",
+        body: "Flagged students appear here. Filter by status (New, In Review, Resolved), severity or course, and update each flag as you work through it." },
+      { target: '.nav-item[data-section="messages"]', sidebar: true, title: "Student Messages",
+        body: "Students who ask for a counselor message you here. Open a conversation to reply, add private notes or schedule an appointment." },
+      { target: '.nav-item[data-section="appointments"]', sidebar: true, title: "Appointments",
+        body: "See the appointments you've scheduled. Students confirm them from their side, and you can mark each one completed or cancel it." },
+      { target: '.nav-item[data-section="reports"]', sidebar: true, title: "Reports & Analytics",
+        body: "Generate a summary report for the last 7 days, 30 days or the semester, or export the raw data." },
+      { target: '.nav-item[data-section="settings"]', sidebar: true, title: "Settings",
+        body: "Update your profile, see how risk levels are decided, and switch themes. You can replay this tutorial any time from Settings → My Profile." }
+    ]
+  };
+
+  function startStaffTour(){
+    goTo('dashboard');                 // always begin on the dashboard
+    MicaTour.run(STAFF_TOUR);
+  }
+  MicaTour.whenLoaderGone(startStaffTour);
+  window.startMicaStaffTour = startStaffTour;
+})();
+</script>
+{% endif %}
+
+</body>
+</html>

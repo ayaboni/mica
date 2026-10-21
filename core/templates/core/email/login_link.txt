@@ -1,0 +1,16 @@
+{% autoescape off %}Hi {{ name }},
+
+Someone (hopefully you) just tried to sign in to MICA on {{ when }}.
+
+Open this link to finish signing in:
+
+{{ link }}
+
+The link works once and expires in {{ ttl_minutes }} minutes.
+
+If this wasn't you, you can ignore this email. Nobody can sign in without the link. If you're worried, change your password.{% if ip %}
+
+Request came from IP address {{ ip }}.{% endif %}
+
+— MICA
+{% endautoescape %}

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-3.5 10.5 256.5 101.5" role="img" aria-label="Mica">
+  <title>Mica wordmark for dark backgrounds</title>
+  <g fill="none" stroke-width="13" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M15 93.5 V34.5 L50 76 L85 34.5 V93.5" stroke="#F0C13F"/>
+    <g stroke="#F7F4E9">
+      <path d="M112 52.5 V93.5"/>
+      <path d="M171.73 59.28 A20.5 20.5 0 1 0 171.73 86.72"/>
+      <circle cx="214" cy="73" r="20.5"/>
+      <path d="M234.5 52.5 V93.5"/>
+    </g>
+  </g>
+  <circle cx="112" cy="31" r="8.5" fill="#F7F4E9"/>
+</svg>

@@ -1,0 +1,206 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Account Settings — MICA</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  body{margin:0; font-family:'Nunito', sans-serif; background:#FAF7EE; color:#3A2E28;}
+  .topbar{background:#8FA98C; padding:18px 34px; display:flex; align-items:center; justify-content:space-between;}
+  .topbar a{color:#3A2E28; text-decoration:none; font-weight:700;}
+  .wrap{max-width:640px; margin:40px auto; padding:0 20px;}
+  .card{background:#FBF2DE; border-radius:24px; padding:32px;}
+  h1{font-family:'Fredoka',sans-serif; margin-top:0;}
+  .avatar-row{display:flex; align-items:center; gap:16px; margin-bottom:24px;}
+  .avatar-preview{width:72px; height:72px; border-radius:50%; object-fit:cover; background:#ddd;}
+  .field{margin-bottom:16px;}
+  .field label{display:block; font-weight:700; margin-bottom:6px; font-size:14px;}
+  .field input{width:100%; padding:12px 14px; border-radius:12px; border:1px solid #ddd; box-sizing:border-box; font-family:inherit; font-size:14px;}
+  .field select{width:100%; padding:12px 14px; border-radius:12px; border:1px solid #ddd; box-sizing:border-box; font-family:inherit; font-size:14px; background:#fff;}
+  .file-btn{
+  display:inline-block; padding:10px 20px; background:#8B6F4E; color:#fff;
+  border-radius:999px; font-weight:700; cursor:pointer; font-size:14px;
+  }
+  .file-btn:hover{background:#75603f;}
+  .two-col{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+  button[type=submit]{background:#8B6F4E; color:#fff; border:none; padding:13px 28px; border-radius:999px; font-weight:700; cursor:pointer; margin-top:8px;}
+  .msg{padding:10px 16px; border-radius:12px; margin-bottom:16px; font-weight:600;}
+  .msg.success{background:#dff0d8; color:#3c763d;}
+  .msg.error{background:#f2dede; color:#a94442;}
+  .assessment-box{background:#F3ECD8; border-radius:16px; padding:20px 22px; margin-top:24px;}
+  .assessment-box-head{display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:8px;}
+  .assessment-box-head h3{font-family:'Fredoka',sans-serif; margin:0; font-size:17px;}
+  .assessment-box-desc{color:#7a6a5c; font-size:13.5px; margin:0 0 14px;}
+  .status-pill{padding:4px 12px; border-radius:999px; font-size:12px; font-weight:700;}
+  .status-pill.status-done{background:#dff0d8; color:#3c763d;}
+  .status-pill.status-pending{background:#fbe8c6; color:#8a6b1f;}
+  .btn-link{display:inline-block; background:#8B6F4E; color:#fff; padding:10px 22px; border-radius:999px; font-weight:700; font-size:14px; text-decoration:none;}
+  .btn-link:hover{background:#75603f;}
+</style>
+</head>
+<body>
+  {% include 'core/_loader.html' %}
+  
+  <div class="topbar">
+    <a href="{% url 'student_dashboard' %}">← Back to Dashboard</a>
+    <strong>MICA</strong>
+  </div>
+
+  <div class="wrap">
+    <div class="card">
+      <h1>Account Settings</h1>
+
+      {% if messages %}
+        {% for message in messages %}
+          <div class="msg {{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        <div class="avatar-row">
+          {% if profile.avatar %}
+            <img class="avatar-preview" id="avatarPreview" src="{{ profile.avatar.url }}" alt="Avatar">
+          {% else %}
+            <img class="avatar-preview" id="avatarPreview" alt="Avatar" style="display:none;">
+            <div class="avatar-preview" id="avatarPlaceholder"></div>
+          {% endif %}
+          <div>
+            <label style="font-weight:700; font-size:14px;">Change avatar</label><br>
+          <input type="file" name="avatar" id="avatarInput" accept="image/*" style="display:none;">
+          <label for="avatarInput" class="file-btn">Choose Photo</label>
+          <small id="avatarHint" style="display:none; color:#7a6a5c;">Preview only. Press "Save Changes" to keep it.</small>  
+        </div>
+        </div>
+
+        <div class="two-col">
+          <div class="field">
+            <label>First Name</label>
+            <input type="text" name="first_name" value="{{ request.user.first_name }}">
+          </div>
+          <div class="field">
+            <label>Last Name</label>
+            <input type="text" name="last_name" value="{{ request.user.last_name }}">
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Nickname</label>
+          <input type="text" name="nickname" value="{{ profile.nickname|default:'' }}" placeholder="What should Mica call you?">
+        </div>
+
+        <div class="two-col">
+          <div class="field">
+            <label>Username</label>
+            <input type="text" name="username" value="{{ request.user.username }}">
+          </div>
+          <div class="field">
+            <label>Email</label>
+            <input type="email" name="email" value="{{ request.user.email }}">
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Student Number</label>
+          <input type="text" value="{{ profile.student_number }}" disabled style="background:#f0ece0;">
+        </div>
+
+        <div class="two-col">
+          <div class="field">
+            <label>Course</label>
+            <select name="course">
+              {% for code, label in courses %}
+              <option value="{{ code }}" {% if profile.course == code %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field">
+            <label>Year Level</label>
+            <select name="year_level">
+              <option value="1" {% if profile.year_level == "1" %}selected{% endif %}>1st Year</option>
+              <option value="2" {% if profile.year_level == "2" %}selected{% endif %}>2nd Year</option>
+              <option value="3" {% if profile.year_level == "3" %}selected{% endif %}>3rd Year</option>
+              <option value="4" {% if profile.year_level == "4" %}selected{% endif %}>4th Year</option>
+              <option value="5" {% if profile.year_level == "5" %}selected{% endif %}>5th Year</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Contact Number</label>
+          <input type="text" name="contact_number" value="{{ profile.contact_number|default:'' }}">
+        </div>
+
+        <div class="two-col">
+          <div class="field">
+            <label>Emergency Contact Name</label>
+            <input type="text" name="emergency_contact_name" value="{{ profile.emergency_contact_name|default:'' }}">
+          </div>
+          <div class="field">
+            <label>Emergency Contact Number</label>
+            <input type="text" name="emergency_contact_number" value="{{ profile.emergency_contact_number|default:'' }}">
+          </div>
+        </div>
+
+        <div class="assessment-box">
+          <div class="assessment-box-head">
+            <h3>Health &amp; Symptom Assessment</h3>
+            {% if user.assessment.completed_at %}
+              <span class="status-pill status-done">Completed</span>
+            {% else %}
+              <span class="status-pill status-pending">Pending</span>
+            {% endif %}
+          </div>
+          <p class="assessment-box-desc">Keep your health profile updated by filling out or updating your initial symptom assessment form.</p>
+          {% if user.assessment.completed_at %}
+            <a href="{% url 'assessment' %}?retake=true" class="btn-link">Retake Assessment</a>
+          {% else %}
+            <a href="{% url 'assessment' %}" class="btn-link">Complete Assessment</a>
+          {% endif %}
+        </div>
+
+        <div class="assessment-box">
+          <div class="assessment-box-head">
+            <h3>App Tutorial</h3>
+          </div>
+          <p class="assessment-box-desc">Want a refresher? Replay the quick tour of your dashboard. The Mood Diary tour will play again the next time you open it.</p>
+          <button type="submit" form="tutorialResetForm" class="btn-link" style="border:none; cursor:pointer; font-family:inherit;">Replay Tutorial</button>
+        </div>
+
+        <div class="field" style="margin-top:22px;">
+          <label>Sharing with Guidance (optional)</label>
+          <label style="font-weight:400; display:flex; gap:8px; align-items:flex-start;">
+            <input type="checkbox" name="share_assessment" style="width:auto; margin-top:3px;" {% if profile.share_assessment_with_guidance %}checked{% endif %}>
+            Share the conditions I ticked in my check-in
+          </label>
+          <label style="font-weight:400; display:flex; gap:8px; align-items:flex-start;">
+            <input type="checkbox" name="share_mica_topics" style="width:auto; margin-top:3px;" {% if profile.share_mica_topics %}checked{% endif %}>
+            Share short topic tags from my chats with Mica
+          </label>
+          <a href="{% url 'consent_review' %}" style="font-size:13px; color:#7a6a5c;">Read the privacy and consent form again</a>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:24px;">
+          <a href="{% url 'change_password' %}" class="btn-link">Change Password</a>
+          <button type="submit" style="margin-top:0;">Save Changes</button>
+        </div>
+      </form>
+
+      <form id="tutorialResetForm" method="post" action="{% url 'tutorial_reset' %}">{% csrf_token %}</form>
+
+<script>
+  document.getElementById('avatarInput').addEventListener('change', function(e){
+    const file = e.target.files[0];
+    if(!file) return;
+    const img = document.getElementById('avatarPreview');
+    img.src = URL.createObjectURL(file);
+    img.style.display = '';
+    const ph = document.getElementById('avatarPlaceholder');
+    if(ph) ph.style.display = 'none';
+    document.getElementById('avatarHint').style.display = 'block';
+  });
+</script>
+</body>
+</html>

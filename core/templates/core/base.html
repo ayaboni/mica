@@ -1,0 +1,14 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}Django App{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'core/css/style.css' %}">
+</head>
+<body>
+    <header><h1>Welcome</h1></header>
+    <main>{% block content %}{% endblock %}</main>
+    <script src="{% static 'core/js/main.js' %}"></script>
+</body>
+</html>

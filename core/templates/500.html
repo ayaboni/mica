@@ -1,0 +1,24 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Something Went Wrong — MICA</title>
+  <style>
+    body{margin:0; font-family:'Nunito', sans-serif; background:#FAF7EE; color:#3A2E28; display:flex; align-items:center; justify-content:center; min-height:100vh; text-align:center;}
+    .wrap{max-width:420px; padding:20px;}
+    img{width:140px; margin-bottom:8px;}
+    h1{font-size:28px; margin:0 0 8px;}
+    p{color:#7a6a5c; margin:0 0 24px;}
+    a{display:inline-block; padding:12px 28px; background:#8B6F4E; color:#fff; border-radius:999px; text-decoration:none; font-weight:700;}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <img src="{% static 'core/images/mascot_bad.png' %}" alt="Mica feeling unwell">
+    <h1>Something broke on my end</h1>
+    <p>Sorry about that — try again in a moment. If it keeps happening, let us know.</p>
+    <a href="{% url 'home' %}">Back to home</a>
+  </div>
+</body>
+</html>

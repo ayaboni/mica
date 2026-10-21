@@ -1,0 +1,21 @@
+{% comment %}MICA wordmark. Set `color` on the parent for the lettering and `--mica-logo-m` for the "M". Dark-mode colors are defined in the style block below.{% endcomment %}
+<svg class="mica-logo" viewBox="4.5 18.5 240.5 85.5" role="img" aria-label="MICA" focusable="false">
+  <g fill="none" stroke-width="13" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M15 93.5 V34.5 L50 76 L85 34.5 V93.5" style="stroke:var(--mica-logo-m,currentColor)"/>
+    <g stroke="currentColor">
+      <path d="M112 52.5 V93.5"/>
+      <path d="M171.73 59.28 A20.5 20.5 0 1 0 171.73 86.72"/>
+      <circle cx="214" cy="73" r="20.5"/>
+      <path d="M234.5 52.5 V93.5"/>
+    </g>
+  </g>
+  <circle cx="112" cy="31" r="8.5" fill="currentColor"/>
+</svg>
+<style>
+  .mica-logo-link{display:inline-flex;align-items:center;color:#5C4229;--mica-logo-m:#5C4229;
+    text-decoration:none;border-radius:8px;padding:2px 4px;margin:-2px -4px;transition:opacity .15s ease;}
+  .mica-logo-link:hover{opacity:.8;}
+  .mica-logo-link:focus-visible{outline:3px solid #6FA8DC;outline-offset:2px;}
+  .mica-logo{height:34px;width:auto;display:block;}
+  body.dark .mica-logo-link,body.dark-mode .mica-logo-link{color:#F7F4E9;--mica-logo-m:#F0C13F;}
+</style>

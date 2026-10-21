@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+<body style="margin:0;padding:24px;background:#FAF7EE;font-family:Arial,Helvetica,sans-serif;color:#3A2E28;">
+  <div style="max-width:480px;margin:0 auto;background:#FBF2DE;border-radius:20px;padding:28px;">
+    <h2 style="margin:0 0 12px;color:#5C4229;">Finish signing in to MICA</h2>
+    <p style="font-size:15px;line-height:1.5;">Hi {{ name }}, someone (hopefully you) just tried to sign in on {{ when }}.</p>
+    <p style="margin:24px 0;">
+      <a href="{{ link }}" style="background:#8B6F4E;color:#ffffff;text-decoration:none;font-weight:bold;padding:13px 28px;border-radius:999px;display:inline-block;">Sign in to MICA</a>
+    </p>
+    <p style="font-size:13px;line-height:1.5;color:#7a6a5c;">The link works once and expires in {{ ttl_minutes }} minutes. If the button doesn't work, copy this address into your browser:<br><span style="word-break:break-all;">{{ link }}</span></p>
+    <p style="font-size:13px;line-height:1.5;color:#7a6a5c;">If this wasn't you, ignore this email. Nobody can sign in without the link. If you're worried, change your password.{% if ip %} Request came from IP address {{ ip }}.{% endif %}</p>
+  </div>
+</body>
+</html>
