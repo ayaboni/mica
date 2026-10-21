@@ -218,3 +218,10 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# --- MICA extras ---
+firebase-service-account.json
+.env
+media/
+db.sqlite3
+vosk-model-small-en-us-0.15*/
