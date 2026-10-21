@@ -75,6 +75,7 @@ urlpatterns = [
     path('api/staff/mood-stats/', views.staff_mood_stats, name='staff_mood_stats'),
     path('api/staff/summary/', views.staff_summary, name='staff_summary'),
     path('api/staff/students/<int:student_id>/access/', views.staff_log_access, name='staff_log_access'),
+    path('api/staff/students/<int:student_id>/status/', views.staff_student_status, name='staff_student_status'),
     path('api/staff/care-team/', views.staff_care_team, name='staff_care_team'),
     path('api/staff/profile/', views.staff_profile_update, name='staff_profile_update'),
 ]

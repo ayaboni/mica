@@ -620,6 +620,86 @@ html.dyslexia body{line-height:1.7;}
   .mood-opt img{width:100%;height:100%;object-fit:contain;transform:scale(1.12);}
   .mood-opt:hover{transform:translateY(-2px);}
   .mood-opt.selected{background:var(--btn-active);}
+
+  /* Mood label tooltip (hover/focus on the mascot faces) */
+  .mood-opt{position:relative;}
+  .mood-opt::after{
+    content:attr(data-label);
+    position:absolute;
+    bottom:calc(100% + 8px);
+    left:50%;
+    transform:translateX(-50%) translateY(4px);
+    background:var(--text-dark);
+    color:#fff;
+    font-size:12px;
+    font-weight:700;
+    letter-spacing:.3px;
+    padding:5px 10px;
+    border-radius:8px;
+    white-space:nowrap;
+    pointer-events:none;
+    opacity:0;
+    transition:opacity .15s ease, transform .15s ease;
+    z-index:20;
+  }
+  .mood-opt::before{
+    content:"";
+    position:absolute;
+    bottom:calc(100% + 3px);
+    left:50%;
+    transform:translateX(-50%) translateY(4px);
+    border:5px solid transparent;
+    border-top-color:var(--text-dark);
+    border-bottom:0;
+    pointer-events:none;
+    opacity:0;
+    transition:opacity .15s ease, transform .15s ease;
+    z-index:20;
+  }
+  .mood-opt:hover::after,.mood-opt:focus-visible::after,
+  .mood-opt:hover::before,.mood-opt:focus-visible::before{
+    opacity:1;
+    transform:translateX(-50%) translateY(0);
+  }
+  body.dark-mode .mood-opt::after{background:#F6EAD0;color:#2B2418;}
+  body.dark-mode .mood-opt::before{border-top-color:#F6EAD0;}
+
+  /* Calendar entry preview (hover on a logged day) */
+  .mood-preview{
+    position:fixed;
+    z-index:9999;
+    width:240px;
+    background:var(--card-bg);
+    color:var(--text-dark);
+    border-radius:14px;
+    padding:12px 14px;
+    box-shadow:0 8px 24px rgba(40,30,10,.22);
+    border:1px solid rgba(123,91,63,.18);
+    pointer-events:none;
+    opacity:0;
+    transform:translateY(4px);
+    transition:opacity .14s ease, transform .14s ease;
+    display:none;
+  }
+  .mood-preview.show{opacity:1;transform:translateY(0);}
+  .mood-preview .mp-head{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+  .mood-preview .mp-face{
+    width:44px;height:44px;border-radius:50%;
+    background:#F2EEE2;flex:0 0 44px;
+    display:flex;align-items:center;justify-content:center;overflow:hidden;
+  }
+  .mood-preview .mp-face img{width:100%;height:100%;object-fit:contain;}
+  .mood-preview .mp-date{font-size:11px;font-weight:700;letter-spacing:.5px;color:var(--text-mute);}
+  .mood-preview .mp-mood{font-size:15px;font-weight:800;color:var(--text-dark);line-height:1.2;}
+  .mood-preview .mp-note{
+    font-size:12.5px;line-height:1.5;color:var(--text-dark);
+    border-top:1px solid rgba(123,91,63,.18);padding-top:8px;
+    word-break:break-word;white-space:pre-wrap;
+  }
+  .mood-preview .mp-note.empty{color:var(--text-mute);font-style:italic;}
+  .mood-preview .mp-appt{margin-top:8px;font-size:11.5px;color:var(--text-mute);}
+  body.dark-mode .mood-preview{border-color:rgba(255,255,255,.12);box-shadow:0 8px 24px rgba(0,0,0,.5);}
+  body.dark-mode .mood-preview .mp-face{background:#34402f;}
   .diary-box textarea{
     width:100%;
     min-height:150px;
@@ -1148,11 +1228,11 @@ function toggleDyslexia(){
         <div class="entry-card">
           <div class="section-label">MOOD</div>
           <div class="mood-picker" id="mood-picker">
-            <button class="mood-opt" data-mood="0"><img src="{% static 'core/images/mascot_happy.png' %}" alt="Happy"></button>
-            <button class="mood-opt" data-mood="1"><img src="{% static 'core/images/mascot_good.png' %}" alt="Good"></button>
-            <button class="mood-opt" data-mood="2"><img src="{% static 'core/images/mascot_neutral.png' %}" alt="Neutral"></button>
-            <button class="mood-opt" data-mood="3"><img src="{% static 'core/images/mascot_bad.png' %}" alt="Bad"></button>
-            <button class="mood-opt" data-mood="4"><img src="{% static 'core/images/mascot_sad.png' %}" alt="Sad"></button>
+            <button class="mood-opt" data-mood="0" data-label="Great" aria-label="Great"><img src="{% static 'core/images/mascot_happy.png' %}" alt="Happy"></button>
+            <button class="mood-opt" data-mood="1" data-label="Good" aria-label="Good"><img src="{% static 'core/images/mascot_good.png' %}" alt="Good"></button>
+            <button class="mood-opt" data-mood="2" data-label="Okay" aria-label="Okay"><img src="{% static 'core/images/mascot_neutral.png' %}" alt="Neutral"></button>
+            <button class="mood-opt" data-mood="3" data-label="Low" aria-label="Low"><img src="{% static 'core/images/mascot_bad.png' %}" alt="Bad"></button>
+            <button class="mood-opt" data-mood="4" data-label="Struggling" aria-label="Struggling"><img src="{% static 'core/images/mascot_sad.png' %}" alt="Sad"></button>
           </div>
           <div class="section-label">DIARY</div>
           <div class="diary-box">
@@ -1814,6 +1894,64 @@ const moodImages = [
   "{% static 'core/images/mascot_sad.png' %}"
 ];
 
+const moodLabels = ['Great', 'Good', 'Okay', 'Low', 'Struggling'];
+
+/* ---------- Calendar hover preview ---------- */
+let moodPreviewEl = null;
+function getMoodPreview(){
+  if (!moodPreviewEl){
+    moodPreviewEl = document.createElement('div');
+    moodPreviewEl.className = 'mood-preview';
+    moodPreviewEl.setAttribute('role', 'tooltip');
+    document.body.appendChild(moodPreviewEl);
+  }
+  return moodPreviewEl;
+}
+function escapeHtmlPreview(t){
+  return String(t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function showMoodPreview(cell, entry, y, m, d, appt){
+  const el = getMoodPreview();
+  const note = (entry && entry.diary ? entry.diary : '').trim();
+  const MAX = 110;
+  const snippet = note.length > MAX ? note.slice(0, MAX).trimEnd() + '…' : note;
+  const dateLabel = `${monthNames[m]} ${d}, ${y}`;
+  let html = '';
+  if (entry){
+    html += `<div class="mp-head">
+      <div class="mp-face"><img src="${moodImages[entry.mood]}" alt=""></div>
+      <div><div class="mp-date">${dateLabel}</div><div class="mp-mood">${moodLabels[entry.mood] || ''}</div></div>
+    </div>`;
+    html += snippet
+      ? `<div class="mp-note">${escapeHtmlPreview(snippet)}</div>`
+      : `<div class="mp-note empty">No diary note for this day.</div>`;
+  } else {
+    html += `<div class="mp-head"><div><div class="mp-date">${dateLabel}</div></div></div>`;
+  }
+  if (appt){
+    const icon = appt.status === 'pending' ? '⏳' : '📅';
+    html += `<div class="mp-appt">${icon} Counselor appointment${appt.time ? ' at ' + escapeHtmlPreview(appt.time) : ''} (${escapeHtmlPreview(appt.status)})</div>`;
+  }
+  el.innerHTML = html;
+  el.style.display = 'block';
+
+  const r = cell.getBoundingClientRect();
+  const w = el.offsetWidth, h = el.offsetHeight, pad = 8;
+  let left = r.left + r.width / 2 - w / 2;
+  left = Math.max(pad, Math.min(left, window.innerWidth - w - pad));
+  let top = r.top - h - 8;
+  if (top < pad) top = r.bottom + 8;   // flip below if no room above
+  el.style.left = left + 'px';
+  el.style.top = top + 'px';
+  requestAnimationFrame(() => el.classList.add('show'));
+}
+function hideMoodPreview(){
+  if (!moodPreviewEl) return;
+  moodPreviewEl.classList.remove('show');
+  moodPreviewEl.style.display = 'none';
+}
+window.addEventListener('scroll', hideMoodPreview, true);
+
 function moodImg(i, size, drop){
   return `<img src="${moodImages[i]}" alt="" style="width:${size}px; height:${size}px; object-fit:contain; display:block; transform:translateY(${drop || 0}px);">`;
 }
@@ -1889,6 +2027,7 @@ function renderCalendarGrid() {
   const grid = document.getElementById('cal-grid');
   if (!grid) return;
   
+  hideMoodPreview();
   grid.innerHTML = '';
 
   // Render Day Headers
@@ -1939,6 +2078,12 @@ function renderCalendarGrid() {
       <div class="day-dot" style="position:relative;">${dotInner}</div>
       <div class="day-num">${d}</div>
     `;
+
+    if (entry !== undefined || hasAppt) {
+      const py = viewYear, pm = viewMonth;
+      cell.addEventListener('mouseenter', () => showMoodPreview(cell.querySelector('.day-dot'), entry, py, pm, d, hasAppt));
+      cell.addEventListener('mouseleave', hideMoodPreview);
+    }
 
     cell.addEventListener('click', () => {
       const cellDate = new Date(viewYear, viewMonth, d);

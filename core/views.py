@@ -30,6 +30,7 @@ from .models import LoginThrottle
 from .models import AccessLog
 from .models import LoginVerification
 from .models import StaffProfile
+from .models import StudentStatusLog, ACCOUNT_STATUS, STATUS_REASONS
 import hashlib
 import logging
 from django.core.mail import EmailMultiAlternatives
@@ -2104,6 +2105,69 @@ def staff_log_access(request, student_id):
     if not recent:
         AccessLog.objects.create(staff=request.user, student=student, action=action)
     return JsonResponse({"status": "ok"})
+
+
+@login_required(login_url='login')
+@user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
+@require_POST
+def staff_student_status(request, student_id):
+    student = get_object_or_404(User, id=student_id, is_staff=False, is_superuser=False)
+    profile, _ = UserProfile.objects.get_or_create(user=student)
+    try:
+        body = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid request."}, status=400)
+
+    new_status = body.get("status")
+    reason = body.get("reason", "")
+    force = bool(body.get("force"))
+    old_status = profile.account_status
+
+    if new_status not in dict(ACCOUNT_STATUS):
+        return JsonResponse({"error": "Invalid status."}, status=400)
+    if new_status == old_status:
+        return JsonResponse({"error": "Student is already " + new_status + "."}, status=400)
+
+    # Only the admin can mark someone Graduated or bring a Graduated student back.
+    if "graduated" in (new_status, old_status) and not request.user.is_superuser:
+        return JsonResponse({"error": "Only the admin can change a Graduated status."}, status=403)
+
+    if new_status == "graduated":
+        reason = "graduated"
+    elif new_status == "active":
+        reason = ""
+    elif reason not in dict(STATUS_REASONS) or reason == "graduated":
+        return JsonResponse({"error": "Please choose a reason."}, status=400)
+
+    upcoming = Appointment.objects.none()
+    if new_status != "active":
+        upcoming = Appointment.objects.filter(
+            student=student, status__in=["pending", "confirmed"],
+            scheduled_time__gte=timezone.now())
+        open_flags = StudentFlag.objects.filter(student=student).exclude(status="resolved").count()
+        upcoming_count = upcoming.count()
+        if open_flags:
+            return JsonResponse({
+                "error": f"This student has {open_flags} unresolved risk alert(s). Resolve them before archiving."
+            }, status=409)
+        if upcoming_count and not force:
+            return JsonResponse({
+                "needs_confirm": True,
+                "upcoming_appointments": upcoming_count,
+            }, status=409)
+
+    with transaction.atomic():
+        if new_status != "active":
+            upcoming.update(status="cancelled")
+        profile.account_status = new_status
+        profile.status_reason = reason
+        profile.status_changed_at = timezone.now()
+        profile.save(update_fields=["account_status", "status_reason", "status_changed_at"])
+        StudentStatusLog.objects.create(
+            student=student, changed_by=request.user,
+            old_status=old_status, new_status=new_status, reason=reason)
+
+    return JsonResponse({"status": "ok", "account_status": new_status, "reason": reason})
 
 
 @login_required(login_url='login')
