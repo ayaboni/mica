@@ -3,6 +3,20 @@ from django.db.models.functions import Lower
 from django.contrib.auth.models import User
 from django.utils import timezone
 
+ACCOUNT_STATUS = [
+    ("active", "Active"),
+    ("inactive", "Inactive"),
+    ("graduated", "Graduated"),
+]
+
+STATUS_REASONS = [
+    ("not_enrolled", "Not enrolled this semester"),
+    ("dropped", "Dropped out"),
+    ("transferred", "Transferred"),
+    ("graduated", "Graduated"),
+    ("other", "Other"),
+]
+
 COURSES = [
     ("BSCS-DS", "BS Computer Science - Data Science"),
     ("BSIT", "BS Information Technology - Game Development"),
@@ -63,6 +77,9 @@ class UserProfile(models.Model):
     share_mica_topics = models.BooleanField(default=False)
     has_seen_tutorial = models.BooleanField(default=False)
     has_seen_mood_tutorial = models.BooleanField(default=False)
+    account_status = models.CharField(max_length=10, choices=ACCOUNT_STATUS, default='active', db_index=True)
+    status_reason = models.CharField(max_length=20, choices=STATUS_REASONS, blank=True)
+    status_changed_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         constraints = [
@@ -241,3 +258,14 @@ class LoginVerification(models.Model):
 
     def __str__(self):
         return f"{self.user} ({self.method}) {self.created_at:%Y-%m-%d %H:%M}"
+
+class StudentStatusLog(models.Model):
+    student = models.ForeignKey(User, on_delete=models.CASCADE, related_name='status_history')
+    changed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='status_changes_made')
+    old_status = models.CharField(max_length=10)
+    new_status = models.CharField(max_length=10)
+    reason = models.CharField(max_length=20, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
