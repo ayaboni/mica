@@ -556,6 +556,11 @@
       <section class="section" id="sec-students">
         <div class="toolbar">
           <div class="toolbar-left">
+            <select class="filter-select" id="studentStatusFilter" onchange="loadStudents()">
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+              <option value="graduated">Graduated</option>
+            </select>
             <select class="filter-select" id="studentRiskFilter" onchange="renderStudents()">
               <option value="all">All risk levels</option>
               <option value="stable">Stable</option>
@@ -880,6 +885,35 @@
       <button class="pill-btn ghost sm" onclick="openStudentChat(false)">Send check-in</button>
       <button class="pill-btn ghost sm" onclick="openStudentChat(true)">Schedule appointment</button>
       <button class="pill-btn ghost sm" onclick="openNotesPanel()">Notes</button>
+      <button class="pill-btn ghost sm" id="modalStatusBtn" onclick="openStatusDialog()">Archive student</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="statusModal" style="z-index:110;">
+  <div class="modal" style="max-width:460px;">
+    <div class="modal-head">
+      <div>
+        <h2 id="statusTitle">Archive student</h2>
+        <div class="sub" id="statusSub"></div>
+      </div>
+      <button class="modal-close" onclick="closeStatusDialog()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="statusReasonWrap" style="margin-bottom:12px;">
+        <div style="font-size:12.5px; margin-bottom:6px;">Reason</div>
+        <select class="filter-select" id="statusReason" style="width:100%;">
+          <option value="not_enrolled">Not enrolled this semester</option>
+          <option value="dropped">Dropped out</option>
+          <option value="transferred">Transferred</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div id="statusMsg" style="font-size:13px;"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="pill-btn ghost sm" onclick="closeStatusDialog()">Cancel</button>
+      <button class="pill-btn solid sm" id="statusConfirmBtn">Archive</button>
     </div>
   </div>
 </div>
@@ -1117,7 +1151,7 @@ function yearLabel(y){ return !y ? '' : (/^\d/.test(y) ? 'Year ' + y : y); }
 function loadStudents(){
   document.getElementById('studentsTbody').innerHTML =
     '<tr><td colspan="7" style="padding:24px; color:var(--ink-soft);">Loading students…</td></tr>';
-  return fetch("{% url 'staff_students_list' %}")
+  return fetch("{% url 'staff_students_list' %}?status=" + encodeURIComponent(document.getElementById('studentStatusFilter').value))
     .then(r => r.json())
     .then(data => {
       studentsReal = data.students || [];
@@ -1127,7 +1161,7 @@ function loadStudents(){
       sel.innerHTML = courseSelectHtml(studentsReal.map(s => s.program));
       sel.value = [...sel.options].some(o => o.value === keep) ? keep : 'all';
       renderStudents();
-      renderRiskRules();
+      if (document.getElementById('studentStatusFilter').value === 'active') renderRiskRules();
     })
     .catch(() => {
       document.getElementById('studentsTbody').innerHTML =
@@ -1569,6 +1603,8 @@ function deleteNote(id){
 /* =========================================================
    MODAL
 ========================================================= */
+let pendingStatus = null;
+
 function openStudentModal(code){
   const s = studentsReal.find(x=>x.code===code);
   if(!s) return;
@@ -1580,6 +1616,7 @@ function openStudentModal(code){
   document.getElementById('modalMood').textContent = s.mood === '-' ? 'No data yet' : s.mood + ' / 5';
   document.getElementById('modalLast').textContent = s.last_active;
   document.getElementById('studentModal').classList.add('active');
+  document.getElementById('modalStatusBtn').textContent = s.account_status === 'active' ? 'Archive student' : 'Reactivate student';
   logRecordAccess(s.id, 'view_profile');
 
   if(charts.modal) charts.modal.destroy();
@@ -1592,6 +1629,70 @@ function openStudentModal(code){
 }
 
 function closeModal(){document.getElementById('studentModal').classList.remove('active');}
+
+function openStatusDialog(){
+  const s = studentsReal.find(x => x.code === currentStudentCode);
+  if(!s) return;
+  const reactivating = s.account_status !== 'active';
+  pendingStatus = reactivating ? 'active' : 'inactive';
+
+  const sel = document.getElementById('statusReason');
+  if(IS_ADMIN && ![...sel.options].some(o => o.value === 'graduated')){
+    sel.add(new Option('Graduated', 'graduated'));
+  }
+  const msg = document.getElementById('statusMsg');
+  msg.style.color = '';
+  msg.textContent = reactivating
+    ? 'This student will be able to use MICA again.'
+    : 'All records are kept. The student\'s account will be archived.';
+  document.getElementById('statusTitle').textContent = reactivating ? 'Reactivate student' : 'Archive student';
+  document.getElementById('statusSub').textContent = s.name + ' · ' + s.student_number;
+  document.getElementById('statusReasonWrap').style.display = reactivating ? 'none' : '';
+  const btn = document.getElementById('statusConfirmBtn');
+  btn.textContent = reactivating ? 'Reactivate' : 'Archive';
+  btn.onclick = () => submitStatus(false);
+  document.getElementById('statusModal').classList.add('active');
+}
+
+function closeStatusDialog(){
+  document.getElementById('statusModal').classList.remove('active');
+}
+
+function submitStatus(force){
+  const s = studentsReal.find(x => x.code === currentStudentCode);
+  if(!s || !pendingStatus) return;
+  let status = pendingStatus, reason = '';
+  if(status !== 'active'){
+    reason = document.getElementById('statusReason').value;
+    if(reason === 'graduated') status = 'graduated';
+  }
+  const msg = document.getElementById('statusMsg');
+  fetch(`/api/staff/students/${s.id}/status/`, {
+    method:'POST',
+    headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},
+    body: JSON.stringify({status, reason, force})
+  })
+  .then(r => r.json().then(d => ({ok:r.ok, d})))
+  .then(({ok, d}) => {
+    if(ok){
+      closeStatusDialog(); closeModal();
+      showToast(status === 'active' ? 'Student reactivated' : 'Student archived');
+      loadStudents();
+      return;
+    }
+    if(d.needs_confirm){
+      msg.style.color = '';
+      msg.textContent = `This student has ${d.upcoming_appointments} upcoming appointment(s). Archiving will cancel them.`;
+      const btn = document.getElementById('statusConfirmBtn');
+      btn.textContent = 'Archive and cancel appointments';
+      btn.onclick = () => submitStatus(true);
+      return;
+    }
+    msg.style.color = 'var(--alert)';
+    msg.textContent = d.error || 'Something went wrong.';
+  })
+  .catch(() => { msg.style.color = 'var(--alert)'; msg.textContent = 'Network error. Try again.'; });
+}
 
 function logRecordAccess(studentId, action){
   fetch(`/api/staff/students/${studentId}/access/`, {
@@ -2015,6 +2116,8 @@ function updateApptStatus(apptId, newStatus) {
 /* =========================================================
    RENDER: ADMIN ACCOUNTS
 ========================================================= */
+const IS_ADMIN = "{{ user.is_superuser|yesno:'true,false' }}" === "true";
+
 function loadCareTeam(){
   return fetch("{% url 'staff_care_team' %}").then(r => r.json()).then(d => {
     admins = d.members || [];

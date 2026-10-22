@@ -10,7 +10,7 @@ from django.utils.html import escape
 from django.db import models
 from django.db import connection
 from django.db import IntegrityError, transaction
-from django.db.models import Prefetch
+from django.db.models import Prefetch, Q
 from django.core.exceptions import ValidationError
 from django.urls import reverse
 import math
@@ -1820,7 +1820,15 @@ def staff_students_list(request):
     today = timezone.localdate()
     flagged_ids = set(StudentFlag.objects.exclude(status='resolved').values_list('student_id', flat=True))
     since = today - timedelta(days=60)
-    users = (User.objects.filter(is_staff=False, is_superuser=False)
+    status = request.GET.get("status", "active")
+    if status not in dict(ACCOUNT_STATUS):
+        status = "active"
+    base = User.objects.filter(is_staff=False, is_superuser=False)
+    if status == "active":
+        base = base.filter(Q(profile__account_status="active") | Q(profile__isnull=True))
+    else:
+        base = base.filter(profile__account_status=status)
+    users = (base
              .select_related('profile')
              .prefetch_related(Prefetch(
                  'mood_entries',
@@ -1850,6 +1858,8 @@ def staff_students_list(request):
             "student_number": (profile.student_number if profile and profile.student_number else "No ID"),
             "program": (profile.course if profile and profile.course else "Not set"),
             "year": (profile.year_level if profile and profile.year_level else ""),
+            "account_status": profile.account_status if profile else "active",
+            "status_reason": profile.get_status_reason_display() if profile and profile.status_reason else "",
             "risk": _risk_from_entries(entries, today),
             "mood": f"{sum(last7) / len(last7):.1f}" if last7 else "-",
             "trend": last7,
