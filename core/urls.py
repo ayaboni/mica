@@ -14,6 +14,7 @@ urlpatterns = [
     path('login/resend/', views.login_resend, name='login_resend'),
     path('login/verify/<str:token>/', views.login_verify, name='login_verify'),
     path('archived/', views.archived, name='archived'),
+    path('api/keepalive/', views.api_keepalive, name='api_keepalive'),
     path('logout/', views.user_logout, name='logout'),
     path('password-reset/', 
          auth_views.PasswordResetView.as_view(template_name='password-reset.html', extra_context={'step': 'request'}), 

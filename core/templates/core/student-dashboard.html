@@ -2610,6 +2610,31 @@ if (document.readyState === "loading") {
     updateGreeting();
 }
 
+/* =========================================================
+   IDLE AUTO-LOGOUT
+========================================================= */
+const IDLE_MS = 30 * 60 * 1000;
+let idleTimer = null;
+let lastKeepalive = 0;
+
+function resetIdle(){
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => {
+    window.location.href = "{% url 'logout' %}?expired=1";
+  }, IDLE_MS);
+  const now = Date.now();
+  if (now - lastKeepalive > 60000){
+    lastKeepalive = now;
+    fetch("{% url 'api_keepalive' %}", {
+      method: 'POST',
+      headers: {'X-CSRFToken': getCookie('csrftoken')}
+    }).catch(() => {});
+  }
+}
+['mousemove','keydown','click','scroll','touchstart'].forEach(ev =>
+  document.addEventListener(ev, resetIdle, {passive:true}));
+resetIdle();
+
 </script>
 
 <div id="mood-reminder-popup" style="display:none; position:fixed; right:20px; bottom:20px; z-index:9000; max-width:300px; background:#fff; color:#4c3d29; border-radius:16px; padding:16px 18px; box-shadow:0 8px 24px rgba(0,0,0,.18);">

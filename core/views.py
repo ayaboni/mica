@@ -2331,6 +2331,15 @@ def admin_dashboard(request):
 
 # -- Logout --
 
+@login_required(login_url='login')
+@require_POST
+def api_keepalive(request):
+    return JsonResponse({"status": "ok"})   # the middleware refreshes last_activity on this POST
+
+
 def user_logout(request):
+    expired = request.GET.get('expired')
     auth_logout(request)
+    if expired:
+        return redirect(reverse('login') + '?expired=1')
     return redirect('login')

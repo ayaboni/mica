@@ -872,6 +872,11 @@ img { max-width: 100%; display: block; }
       {% if lockout_seconds %}
         <p id="lockoutMsg" data-seconds="{{ lockout_seconds }}" style="color:#d9534f; font-weight:bold; margin-bottom:12px; text-align:center;"></p>
       {% endif %}
+      {% if request.GET.expired %}
+        <p style="color:#d9534f; font-weight:bold; margin-bottom:12px; text-align:center;">
+          You were signed out because of inactivity. Please log in again.
+        </p>
+      {% endif %}
 
   <div class="auth-field">
     <!-- Changed type="email" to type="text" and added name="username" -->

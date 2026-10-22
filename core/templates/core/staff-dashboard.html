@@ -2312,6 +2312,31 @@ function initAll(){
   loadAppointments();
 }
 
+/* =========================================================
+   IDLE AUTO-LOGOUT
+========================================================= */
+const IDLE_MS = 15 * 60 * 1000;
+let idleTimer = null;
+let lastKeepalive = 0;
+
+function resetIdle(){
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => {
+    window.location.href = "{% url 'logout' %}?expired=1";
+  }, IDLE_MS);
+  const now = Date.now();
+  if (now - lastKeepalive > 60000){
+    lastKeepalive = now;
+    fetch("{% url 'api_keepalive' %}", {
+      method: 'POST',
+      headers: {'X-CSRFToken': getCookie('csrftoken')}
+    }).catch(() => {});
+  }
+}
+['mousemove','keydown','click','scroll','touchstart'].forEach(ev =>
+  document.addEventListener(ev, resetIdle, {passive:true}));
+resetIdle();
+
 /* ============================================================
    NOTIFICATIONS
    Sound Effect by

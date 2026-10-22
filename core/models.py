@@ -1,6 +1,8 @@
 from django.db import models
 from django.db.models.functions import Lower
 from django.contrib.auth.models import User
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 from django.utils import timezone
 
 ACCOUNT_STATUS = [
@@ -270,3 +272,8 @@ class StudentStatusLog(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+
+@receiver(post_save, sender=User)
+def ensure_staff_profile(sender, instance, **kwargs):
+    if instance.is_staff and not instance.is_superuser:
+        StaffProfile.objects.get_or_create(user=instance, defaults={'role': 'other'})
