@@ -848,6 +848,10 @@
               <div><div class="t-label">Dark mode</div><div class="t-desc">Switch the console to a low-light color scheme.</div></div>
               <button class="switch" id="darkSwitch" onclick="toggleTheme()"><span class="knob"></span></button>
             </div>
+            <div class="toggle-row">
+              <div><div class="t-label">Notification volume</div><div class="t-desc">For new messages and risk alerts on this device.</div></div>
+              <input type="range" id="volumeSlider" min="0" max="100" step="5" style="width:140px; accent-color:var(--sage-deep);" oninput="setSoundVolume(this.value)" onchange="playChime('alert')">
+            </div>
           </div>
         </div>
       </section>
@@ -908,6 +912,7 @@
           <option value="transferred">Transferred</option>
           <option value="other">Other</option>
         </select>
+        <input type="text" id="statusNote" maxlength="200" placeholder="Describe the reason" class="filter-select" style="width:100%; margin-top:8px; display:none;">
       </div>
       <div id="statusMsg" style="font-size:13px;"></div>
     </div>
@@ -990,35 +995,8 @@
 /* =========================================================
    MOCK DATA
 ========================================================= */
+const IS_ADMIN = "{{ user.is_superuser|yesno:'true,false' }}" === "true";
 const PROGRAMS = ["BS Computer Science","BS Psychology","BS Business Administration","BS Nursing","BS Architecture","BS Education"];
-const MOOD_TAGS = ["Anxious","Calm","Overwhelmed","Hopeful","Low energy","Motivated","Lonely","Grateful","Stressed","Content"];
-const FIRST = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O"];
-const RISK_LEVELS = ["stable","watch","urgent"];
-
-function rand(min,max){return Math.floor(Math.random()*(max-min+1))+min;}
-function pick(arr){return arr[Math.floor(Math.random()*arr.length)];}
-function sparkPath(vals,w,h){
-  const max=5,min=1; const step=w/(vals.length-1);
-  return vals.map((v,i)=>`${i*step},${h-((v-min)/(max-min))*h}`).join(' ');
-}
-
-let students = [];
-for(let i=1;i<=28;i++){
-  const risk = i<=4?"urgent":(i<=12?"watch":"stable");
-  const trend = Array.from({length:7},()=>rand(1,5));
-  students.push({
-    code:`MC-${1000+i*7}`,
-    initials: pick(FIRST)+pick(FIRST),
-    program: pick(PROGRAMS),
-    year: rand(1,4),
-    risk: risk,
-    mood: (trend.reduce((a,b)=>a+b,0)/trend.length).toFixed(1),
-    trend: trend,
-    streak: rand(0,32),
-    lastActive: rand(0,1)?`${rand(1,11)}h ago`:`${rand(1,6)}d ago`,
-    tags: [pick(MOOD_TAGS),pick(MOOD_TAGS),pick(MOOD_TAGS)]
-  });
-}
 
 let alerts = [];
 let suggested = [];
@@ -1119,6 +1097,16 @@ function showTab(tab, el){
 let studentsReal = [];
 let courseOptions = [];
 
+function sparkPath(vals, w, h){
+  const pad = 2, min = 1, max = 5;               // mood scores run 1 to 5
+  const step = vals.length > 1 ? (w - pad * 2) / (vals.length - 1) : 0;
+  return vals.map((v, i) => {
+    const x = pad + i * step;
+    const y = h - pad - ((v - min) / (max - min)) * (h - pad * 2);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+}
+
 function riskBadge(risk, pulse){
   const labelMap = {stable:"Stable", watch:"Watch", urgent:"Urgent", nodata:"No data"};
   const cls = risk === 'nodata' ? 'neutral' : risk;
@@ -1152,7 +1140,7 @@ function loadStudents(){
   document.getElementById('studentsTbody').innerHTML =
     '<tr><td colspan="7" style="padding:24px; color:var(--ink-soft);">Loading students…</td></tr>';
   return fetch("{% url 'staff_students_list' %}?status=" + encodeURIComponent(document.getElementById('studentStatusFilter').value))
-    .then(r => r.json())
+    .then(r => { if(!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
     .then(data => {
       studentsReal = data.students || [];
       courseOptions = data.courses || courseOptions;
@@ -1163,7 +1151,7 @@ function loadStudents(){
       renderStudents();
       if (document.getElementById('studentStatusFilter').value === 'active') renderRiskRules();
     })
-    .catch(() => {
+    .catch(err => { console.error('loadStudents failed:', err);
       document.getElementById('studentsTbody').innerHTML =
         '<tr><td colspan="7" style="padding:24px; color:var(--ink-soft);">Could not load students. Try refreshing.</td></tr>';
     });
@@ -1240,7 +1228,7 @@ function pollStaffNotifications(){
       const waiting = data.threads.filter(t => t.awaiting_reply).length;
       const fresh = data.threads.filter(t => t.awaiting_reply && t.last_message_id > (seenLastMsg[t.id] || 0));
       if(staffNotifInitialized && fresh.length){
-        notifSound.play().catch(()=>{});
+        playNotificationSound();
       }
       data.threads.forEach(t => {
         if(t.last_message_id > (seenLastMsg[t.id] || 0)) seenLastMsg[t.id] = t.last_message_id;
@@ -1616,7 +1604,11 @@ function openStudentModal(code){
   document.getElementById('modalMood').textContent = s.mood === '-' ? 'No data yet' : s.mood + ' / 5';
   document.getElementById('modalLast').textContent = s.last_active;
   document.getElementById('studentModal').classList.add('active');
-  document.getElementById('modalStatusBtn').textContent = s.account_status === 'active' ? 'Archive student' : 'Reactivate student';
+  const sb = document.getElementById('modalStatusBtn');
+  const blocked = s.account_status === 'active' && s.flagged;
+  sb.disabled = blocked;
+  sb.textContent = s.account_status !== 'active' ? 'Reactivate student'
+                 : (blocked ? 'Resolve alert to archive' : 'Archive student');
   logRecordAccess(s.id, 'view_profile');
 
   if(charts.modal) charts.modal.destroy();
@@ -1647,6 +1639,8 @@ function openStatusDialog(){
     : 'All records are kept. The student\'s account will be archived.';
   document.getElementById('statusTitle').textContent = reactivating ? 'Reactivate student' : 'Archive student';
   document.getElementById('statusSub').textContent = s.name + ' · ' + s.student_number;
+  document.getElementById('statusNote').value='';
+  document.getElementById('statusNote').style.display='none';
   document.getElementById('statusReasonWrap').style.display = reactivating ? 'none' : '';
   const btn = document.getElementById('statusConfirmBtn');
   btn.textContent = reactivating ? 'Reactivate' : 'Archive';
@@ -1670,7 +1664,7 @@ function submitStatus(force){
   fetch(`/api/staff/students/${s.id}/status/`, {
     method:'POST',
     headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},
-    body: JSON.stringify({status, reason, force})
+    body: JSON.stringify({status, reason, force, note: document.getElementById('statusNote').value})
   })
   .then(r => r.json().then(d => ({ok:r.ok, d})))
   .then(({ok, d}) => {
@@ -1779,6 +1773,7 @@ function submitFlag(){
    RENDER: ALERTS + FEED
 ========================================================= */
 let knownFlagIds = null;
+let knownSuggested = null;
 
 function loadAlerts(fromPoll){
   return fetch("{% url 'staff_flags' %}")
@@ -1790,10 +1785,21 @@ function loadAlerts(fromPoll){
       if(fromPoll === true && knownFlagIds){
         const fresh = alerts.filter(a=>a.status==='New' && !knownFlagIds.has(a.id));
         if(fresh.length){
-          try{ notifSound.currentTime = 0; notifSound.play().catch(()=>{}); }catch(e){}
+          playChime('alert');
           showToast('New flag: ' + fresh[0].name);
         }
       }
+
+      const urgentNow = suggested.filter(s => s.severity === 'urgent');
+      if(fromPoll === true && knownSuggested){
+        const freshUrgent = urgentNow.filter(s => !knownSuggested.has(s.code));
+        if(freshUrgent.length){
+          playChime('alert');
+          showToast('New urgent suggestion: ' + freshUrgent[0].name);
+        }
+      }
+      knownSuggested = new Set(urgentNow.map(s => s.code));
+
       knownFlagIds = new Set(alerts.map(a=>a.id));
       renderAlerts();
       renderDashAlertPreview();
@@ -1854,7 +1860,7 @@ function renderAlerts(){
         <div class="actions">
           <button class="pill-btn ghost sm" onclick="openStudentModal('${a.code}')">View student</button>
           ${a.status!=='Resolved' ? `${alertActionButton(a)}
-          <button class="pill-btn solid sm" onclick="updateAlertStatus(${a.id},'resolve')">Mark resolved</button>` : ''}
+          ${a.mine && a.status==='In Review' ? `<button class="pill-btn solid sm" onclick="updateAlertStatus(${a.id},'resolve')">Mark resolved</button>` : ''}` : ''}
         </div>
       </div>`;
     list.appendChild(div);
@@ -2116,8 +2122,6 @@ function updateApptStatus(apptId, newStatus) {
 /* =========================================================
    RENDER: ADMIN ACCOUNTS
 ========================================================= */
-const IS_ADMIN = "{{ user.is_superuser|yesno:'true,false' }}" === "true";
-
 function loadCareTeam(){
   return fetch("{% url 'staff_care_team' %}").then(r => r.json()).then(d => {
     admins = d.members || [];
@@ -2322,6 +2326,7 @@ let audioUnlocked = false;
 function playNotificationSound() {
   if (notifSound) {
     notifSound.currentTime = 0;
+    notifSound.volume = getSoundVolume();
     notifSound.play().catch(err => console.log("Audio play blocked or failed:", err));
   }
 }
@@ -2337,6 +2342,57 @@ function unlockAudio() {
 
 document.addEventListener('click', unlockAudio, { once: true });
 document.addEventListener('keydown', unlockAudio, { once: true });
+
+function getSoundVolume(){
+  try{
+    const v = parseInt(localStorage.getItem('mica_sound_volume'), 10);
+    if(!isNaN(v)) return Math.min(Math.max(v, 0), 100) / 100;
+  }catch(e){}
+  return 0.7;
+}
+function setSoundVolume(v){
+  try{ localStorage.setItem('mica_sound_volume', String(v)); }catch(e){}
+}
+
+let audioCtx = null;
+function getAudioCtx(){
+  if(!audioCtx){
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if(AC) audioCtx = new AC();
+  }
+  return audioCtx;
+}
+document.addEventListener('click', () => {
+  const c = getAudioCtx();
+  if(c && c.state === 'suspended') c.resume();
+}, { once: true });
+
+function playChime(kind){
+  const ctx = getAudioCtx();
+  const vol = getSoundVolume();
+  if(!ctx || vol <= 0) return;
+  if(ctx.state === 'suspended') ctx.resume();
+  const notes = kind === 'alert' ? [740, 988] : [660];
+  notes.forEach((freq, i) => {
+    const t0 = ctx.currentTime + i * 0.2;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(0.3 * vol, t0 + 0.03);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.45);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(t0);
+    osc.stop(t0 + 0.5);
+  });
+}
+
+(function(){
+  const s = document.getElementById('volumeSlider');
+  if(s) s.value = Math.round(getSoundVolume() * 100);
+})();
 
 let staffNotifInitialized = false;
 

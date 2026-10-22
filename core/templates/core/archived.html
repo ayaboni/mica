@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Account archived | MICA</title>
+<style>
+  body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#F6F2E8;font-family:'Nunito',sans-serif;color:#3E3226;padding:20px;}
+  .box{max-width:520px;background:#fff;border-radius:20px;padding:32px;box-shadow:0 10px 30px rgba(0,0,0,.08);}
+  h1{font-size:22px;margin:0 0 10px;}
+  p{line-height:1.55;margin:0 0 14px;}
+  .help{background:#F6F2E8;border-radius:14px;padding:14px 16px;margin:18px 0;font-size:14px;line-height:1.6;}
+  .help b{display:block;margin-bottom:6px;}
+  a.btn{display:inline-block;padding:10px 20px;border-radius:999px;background:#E5DAC3;color:#3E3226;text-decoration:none;font-weight:700;}
+</style>
+</head>
+<body>
+<div class="box">
+  <h1>Your MICA account is archived</h1>
+  <p>Your records are kept safe. To use MICA again, please visit the Guidance Office so they can reactivate your account.</p>
+  <div class="help">
+    <b>Need to talk to someone right now?</b>
+    NCMH Crisis Hotline: 1553 (toll-free landline), 0917-899-8727, 0966-351-4518<br>
+    Hopeline PH: 0917-558-4673 or (02) 8804-4673<br>
+    Emergency: 911
+  </div>
+  <p>Guidance Office: <!-- add your school's office location, hours and contact --></p>
+  <a class="btn" href="{% url 'logout' %}">Sign out</a>
+</div>
+</body>
+</html>

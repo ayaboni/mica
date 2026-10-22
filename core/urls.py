@@ -13,6 +13,7 @@ urlpatterns = [
     path('login/check-email/', views.login_check_email, name='login_check_email'),
     path('login/resend/', views.login_resend, name='login_resend'),
     path('login/verify/<str:token>/', views.login_verify, name='login_verify'),
+    path('archived/', views.archived, name='archived'),
     path('logout/', views.user_logout, name='logout'),
     path('password-reset/', 
          auth_views.PasswordResetView.as_view(template_name='password-reset.html', extra_context={'step': 'request'}), 

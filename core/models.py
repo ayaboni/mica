@@ -266,6 +266,7 @@ class StudentStatusLog(models.Model):
     new_status = models.CharField(max_length=10)
     reason = models.CharField(max_length=20, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    note = models.CharField(max_length=200, blank=True)
 
     class Meta:
         ordering = ['-created_at']

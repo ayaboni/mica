@@ -182,6 +182,11 @@ def google_register(request):
     if not user.is_active:
         return JsonResponse({"error": "This account is disabled."}, status=403)
 
+    if profile.account_status != "active":
+        return JsonResponse({
+            "error": "This account is archived. Please visit the Guidance Office to reactivate it. If you need someone to talk to right now, call the NCMH hotline at 1553."
+        }, status=403)
+
     remember_me = bool(payload.get("remember_me"))
     trusted = _is_trusted_browser(request, user)
 
@@ -694,6 +699,11 @@ def login(request):
 
         if user is not None:
             LoginThrottle.objects.filter(username_key=throttle_key).delete()
+            profile = UserProfile.objects.filter(user=user).first()
+            if (profile and profile.account_status != "active"
+                    and not (user.is_staff or user.is_superuser)):
+                messages.error(request, "This account is archived. Please visit the Guidance Office to reactivate it.")
+                return render(request, 'core/login.html', {'archived_blocked': True}, status=403)
             remember_me = bool(request.POST.get('remember_me'))
             trusted = _is_trusted_browser(request, user)
 
@@ -724,6 +734,14 @@ def login(request):
             messages.error(request, f"Invalid username or password. {_plural(attempts_left, 'attempt')} left.")
 
     return render(request, 'core/login.html')
+
+
+@login_required(login_url='login')
+def archived(request):
+    profile = get_profile(request.user)
+    if request.user.is_staff or request.user.is_superuser or profile.account_status == "active":
+        return redirect('student_dashboard')
+    return render(request, 'core/archived.html')
 
 
 CONSENT_VERSION = "1.1"
@@ -1913,6 +1931,10 @@ def _risk_from_entries(entries, today):
     return _risk_level(scores, days_since)
 
 
+def _active_students():
+    return User.objects.filter(is_staff=False, is_superuser=False).filter(
+        Q(profile__account_status="active") | Q(profile__isnull=True))
+
 @login_required(login_url='login')
 @user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
 def staff_flags(request):
@@ -1921,7 +1943,7 @@ def staff_flags(request):
     flag_data = [_flag_json(f, today, request.user) for f in flags]
     open_ids = set(StudentFlag.objects.exclude(status='resolved').values_list('student_id', flat=True))
     suggested = []
-    students = (User.objects.filter(is_staff=False, is_superuser=False)
+    students = (_active_students()
                 .select_related('profile')
                 .prefetch_related(Prefetch(
                     'mood_entries',
@@ -1978,10 +2000,10 @@ def staff_flag_action(request, flag_id):
         flag.assigned_to = request.user
         flag.resolved_at = None
     elif action == "resolve":
+        if flag.assigned_to_id != request.user.id:
+            return JsonResponse({"error": "Take this case first before resolving it."}, status=403)
         flag.status = 'resolved'
         flag.resolved_at = timezone.now()
-        if not flag.assigned_to:
-            flag.assigned_to = request.user
     elif action == "release":
         if flag.assigned_to_id != request.user.id:
             return JsonResponse({"error": "Only the assigned counselor can release this case."}, status=403)
@@ -1999,7 +2021,7 @@ def staff_flag_action(request, flag_id):
 def staff_dashboard_stats(request):
     today = timezone.localdate()
     now = timezone.now()
-    students = User.objects.filter(is_staff=False, is_superuser=False)
+    students = _active_students()
 
     entries = list(MoodEntry.objects.filter(
         user__in=students, date__gte=today - timedelta(days=41)
@@ -2061,7 +2083,7 @@ def staff_mood_stats(request):
     week_start = today - timedelta(days=6)
     month_start = today - timedelta(days=29)
     rows = list(MoodEntry.objects.filter(
-        user__is_staff=False, user__is_superuser=False, date__gte=month_start
+        user__in=_active_students(),
     ).values_list('date', 'mood', 'user_id', 'user__profile__course'))
 
     dist = [0, 0, 0, 0, 0]      # great, good, okay, low, struggling
@@ -2131,6 +2153,7 @@ def staff_student_status(request, student_id):
     new_status = body.get("status")
     reason = body.get("reason", "")
     force = bool(body.get("force"))
+    note = (body.get("note") or "").strip()[:200]
     old_status = profile.account_status
 
     if new_status not in dict(ACCOUNT_STATUS):
@@ -2148,6 +2171,8 @@ def staff_student_status(request, student_id):
         reason = ""
     elif reason not in dict(STATUS_REASONS) or reason == "graduated":
         return JsonResponse({"error": "Please choose a reason."}, status=400)
+    if reason == "other" and not note:
+        return JsonResponse({"error": "Please describe the reason."}, status=400)
 
     upcoming = Appointment.objects.none()
     if new_status != "active":
@@ -2175,7 +2200,8 @@ def staff_student_status(request, student_id):
         profile.save(update_fields=["account_status", "status_reason", "status_changed_at"])
         StudentStatusLog.objects.create(
             student=student, changed_by=request.user,
-            old_status=old_status, new_status=new_status, reason=reason)
+            old_status=old_status, new_status=new_status, reason=reason,
+            note=note if new_status != "active" else "")
 
     return JsonResponse({"status": "ok", "account_status": new_status, "reason": reason})
 
@@ -2226,7 +2252,7 @@ def staff_summary(request):
     since = today - timedelta(days=6)
     since14 = now - timedelta(days=14)
 
-    users = (User.objects.filter(is_staff=False, is_superuser=False)
+    users = (_active_students()
              .select_related('profile')
              .prefetch_related(
                  Prefetch('mood_entries',
