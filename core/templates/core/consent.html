@@ -56,13 +56,17 @@
     {% else %}
       <form method="post">
         {% csrf_token %}
+        <h3>Student Profile Data Sheet (required)</h3>
+        <p style="font-size:14px; line-height:1.6;">
+          The Student Profile Data Sheet (the check-in after this page) is required. Your answers will be
+          shared with and kept by the Guidance Office to provide guidance services, in line with the
+          Data Privacy Act of 2012 (RA 10173). Every time staff open your record, it is logged.
+        </p>
         <h3>Optional sharing</h3>
-        <p>These are your choice. You can say no and still use everything in MICA, and you can change them anytime in Account Settings.</p>
-        <label class="opt"><input type="checkbox" name="share_assessment" {% if profile.share_assessment_with_guidance %}checked{% endif %}>
-          Let Guidance see which conditions I ticked in the check-in (for example anxiety or ADHD) so they can support me better. My symptom ratings stay private.</label>
+        <p>This is your choice. You can say no and still use everything in MICA, and you can change them anytime in Account Settings.</p>
         <label class="opt"><input type="checkbox" name="share_mica_topics" {% if profile.share_mica_topics %}checked{% endif %}>
           Let Guidance see short topic tags from my chats with Mica (like "exam stress" or "sleep"). They never see my messages.</label>
-        <label class="agree"><input type="checkbox" name="agree"> I have read this and I agree to the use of my information as described.</label>
+          <label class="agree"><input type="checkbox" name="agree"> I have read this and I agree to the use of my information as described.</label>
         <div class="actions">
           <a class="decline" href="{% url 'logout' %}">I don't agree (log out)</a>
           <button type="submit">Continue</button>

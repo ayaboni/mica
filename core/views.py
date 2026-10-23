@@ -577,7 +577,7 @@ def _password_login_target(user):
     if user.is_staff:
         return reverse("staff_dashboard")
     assessment, _ = AssessmentResponse.objects.get_or_create(user=user)
-    if not assessment.completed_at and not assessment.skipped:
+    if not assessment.completed_at:
         return reverse("assessment")
     return reverse("student_dashboard")
 
@@ -681,7 +681,7 @@ def login(request):
         elif request.user.is_staff:
             return redirect('staff_dashboard')
         assessment, _ = AssessmentResponse.objects.get_or_create(user=request.user)
-        if not assessment.completed_at and not assessment.skipped:
+        if not assessment.completed_at:
             return redirect('assessment')
         return redirect('student_dashboard')
 
@@ -744,7 +744,7 @@ def archived(request):
     return render(request, 'core/archived.html')
 
 
-CONSENT_VERSION = "1.1"
+CONSENT_VERSION = "1.2"
 
 
 def _pending_step(user):
@@ -771,7 +771,7 @@ def consent(request):
         if request.POST.get('agree') == 'on':
             profile.consent_given_at = timezone.now()
             profile.consent_version = CONSENT_VERSION
-            profile.share_assessment_with_guidance = request.POST.get('share_assessment') == 'on'
+            profile.share_assessment_with_guidance = True   # whole assessment is shared, no opt-out
             profile.share_mica_topics = request.POST.get('share_mica_topics') == 'on'
             profile.save(update_fields=[
                 'consent_given_at', 'consent_version',
@@ -790,6 +790,20 @@ def consent_review(request):
     return render(request, 'core/consent.html', {'profile': profile, 'review': True})
 
 
+ASSESSMENT_QUESTIONS = [
+    ("overwhelmed", "Feeling overwhelmed or stressed"),
+    ("sad", "Feeling sad or down"),
+    ("anxious", "Feeling anxious or worried"),
+    ("irritable", "Feeling irritable or easily frustrated"),
+    ("lonely", "Feeling lonely or isolated"),
+    ("sleep_trouble", "Having trouble sleeping"),
+    ("fatigued", "Feeling tired or low on energy"),
+    ("lack_of_interest", "Losing interest in things you used to enjoy"),
+    ("concentration", "Having trouble concentrating"),
+]
+SCALE_ANSWERS = {"Never", "Rarely", "Sometimes", "Often", "Always"}
+
+
 @login_required(login_url='login')
 def assessment_questionnaire(request):
     if _pending_step(request.user) == 'consent':
@@ -802,30 +816,34 @@ def assessment_questionnaire(request):
     if assessment.completed_at and not is_retake and request.method == 'GET':
         return redirect('student_dashboard')
 
-    questions = [
-        ("overwhelmed", "Feeling overwhelmed or stressed"),
-        ("sad", "Feeling sad or down"),
-        ("anxious", "Feeling anxious or worried"),
-        ("irritable", "Feeling irritable or easily frustrated"),
-        ("lonely", "Feeling lonely or isolated"),
-        ("sleep_trouble", "Having trouble sleeping"),
-        ("fatigued", "Feeling tired or low on energy"),
-        ("lack_of_interest", "Losing interest in things you used to enjoy"),
-        ("concentration", "Having trouble concentrating"),
-    ]
-
     if request.method == 'POST':
-        assessment.conditions = request.POST.getlist('conditions')
-        assessment.conditions_other = request.POST.get('conditions_other', '').strip()
-        assessment.responses = {key: request.POST.get(key, '') for key, _ in questions}
+        answers = {key: request.POST.get(key, '') for key, _ in ASSESSMENT_QUESTIONS}
+
+        conditions = [c for c in request.POST.getlist('conditions') if c in CONDITION_LABELS]
+        other = request.POST.get('conditions_other', '').strip()[:255]
+        if 'None' in conditions:
+            conditions, other = ['None'], ''
+
+        if (any(v not in SCALE_ANSWERS for v in answers.values())
+                or request.POST.get('sought_help_before') not in ('yes', 'no')
+                or request.POST.get('has_support_system') not in ('yes', 'no')
+                or not (conditions or other)):
+            messages.error(request, "Please answer every question. For the conditions list, tick 'None of these' if none apply.")
+            return render(request, 'core/assessment.html',
+                          {'questions': ASSESSMENT_QUESTIONS, 'is_retake': is_retake})
+
+        assessment.conditions = conditions
+        assessment.conditions_other = other
+        assessment.responses = answers
         assessment.sought_help_before = request.POST.get('sought_help_before') == 'yes'
         assessment.has_support_system = request.POST.get('has_support_system') == 'yes'
         assessment.completed_at = timezone.now()
         assessment.save()
         messages.success(request, "Thank you for sharing. This helps Mica understand you a little better.")
-        return redirect('student_dashboard')
+        return redirect('account_settings' if is_retake else 'student_dashboard')
 
-    return render(request, 'core/assessment.html', {'questions': questions, 'is_retake': is_retake})
+    return render(request, 'core/assessment.html',
+                  {'questions': ASSESSMENT_QUESTIONS, 'is_retake': is_retake})
 
 
 @login_required
@@ -886,7 +904,6 @@ def account_settings(request):
         profile.contact_number = request.POST.get('contact_number', '').strip()
         profile.emergency_contact_name = request.POST.get('emergency_contact_name', '').strip()
         profile.emergency_contact_number = request.POST.get('emergency_contact_number', '').strip()
-        profile.share_assessment_with_guidance = request.POST.get('share_assessment') == 'on'
         profile.share_mica_topics = request.POST.get('share_mica_topics') == 'on'
         if not profile.share_mica_topics:
             request.user.conversations.update(topics=[], topics_updated_at=None)
@@ -1504,6 +1521,7 @@ CONDITION_LABELS = {
     "ADHD": "ADHD / Attention difficulties", "OCD": "OCD",
     "Bipolar": "Bipolar Disorder", "PTSD": "PTSD / Trauma-related stress",
     "Eating": "Eating-related concerns", "Sleep": "Sleep difficulties",
+    "Sleep": "Sleep difficulties", "None": "None of these",
 }
 
 def _student_info(student):

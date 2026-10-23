@@ -37,12 +37,17 @@
   
   <div class="wrap"><div class="card">
     <h1>Before we get started</h1>
-    <p class="intro">This quick check-in helps Mica understand you a little better. It is not a diagnosis, and only you can see your answers. You can leave any question blank if you'd rather not answer it.</p>
+    {% if messages %}
+      {% for message in messages %}
+        <p style="color:#d9534f; font-weight:700; margin-bottom:14px;">{{ message }}</p>
+      {% endfor %}
+    {% endif %}
+    <p class="intro">This check-in is part of your Student Profile Data Sheet. Your answers are shared with the Guidance Office so they can support you. It is not a diagnosis, and all questions need an answer (the conditions list is optional).</p>
 
     <form method="post">
       {% csrf_token %}
 
-      <div class="section-label">Have you experienced or been diagnosed with any of the following? (check all that apply)</div>
+      <div class="section-label">Have you experienced or been diagnosed with any of the following? (the conditions list needs an answer, or tick None of these)</div>
       <div class="checkbox-grid">
         <label><input type="checkbox" name="conditions" value="Anxiety"> Anxiety</label>
         <label><input type="checkbox" name="conditions" value="Depression"> Depression</label>
@@ -52,6 +57,7 @@
         <label><input type="checkbox" name="conditions" value="PTSD"> PTSD / Trauma-related stress</label>
         <label><input type="checkbox" name="conditions" value="Eating"> Eating-related concerns</label>
         <label><input type="checkbox" name="conditions" value="Sleep"> Sleep difficulties</label>
+        <label><input type="checkbox" name="conditions" value="None" id="condNone"> None of these</label>
       </div>
       <input type="text" class="other-input" name="conditions_other" placeholder="Others (please specify)">
 
@@ -61,11 +67,11 @@
         {% for key, label in questions %}
         <tr>
           <td style="text-align:left;">{{ label }}</td>
-          <td><input type="radio" name="{{ key }}" value="Never"></td>
-          <td><input type="radio" name="{{ key }}" value="Rarely"></td>
-          <td><input type="radio" name="{{ key }}" value="Sometimes"></td>
-          <td><input type="radio" name="{{ key }}" value="Often"></td>
-          <td><input type="radio" name="{{ key }}" value="Always"></td>
+          <td><input type="radio" name="{{ key }}" value="Never" required></td>
+          <td><input type="radio" name="{{ key }}" value="Rarely" required></td>
+          <td><input type="radio" name="{{ key }}" value="Sometimes" required></td>
+          <td><input type="radio" name="{{ key }}" value="Often" required></td>
+          <td><input type="radio" name="{{ key }}" value="Always" required></td>
         </tr>
         {% endfor %}
       </table>
@@ -73,18 +79,30 @@
       <div class="section-label">A few more questions</div>
       <p style="font-size:14px; margin-bottom:4px;">Have you sought professional help for your mental health before?</p>
       <div class="yesno">
-        <label><input type="radio" name="sought_help_before" value="yes"> Yes</label>
-        <label><input type="radio" name="sought_help_before" value="no"> No</label>
+        <label><input type="radio" name="sought_help_before" value="yes" required> Yes</label>
+        <label><input type="radio" name="sought_help_before" value="no" required> No</label>
       </div>
       <p style="font-size:14px; margin:14px 0 4px;">Do you currently have a support system (friends, family, etc.)?</p>
       <div class="yesno">
-        <label><input type="radio" name="has_support_system" value="yes"> Yes</label>
-        <label><input type="radio" name="has_support_system" value="no"> No</label>
+        <label><input type="radio" name="has_support_system" value="yes" required> Yes</label>
+        <label><input type="radio" name="has_support_system" value="no" required> No</label>
       </div>
 
       <div class="actions" style="justify-content:flex-end;">
         <button type="submit">Submit</button>
       </div>
     </form>
-  </div></div>
-</body></html>
+  </div>
+</div>
+
+<script>
+const none = document.getElementById('condNone');
+const boxes = document.querySelectorAll('input[name="conditions"]:not(#condNone)');
+const other = document.querySelector('input[name="conditions_other"]');
+none.addEventListener('change', () => { if (none.checked) { boxes.forEach(b => b.checked = false); other.value = ''; } });
+boxes.forEach(b => b.addEventListener('change', () => { if (b.checked) none.checked = false; }));
+other.addEventListener('input', () => { if (other.value) none.checked = false; });
+</script>
+
+</body>
+</html>
