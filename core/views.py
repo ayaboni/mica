@@ -29,6 +29,9 @@ from .models import COURSES, SERVICES
 from .models import LoginThrottle
 from .models import AccessLog
 from .models import LoginVerification
+from .models import PasswordResetRequest
+from . import firebase_reset
+from urllib.parse import urlencode
 from .models import StaffProfile
 from .models import StudentStatusLog, ACCOUNT_STATUS, STATUS_REASONS
 from .models import AssessmentHistory
@@ -107,6 +110,12 @@ def google_register(request):
             raise ValueError("missing id_token")
         idinfo = firebase_auth.verify_id_token(token, clock_skew_seconds=30)
     except (ValueError, firebase_auth.InvalidIdTokenError):
+        return JsonResponse({"error": "Invalid Google token."}, status=400)
+
+    # Only Google sign-ins may use this endpoint. Firebase also has e-mail/password
+    # sign-in (used for password-reset e-mails), and those tokens must never create
+    # or link a MICA account.
+    if (idinfo.get("firebase") or {}).get("sign_in_provider") != "google.com":
         return JsonResponse({"error": "Invalid Google token."}, status=400)
 
     # 2. Only trust an email that the identity provider has verified
@@ -299,17 +308,18 @@ def contact(request):
 
 # -- Register --
 
+PASSWORD_MIN_LENGTH = 8
 PASSWORD_RULES_MESSAGE = (
-    "Password must be at least 6 characters long and include "
+    f"Password must be at least {PASSWORD_MIN_LENGTH} characters long and include "
     "1 uppercase letter and 1 number or symbol."
 )
 
 
 def _password_meets_rules(password):
-    """6+ characters, at least one uppercase letter, and at least one
+    """8+ characters, at least one uppercase letter, and at least one
     number or symbol (any character that is not a letter or whitespace)."""
     return (
-        len(password) >= 6
+        len(password) >= PASSWORD_MIN_LENGTH
         and any(c.isupper() for c in password)
         and any(not c.isalpha() and not c.isspace() for c in password)
     )
@@ -412,6 +422,7 @@ def register(request):
 LOGIN_MAX_ATTEMPTS = 5
 LOGIN_LOCKOUT_SECONDS = 60
 LOGIN_ATTEMPT_WINDOW = timedelta(minutes=15)  # failures older than this are forgotten
+FORGOT_PROMPT_AFTER = 3   # wrong passwords before the login page offers a password reset
 
 
 def _throttle_key(username):
@@ -694,7 +705,10 @@ def login(request):
         # Locked out: refuse without even checking the password.
         wait = _lockout_seconds_left(throttle_key)
         if wait:
-            return render(request, 'core/login.html', {'lockout_seconds': wait}, status=429)
+            return render(request, 'core/login.html', {
+                'lockout_seconds': wait,
+                'show_forgot_prompt': True, 'forgot_username': username_input or '',
+            }, status=429)
 
         user = authenticate(request, username=username_input, password=password_input)
 
@@ -731,8 +745,15 @@ def login(request):
         else:
             attempts_left, wait = _record_failed_login(throttle_key)
             if wait:
-                return render(request, 'core/login.html', {'lockout_seconds': wait}, status=429)
+                return render(request, 'core/login.html', {
+                    'lockout_seconds': wait,
+                    'show_forgot_prompt': True, 'forgot_username': username_input or '',
+                }, status=429)
             messages.error(request, f"Invalid username or password. {_plural(attempts_left, 'attempt')} left.")
+            if LOGIN_MAX_ATTEMPTS - attempts_left >= FORGOT_PROMPT_AFTER:
+                return render(request, 'core/login.html', {
+                    'show_forgot_prompt': True, 'forgot_username': username_input or '',
+                })
 
     return render(request, 'core/login.html')
 
@@ -876,6 +897,149 @@ def assessment_view(request):
         return redirect('student_dashboard')
 
     return render(request, 'assessment.html', {'is_retake':is_retake})
+
+
+# -- Forgot password (reset e-mail sent by Firebase) --------------------------
+# See core/firebase_reset.py for how the pieces fit together.
+
+PASSWORD_RESET_MAX_PER_EMAIL_PER_HOUR = 3
+PASSWORD_RESET_MAX_PER_IP_PER_HOUR = 10
+
+
+def _site_origin(request):
+    """The site's own address, sent to Firebase as the referrer (see firebase_reset._post)."""
+    site = (getattr(settings, "SITE_URL", "") or "").rstrip("/")
+    return site + "/" if site else request.build_absolute_uri("/")
+
+
+def _send_reset_link(request, email):
+    """E-mail a password-reset link, either via Firebase or via MICA's own e-mail settings."""
+    if getattr(settings, "PASSWORD_RESET_EMAIL_VIA", "firebase") != "mica":
+        firebase_reset.send_password_reset_email(email, referer=_site_origin(request))
+        return
+    code = firebase_reset.generate_reset_code(email)
+    path = reverse("password_reset_firebase") + "?" + urlencode({"mode": "resetPassword", "oobCode": code})
+    site = (getattr(settings, "SITE_URL", "") or "").rstrip("/")
+    context = {"link": site + path if site else request.build_absolute_uri(path)}
+    message = EmailMultiAlternatives(
+        "Reset your MICA password",
+        render_to_string("core/email/password_reset.txt", context),
+        None, [email],
+    )
+    message.attach_alternative(render_to_string("core/email/password_reset.html", context), "text/html")
+    message.send(fail_silently=False)
+
+
+def _reset_accounts(identifier):
+    """Local password accounts a reset applies to, found by username or e-mail.
+
+    Accounts that sign in with Google have no usable password, so they are skipped.
+    """
+    identifier = (identifier or "").strip()
+    if not identifier:
+        return []
+    if "@" in identifier:
+        candidates = User.objects.filter(email__iexact=identifier)
+    else:
+        candidates = User.objects.filter(username__iexact=identifier)
+    allow_admins = getattr(settings, "PASSWORD_RESET_FOR_ADMINS", False)
+    return [
+        user for user in candidates
+        if user.is_active and user.email and user.has_usable_password()
+        and (allow_admins or not user.is_superuser)
+    ]
+
+
+def _reset_allowed_now(email_key, ip):
+    since = timezone.now() - timedelta(hours=1)
+    if PasswordResetRequest.objects.filter(email_key=email_key, created_at__gt=since).count() >= PASSWORD_RESET_MAX_PER_EMAIL_PER_HOUR:
+        return False
+    if ip and PasswordResetRequest.objects.filter(ip=ip, created_at__gt=since).count() >= PASSWORD_RESET_MAX_PER_IP_PER_HOUR:
+        return False
+    return True
+
+
+@never_cache
+@ensure_csrf_cookie
+def password_reset_request(request):
+    """Step 1: ask for the username or e-mail, then have Firebase send the link."""
+    if request.method == "POST":
+        identifier = request.POST.get("identifier", "").strip()[:254]
+        if not identifier:
+            messages.error(request, "Please enter your username or email.")
+            return render(request, "core/password-reset.html", {"step": "request"})
+
+        ip = request.META.get("REMOTE_ADDR") or None
+        PasswordResetRequest.objects.filter(created_at__lt=timezone.now() - timedelta(days=1)).delete()
+        for email in sorted({user.email.strip().lower() for user in _reset_accounts(identifier)}):
+            if not _reset_allowed_now(email, ip):
+                continue
+            PasswordResetRequest.objects.create(email_key=email, ip=ip)
+            try:
+                _send_reset_link(request, email)
+            except Exception:       # Firebase or e-mail trouble: log it, show the same page
+                logger.exception("Could not send a password-reset e-mail.")
+        # The same answer whether or not an account matched, so this page can't be
+        # used to find out who is registered.
+        return render(request, "core/password-reset.html", {"step": "sent"})
+
+    return render(request, "core/password-reset.html", {
+        "step": "request", "identifier": request.GET.get("username", "").strip()[:150],
+    })
+
+
+@never_cache
+@ensure_csrf_cookie
+def password_reset_firebase(request):
+    """Step 2: the page the e-mailed link opens (set as the action URL in the Firebase console)."""
+    return render(request, "core/password-reset.html", {
+        "step": "confirm", "firebase_config": settings.FIREBASE_WEB_CONFIG,
+        "min_length": PASSWORD_MIN_LENGTH,
+    })
+
+
+@require_POST
+def password_reset_firebase_complete(request):
+    """Step 3: new password + confirmation. Firebase checks the one-time code; we change the local password."""
+    try:
+        payload = json.loads(request.body)
+        if not isinstance(payload, dict):
+            raise ValueError
+    except ValueError:
+        return JsonResponse({"error": "Invalid request."}, status=400)
+
+    code = str(payload.get("oobCode") or "")[:2000]
+    new_password = payload.get("newPassword") or ""
+    confirm_password = payload.get("confirmPassword") or ""
+    if not code:
+        return JsonResponse({"error": "This reset link isn't valid.", "invalid_link": True}, status=400)
+    if new_password != confirm_password:
+        return JsonResponse({"error": "Passwords do not match."}, status=400)
+    if not _password_meets_rules(new_password):
+        return JsonResponse({"error": PASSWORD_RULES_MESSAGE}, status=400)
+
+    try:
+        email = firebase_reset.confirm_password_reset(code, new_password, referer=_site_origin(request))
+    except firebase_reset.FirebaseResetError as exc:
+        if exc.code in ("INVALID_OOB_CODE", "EXPIRED_OOB_CODE"):
+            return JsonResponse({
+                "error": "This reset link has expired or was already used. Please request a new one.",
+                "invalid_link": True,
+            }, status=400)
+        logger.error("Firebase rejected a password reset: %s", exc)
+        return JsonResponse({"error": "We couldn't reset your password right now. Please try again."}, status=502)
+
+    accounts = _reset_accounts(email)
+    if not accounts:
+        return JsonResponse({"error": "We couldn't find an account for this link.", "invalid_link": True}, status=400)
+
+    with transaction.atomic():
+        for user in accounts:
+            user.set_password(new_password)   # also signs out other sessions and forgets remembered browsers
+            user.save(update_fields=["password"])
+            LoginThrottle.objects.filter(username_key=_throttle_key(user.username)).delete()  # lift any lockout
+    firebase_reset.scramble_password(email)
+    return JsonResponse({"ok": True, "login_url": reverse("login")})
 
 
 @login_required(login_url='login')
@@ -1537,7 +1701,7 @@ CONDITION_LABELS = {
     "ADHD": "ADHD / Attention difficulties", "OCD": "OCD",
     "Bipolar": "Bipolar Disorder", "PTSD": "PTSD / Trauma-related stress",
     "Eating": "Eating-related concerns", "Sleep": "Sleep difficulties",
-    "Sleep": "Sleep difficulties", "None": "None of these",
+    "None": "None of these",
 }
 
 def _student_info(student):

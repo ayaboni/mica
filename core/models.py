@@ -298,3 +298,13 @@ class StudentStatusLog(models.Model):
 def ensure_staff_profile(sender, instance, **kwargs):
     if instance.is_staff and not instance.is_superuser:
         StaffProfile.objects.get_or_create(user=instance, defaults={'role': 'other'})
+
+
+class PasswordResetRequest(models.Model):
+    """One "send me a reset link" request. Only used to rate-limit, per e-mail and per IP."""
+    email_key = models.CharField(max_length=254, db_index=True)
+    ip = models.GenericIPAddressField(null=True, blank=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.email_key} @ {self.created_at:%Y-%m-%d %H:%M}"

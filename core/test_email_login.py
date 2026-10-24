@@ -251,7 +251,8 @@ class GoogleEmailLinkTests(TestCase):
     EMAIL = 'gina@example.com'
 
     def google_login(self, remember=False):
-        claims = {'uid': 'uid-gina', 'email': self.EMAIL, 'email_verified': True, 'name': 'Gina Lopez'}
+        claims = {'uid': 'uid-gina', 'email': self.EMAIL, 'email_verified': True, 'name': 'Gina Lopez',
+                  'firebase': {'sign_in_provider': 'google.com'}}
         body = {'id_token': 'tok'}
         if remember:
             body['remember_me'] = True

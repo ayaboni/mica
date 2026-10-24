@@ -92,7 +92,8 @@ class GoogleRegisterTests(TestCase):
         self.addCleanup(patcher.stop)
 
     def google_login(self, uid='uid-victim', email=VICTIM_EMAIL, email_verified=True, **extra):
-        claims = {'uid': uid, 'email': email, 'name': 'Vic Tim', **extra}
+        claims = {'uid': uid, 'email': email, 'name': 'Vic Tim',
+                  'firebase': {'sign_in_provider': 'google.com'}, **extra}
         if email_verified is not None:
             claims['email_verified'] = email_verified
         with patch.object(firebase_auth, 'verify_id_token', return_value=claims):
@@ -352,13 +353,15 @@ class PasswordRuleTests(TestCase):
         )
 
     def test_weak_passwords_are_rejected(self):
-        for weak in ('Ab1!', 'abcdef1!', 'Abcdefg', 'ABCDEF', '      ', 'abcdef'):
+        for weak in ('Ab1!', 'abcdefg1!', 'Abcdefgh', 'ABCDEFGH', '        ', 'abcdefgh',
+                     'Abcde1!',      # 7 characters: fine before, too short now
+                     'Abcdef1'):     # 7 characters
             response = self.register(weak)
-            self.assertContains(response, 'Password must be at least 6 characters')
+            self.assertContains(response, 'Password must be at least 8 characters')
             self.assertFalse(User.objects.exists(), weak)
 
     def test_valid_passwords_are_accepted(self):
-        for i, good in enumerate(('Abcde1', 'Abcde!', 'abcdE_', 'Longer pass 9')):
+        for i, good in enumerate(('Abcdef1!', 'Abcdefg!', 'abcdefE_', 'Longer pass 9', 'Abcdef12')):
             response = self.client.post(reverse('register'), {
                 **self.FORM, 'password': good, 'confirm_password': good,
                 'username': f'user{i}', 'student_number': f'S-{i}', 'email': f'u{i}@example.com',
