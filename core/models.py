@@ -19,6 +19,13 @@ STATUS_REASONS = [
     ("other", "Other"),
 ]
 
+SERVICES = [
+    ("information", "Information"),
+    ("counseling", "Counseling"),
+    ("testing", "Testing"),
+    ("referral", "Referral"),
+]
+
 COURSES = [
     ("BSCS-DS", "BS Computer Science - Data Science"),
     ("BSIT", "BS Information Technology - Game Development"),
@@ -200,6 +207,7 @@ class Appointment(models.Model):
     counselor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='counselor_appointments')
     scheduled_time = models.DateTimeField()
     status = models.CharField(max_length=20, choices=[('pending', 'Pending'), ('confirmed', 'Confirmed'), ('declined', 'Declined'), ('completed', 'Completed'), ('cancelled', 'Cancelled')], default='pending')
+    service = models.CharField(max_length=20, choices=SERVICES, default='counseling')
     reminded_24h = models.BooleanField(default=False)
     reminded_1h = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -221,6 +229,7 @@ class StudentNote(models.Model):
     author = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='written_student_notes')
     topic = models.TextField(blank=True)
     realizations = models.TextField(blank=True)
+    service = models.CharField(max_length=20, choices=SERVICES, default='counseling')
     session_date = models.DateField(default=timezone.localdate)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

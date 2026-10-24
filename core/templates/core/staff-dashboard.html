@@ -217,7 +217,7 @@
   .stu-cell .avatar{width:32px; height:32px; font-size:12px; background:var(--sky-pale); color:var(--sky-deep);}
   .stu-cell .code{font-weight:600; font-size:13.5px;}
   .stu-cell .prog{font-size:11.5px; color:var(--ink-soft);}
-  .mono-cell{font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:var(--ink-soft);}
+  .mono-cell{font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:var(--ink-soft); white-space:nowrap;}
   .row-actions{display:flex; gap:8px;}
 
   /* ---------- Modal ---------- */
@@ -269,6 +269,7 @@
 /* ---------- Notes ---------- */
   .note-form label{display:block; font-size:12px; font-weight:700; color:var(--ink-soft); margin:12px 0 5px;}
   .note-form input, .note-form textarea{width:100%; box-sizing:border-box; padding:10px 12px; border-radius:12px; border:1.5px solid var(--line); background:var(--cream); font-family:inherit; font-size:14px; color:inherit; resize:vertical;}
+  .note-form select{width:100%; padding:10px 12px; border-radius:12px; border:1.5px solid var(--line); background:var(--cream); font-family:inherit; font-size:14px; color:inherit;}
   .note-card{background:var(--cream); border-radius:14px; padding:14px 16px; margin-bottom:12px;}
   .note-meta{display:flex; justify-content:space-between; gap:10px; font-size:11.5px; color:var(--ink-soft);}
   .note-card .lbl{font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-soft); font-weight:700; margin-top:10px;}
@@ -753,6 +754,7 @@
               <tr>
                 <th><br>Student</th>
                 <th><br>Counselor</th>
+                <th><br>Service</th>
                 <th><br>Date</th>
                 <th><br>Time</th>
                 <th><br>Status</th>
@@ -1022,6 +1024,13 @@
           <input type="hidden" id="noteEditId">
           <label>Session date</label>
           <input type="date" id="noteDate">
+          <label>Service</label>
+            <select id="noteService">
+              <option value="counseling">Counseling</option>
+              <option value="information">Information</option>
+              <option value="testing">Testing</option>
+              <option value="referral">Referral</option>
+            </select>
           <label>Topic discussed</label>
           <textarea id="noteTopic" rows="4" placeholder="What did you talk about?"></textarea>
           <label>Student's realizations</label>
@@ -1496,6 +1505,13 @@ function openScheduleModal(){
       <input type="date" id="apptDate" style="width:100%; padding:10px; margin:6px 0 14px; border-radius:10px; border:1px solid #ddd; box-sizing:border-box;">
       <label style="font-weight:700; font-size:13px;">Time</label>
       <input type="time" id="apptTime" style="width:100%; padding:10px; margin:6px 0 18px; border-radius:10px; border:1px solid #ddd; box-sizing:border-box;">
+      <label style="font-weight:700; font-size:13px;">Service</label>
+        <select id="apptService" style="width:100%; padding:10px; margin:6px 0 18px; border-radius:10px; border:1px solid #ddd; box-sizing:border-box; font-family:inherit;">
+          <option value="counseling">Counseling</option>
+          <option value="information">Information</option>
+          <option value="testing">Testing</option>
+          <option value="referral">Referral</option>
+        </select>
       <button onclick="submitSchedule()" class="pill-btn solid sm" style="width:100%;">Confirm Schedule</button>
     </div>
   `;
@@ -1505,6 +1521,7 @@ function openScheduleModal(){
 function submitSchedule(){
   if(scheduleSubmitting) return;
   const date = document.getElementById('apptDate').value;
+  const service = document.getElementById('apptService').value;
   const time = document.getElementById('apptTime').value;
   if(!date || !time){ alert("Please pick both a date and a time."); return; }
 
@@ -1515,7 +1532,7 @@ function submitSchedule(){
   fetch(`/api/staff/guidance/${activeThreadId}/schedule/`, {
     method: "POST",
     headers: {"Content-Type": "application/json", "X-CSRFToken": getCookie("csrftoken")},
-    body: JSON.stringify({scheduled_time: `${date} ${time}`}),
+    body: JSON.stringify({scheduled_time: `${date} ${time}`, service}),
   }).then(r => r.json()).then(data => {
     scheduleSubmitting = false;
     document.getElementById('scheduleModal').remove();
@@ -1584,6 +1601,7 @@ function resetNoteForm(){
   document.getElementById('noteDate').value = todayStr();
   document.getElementById('noteTopic').value = '';
   document.getElementById('noteReal').value = '';
+  document.getElementById('noteService').value = 'counseling';
   document.getElementById('noteSaveBtn').textContent = 'Save note';
 }
 function newNote(){ resetNoteForm(); showNotesView('form'); }
@@ -1602,7 +1620,7 @@ function loadNotes(){
       }
       box.innerHTML = notesCache.map(n=>`
         <button class="note-row" onclick="viewNote(${n.id})">
-          <div class="d"><span>${escapeHtmlStaff(n.date_label)}</span><span>${escapeHtmlStaff(n.author)}</span></div>
+          <div class="d"><span>${escapeHtmlStaff(n.date_label)} · ${escapeHtmlStaff(n.service_label)}</span><span>${escapeHtmlStaff(n.author)}</span></div>
           <div class="p">${escapeHtmlStaff(previewText(n.topic || n.realizations, 10))}</div>
         </button>`).join('');
     })
@@ -1615,7 +1633,7 @@ function viewNote(id){
   document.getElementById('notesDetailView').innerHTML = `
     <button class="pill-btn ghost sm" onclick="showNotesView('list')">← All notes</button>
     <div class="note-card" style="margin-top:14px;">
-      <div class="note-meta"><b>${escapeHtmlStaff(n.date_label)}</b><span>${escapeHtmlStaff(n.author)}${n.edited ? ' · edited' : ''}</span></div>
+      <div class="note-meta"><b>${escapeHtmlStaff(n.date_label)} · ${escapeHtmlStaff(n.service_label)}</b><span>${escapeHtmlStaff(n.author)}${n.edited ? ' · edited' : ''}</span></div>
       ${n.topic ? `<div class="lbl">Topic discussed</div><div class="txt">${escapeHtmlStaff(n.topic)}</div>` : ''}
       ${n.realizations ? `<div class="lbl">Student's realizations</div><div class="txt">${escapeHtmlStaff(n.realizations)}</div>` : ''}
       ${n.can_edit ? `<div class="note-actions"><button class="pill-btn ghost sm" onclick="editNote(${n.id})">Edit</button><button class="pill-btn ghost sm" onclick="deleteNote(${n.id})">Delete</button></div>` : ''}
@@ -1630,6 +1648,7 @@ function editNote(id){
   document.getElementById('noteDate').value = n.session_date;
   document.getElementById('noteTopic').value = n.topic;
   document.getElementById('noteReal').value = n.realizations;
+  document.getElementById('noteService').value = n.service;
   document.getElementById('noteSaveBtn').textContent = 'Update note';
   showNotesView('form');
 }
@@ -1639,7 +1658,8 @@ function saveNote(){
   const payload = {
     session_date: document.getElementById('noteDate').value,
     topic: document.getElementById('noteTopic').value,
-    realizations: document.getElementById('noteReal').value
+    realizations: document.getElementById('noteReal').value,
+    service: document.getElementById('noteService').value,
   };
   if(!payload.topic.trim() && !payload.realizations.trim()){ showToast('Write something first'); return; }
   const url = id ? `/api/staff/notes/${id}/update/` : `/api/staff/students/${notesStudent.id}/notes/`;
@@ -2341,7 +2361,7 @@ function renderAppointments() {
 
   if (filtered.length === 0) {
     const label = activeApptStatus === 'all' ? '' : activeApptStatus.toLowerCase() + ' ';
-    body.innerHTML = `<tr><td colspan="6"><div class="empty-state">${MASCOT_SVG}<div class="e-title">No ${label}appointments yet</div>Appointments you schedule will show up here.</div></td></tr>`;
+    body.innerHTML = `<tr><td colspan="7"><div class="empty-state">${MASCOT_SVG}<div class="e-title">No ${label}appointments yet</div>Appointments you schedule will show up here.</div></td></tr>`;
     return;
   }
 
@@ -2349,16 +2369,19 @@ function renderAppointments() {
     <tr>
       <td style="font-weight:600;">${a.student_name}</td>
       <td>${a.counselor_name}</td>
+      <td>${escapeHtmlStaff(a.service)}</td>
       <td class="mono-cell">${a.date}</td>
       <td class="mono-cell">${a.time}</td>
       <td>${getApptBadge(a.status)}</td>
       <td>
         ${a.status === 'Pending'
           ? `<button class="pill-btn ghost sm" onclick="updateApptStatus(${a.id}, 'cancelled')">Cancel</button>`
-          : a.status === 'Confirmed'
-          ? `<button class="pill-btn solid sm" onclick="updateApptStatus(${a.id}, 'completed')">Complete</button>
-             <button class="pill-btn ghost sm" onclick="updateApptStatus(${a.id}, 'cancelled')">Cancel</button>`
-          : `<span style="color:var(--ink-soft); font-size:12.5px;">—</span>`}
+      : a.status === 'Confirmed'
+      ? `<div class="row-actions">
+           <button class="pill-btn solid sm" onclick="updateApptStatus(${a.id}, 'completed')">Complete</button>
+           <button class="pill-btn ghost sm" onclick="updateApptStatus(${a.id}, 'cancelled')">Cancel</button>
+         </div>`
+      : `<span style="color:var(--ink-soft); font-size:12.5px;">—</span>`}
       </td>
     </tr>
   `).join('');

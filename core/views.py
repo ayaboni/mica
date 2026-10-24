@@ -25,7 +25,7 @@ from .models import BreatheSession
 from .models import Appointment
 from .models import Notification
 from .models import StudentFlag
-from .models import COURSES
+from .models import COURSES, SERVICES
 from .models import LoginThrottle
 from .models import AccessLog
 from .models import LoginVerification
@@ -746,6 +746,7 @@ def archived(request):
 
 
 CONSENT_VERSION = "1.2"
+ASSESSMENT_RETAKE_DAYS = 7
 
 
 def _pending_step(user):
@@ -814,6 +815,11 @@ def assessment_questionnaire(request):
 
     assessment, _ = AssessmentResponse.objects.get_or_create(user=request.user)
     is_retake = request.GET.get('retake') == 'true'
+    if is_retake and assessment.completed_at:
+        next_ok = assessment.completed_at + timedelta(days=ASSESSMENT_RETAKE_DAYS)
+        if timezone.now() < next_ok:
+            messages.error(request, f"You can retake the check-in on {timezone.localtime(next_ok).strftime('%b %d, %Y')}.")
+            return redirect('account_settings')
     if assessment.completed_at and not is_retake and request.method == 'GET':
         return redirect('student_dashboard')
 
@@ -1641,6 +1647,8 @@ def _note_json(n, me):
         "id": n.id,
         "topic": n.topic,
         "realizations": n.realizations,
+        "service": n.service,
+        "service_label": n.get_service_display(),
         "session_date": n.session_date.isoformat(),
         "date_label": n.session_date.strftime("%b %d, %Y"),
         "author": (n.author.get_full_name() or n.author.username) if n.author else "Former staff",
@@ -1659,8 +1667,10 @@ def _read_note_payload(request):
     if not topic and not realizations:
         return None, JsonResponse({"error": "Write something first."}, status=400)
     session_date = parse_date(data.get("session_date") or "") or timezone.localdate()
-    return {"topic": topic, "realizations": realizations, "session_date": session_date}, None
-
+    service = data.get("service") or "counseling"
+    if service not in dict(SERVICES):
+        return None, JsonResponse({"error": "Invalid service."}, status=400)
+    return {"topic": topic, "realizations": realizations, "session_date": session_date, "service": service}, None
 
 @login_required(login_url='login')
 @user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
@@ -1717,6 +1727,10 @@ def staff_schedule_appointment(request, thread_id):
         return JsonResponse({"error": "Invalid request."}, status=400)
 
     raw_time = data.get("scheduled_time")
+    service = data.get("service") or "counseling"
+    if service not in dict(SERVICES):
+        return JsonResponse({"error": "Invalid service."}, status=400)
+
     scheduled_dt = parse_datetime(raw_time) if raw_time else None
     if not scheduled_dt:
         return JsonResponse({"error": "Invalid date/time. Use YYYY-MM-DD HH:MM."}, status=400)
@@ -1739,7 +1753,7 @@ def staff_schedule_appointment(request, thread_id):
 
     appt = Appointment.objects.create(
         thread=thread, student=thread.student, counselor=request.user,
-        scheduled_time=scheduled_dt,
+        scheduled_time=scheduled_dt, service=service,
     )
 
     formatted = dj_timezone.localtime(appt.scheduled_time).strftime("%B %d, %Y %I:%M%p")
@@ -1783,6 +1797,7 @@ def staff_appointments_list(request):
             "date": local.strftime("%b %d, %Y"),
             "time": local.strftime("%I:%M %p"),
             "status": a.status.capitalize(),
+            "service": a.get_service_display(),
         })
     return JsonResponse({"appointments": data})
 
