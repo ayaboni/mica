@@ -31,6 +31,7 @@ from .models import AccessLog
 from .models import LoginVerification
 from .models import StaffProfile
 from .models import StudentStatusLog, ACCOUNT_STATUS, STATUS_REASONS
+from .models import AssessmentHistory
 import hashlib
 import logging
 from django.core.mail import EmailMultiAlternatives
@@ -839,6 +840,15 @@ def assessment_questionnaire(request):
         assessment.has_support_system = request.POST.get('has_support_system') == 'yes'
         assessment.completed_at = timezone.now()
         assessment.save()
+        AssessmentHistory.objects.create(
+            user=request.user,
+            conditions=assessment.conditions,
+            conditions_other=assessment.conditions_other,
+            responses=assessment.responses,
+            sought_help_before=assessment.sought_help_before,
+            has_support_system=assessment.has_support_system,
+            taken_at=assessment.completed_at,
+        )
         messages.success(request, "Thank you for sharing. This helps Mica understand you a little better.")
         return redirect('account_settings' if is_retake else 'student_dashboard')
 
@@ -1865,7 +1875,7 @@ def staff_students_list(request):
     else:
         base = base.filter(profile__account_status=status)
     users = (base
-             .select_related('profile')
+             .select_related('profile', 'assessment')
              .prefetch_related(Prefetch(
                  'mood_entries',
                  queryset=MoodEntry.objects.filter(date__gte=since).order_by('-date'),
@@ -1895,6 +1905,7 @@ def staff_students_list(request):
             "program": (profile.course if profile and profile.course else "Not set"),
             "year": (profile.year_level if profile and profile.year_level else ""),
             "account_status": profile.account_status if profile else "active",
+            "assessment_done": bool(getattr(u, 'assessment', None) and u.assessment.completed_at),
             "status_reason": profile.get_status_reason_display() if profile and profile.status_reason else "",
             "risk": _risk_from_entries(entries, today),
             "mood": f"{sum(last7) / len(last7):.1f}" if last7 else "-",
@@ -2135,7 +2146,7 @@ def staff_mood_stats(request):
     })
 
 
-ACCESS_ACTIONS = {"view_profile", "open_chat", "view_notes"}
+ACCESS_ACTIONS = {"view_profile", "open_chat", "view_notes", "view_assessment"}
 
 @login_required(login_url='login')
 @user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
@@ -2155,6 +2166,88 @@ def staff_log_access(request, student_id):
     if not recent:
         AccessLog.objects.create(staff=request.user, student=student, action=action)
     return JsonResponse({"status": "ok"})
+
+
+@login_required(login_url='login')
+@user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
+def staff_student_assessment(request, student_id):
+    student = get_object_or_404(User, id=student_id, is_staff=False, is_superuser=False)
+    profile = UserProfile.objects.filter(user=student).first()
+    if not profile or not profile.share_assessment_with_guidance:
+        return JsonResponse({"completed": False, "shared": False})
+    assessment = AssessmentResponse.objects.filter(user=student).first()
+    if not assessment or not assessment.completed_at:
+        return JsonResponse({"completed": False})
+
+    conditions = [CONDITION_LABELS.get(c, c) for c in (assessment.conditions or [])]
+    if assessment.conditions_other:
+        conditions.append(assessment.conditions_other)
+
+    answers = assessment.responses or {}
+    return JsonResponse({
+        "completed": True,
+        "taken_on": timezone.localtime(assessment.completed_at).strftime("%b %d, %Y"),
+        "conditions": conditions,
+        "answers": [
+            {"label": label, "answer": answers.get(key, "")}
+            for key, label in ASSESSMENT_QUESTIONS
+        ],
+        "sought_help_before": assessment.sought_help_before,
+        "has_support_system": assessment.has_support_system,
+    })
+
+
+def _assessment_json(conditions, other, responses, sought, support, taken_at):
+    local = timezone.localtime(taken_at)
+    conds = [CONDITION_LABELS.get(c, c) for c in (conditions or [])]
+    if other:
+        conds.append(other)
+    saved = responses or {}
+    items = [{"label": label, "answer": saved.get(key, "")} for key, label in ASSESSMENT_QUESTIONS]
+    return {
+        "taken_on": local.strftime("%b %d, %Y"),
+        "taken_time": local.strftime("%I:%M %p"),
+        "conditions": conds,
+        "answers": items,
+        "frequent": sum(1 for i in items if i["answer"] in ("Often", "Always")),
+        "sought_help_before": sought,
+        "has_support_system": support,
+    }
+
+
+@login_required(login_url='login')
+@user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
+def staff_assessments(request):
+    users = (_active_students()
+             .select_related('profile', 'assessment')
+             .prefetch_related('assessment_history'))
+    data = []
+    for u in users:
+        profile = getattr(u, 'profile', None)
+        history = []
+        if profile and profile.share_assessment_with_guidance:
+            history = [
+                _assessment_json(h.conditions, h.conditions_other, h.responses,
+                                 h.sought_help_before, h.has_support_system, h.taken_at)
+                for h in u.assessment_history.all()          # newest first
+            ]
+            current = getattr(u, 'assessment', None)
+            if not history and current and current.completed_at:   # older accounts with no history copy
+                history = [_assessment_json(current.conditions, current.conditions_other,
+                                            current.responses, current.sought_help_before,
+                                            current.has_support_system, current.completed_at)]
+        data.append({
+            "id": u.id,
+            "code": f"MC-{1000 + u.id}",
+            "name": u.get_full_name() or u.username,
+            "student_number": profile.student_number if profile and profile.student_number else "No ID",
+            "course": profile.course if profile and profile.course else "",
+            "year": profile.year_level if profile else "",
+            "done": bool(history),
+            "history": history,
+        })
+    data.sort(key=lambda s: (s["done"], s["name"].lower()))   # not done first
+    return JsonResponse({"students": data, "courses": [{"code": c, "label": l} for c, l in COURSES]})
 
 
 @login_required(login_url='login')

@@ -53,6 +53,18 @@ class AssessmentResponse(models.Model):
     completed_at = models.DateTimeField(null=True, blank=True)
     skipped = models.BooleanField(default=False)
 
+class AssessmentHistory(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='assessment_history')
+    conditions = models.JSONField(default=list, blank=True)
+    conditions_other = models.CharField(max_length=255, blank=True)
+    responses = models.JSONField(default=dict, blank=True)
+    sought_help_before = models.BooleanField(null=True, blank=True)
+    has_support_system = models.BooleanField(null=True, blank=True)
+    taken_at = models.DateTimeField()
+
+    class Meta:
+        ordering = ['-taken_at']
+
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     student_number = models.CharField(max_length=50, blank=True)

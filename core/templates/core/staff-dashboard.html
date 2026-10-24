@@ -283,6 +283,21 @@
   .note-row .p{font-size:13.5px; margin-top:3px;}
   .note-card .txt{max-height:240px; overflow-y:auto;}
 
+  /* ---------- Assessment panel ---------- */
+  .assess-box{background:var(--cream); border-radius:14px; padding:14px 16px; margin-top:18px;}
+  .assess-box h3{font-size:14px; margin-bottom:2px;}
+  .assess-date{font-size:11.5px; color:var(--ink-soft); margin-bottom:12px;}
+  .assess-lbl{font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-soft); font-weight:700; margin:12px 0 6px;}
+  .assess-row{display:flex; justify-content:space-between; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid var(--line); font-size:13px;}
+  .assess-row:last-child{border-bottom:none;}
+  .ans-chip{font-size:11.5px; font-weight:600; padding:3px 11px; border-radius:999px; background:var(--line); color:var(--ink-soft); white-space:nowrap;}
+  .ans-chip.high{background:var(--alert-pale); color:var(--alert);}
+  .ans-chip.mid{background:var(--sky-pale); color:var(--sky-deep);}
+  .date-chips{display:flex; gap:8px; flex-wrap:nowrap; overflow-x:auto; padding-bottom:8px; margin-bottom:10px;}
+  .date-chip{flex-shrink:0; white-space:nowrap; border:1.5px solid var(--line); background:var(--paper); color:var(--ink-soft); padding:7px 14px; border-radius:999px; font-size:12.5px; font-weight:600; font-family:inherit;}
+  .date-chip:hover{background:var(--peach); color:var(--peach-text);}
+  .date-chip.active{background:var(--sage-deep); border-color:var(--sage-deep); color:#fff;}
+
   /* ---------- Alerts / cards list ---------- */
   .alert-card{display:flex; gap:16px; padding:18px 20px; margin-bottom:12px; align-items:flex-start;}
   .alert-card .sev-strip{width:4px; align-self:stretch; border-radius:4px; flex-shrink:0;}
@@ -400,6 +415,10 @@
       <button class="nav-item" data-section="summary" onclick="goTo('summary')">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 11.5a8.4 8.4 0 0 1-8.9 8.4 8.7 8.7 0 0 1-3.1-.6L3 21l1.8-5.4A8.4 8.4 0 0 1 3.6 11.5 8.4 8.4 0 0 1 12 3a8.6 8.6 0 0 1 9 8.5z"/></svg>
         Chat &amp; Mood Summary
+      </button>
+      <button class="nav-item" data-section="assessments" onclick="goTo('assessments')">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 11h6M9 15h4"/></svg>
+        Assessment Records
       </button>
       <button class="nav-item" data-section="alerts" onclick="goTo('alerts')">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v2M12 19v2M4.2 12H2.5M21.5 12h-1.7M6 6l1.2 1.2M18 6l-1.2 1.2M6 18l1.2-1.2M18 18l-1.2-1.2"/><circle cx="12" cy="12" r="3.2"/></svg>
@@ -571,6 +590,11 @@
             <select class="filter-select" id="studentProgramFilter" onchange="renderStudents()">
               <option value="all">All programs</option>
             </select>
+            <select class="filter-select" id="studentAssessFilter" onchange="renderStudents()">
+              <option value="all">All assessments</option>
+              <option value="done">Assessment done</option>
+              <option value="notyet">No assessment yet</option>
+            </select>
           </div>
           <button class="pill-btn solid sm" onclick="exportStudentsExcel()">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v13m0 0l-4-4m4 4l4-4"/><path d="M4 21h16"/></svg>
@@ -634,6 +658,33 @@
           <table>
             <thead><tr><th>Student</th><th>Mood (7d)</th><th>Check-ins</th><th>Mica topics (14d)</th><th>Guidance chat</th><th>Handled by</th><th>Next appointment</th><th></th></tr></thead>
             <tbody id="summaryTbody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ============ ASSESSMENT RECORDS ============ -->
+      <section class="section" id="sec-assessments">
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <select class="filter-select" id="assessStatusFilter" onchange="renderAssessments()">
+              <option value="all">All students</option>
+              <option value="done">Completed</option>
+              <option value="notyet">Not yet</option>
+            </select>
+            <select class="filter-select" id="assessCourseFilter" onchange="renderAssessments()">
+              <option value="all">All courses</option>
+            </select>
+            <span id="assessSummary" style="font-size:12.5px; color:var(--ink-soft);"></span>
+          </div>
+          <button class="pill-btn solid sm" onclick="exportAssessmentsExcel()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v13m0 0l-4-4m4 4l4-4"/><path d="M4 21h16"/></svg>
+            Export records
+          </button>
+        </div>
+        <div class="card" style="overflow-x:auto;">
+          <table>
+            <thead><tr><th>Student</th><th>Program / Year</th><th>Last taken</th><th>Times taken</th><th title="How many of the 9 questions were answered Often or Always">Frequent answers</th><th>Conditions</th><th></th></tr></thead>
+            <tbody id="assessTbody"></tbody>
           </table>
         </div>
       </section>
@@ -883,6 +934,10 @@
       </div>
       <h3 style="font-size:14px; margin-bottom:10px;">Mood history — last 14 check-ins</h3>
       <canvas id="modalMoodChart" height="90" style="margin-bottom:18px;"></canvas>
+      <div class="assess-box" id="modalAssessment">
+        <h3>Student check-in (assessment)</h3>
+      <div id="assessContent" style="font-size:13px; color:var(--ink-soft);">Loading…</div>
+      </div>
     </div>
     <div class="modal-foot">
       <button class="pill-btn solid sm" onclick="flagCurrentStudent()">Flag for counselor</button>
@@ -919,6 +974,26 @@
     <div class="modal-foot">
       <button class="pill-btn ghost sm" onclick="closeStatusDialog()">Cancel</button>
       <button class="pill-btn solid sm" id="statusConfirmBtn">Archive</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="assessModal" style="z-index:110;">
+  <div class="modal" style="max-width:720px;">
+    <div class="modal-head">
+      <div>
+        <h2 id="assessModalName">Assessment</h2>
+        <div class="sub" id="assessModalSub"></div>
+      </div>
+      <button class="modal-close" onclick="closeAssessModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="assess-lbl" style="margin-top:0;">Pick a date</div>
+      <div class="date-chips" id="assessDateChips"></div>
+      <div id="assessModalBody"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="pill-btn ghost sm" id="assessOpenProfile">Open student profile</button>
     </div>
   </div>
 </div>
@@ -1054,6 +1129,7 @@ const titles = {
   messages:["Monitor","Student Messages"],
   mood:["Monitor","Mood Monitoring"],
   summary:["Monitor","Chat & Mood Summary"],
+  assessments:["Monitor","Assessment Records"],
   alerts:["Monitor","Risk Alerts"],
   appointments:["Operations","Appointments"],
   reports:["Operations","Reports & Analytics"],
@@ -1081,6 +1157,7 @@ function goTo(section){
   }
   if(section==='mood') setTimeout(renderMoodCharts,10);
   if(section==='summary') loadSummary();
+  if(section==='assessments') loadAssessments();
   if(section==='reports') setTimeout(renderReportChart,10);
 }
 
@@ -1160,12 +1237,14 @@ function loadStudents(){
 function renderStudents(){
   const riskF = document.getElementById('studentRiskFilter').value;
   const progF = document.getElementById('studentProgramFilter').value;
+  const assessF = document.getElementById('studentAssessFilter').value;
   const q = (document.getElementById('globalSearch').value||'').toLowerCase();
   const tbody = document.getElementById('studentsTbody');
   tbody.innerHTML='';
   const filtered = studentsReal.filter(s=>
     (riskF==='all'||s.risk===riskF) &&
     (progF==='all'||s.program===progF) &&
+    (assessF==='all'||(assessF==='done' ? s.assessment_done : !s.assessment_done)) &&
     (q===''||s.name.toLowerCase().includes(q)||s.student_number.toLowerCase().includes(q)||s.program.toLowerCase().includes(q))
   );
   if(filtered.length===0){
@@ -1180,7 +1259,7 @@ function renderStudents(){
     const tr = document.createElement('tr');
     tr.onclick=()=>openStudentModal(s.code);
     tr.innerHTML = `
-            <td><div class="stu-cell"><div class="avatar">${initials(s.name)}</div><div><div class="code">${escapeHtmlStaff(s.name)}</div><div class="prog">${escapeHtmlStaff(s.student_number)}</div></div></div></td>
+            <td><div class="stu-cell"><div class="avatar">${initials(s.name)}</div><div><div class="code">${escapeHtmlStaff(s.name)}</div><div class="prog">${escapeHtmlStaff(s.student_number)}</div>${s.assessment_done ? '' : '<div style="margin-top:3px;"><span class="badge neutral" style="padding:2px 9px; font-size:10.5px;">No assessment yet</span></div>'}</div></div></td>
       <td>${escapeHtmlStaff(s.program)}<br><span class="prog" style="color:var(--ink-soft); font-size:11.5px;">${escapeHtmlStaff(yearLabel(s.year))}</span></td>
       <td>${spark}</td>
       <td class="mono-cell">${s.streak} ${s.streak===1?'day':'days'}</td>
@@ -1203,6 +1282,7 @@ function renderRiskRules(){
 
 function handleGlobalSearch(v){
   renderStudents();
+  renderAssessments();
 }
 
 /* =========================================================
@@ -1490,6 +1570,8 @@ function openNotesPanel(){
   if(!s) return;
   notesStudent = s;
   logRecordAccess(s.id, 'view_notes');
+  loadAssessmentPanel(s);
+  logRecordAccess(s.id, 'view_assessment');
   document.getElementById('notesTitle').textContent = 'Notes — ' + s.name;
   showNotesView('list');
   document.getElementById('notesModal').classList.add('active');
@@ -1610,6 +1692,8 @@ function openStudentModal(code){
   sb.textContent = s.account_status !== 'active' ? 'Reactivate student'
                  : (blocked ? 'Resolve alert to archive' : 'Archive student');
   logRecordAccess(s.id, 'view_profile');
+  loadAssessmentPanel(s);
+  logRecordAccess(s.id, 'view_assessment');
 
   if(charts.modal) charts.modal.destroy();
   const ctx = document.getElementById('modalMoodChart');
@@ -1618,6 +1702,59 @@ function openStudentModal(code){
     data:{labels:s.history.map((_,i)=>i+1), datasets:[{data:s.history, borderColor:'#5F7F68', backgroundColor:'rgba(135,169,145,0.15)', fill:true, tension:.35, pointRadius:3}]},
     options:{plugins:{legend:{display:false}}, scales:{y:{min:0,max:5,ticks:{stepSize:1}}, x:{display:false}}}
   });
+}
+
+function ansClass(a){
+  if(a === 'Often' || a === 'Always') return 'high';
+  if(a === 'Sometimes') return 'mid';
+  return '';
+}
+
+function yesNo(v){
+  return v === true ? 'Yes' : v === false ? 'No' : '-';
+}
+
+function loadAssessmentPanel(s){
+  const box = document.getElementById('assessContent');
+  if(!box){ console.error('assessContent not found'); return; }
+  box.textContent = 'Loading…';
+  console.log('loading assessment for', s.id);
+  fetch(`/api/staff/students/${s.id}/assessment/`)
+    .then(r => {
+      console.log('assessment status', r.status);
+      return r.json();
+    })
+    .then(d => {
+      if(d.shared === false){
+        box.textContent = 'This student has not shared their assessment.';
+        return;
+      }
+      if(!d.completed){
+        box.textContent = 'This student has not completed the assessment yet.';
+        return;
+      }
+      const conds = d.conditions.length
+        ? '<div class="tag-row" style="margin-top:0;">' + d.conditions.map(c => `<span class="tag">${escapeHtmlStaff(c)}</span>`).join('') + '</div>'
+        : '<span style="color:var(--ink-soft);">None reported</span>';
+      const rows = d.answers.map(a => `
+        <div class="assess-row">
+          <span>${escapeHtmlStaff(a.label)}</span>
+          <span class="ans-chip ${ansClass(a.answer)}">${escapeHtmlStaff(a.answer || '-')}</span>
+        </div>`).join('');
+      box.innerHTML = `
+        <div class="assess-date">Taken on ${escapeHtmlStaff(d.taken_on)}</div>
+        <div class="assess-lbl" style="margin-top:0;">Conditions experienced or diagnosed</div>
+        ${conds}
+        <div class="assess-lbl">How often in the past few weeks</div>
+        ${rows}
+        <div class="assess-lbl">Background</div>
+        <div class="assess-row"><span>Sought professional help before</span><span class="ans-chip">${yesNo(d.sought_help_before)}</span></div>
+        <div class="assess-row"><span>Has a support system</span><span class="ans-chip">${yesNo(d.has_support_system)}</span></div>`;
+    })
+    .catch(err => {
+      console.error('assessment load failed', err);
+      box.textContent = 'Could not load the assessment.';
+    });
 }
 
 function closeModal(){document.getElementById('studentModal').classList.remove('active');}
@@ -2005,6 +2142,134 @@ function renderSummary(){
       <td><button class="pill-btn ghost sm" onclick="event.stopPropagation(); openStudentModal('${s.code}')">View</button></td>
     </tr>`;
   }).join('');
+}
+
+/* =========================================================
+   ASSESSMENT RECORDS
+========================================================= */
+let assessData = [];
+let assessModalStudent = null;
+
+function loadAssessments(){
+  document.getElementById('assessTbody').innerHTML =
+    '<tr><td colspan="7" style="padding:24px; color:var(--ink-soft);">Loading…</td></tr>';
+  return fetch("{% url 'staff_assessments' %}")
+    .then(r => { if(!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(d => {
+      assessData = d.students || [];
+      courseOptions = d.courses || courseOptions;
+      const sel = document.getElementById('assessCourseFilter');
+      const keep = sel.value || 'all';
+      sel.innerHTML = courseSelectHtml(assessData.map(s => s.course));
+      sel.value = [...sel.options].some(o => o.value === keep) ? keep : 'all';
+      renderAssessments();
+    })
+    .catch(err => {
+      console.error('loadAssessments failed:', err);
+      document.getElementById('assessTbody').innerHTML =
+        '<tr><td colspan="7" style="padding:24px; color:var(--ink-soft);">Could not load assessments. Try refreshing.</td></tr>';
+    });
+}
+
+function condTags(h){
+  if(!h.conditions.length) return '<span style="color:var(--ink-soft); font-size:12px;">None reported</span>';
+  return '<div class="tag-row" style="margin-top:0;">' + h.conditions.map(c =>
+    c === 'None of these'
+      ? `<span class="tag" style="background:var(--line); color:var(--ink-soft);">${escapeHtmlStaff(c)}</span>`
+      : `<span class="tag">${escapeHtmlStaff(c)}</span>`).join('') + '</div>';
+}
+
+function renderAssessments(){
+  const statusF = document.getElementById('assessStatusFilter').value;
+  const courseF = document.getElementById('assessCourseFilter').value;
+  const q = (document.getElementById('globalSearch').value || '').toLowerCase();
+  const tbody = document.getElementById('assessTbody');
+
+  const done = assessData.filter(s => s.done).length;
+  document.getElementById('assessSummary').textContent = `${done} of ${assessData.length} students completed`;
+
+  const rows = assessData.filter(s =>
+    (statusF === 'all' || (statusF === 'done' ? s.done : !s.done)) &&
+    (courseF === 'all' || s.course === courseF) &&
+    (q === '' || s.name.toLowerCase().includes(q) || s.student_number.toLowerCase().includes(q)));
+
+  if(!rows.length){
+    tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state">${MASCOT_SVG}<div class="e-title">No students match these filters</div></div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = rows.map(s => {
+    const h = s.history[0];
+    return `
+    <tr style="cursor:default;">
+      <td><div class="stu-cell"><div class="avatar">${initials(s.name)}</div><div><div class="code">${escapeHtmlStaff(s.name)}</div><div class="prog">${escapeHtmlStaff(s.student_number)}</div></div></div></td>
+      <td>${escapeHtmlStaff(courseLabel(s.course) || 'Not set')}<br><span class="prog" style="color:var(--ink-soft); font-size:11.5px;">${escapeHtmlStaff(yearLabel(s.year))}</span></td>
+      <td class="mono-cell">${h ? escapeHtmlStaff(h.taken_on) : '-'}</td>
+      <td class="mono-cell">${s.history.length}</td>
+      <td>${h ? `<span class="ans-chip">${h.frequent} of 9 items</span>` : '<span class="badge neutral">Not yet</span>'}</td>
+      <td>${h ? condTags(h) : ''}</td>
+      <td>${h ? `<button class="pill-btn ghost sm" onclick="openAssessModal(${s.id})">View</button>` : '<span style="color:var(--ink-soft);">-</span>'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function openAssessModal(id){
+  const s = assessData.find(x => x.id === id);
+  if(!s || !s.history.length) return;
+  assessModalStudent = s;
+  document.getElementById('assessModalName').textContent = s.name;
+  document.getElementById('assessModalSub').textContent =
+    `${s.student_number} · ${courseLabel(s.course) || 'Not set'} · taken ${s.history.length} ${s.history.length === 1 ? 'time' : 'times'}`;
+  document.getElementById('assessOpenProfile').onclick = () => { closeAssessModal(); openStudentModal(s.code); };
+  document.getElementById('assessDateChips').innerHTML = s.history.map((h, i) => `
+    <button class="date-chip" onclick="showAssessment(${i})">${escapeHtmlStaff(h.taken_on)} · ${escapeHtmlStaff(h.taken_time)}${i === 0 ? ' (latest)' : ''}</button>`).join('');
+  showAssessment(0);
+  document.getElementById('assessModal').classList.add('active');
+  logRecordAccess(s.id, 'view_assessment');
+}
+
+function showAssessment(i){
+  const s = assessModalStudent;
+  if(!s) return;
+  const h = s.history[i];
+  document.querySelectorAll('#assessDateChips .date-chip').forEach((b, idx) => b.classList.toggle('active', idx === i));
+  document.getElementById('assessModalBody').innerHTML = `
+    <div class="assess-box" style="margin-top:0;">
+      <div class="assess-lbl" style="margin-top:0;">Conditions experienced or diagnosed</div>
+      ${condTags(h)}
+      <div class="assess-lbl">How often in the past few weeks</div>
+      ${h.answers.map(a => `
+        <div class="assess-row"><span>${escapeHtmlStaff(a.label)}</span>
+        <span class="ans-chip ${ansClass(a.answer)}">${escapeHtmlStaff(a.answer || '-')}</span></div>`).join('')}
+      <div class="assess-lbl">Background</div>
+      <div class="assess-row"><span>Sought professional help before</span><span class="ans-chip">${yesNo(h.sought_help_before)}</span></div>
+      <div class="assess-row"><span>Has a support system</span><span class="ans-chip">${yesNo(h.has_support_system)}</span></div>
+    </div>`;
+}
+
+function closeAssessModal(){ document.getElementById('assessModal').classList.remove('active'); }
+
+function exportAssessmentsExcel(){
+  if(!confirm('This file contains sensitive student information. Download it?')) return;
+  const latest = [], all = [];
+  assessData.forEach(s => {
+    const base = {"Student": s.name, "Student No.": s.student_number, "Course": s.course, "Year": s.year};
+    if(!s.history.length){ latest.push({...base, "Status": "Not yet"}); return; }
+    s.history.forEach((h, i) => {
+      const row = {...base, "Status": "Completed", "Date taken": h.taken_on,
+        "Conditions": h.conditions.join(', '),
+        "Sought help before": yesNo(h.sought_help_before),
+        "Has support system": yesNo(h.has_support_system)};
+      h.answers.forEach(a => { row[a.label] = a.answer; });
+      all.push(row);
+      if(i === 0) latest.push(row);
+    });
+  });
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(latest), "Latest per student");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(all), "All attempts");
+  XLSX.writeFile(wb, "MICA_assessment_records.xlsx");
+  showToast('Excel file downloaded');
 }
 
 /* =========================================================
