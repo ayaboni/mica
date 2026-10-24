@@ -246,8 +246,8 @@
   .switch .knob{position:absolute; top:3px; left:3px; width:19px; height:19px; border-radius:50%; background:#fff; transition:left .15s ease; box-shadow:0 1px 3px rgba(0,0,0,.3);}
   .switch.on .knob{left:22px;}
 
-  .toast{position:fixed; bottom:28px; right:28px; background:var(--ink); color:var(--cream); padding:14px 22px; border-radius:12px; font-size:13.5px; font-weight:500; box-shadow:var(--shadow); z-index:200; display:flex; align-items:center; gap:10px; transform:translateY(120%); transition:transform .3s ease;}
-  .toast.show{transform:translateY(0);}
+  .toast{position:fixed; bottom:28px; right:28px; background:var(--ink); color:var(--cream); padding:14px 22px; border-radius:12px; font-size:13.5px; font-weight:500; box-shadow:var(--shadow); z-index:200; display:flex; align-items:center; gap:10px; transform:translateY(20px); opacity:0; pointer-events:none; transition:transform .3s ease, opacity .3s ease;}
+  .toast.show{transform:translateY(0); opacity:1;}
 
   .role-perm-card{padding:20px 22px;}
   .role-perm-card .rp-head{display:flex; align-items:center; gap:12px; margin-bottom:6px;}
@@ -535,45 +535,14 @@
           each role may view or act on. Only System Admins may modify counselor-level permissions; the Super Admin
           scope itself is fixed to preserve platform integrity.
         </p>
-        <div class="grid-2" style="grid-template-columns:1fr 1fr 1fr;">
-          <div class="card role-perm-card">
-            <div class="rp-head">
-              <div class="avatar" style="background:var(--sky);">SA</div>
-              <div>
-                <div class="rp-title">Super Admin</div>
-                <div class="rp-sub">1 account · full platform scope</div>
-              </div>
-            </div>
-            <div id="permSuperAdmin"></div>
-          </div>
-          <div class="card role-perm-card">
-            <div class="rp-head">
-              <div class="avatar" style="background:var(--sage);">GC</div>
-              <div>
-                <div class="rp-title">Guidance Counselor / Psychiatrist</div>
-                <div class="rp-sub">12 accounts · clinical &amp; case scope</div>
-              </div>
-            </div>
-            <div id="permCounselor"></div>
-          </div>
-          <div class="card role-perm-card">
-            <div class="rp-head">
-              <div class="avatar" style="background:var(--peach-deep); color:var(--brown-deep);">ST</div>
-              <div>
-                <div class="rp-title">Student</div>
-                <div class="rp-sub">1,227 accounts · self-service scope</div>
-              </div>
-            </div>
-            <div id="permStudent"></div>
-          </div>
-        </div>
 
         <div class="sc-head">
           <div>
             <h3>Staff roles</h3>
-            <p>Create guidance-office roles such as Registered Guidance Counselor, Guidance Associate or Psychometrician,
-               and choose what each may do. Every role you create here appears in the staff role list when you create
-               or edit a staff account.</p>
+            <p>System Admin and Student access is fixed in the system.
+               Staff roles below are editable, and changes apply the next time
+               the staff member loads a page.
+            </p>
           </div>
           <button class="pill-btn solid" onclick="openSubclassModal()">+ New staff role</button>
         </div>
@@ -1509,7 +1478,6 @@ function handleGlobalSearch(q){
 
 function initAll(){
   renderAccounts();
-  renderRoles();
   renderLogs();
   renderPrivacy();
   renderIntegrations();

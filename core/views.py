@@ -1676,6 +1676,7 @@ def release_thread(request, thread_id):
 
 @login_required(login_url='login')
 @user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
+@require_perm('chat_students')
 def staff_guidance_inbox(request):
     threads = GuidanceThread.objects.select_related('student', 'counselor', 'counselor__staff_profile')
     data = []
@@ -1731,6 +1732,7 @@ def _student_info_for(staff, student):
 
 @login_required(login_url='login')
 @user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
+@require_perm('chat_students')
 def staff_guidance_thread(request, thread_id):
     thread = get_object_or_404(GuidanceThread, id=thread_id)
     if thread.counselor_id and thread.counselor_id != request.user.id:

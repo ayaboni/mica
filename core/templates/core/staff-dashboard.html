@@ -399,6 +399,16 @@
   body.no-export [onclick*="exportPdfReport"],
   body.no-schedule [onclick*="openScheduleModal"],
   body.no-writenotes [onclick*="newNote"]{display:none !important;}
+  body.no-students #sec-dashboard .stat-grid,
+  body.no-students #sec-dashboard .grid-2,
+  body.no-students .nav-item[data-section="reports"],
+  body.no-chat .nav-item[data-section="messages"],
+  body.no-chat [onclick*="openStudentChat"],
+  body.no-assess #modalAssessment,
+  body.no-notes [onclick*="openNotesPanel"],
+  body.no-notes [onclick*="openThreadNotes"]{display:none !important;}
+  #noAccessNotice{display:none;}
+  body.no-students #noAccessNotice{display:block;}
   .note-badge{display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px; background:#F6E3C2; color:#8A5A12; margin-left:6px;}
   .note-badge.ok{background:#DDEBDD; color:#4F7A58;}
 </style>
@@ -511,6 +521,10 @@
 
       <!-- ============ DASHBOARD ============ -->
       <section class="section active" id="sec-dashboard">
+        <div class="card empty-state" id="noAccessNotice">
+          <div class="e-title">Nothing to show here yet</div>
+            Your staff role can't see student data. Use the menu for what your role can do, or ask the System Admin to update your permissions.
+        </div>
         <div class="stat-grid">
           <div class="card stat-card">
             <div class="icon-chip" style="background:var(--sage-pale); color:var(--sage-deep);">
@@ -1112,6 +1126,7 @@ function applyPermissions(){
     'no-students':   !PERMS.view_students,
     'no-assess':     !PERMS.view_assessments,
     'no-chat':       !PERMS.chat_students,
+    'no-notes': !((PERMS.write_note_services || []).length || (PERMS.read_note_services || []).length),
     'no-flag':       !PERMS.flag_students,
     'no-take':       !PERMS.take_cases,
     'no-resolve':    !PERMS.resolve_flags,
@@ -1387,8 +1402,10 @@ function pollStaffNotifications(){
     });
 }
 
-setInterval(pollStaffNotifications, 10000);
-pollStaffNotifications();
+if(PERMS.chat_students){
+  setInterval(pollStaffNotifications, 10000);
+  pollStaffNotifications();
+}
 
 function loadGuidanceInbox(){
   return fetch("{% url 'staff_guidance_inbox' %}")
@@ -1784,8 +1801,11 @@ function openStudentModal(code){
   sb.textContent = s.account_status !== 'active' ? 'Reactivate student'
                  : (blocked ? 'Resolve alert to archive' : 'Archive student');
   logRecordAccess(s.id, 'view_profile');
-  loadAssessmentPanel(s);
-  logRecordAccess(s.id, 'view_assessment');
+
+  if(PERMS.view_assessments){
+    loadAssessmentPanel(s);
+    logRecordAccess(s.id, 'view_assessment');
+  }
 
   if(charts.modal) charts.modal.destroy();
   const ctx = document.getElementById('modalMoodChart');
