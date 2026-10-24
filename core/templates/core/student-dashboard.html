@@ -2717,7 +2717,7 @@ resetIdle();
     if (typeof switchView === 'function') switchView('view-home', 'Home');  // composer must be visible
     MicaTour.run(DASHBOARD_TOUR);
   }
-  if ("{{ show_tutorial|yesno:'true,false' }}") MicaTour.whenLoaderGone(startDashboardTour);
+  if ("{{ show_tutorial|yesno:'true,false' }}" === "true") MicaTour.whenLoaderGone(startDashboardTour);
 
   /* ---------- Mood tour: starts the first time Mood Diary is opened ---------- */
   let moodPending = "{{ show_mood_tutorial|yesno:'true,false' }}" === "true";

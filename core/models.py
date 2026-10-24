@@ -166,6 +166,40 @@ class Notification(models.Model):
     class Meta:
         ordering = ['-created_at']
 
+class StaffSubclass(models.Model):
+    """A guidance-office role the admin can create and customise, e.g. "Guidance Associate".
+
+    The admin ticks what the role may do; `core.permissions` turns that into checks
+    on the staff pages. Staff accounts point at one of these from StaffProfile.subclass.
+    """
+    name = models.CharField(max_length=60, unique=True)
+    description = models.CharField(max_length=200, blank=True)
+
+    # --- what this role may do ---------------------------------------------
+    view_students = models.BooleanField(default=True)          # see students, mood, risk levels
+    chat_students = models.BooleanField(default=True)          # chat with students
+    # Lists of service keys from SERVICES ("information", "counseling", ...).
+    schedule_services = models.JSONField(default=list, blank=True)    # appointments they may schedule
+    write_note_services = models.JSONField(default=list, blank=True)  # notes they may write
+    read_note_services = models.JSONField(default=list, blank=True)   # notes they may read
+    notes_need_review = models.BooleanField(default=False)     # their notes are marked "needs review"
+    review_notes = models.BooleanField(default=False)          # may mark another staff member's note reviewed
+    flag_students = models.BooleanField(default=True)
+    take_cases = models.BooleanField(default=False)            # claim a chat thread / take a flag
+    resolve_flags = models.BooleanField(default=False)
+    view_assessments = models.BooleanField(default=False)
+    archive_students = models.BooleanField(default=False)     # archive / reactivate
+    export_records = models.BooleanField(default=False)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
 class StaffProfile(models.Model):
     ROLE_CHOICES = [
         ('counselor', 'Registered Guidance Counselor'),
@@ -177,11 +211,18 @@ class StaffProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='staff_profile')
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='counselor')
     license_number = models.CharField(max_length=50, blank=True)
+    # The admin-managed role that decides what this person can do. PROTECT, so deleting a
+    # subclass can never silently turn its members into unrestricted staff.
+    subclass = models.ForeignKey(StaffSubclass, null=True, blank=True, on_delete=models.PROTECT, related_name='members')
     # Set once the staff member finishes or skips the first-visit Staff Console tour.
     has_seen_tutorial = models.BooleanField(default=False)
 
+    @property
+    def role_label(self):
+        return self.subclass.name if self.subclass_id else self.get_role_display()
+
     def __str__(self):
-        return f"{self.user.get_full_name() or self.user.username} ({self.get_role_display()})"
+        return f"{self.user.get_full_name() or self.user.username} ({self.role_label})"
 
 class GuidanceThread(models.Model):
     student = models.ForeignKey(User, on_delete=models.CASCADE, related_name='guidance_threads')
@@ -231,6 +272,10 @@ class StudentNote(models.Model):
     realizations = models.TextField(blank=True)
     service = models.CharField(max_length=20, choices=SERVICES, default='counseling')
     session_date = models.DateField(default=timezone.localdate)
+    # Notes written by a role that needs sign-off wait here until a reviewer marks them reviewed.
+    needs_review = models.BooleanField(default=False)
+    reviewed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='reviewed_student_notes')
+    reviewed_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

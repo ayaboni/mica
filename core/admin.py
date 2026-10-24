@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import User
-from .models import StaffProfile, AccessLog, StudentStatusLog
+from .models import StaffProfile, AccessLog, StudentStatusLog, StaffSubclass
 from .models import UserProfile, MoodEntry, ChatConversation, ChatMessage, StaffProfile, GuidanceThread, GuidanceMessage, AccessLog
 
 admin.site.register(UserProfile)
@@ -19,17 +19,19 @@ class ChatMessageAdmin(admin.ModelAdmin):
     exclude = ('content',)
     list_display = ('conversation', 'sender', 'created_at')
 
+admin.site.register(StaffSubclass)
+
 @admin.register(StaffProfile)
 class StaffProfileAdmin(admin.ModelAdmin):
-    list_display = ('user', 'role', 'license_number')
-    list_filter = ('role',)
+    list_display = ('user', 'role', 'subclass', 'license_number')
+    list_filter = ('role', 'subclass')
 
 class StaffProfileInline(admin.StackedInline):
     model = StaffProfile
     can_delete = False
     extra = 0
     max_num = 1
-    fields = ('role', 'license_number')
+    fields = ('subclass', 'role', 'license_number')
     verbose_name_plural = 'Guidance office role'
 
 

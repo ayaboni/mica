@@ -380,6 +380,27 @@
     from { transform: translateY(100px); opacity: 0; }
     to { transform: translateY(0); opacity: 1; }
   }
+
+  /* Hide controls the staff member's role doesn't allow (see applyPermissions) */
+  body.no-students .nav-item[data-section="students"],
+  body.no-students .nav-item[data-section="mood"],
+  body.no-students .nav-item[data-section="summary"],
+  body.no-students .nav-item[data-section="alerts"],
+  body.no-assess .nav-item[data-section="assessments"],
+  body.no-chat .thread-composer,
+  body.no-flag [onclick*="flagCurrentStudent"],
+  body.no-flag [onclick*="openFlagModal"],
+  body.no-take [onclick*="claimThread"],
+  body.no-take [onclick*="'review'"],
+  body.no-resolve [onclick*="'resolve'"],
+  body.no-archive #modalStatusBtn,
+  body.no-export [onclick*="exportStudentsExcel"],
+  body.no-export [onclick*="exportAssessmentsExcel"],
+  body.no-export [onclick*="exportPdfReport"],
+  body.no-schedule [onclick*="openScheduleModal"],
+  body.no-writenotes [onclick*="newNote"]{display:none !important;}
+  .note-badge{display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px; background:#F6E3C2; color:#8A5A12; margin-left:6px;}
+  .note-badge.ok{background:#DDEBDD; color:#4F7A58;}
 </style>
 </head>
 <body>
@@ -1075,11 +1096,33 @@
   <span>A student is waiting for a reply.</span>
 </div>
 
+{{ staff_perms|json_script:"staff-perms" }}
 <script>
 /* =========================================================
    MOCK DATA
 ========================================================= */
 const IS_ADMIN = "{{ user.is_superuser|yesno:'true,false' }}" === "true";
+
+/* What this staff member's role allows (set by the admin under Roles & Permissions).
+   The server enforces all of it; this only hides what would be refused. */
+const PERMS = JSON.parse(document.getElementById('staff-perms').textContent);
+const canService = (key, svc) => (PERMS[key] || []).includes(svc);
+function applyPermissions(){
+  const off = {
+    'no-students':   !PERMS.view_students,
+    'no-assess':     !PERMS.view_assessments,
+    'no-chat':       !PERMS.chat_students,
+    'no-flag':       !PERMS.flag_students,
+    'no-take':       !PERMS.take_cases,
+    'no-resolve':    !PERMS.resolve_flags,
+    'no-archive':    !PERMS.archive_students,
+    'no-export':     !PERMS.export_records,
+    'no-schedule':   !(PERMS.schedule_services || []).length,
+    'no-writenotes': !(PERMS.write_note_services || []).length,
+  };
+  Object.entries(off).forEach(([cls, on]) => document.body.classList.toggle(cls, on));
+}
+function denied(msg){ showToast(msg || "Your staff role doesn't allow this."); }
 const PROGRAMS = ["BS Computer Science","BS Psychology","BS Business Administration","BS Nursing","BS Architecture","BS Education"];
 
 let alerts = [];
@@ -1425,7 +1468,8 @@ function openGuidanceThread(threadId, studentName){
 }
 
 function claimThread(threadId, takeover){
-  if (takeover && !confirm('Take over this conversation? The current counselor will lose access to it.')) return;
+  if(!PERMS.take_cases) return denied();
+    if (takeover && !confirm('Take over this conversation? The current counselor will lose access to it.')) return;
   const name = threadsById[threadId]?.student_name || '';
   fetch(`/api/staff/guidance/${threadId}/claim/`, {
     method: 'POST',
@@ -1481,6 +1525,7 @@ function fetchThreadMessages(){
 }
 
 function sendStaffGuidanceMessage(){
+  if(!PERMS.chat_students) return denied("Your staff role doesn't allow chatting with students.");
   const input = document.getElementById('threadInput');
   const text = input.value.trim();
   if(!text || !activeThreadId) return;
@@ -1516,6 +1561,9 @@ function openScheduleModal(){
     </div>
   `;
   document.body.appendChild(modal);
+  const apptSel = modal.querySelector('#apptService');
+  [...apptSel.options].forEach(o => { if(!canService('schedule_services', o.value)) o.remove(); });
+  if(!apptSel.options.length){ modal.remove(); denied("Your staff role can't schedule appointments."); }
 }
 
 function submitSchedule(){
@@ -1596,12 +1644,18 @@ function openNotesPanel(){
 }
 function closeNotes(){ document.getElementById('notesModal').classList.remove('active'); }
 
+function limitNoteServices(){
+  const sel = document.getElementById('noteService');
+  [...sel.options].forEach(o => { o.hidden = o.disabled = !canService('write_note_services', o.value); });
+}
 function resetNoteForm(){
+  limitNoteServices();
   document.getElementById('noteEditId').value = '';
   document.getElementById('noteDate').value = todayStr();
   document.getElementById('noteTopic').value = '';
   document.getElementById('noteReal').value = '';
-  document.getElementById('noteService').value = 'counseling';
+  const firstOk = (PERMS.write_note_services || [])[0] || 'counseling';
+  document.getElementById('noteService').value = canService('write_note_services','counseling') ? 'counseling' : firstOk;
   document.getElementById('noteSaveBtn').textContent = 'Save note';
 }
 function newNote(){ resetNoteForm(); showNotesView('form'); }
@@ -1620,11 +1674,27 @@ function loadNotes(){
       }
       box.innerHTML = notesCache.map(n=>`
         <button class="note-row" onclick="viewNote(${n.id})">
-          <div class="d"><span>${escapeHtmlStaff(n.date_label)} · ${escapeHtmlStaff(n.service_label)}</span><span>${escapeHtmlStaff(n.author)}</span></div>
+          <div class="d"><span>${escapeHtmlStaff(n.date_label)} · ${escapeHtmlStaff(n.service_label)}</span><span>${escapeHtmlStaff(n.author)}${noteBadge(n)}</span></div>
           <div class="p">${escapeHtmlStaff(previewText(n.topic || n.realizations, 10))}</div>
         </button>`).join('');
     })
     .catch(()=>{ box.innerHTML = '<div style="color:var(--alert); font-size:13px;">Could not load notes.</div>'; });
+}
+
+function noteBadge(n){
+  if(n.needs_review) return '<span class="note-badge">Needs review</span>';
+  if(n.reviewed) return '<span class="note-badge ok">Reviewed</span>';
+  return '';
+}
+function markNoteReviewed(id){
+  fetch(`/api/staff/notes/${id}/review/`, {method:'POST', headers:{'X-CSRFToken':getCookie('csrftoken')}})
+    .then(r=>r.json().then(d=>({ok:r.ok, d})))
+    .then(({ok,d})=>{
+      if(!ok){ showToast(d.error || 'Could not mark as reviewed'); return; }
+      showToast('Note marked as reviewed');
+      showNotesView('list');
+      loadNotes();
+    });
 }
 
 function viewNote(id){
@@ -1633,9 +1703,11 @@ function viewNote(id){
   document.getElementById('notesDetailView').innerHTML = `
     <button class="pill-btn ghost sm" onclick="showNotesView('list')">← All notes</button>
     <div class="note-card" style="margin-top:14px;">
-      <div class="note-meta"><b>${escapeHtmlStaff(n.date_label)} · ${escapeHtmlStaff(n.service_label)}</b><span>${escapeHtmlStaff(n.author)}${n.edited ? ' · edited' : ''}</span></div>
+      <div class="note-meta"><b>${escapeHtmlStaff(n.date_label)} · ${escapeHtmlStaff(n.service_label)}</b><span>${escapeHtmlStaff(n.author)}${n.edited ? ' · edited' : ''}${noteBadge(n)}</span></div>
       ${n.topic ? `<div class="lbl">Topic discussed</div><div class="txt">${escapeHtmlStaff(n.topic)}</div>` : ''}
       ${n.realizations ? `<div class="lbl">Student's realizations</div><div class="txt">${escapeHtmlStaff(n.realizations)}</div>` : ''}
+      ${n.can_review ? `<div class="note-actions"><button class="pill-btn solid sm" onclick="markNoteReviewed(${n.id})">Mark as reviewed</button></div>` : ''}
+      ${n.reviewed && n.reviewed_by ? `<div class="lbl">Reviewed by</div><div class="txt">${escapeHtmlStaff(n.reviewed_by)}</div>` : ''}
       ${n.can_edit ? `<div class="note-actions"><button class="pill-btn ghost sm" onclick="editNote(${n.id})">Edit</button><button class="pill-btn ghost sm" onclick="deleteNote(${n.id})">Delete</button></div>` : ''}
     </div>`;
   showNotesView('detail');
@@ -1738,6 +1810,7 @@ function loadAssessmentPanel(s){
   const box = document.getElementById('assessContent');
   if(!box){ console.error('assessContent not found'); return; }
   box.textContent = 'Loading…';
+  if(!PERMS.view_assessments){ box.textContent = "Your staff role can't view student assessments."; return; }
   console.log('loading assessment for', s.id);
   fetch(`/api/staff/students/${s.id}/assessment/`)
     .then(r => {
@@ -1780,6 +1853,7 @@ function loadAssessmentPanel(s){
 function closeModal(){document.getElementById('studentModal').classList.remove('active');}
 
 function openStatusDialog(){
+  if(!PERMS.archive_students) return denied();
   const s = studentsReal.find(x => x.code === currentStudentCode);
   if(!s) return;
   const reactivating = s.account_status !== 'active';
@@ -1899,6 +1973,7 @@ function flagCurrentStudent(){
   openFlagModal(s);
 }
 function openFlagModal(s){
+  if(!PERMS.flag_students) return denied();
   if(s.flagged){ showToast('This student already has an open flag'); return; }
   flagTarget = s;
   document.getElementById('flagTitle').textContent = 'Flag — ' + s.name;
@@ -2270,6 +2345,7 @@ function showAssessment(i){
 function closeAssessModal(){ document.getElementById('assessModal').classList.remove('active'); }
 
 function exportAssessmentsExcel(){
+  if(!PERMS.export_records) return denied();
   if(!confirm('This file contains sensitive student information. Download it?')) return;
   const latest = [], all = [];
   assessData.forEach(s => {
@@ -2507,6 +2583,7 @@ function renderCharts(){
 }
 
 function renderMoodCharts(){
+  if(!PERMS.view_students) return;
   fetch("{% url 'staff_mood_stats' %}").then(r=>r.json()).then(d=>{
     if(charts.moodDist) charts.moodDist.destroy();
     charts.moodDist = new Chart(document.getElementById('moodDistChart'),{
@@ -2554,6 +2631,7 @@ function renderReportChart(){
    EXPORTS
 ========================================================= */
 function exportStudentsExcel(){
+  if(!PERMS.export_records) return denied();
   const rows = studentsReal.map(s=>({
     "Student Code":s.code, "Program":s.program, "Year":s.year, "Risk Level":s.risk,
     "Avg Mood (7d)":s.mood, "Check-in Streak":s.streak, "Last Active":s.last_active
@@ -2566,6 +2644,7 @@ function exportStudentsExcel(){
 }
 
 function exportPdfReport(){
+  if(!PERMS.export_records) return denied();
   document.getElementById('printDate').textContent = "Period: "+document.getElementById('reportPeriod').value+" · Generated "+new Date().toLocaleDateString();
   const el = document.getElementById('printableReport');
   el.style.left='0'; el.style.position='fixed'; el.style.top='-3000px';
@@ -2592,11 +2671,14 @@ function toggleTheme(){
 }
 
 function initAll(){
-  loadStudents();
-  loadAlerts();
-  setInterval(()=>loadAlerts(true), 20000);
+  applyPermissions();
+  if(PERMS.view_students){
+    loadStudents();
+    loadAlerts();
+    setInterval(()=>loadAlerts(true), 20000);
+    loadDashboard();
+  }
   loadCareTeam();
-  loadDashboard();
   loadAppointments();
 }
 

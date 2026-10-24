@@ -112,6 +112,7 @@ AUTH_PASSWORD_VALIDATORS = [
     },
     {
         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        'OPTIONS': {'min_length': 8},
     },
     {
         'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
@@ -167,3 +168,22 @@ SITE_URL = os.getenv("SITE_URL", "")
 # E-mailed sign-in link
 LOGIN_LINK_TTL_MINUTES = 15      # how long a link stays valid
 TRUSTED_BROWSER_DAYS = 14        # "Remember me" skips the e-mail this long
+
+# Forgot password: Firebase sends the reset e-mail (see core/firebase_reset.py).
+# This is the same public web API key that login.html already uses for Google sign-in.
+FIREBASE_WEB_API_KEY = os.getenv("FIREBASE_WEB_API_KEY", "AIzaSyBeIwso61DB-HLR_rcRIe9An7Ov3e-6mG4")
+FIREBASE_WEB_CONFIG = {
+    "apiKey": FIREBASE_WEB_API_KEY,
+    "authDomain": os.getenv("FIREBASE_AUTH_DOMAIN", "mica-backend.firebaseapp.com"),
+    "projectId": os.getenv("FIREBASE_PROJECT_ID", "mica-backend"),
+}
+# Who e-mails the reset link?
+#   "firebase": Firebase sends it. Needs the Password reset template's action URL (Firebase
+#               console) set to https://YOUR-SITE/password-reset/firebase/
+#   "mica":     Firebase only creates the one-time code; MICA e-mails the link using the same
+#               e-mail settings as the sign-in links. Use this if the console won't let you
+#               change the action URL.
+PASSWORD_RESET_EMAIL_VIA = os.getenv("PASSWORD_RESET_EMAIL_VIA", "firebase").strip().lower()
+# Self-service reset is off for the system admin (superuser) account. Flip to True to allow it.
+PASSWORD_RESET_FOR_ADMINS = False
+

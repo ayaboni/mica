@@ -32,7 +32,8 @@ from .models import LoginVerification
 from .models import PasswordResetRequest
 from . import firebase_reset
 from urllib.parse import urlencode
-from .models import StaffProfile
+from .models import StaffProfile, StaffSubclass
+from .permissions import can, require_perm, staff_permissions, SERVICE_KEYS
 from .models import StudentStatusLog, ACCOUNT_STATUS, STATUS_REASONS
 from .models import AssessmentHistory
 import hashlib
@@ -1646,7 +1647,7 @@ def _staff_role(user):
     if user.is_superuser:
         return "System Admin"
     sp = getattr(user, 'staff_profile', None)
-    return sp.get_role_display() if sp else "Guidance Staff"
+    return sp.role_label if sp else "Guidance Staff"
 
 
 @ensure_csrf_cookie
@@ -1657,6 +1658,7 @@ def staff_dashboard(request):
     return render(request, 'core/staff-dashboard.html', {
         'staff_role': _staff_role(request.user),
         'staff_license': sp.license_number if sp else '',
+        'staff_perms': staff_permissions(request.user),
         # First-visit tour for staff (not for the system admin, who has their own dashboard).
         'show_staff_tutorial': not request.user.is_superuser and not (sp and sp.has_seen_tutorial),
     })
@@ -1720,6 +1722,13 @@ def _student_info(student):
             info["conditions"].append(assessment.conditions_other)
     return info
 
+def _student_info_for(staff, student):
+    info = _student_info(student)
+    if not can(staff, 'view_assessments'):      # assessment answers are only for roles allowed to see them
+        info["shared"], info["conditions"] = False, []
+    return info
+
+
 @login_required(login_url='login')
 @user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
 def staff_guidance_thread(request, thread_id):
@@ -1731,7 +1740,7 @@ def staff_guidance_thread(request, thread_id):
         {"sender": "student" if m.sender_id == thread.student_id else "counselor", "content": m.content}
         for m in thread.messages.all()
     ]
-    notes = [{
+    notes = [] if not can(request.user, 'read_note_services') else [{
         "id": n.id,
         "author": n.counselor.get_full_name() or n.counselor.username,
         "mine": n.counselor_id == request.user.id,
@@ -1740,7 +1749,7 @@ def staff_guidance_thread(request, thread_id):
     } for n in thread.notes.select_related('counselor')]
     return JsonResponse({
         "student_name": thread.student.get_full_name() or thread.student.username,
-        "student_info": _student_info(thread.student),
+        "student_info": _student_info_for(request.user, thread.student),
         "messages": msgs,
         "notes": notes,
     })
@@ -1749,6 +1758,7 @@ def staff_guidance_thread(request, thread_id):
 @login_required(login_url='login')
 @user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
 @require_POST
+@require_perm('take_cases')
 def staff_guidance_claim(request, thread_id):
     thread = get_object_or_404(GuidanceThread, id=thread_id)
     try:
@@ -1777,11 +1787,13 @@ def staff_guidance_send(request, thread_id):
     if thread.counselor_id and thread.counselor_id != request.user.id:
         return JsonResponse({"error": "Claimed by another counselor."}, status=403)
 
+    if not can(request.user, 'chat_students'):
+        return JsonResponse({"error": "Your staff role doesn't allow chatting with students."}, status=403)
     content = json.loads(request.body).get("message", "").strip()
     if not content:
         return JsonResponse({"error": "Empty message."}, status=400)
 
-    if not thread.counselor_id:
+    if not thread.counselor_id and can(request.user, 'take_cases'):
         thread.counselor = request.user
     GuidanceMessage.objects.create(thread=thread, sender=request.user, content=content)
     Notification.objects.create(user=thread.student, message="You have a new message from Guidance.", link="/dashboard/student", kind="chat")
@@ -1796,6 +1808,8 @@ def staff_guidance_note(request, thread_id):
     thread = get_object_or_404(GuidanceThread, id=thread_id)
     if thread.counselor_id and thread.counselor_id != request.user.id:
         return JsonResponse({"error": "Claimed by another counselor."}, status=403)
+    if not can(request.user, 'write_note_services'):
+        return JsonResponse({"error": "Your staff role doesn't allow writing notes."}, status=403)
     try:
         content = json.loads(request.body).get("note", "").strip()
     except json.JSONDecodeError:
@@ -1818,7 +1832,19 @@ def _note_json(n, me):
         "author": (n.author.get_full_name() or n.author.username) if n.author else "Former staff",
         "edited": (n.updated_at - n.created_at).total_seconds() > 5,
         "can_edit": n.author_id == me.id or me.is_superuser,
+        "needs_review": n.needs_review and not n.reviewed_at,
+        "reviewed": bool(n.reviewed_at),
+        "reviewed_by": (n.reviewed_by.get_full_name() or n.reviewed_by.username) if n.reviewed_by else "",
+        "can_review": bool(n.needs_review and not n.reviewed_at and n.author_id != me.id and can(me, 'review_notes')),
     }
+
+
+def can_flag_needs_review(user):
+    """True when this staff member's notes must be signed off by someone else."""
+    if user.is_superuser:
+        return False
+    sp = getattr(user, 'staff_profile', None)
+    return bool(sp and sp.subclass_id and sp.subclass.notes_need_review)
 
 
 def _read_note_payload(request):
@@ -1844,10 +1870,18 @@ def staff_student_notes(request, student_id):
         payload, error = _read_note_payload(request)
         if error:
             return error
-        note = StudentNote.objects.create(student=student, author=request.user, **payload)
+        if not can(request.user, 'write_note_services', payload["service"]):
+            return JsonResponse({"error": "Your staff role can't write %s notes." % payload["service"]}, status=403)
+        note = StudentNote.objects.create(
+            student=student, author=request.user,
+            needs_review=can_flag_needs_review(request.user), **payload)
         return JsonResponse({"note": _note_json(note, request.user)})
-    notes = student.staff_notes.select_related('author')
-    return JsonResponse({"notes": [_note_json(n, request.user) for n in notes]})
+    readable = staff_permissions(request.user)['read_note_services']
+    # Your own notes are always visible to you; other people's only for services you may read.
+    notes = (student.staff_notes.select_related('author', 'reviewed_by')
+             .filter(Q(service__in=readable) | Q(author=request.user)))
+    return JsonResponse({"notes": [_note_json(n, request.user) for n in notes],
+                         "writable": staff_permissions(request.user)['write_note_services']})
 
 
 @login_required(login_url='login')
@@ -1860,8 +1894,12 @@ def staff_note_update(request, note_id):
     payload, error = _read_note_payload(request)
     if error:
         return error
+    if not can(request.user, 'write_note_services', payload["service"]):
+        return JsonResponse({"error": "Your staff role can't write %s notes." % payload["service"]}, status=403)
     for k, v in payload.items():
         setattr(note, k, v)
+    if can_flag_needs_review(request.user):      # an edited note goes back for review
+        note.needs_review, note.reviewed_by, note.reviewed_at = True, None, None
     note.save()
     return JsonResponse({"note": _note_json(note, request.user)})
 
@@ -1875,6 +1913,22 @@ def staff_note_delete(request, note_id):
         return JsonResponse({"error": "You can only delete your own notes."}, status=403)
     note.delete()
     return JsonResponse({"status": "ok"})
+
+
+@login_required(login_url='login')
+@user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
+@require_perm('review_notes')
+@require_POST
+def staff_note_review(request, note_id):
+    note = get_object_or_404(StudentNote, id=note_id)
+    if not can(request.user, 'read_note_services', note.service):
+        return JsonResponse({"error": "Your staff role can't open this note."}, status=403)
+    if note.author_id == request.user.id:
+        return JsonResponse({"error": "Someone else needs to review your note."}, status=403)
+    note.reviewed_by = request.user
+    note.reviewed_at = timezone.now()
+    note.save(update_fields=['reviewed_by', 'reviewed_at'])
+    return JsonResponse({"note": _note_json(note, request.user)})
 
 
 @login_required(login_url='login')
@@ -1894,6 +1948,8 @@ def staff_schedule_appointment(request, thread_id):
     service = data.get("service") or "counseling"
     if service not in dict(SERVICES):
         return JsonResponse({"error": "Invalid service."}, status=400)
+    if not can(request.user, 'schedule_services', service):
+        return JsonResponse({"error": "Your staff role can't schedule %s appointments." % service}, status=403)
 
     scheduled_dt = parse_datetime(raw_time) if raw_time else None
     if not scheduled_dt:
@@ -1911,7 +1967,7 @@ def staff_schedule_appointment(request, thread_id):
     if clash:
         return JsonResponse({"error": "There is already an appointment at that time."}, status=409)
 
-    if not thread.counselor_id:
+    if not thread.counselor_id and can(request.user, 'take_cases'):
         thread.counselor = request.user
         thread.save()
 
@@ -2033,6 +2089,7 @@ def _time_ago(dt):
 @login_required(login_url='login')
 @user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
 @require_POST
+@require_perm('chat_students')
 def staff_student_thread(request, student_id):
     student = get_object_or_404(User, id=student_id, is_staff=False, is_superuser=False)
     thread, _ = GuidanceThread.objects.get_or_create(student=student)
@@ -2041,6 +2098,7 @@ def staff_student_thread(request, student_id):
 
 @login_required(login_url='login')
 @user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
+@require_perm('view_students')
 def staff_students_list(request):
     today = timezone.localdate()
     flagged_ids = set(StudentFlag.objects.exclude(status='resolved').values_list('student_id', flat=True))
@@ -2145,6 +2203,7 @@ def _active_students():
 
 @login_required(login_url='login')
 @user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
+@require_perm('view_students')
 def staff_flags(request):
     today = timezone.localdate()
     flags = StudentFlag.objects.select_related('student', 'student__profile', 'flagged_by', 'assigned_to')
@@ -2178,6 +2237,7 @@ def staff_flags(request):
 @login_required(login_url='login')
 @user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
 @require_POST
+@require_perm('flag_students')
 def staff_flag_create(request, student_id):
     student = get_object_or_404(User, id=student_id, is_staff=False, is_superuser=False)
     try:
@@ -2203,12 +2263,17 @@ def staff_flag_action(request, flag_id):
     except json.JSONDecodeError:
         return JsonResponse({"error": "Invalid request."}, status=400)
     action = data.get("action")
+    needed = {"review": "take_cases", "release": "take_cases", "resolve": "resolve_flags"}.get(action)
+    if needed and not can(request.user, needed):
+        return JsonResponse({"error": "Your staff role doesn't allow this."}, status=403)
     if action == "review":
         flag.status = 'review'
         flag.assigned_to = request.user
         flag.resolved_at = None
     elif action == "resolve":
-        if flag.assigned_to_id != request.user.id:
+        # Someone who may resolve but not take cases can resolve a flag nobody has taken.
+        if flag.assigned_to_id != request.user.id and not (
+                flag.assigned_to_id is None and not can(request.user, 'take_cases')):
             return JsonResponse({"error": "Take this case first before resolving it."}, status=403)
         flag.status = 'resolved'
         flag.resolved_at = timezone.now()
@@ -2226,6 +2291,7 @@ def staff_flag_action(request, flag_id):
 
 @login_required(login_url='login')
 @user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
+@require_perm('view_students')
 def staff_dashboard_stats(request):
     today = timezone.localdate()
     now = timezone.now()
@@ -2286,6 +2352,7 @@ def staff_dashboard_stats(request):
 
 @login_required(login_url='login')
 @user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
+@require_perm('view_students')
 def staff_mood_stats(request):
     today = timezone.localdate()
     week_start = today - timedelta(days=6)
@@ -2349,6 +2416,7 @@ def staff_log_access(request, student_id):
 
 @login_required(login_url='login')
 @user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
+@require_perm('view_assessments')
 def staff_student_assessment(request, student_id):
     student = get_object_or_404(User, id=student_id, is_staff=False, is_superuser=False)
     profile = UserProfile.objects.filter(user=student).first()
@@ -2396,6 +2464,7 @@ def _assessment_json(conditions, other, responses, sought, support, taken_at):
 
 @login_required(login_url='login')
 @user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
+@require_perm('view_assessments')
 def staff_assessments(request):
     users = (_active_students()
              .select_related('profile', 'assessment')
@@ -2432,6 +2501,7 @@ def staff_assessments(request):
 @login_required(login_url='login')
 @user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
 @require_POST
+@require_perm('archive_students')
 def staff_student_status(request, student_id):
     student = get_object_or_404(User, id=student_id, is_staff=False, is_superuser=False)
     profile, _ = UserProfile.objects.get_or_create(user=student)
@@ -2536,6 +2606,7 @@ def staff_profile_update(request):
 
 @login_required(login_url='login')
 @user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
+@require_perm('view_students')
 def staff_summary(request):
     today = timezone.localdate()
     now = timezone.now()
@@ -2613,6 +2684,7 @@ def staff_summary(request):
 
 # -- Admin Side --
 
+@ensure_csrf_cookie
 @login_required(login_url='login')
 @user_passes_test(lambda u: u.is_superuser, login_url='login')
 def admin_dashboard(request):

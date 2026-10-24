@@ -275,6 +275,52 @@
     .topbar{padding:16px 18px;}
     .content{padding:20px 16px 50px;}
   }
+
+  /* Staff roles (subclasses) */
+  .sc-head{display:flex; justify-content:space-between; align-items:flex-end; gap:16px; flex-wrap:wrap; margin:34px 0 16px;}
+  .sc-head h3{font-size:17px; font-weight:700;}
+  .sc-head p{font-size:13px; color:var(--ink-soft); max-width:620px; margin-top:4px;}
+  .subclass-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:18px;}
+  .sc-card{padding:20px 22px; display:flex; flex-direction:column; gap:12px;}
+  .sc-card .sc-title{font-size:15.5px; font-weight:700;}
+  .sc-card .sc-desc{font-size:12.5px; color:var(--ink-soft); min-height:18px;}
+  .sc-list{display:flex; flex-direction:column; gap:7px; font-size:12.5px;}
+  .sc-line{display:flex; justify-content:space-between; gap:10px; align-items:baseline;}
+  .sc-line .sc-k{color:var(--ink-soft);}
+  .sc-line .sc-v{font-weight:600; text-align:right;}
+  .sc-line .sc-v.no{color:var(--ink-soft); font-weight:500;}
+  .sc-actions{display:flex; gap:8px; margin-top:auto; padding-top:6px;}
+  .sc-empty{padding:26px; text-align:center; color:var(--ink-soft); font-size:13.5px;}
+  .svc-chips{display:flex; flex-wrap:wrap; gap:6px;}
+  .svc-chip{padding:6px 12px; border-radius:999px; border:1.5px solid var(--line); background:transparent; font-size:12.5px; font-weight:600; color:var(--ink-soft); font-family:inherit; cursor:pointer;}
+  .svc-chip.on{background:var(--sage-deep); border-color:var(--sage-deep); color:#fff;}
+  .perm-block{border-top:1px solid var(--line); margin-top:6px;}
+  .perm-block .toggle-row, .perm-svc{padding:11px 0;}
+  .perm-svc{display:flex; flex-direction:column; gap:8px; border-bottom:1px solid var(--line);}
+  .perm-svc .t-label{font-size:13px;}
+  #subclassModalOverlay .modal{max-width:620px;}
+  #subclassModalOverlay .modal-body{max-height:62vh; overflow-y:auto;}
+  .form-error{color:var(--alert); font-size:13px; margin-top:12px; min-height:16px;}
+
+  /* Long role names wrap instead of overflowing */
+  .sc-card{min-width:0;}
+  .sc-card .rp-head{display:flex; align-items:center; gap:12px; margin-bottom:0;}
+  .sc-card .rp-head .avatar{width:40px; height:40px; font-size:13px; flex-shrink:0;}
+  .sc-card .sc-title{font-size:15.5px; font-weight:700; line-height:1.3; color:var(--ink);}
+  .sc-card .rp-sub{font-size:12px; color:var(--ink-soft); margin-top:2px; font-weight:500;}
+  .sc-card .rp-head > div:last-child{min-width:0; flex:1;}
+  .sc-card .sc-title, .sc-card .sc-desc, .sc-line .sc-k, .sc-line .sc-v{overflow-wrap:anywhere; word-break:normal;}
+  .sc-card .sc-title{line-height:1.3;}
+  .sc-line .sc-k{flex:1 1 0; min-width:0;}
+  .sc-line .sc-v{flex:0 1 auto; max-width:45%; min-width:0; text-align:right;}
+  .sc-line{align-items:flex-start; gap:14px;}
+  .sc-actions{flex-wrap:wrap;}
+  .modal-head > div:first-child{min-width:0; padding-right:12px;}
+  .modal-head h2, .modal-head .sub{overflow-wrap:anywhere;}
+  .field select{text-overflow:ellipsis;}
+  #acctTbody .badge.neutral{white-space:normal; text-align:left; line-height:1.35; border-radius:14px; max-width:260px;}
+  .u-cell > div:last-child{min-width:0;}
+  .u-cell .name, .u-cell .email{overflow-wrap:anywhere;}
 </style>
 </head>
 <body>
@@ -521,6 +567,17 @@
             <div id="permStudent"></div>
           </div>
         </div>
+
+        <div class="sc-head">
+          <div>
+            <h3>Staff roles</h3>
+            <p>Create guidance-office roles such as Registered Guidance Counselor, Guidance Associate or Psychometrician,
+               and choose what each may do. Every role you create here appears in the staff role list when you create
+               or edit a staff account.</p>
+          </div>
+          <button class="pill-btn solid" onclick="openSubclassModal()">+ New staff role</button>
+        </div>
+        <div class="subclass-grid" id="subclassGrid"><div class="sc-empty">Loading staff roles…</div></div>
       </section>
 
       <!-- ============ AUDIT LOGS ============ -->
@@ -778,9 +835,13 @@
         <label>Role</label>
         <select id="acctModalRole">
           <option value="Student">Student</option>
-          <option value="Counselor">Counselor / Psychiatrist</option>
+          <option value="Counselor">Guidance Staff</option>
           <option value="Admin">System Admin</option>
         </select>
+      </div>
+      <div class="field" id="acctSubclassWrap" style="display:none;">
+        <label>Staff role</label>
+        <select id="acctModalSubclass"></select>
       </div>
       <div class="field">
         <label>Status</label>
@@ -816,18 +877,45 @@
       <div class="field-grid">
         <div class="field">
           <label>Role</label>
-          <select id="createRole">
+          <select id="createRole" onchange="syncCreateRole()">
             <option value="Student">Student</option>
-            <option value="Counselor">Counselor / Psychiatrist</option>
+            <option value="Counselor">Guidance Staff</option>
             <option value="Admin">System Admin</option>
           </select>
         </div>
-        <div class="field"><label>Program / department</label><input id="createDept" placeholder="e.g. BS Computer Science"></div>
+        <div class="field" id="createDeptWrap"><label>Program / department</label><input id="createDept" placeholder="e.g. BS Computer Science"></div>
+        <div class="field" id="createSubclassWrap" style="display:none;"><label>Staff role</label><select id="createSubclass"></select></div>
       </div>
+      <div class="form-error" id="createError"></div>
     </div>
     <div class="modal-foot">
       <button class="pill-btn solid" onclick="submitCreateAccount()">Create Account</button>
       <button class="pill-btn ghost" onclick="closeModal('createModalOverlay')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= STAFF ROLE (SUBCLASS) MODAL ================= -->
+<div class="modal-overlay" id="subclassModalOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <div><h2 id="scModalTitle">New staff role</h2><div class="sub">Choose what this role can do on the website</div></div>
+      <button class="modal-close" onclick="closeModal('subclassModalOverlay')">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="field-grid">
+        <div class="field"><label>Role name</label><input id="scName" maxlength="60" placeholder="e.g. Guidance Associate"></div>
+        <div class="field" id="scCopyWrap"><label>Start from</label><select id="scCopy" onchange="copySubclassPerms()"></select></div>
+      </div>
+      <div class="field"><label>Description (optional)</label><input id="scDesc" maxlength="200" placeholder="What this role is for"></div>
+      <div class="perm-block" id="scPerms"></div>
+      <div class="form-error" id="scError"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="pill-btn solid" id="scSaveBtn" onclick="saveSubclass()">Create role</button>
+      <button class="pill-btn ghost" onclick="closeModal('subclassModalOverlay')">Cancel</button>
     </div>
   </div>
 </div>
@@ -989,12 +1077,31 @@ function openAccountModal(id){
   `;
   document.getElementById('acctModalRole').value = a.role;
   document.getElementById('acctModalStatus').value = a.status;
-  document.getElementById('acctModalOverlay').classList.add('active');
+  // Real staff accounts can be moved between staff roles.
+  const isStaff = a.uid !== undefined;
+  document.getElementById('acctSubclassWrap').style.display = isStaff ? '' : 'none';
+  if(isStaff){
+    fillSubclassSelect('acctModalSubclass', a.subclassId);
+  }
+    document.getElementById('acctModalOverlay').classList.add('active');
 }
 function saveAccountChanges(){
   const a = accounts.find(x=>x.id===activeAcctId);
   a.role = document.getElementById('acctModalRole').value;
   a.status = document.getElementById('acctModalStatus').value;
+  if(a.uid !== undefined){
+    const subId = parseInt(document.getElementById('acctModalSubclass').value, 10);
+    if(subId && subId !== a.subclassId){
+      api('/api/admin/staff/'+a.uid+'/subclass/', {subclass_id: subId}).then(r=>{
+        if(!r.ok){ showToast(r.data.error || 'Could not change the staff role'); return; }
+        Object.assign(a, staffToAccount(r.data.staff), {status:a.status});
+        renderAccounts();
+        closeModal('acctModalOverlay');
+        showToast(a.name+' is now '+a.detail);
+      });
+      return;
+    }
+  }
   renderAccounts();
   closeModal('acctModalOverlay');
   showToast('Account '+a.id+' updated');
@@ -1009,8 +1116,19 @@ function suspendAccount(){
   closeModal('acctModalOverlay');
   showToast('Account '+a.id+' suspended');
 }
-function openCreateAccount(){ document.getElementById('createModalOverlay').classList.add('active'); }
+function openCreateAccount(){
+  document.getElementById('createError').textContent = '';
+  fillSubclassSelect('createSubclass');
+  syncCreateRole();
+  document.getElementById('createModalOverlay').classList.add('active');
+}
+function syncCreateRole(){
+  const staff = document.getElementById('createRole').value === 'Counselor';
+  document.getElementById('createSubclassWrap').style.display = staff ? '' : 'none';
+  document.getElementById('createDeptWrap').style.display = staff ? 'none' : '';
+}
 function submitCreateAccount(){
+  if(document.getElementById('createRole').value === 'Counselor'){ return submitCreateStaff(); }
   const name = document.getElementById('createName').value.trim() || 'New User';
   const email = document.getElementById('createEmail').value.trim() || 'new.user@mica.edu.ph';
   const role = document.getElementById('createRole').value;
@@ -1058,6 +1176,187 @@ function renderRoles(){
   renderPermList('permSuperAdmin', permSets.super, false);
   renderPermList('permCounselor', permSets.counselor, true);
   renderPermList('permStudent', permSets.student, false);
+}
+
+/* =========================================================
+   STAFF ROLES (SUBCLASSES) — saved on the server
+========================================================= */
+function getCookie(name){
+  const m = document.cookie.match('(?:^|; )'+name+'=([^;]*)');
+  return m ? decodeURIComponent(m[1]) : '';
+}
+function api(url, body){
+  const opts = body === undefined
+    ? {credentials:'same-origin'}
+    : {method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')}, body:JSON.stringify(body)};
+  return fetch(url, opts).then(r=>r.json().catch(()=>({})).then(data=>({ok:r.ok, status:r.status, data})))
+    .catch(()=>({ok:false, status:0, data:{error:'Could not reach the server.'}}));
+}
+function esc(t){ return String(t==null?'':t).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+let subclassList = [];
+let scMeta = {services:[], fields:[]};
+let editingSubclassId = null;
+let scDraft = {};
+
+function loadSubclasses(){
+  return api('/api/admin/subclasses/').then(r=>{
+    if(!r.ok){
+      document.getElementById('subclassGrid').innerHTML = '<div class="sc-empty">Could not load staff roles. Refresh the page to try again.</div>';
+      return;
+    }
+    subclassList = r.data.subclasses || [];
+    scMeta = {services:r.data.services || [], fields:r.data.fields || []};
+    renderSubclasses();
+  });
+}
+
+function svcLabel(key){ const s = scMeta.services.find(x=>x.key===key); return s ? s.label : key; }
+function svcSummary(list){
+  if(!list || !list.length) return '<span class="sc-v no">None</span>';
+  if(list.length === scMeta.services.length) return '<span class="sc-v">All services</span>';
+  return '<span class="sc-v">'+esc(list.map(svcLabel).join(', '))+'</span>';
+}
+
+function renderSubclasses(){
+  const grid = document.getElementById('subclassGrid');
+  if(!subclassList.length){
+    grid.innerHTML = '<div class="sc-empty">No staff roles yet. Create one to start assigning it to staff accounts.</div>';
+    return;
+  }
+  grid.innerHTML = subclassList.map(sc=>{
+    const lines = scMeta.fields.map(f=>{
+      const v = sc[f.key];
+      const val = f.kind==='services' ? svcSummary(v) : (v ? '<span class="sc-v">Yes</span>' : '<span class="sc-v no">No</span>');
+      return '<div class="sc-line"><span class="sc-k">'+esc(f.label)+'</span>'+val+'</div>';
+    }).join('');
+    const initials = sc.name.split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase();
+    return '<div class="card sc-card">'+
+      '<div class="rp-head"><div class="avatar" style="background:var(--sage);">'+esc(initials)+'</div>'+
+      '<div><div class="sc-title">'+esc(sc.name)+'</div><div class="rp-sub">'+sc.members+' staff account'+(sc.members===1?'':'s')+'</div></div></div>'+
+      '<div class="sc-desc">'+esc(sc.description)+'</div>'+
+      '<div class="sc-list">'+lines+'</div>'+
+      '<div class="sc-actions">'+
+        '<button class="pill-btn ghost sm" onclick="openSubclassModal('+sc.id+')">Edit permissions</button>'+
+        '<button class="pill-btn danger sm" onclick="deleteSubclass('+sc.id+')">Delete</button>'+
+      '</div></div>';
+  }).join('');
+}
+
+function defaultDraft(){
+  const d = {name:'', description:''};
+  scMeta.fields.forEach(f=>{
+    d[f.key] = f.kind==='services' ? [] : (f.key==='view_students'||f.key==='chat_students'||f.key==='flag_students');
+  });
+  return d;
+}
+
+function renderPermControls(){
+  document.getElementById('scPerms').innerHTML = scMeta.fields.map(f=>{
+    if(f.kind==='services'){
+      const chips = scMeta.services.map(s=>
+        '<button type="button" class="svc-chip '+(scDraft[f.key].includes(s.key)?'on':'')+'" onclick="toggleSvc(\''+f.key+'\',\''+s.key+'\')">'+esc(s.label)+'</button>').join('');
+      return '<div class="perm-svc"><div class="t-label">'+esc(f.label)+'</div><div class="svc-chips">'+chips+'</div></div>';
+    }
+    return '<div class="toggle-row" style="padding:11px 0;"><div class="t-label" style="font-size:13px;">'+esc(f.label)+'</div>'+
+           '<button type="button" class="switch '+(scDraft[f.key]?'on':'')+'" onclick="togglePerm(\''+f.key+'\')"><span class="knob"></span></button></div>';
+  }).join('');
+}
+function togglePerm(key){ scDraft[key] = !scDraft[key]; renderPermControls(); }
+function toggleSvc(key, svc){
+  const list = scDraft[key];
+  const i = list.indexOf(svc);
+  if(i>=0) list.splice(i,1); else list.push(svc);
+  renderPermControls();
+}
+
+function openSubclassModal(id){
+  editingSubclassId = id || null;
+  const sc = id ? subclassList.find(x=>x.id===id) : null;
+  scDraft = sc ? JSON.parse(JSON.stringify(sc)) : defaultDraft();
+  document.getElementById('scModalTitle').textContent = sc ? 'Edit '+sc.name : 'New staff role';
+  document.getElementById('scSaveBtn').textContent = sc ? 'Save changes' : 'Create role';
+  document.getElementById('scName').value = scDraft.name;
+  document.getElementById('scDesc').value = scDraft.description || '';
+  document.getElementById('scError').textContent = '';
+  const copy = document.getElementById('scCopy');
+  document.getElementById('scCopyWrap').style.display = sc ? 'none' : '';
+  copy.innerHTML = '<option value="">Blank role</option>' + subclassList.map(x=>'<option value="'+x.id+'">'+esc(x.name)+'</option>').join('');
+  renderPermControls();
+  document.getElementById('subclassModalOverlay').classList.add('active');
+}
+function copySubclassPerms(){
+  const src = subclassList.find(x=>String(x.id)===document.getElementById('scCopy').value);
+  const keepName = document.getElementById('scName').value, keepDesc = document.getElementById('scDesc').value;
+  scDraft = src ? JSON.parse(JSON.stringify(src)) : defaultDraft();
+  scDraft.name = keepName; scDraft.description = keepDesc;
+  renderPermControls();
+}
+function saveSubclass(){
+  scDraft.name = document.getElementById('scName').value.trim();
+  scDraft.description = document.getElementById('scDesc').value.trim();
+  const url = editingSubclassId ? '/api/admin/subclasses/'+editingSubclassId+'/update/' : '/api/admin/subclasses/';
+  const btn = document.getElementById('scSaveBtn'); btn.disabled = true;
+  api(url, scDraft).then(r=>{
+    btn.disabled = false;
+    if(!r.ok){ document.getElementById('scError').textContent = r.data.error || 'Could not save this role.'; return; }
+    closeModal('subclassModalOverlay');
+    showToast(editingSubclassId ? 'Role updated' : 'Role “'+r.data.subclass.name+'” created');
+    loadSubclasses().then(loadStaffAccounts);
+  });
+}
+function deleteSubclass(id){
+  const sc = subclassList.find(x=>x.id===id);
+  if(!sc || !confirm('Delete the role “'+sc.name+'”? This cannot be undone.')) return;
+  api('/api/admin/subclasses/'+id+'/delete/', {}).then(r=>{
+    if(!r.ok){ showToast(r.data.error || 'Could not delete this role'); return; }
+    showToast('Role deleted');
+    loadSubclasses();
+  });
+}
+
+/* Subclass <select> used by the Create Account and Manage Account dialogs. */
+function fillSubclassSelect(selectId, selectedId){
+  const sel = document.getElementById(selectId);
+  if(!subclassList.length){
+    sel.innerHTML = '<option value="">No staff roles yet — create one under Roles &amp; Permissions</option>';
+    return;
+  }
+  sel.innerHTML = subclassList.map(x=>'<option value="'+x.id+'"'+(x.id===selectedId?' selected':'')+'>'+esc(x.name)+'</option>').join('');
+}
+
+/* Real staff accounts replace the sample "Counselor" rows. */
+function staffToAccount(st){
+  return {id:'STF-'+st.id, uid:st.id, subclassId:st.subclass_id, name:st.name, email:st.email, role:'Counselor',
+          detail:st.subclass, status:st.status, lastLogin:st.last_login, joined:st.joined};
+}
+function loadStaffAccounts(){
+  return api('/api/admin/staff/').then(r=>{
+    if(!r.ok) return;
+    accounts = accounts.filter(a=>a.uid===undefined && a.role!=='Counselor').concat((r.data.staff||[]).map(staffToAccount));
+    renderAccounts();
+  });
+}
+function submitCreateStaff(){
+  const err = document.getElementById('createError'); err.textContent = '';
+  const body = {
+    name: document.getElementById('createName').value.trim(),
+    email: document.getElementById('createEmail').value.trim(),
+    subclass_id: parseInt(document.getElementById('createSubclass').value, 10) || null,
+  };
+  api('/api/admin/staff/create/', body).then(r=>{
+    if(!r.ok){ err.textContent = r.data.error || 'Could not create the account.'; return; }
+    document.getElementById('acctRoleFilter').value='all';
+    document.getElementById('acctStatusFilter').value='all';
+    closeModal('createModalOverlay');
+    document.getElementById('createName').value='';
+    document.getElementById('createEmail').value='';
+    showToast(r.data.email_sent
+      ? 'Staff account created — set-password email sent to '+r.data.staff.email
+      : 'Account created, but the set-password email could not be sent. Use Reset Password.');
+    loadStaffAccounts();
+    loadSubclasses();
+  });
 }
 
 /* =========================================================
@@ -1218,6 +1517,7 @@ function initAll(){
   renderBackups();
   renderCharts();
   renderActivityFeed();
+  loadSubclasses().then(loadStaffAccounts);
 }
 
 /* =========================================================

@@ -1,5 +1,5 @@
 from django.urls import path
-from . import views
+from . import views, admin_api
 from django.contrib.auth import views as auth_views
 
 urlpatterns = [
@@ -29,10 +29,6 @@ urlpatterns = [
     path('consent/review/', views.consent_review, name='consent_review'),
     path('assessment/', views.assessment_questionnaire, name='assessment'),
     path('account/settings/', views.account_settings, name='account_settings'),
-    path('accounts/password-reset/', auth_views.PasswordResetView.as_view(template_name='core/password-reset.html'), name='password_reset'),
-    path('accounts/password-reset/done/', auth_views.PasswordResetDoneView.as_view(template_name='core/password-reset-done.html'), name='password_reset_done'),
-    path('accounts/reset/<uidb64>/<token>/', auth_views.PasswordResetConfirmView.as_view(template_name='core/password-reset-confirm.html'), name='password_reset_confirm'),
-    path('accounts/reset/done/', auth_views.PasswordResetCompleteView.as_view(template_name='core/password-reset-complete.html'), name='password_reset_complete'),
     path('api/mood/', views.api_mood_month, name='api_mood_month'),
     path('api/mood/save/', views.api_mood_save, name='api_mood_save'),
     path('api/mood/delete/', views.api_mood_delete, name='api_mood_delete'),
@@ -73,4 +69,11 @@ urlpatterns = [
     path('api/staff/students/<int:student_id>/status/', views.staff_student_status, name='staff_student_status'),
     path('api/staff/care-team/', views.staff_care_team, name='staff_care_team'),
     path('api/staff/profile/', views.staff_profile_update, name='staff_profile_update'),
+    path('api/staff/notes/<int:note_id>/review/', views.staff_note_review, name='staff_note_review'),
+    path('api/admin/subclasses/', admin_api.subclasses, name='admin_subclasses'),
+    path('api/admin/subclasses/<int:subclass_id>/update/', admin_api.subclass_update, name='admin_subclass_update'),
+    path('api/admin/subclasses/<int:subclass_id>/delete/', admin_api.subclass_delete, name='admin_subclass_delete'),
+    path('api/admin/staff/', admin_api.staff_accounts, name='admin_staff'),
+    path('api/admin/staff/create/', admin_api.staff_create, name='admin_staff_create'),
+    path('api/admin/staff/<int:user_id>/subclass/', admin_api.staff_set_subclass, name='admin_staff_subclass'),
 ]
