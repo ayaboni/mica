@@ -1862,6 +1862,11 @@ def _note_json(n, me):
         "reviewed": bool(n.reviewed_at),
         "reviewed_by": (n.reviewed_by.get_full_name() or n.reviewed_by.username) if n.reviewed_by else "",
         "can_review": bool(n.needs_review and not n.reviewed_at and n.author_id != me.id and can(me, 'review_notes')),
+        "referred_to_id": n.referred_to_id,
+        "referred_to": (n.referred_to.get_full_name() or n.referred_to.username) if n.referred_to else "",
+        "referred_to_external": n.referred_to_external,
+        "student_informed": n.student_informed,
+        "for_me": n.referred_to_id == me.id,
     }
 
 
@@ -1889,9 +1894,26 @@ def _read_note_payload(request):
     is_private = bool(data.get("is_private", False))
     if is_private and can_flag_needs_review(request.user):
         return None, JsonResponse({"error": "Notes from your staff role need review, so they can't be private."}, status=400)
+
+    referred_to, external, informed = None, "", False
+    if service == "referral":
+        if is_private:
+            return None, JsonResponse({"error": "A referral note can't be private."}, status=400)
+        informed = bool(data.get("student_informed", False))
+        external = (data.get("referred_to_external") or "").strip()[:120]
+        rid = data.get("referred_to_id")
+        if rid:
+            try:
+                referred_to = User.objects.filter(id=int(rid), is_staff=True, is_superuser=False, is_active=True).first()
+            except (TypeError, ValueError):
+                referred_to = None
+            if referred_to is None or referred_to.id == request.user.id:
+                return None, JsonResponse({"error": "Choose another active staff member."}, status=400)
+            external = ""
     return {"topic": topic, "realizations": realizations, "session_date": session_date,
             "service": service, "service_delivered": bool(data.get("service_delivered", True)),
-            "is_private": is_private}, None
+            "is_private": is_private, "referred_to": referred_to,
+            "referred_to_external": external, "student_informed": informed}, None
 
 @login_required(login_url='login')
 @user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
@@ -1909,8 +1931,10 @@ def staff_student_notes(request, student_id):
         return JsonResponse({"note": _note_json(note, request.user)})
     readable = staff_permissions(request.user)['read_note_services']
     # Your own notes are always visible to you; other people's only for services you may read.
-    notes = (student.staff_notes.select_related('author', 'reviewed_by')
-             .filter(Q(author=request.user) | (Q(service__in=readable) & Q(is_private=False))))
+    notes = (student.staff_notes.select_related('author', 'reviewed_by', 'referred_to')
+             .filter(Q(author=request.user)
+                     | Q(referred_to=request.user)
+                     | (Q(service__in=readable) & Q(is_private=False))))
     return JsonResponse({"notes": [_note_json(n, request.user) for n in notes],
                          "writable": staff_permissions(request.user)['write_note_services']})
 
@@ -2636,6 +2660,7 @@ def staff_care_team(request):
     members = (User.objects.filter(is_staff=True, is_superuser=False)
                .select_related('staff_profile').order_by('first_name', 'username'))
     return JsonResponse({"members": [{
+        "id": m.id,
         "name": m.get_full_name() or m.username,
         "email": m.email,
         "role": _staff_role(m),

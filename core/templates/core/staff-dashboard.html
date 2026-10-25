@@ -1086,6 +1086,12 @@
           <label class="tick"><input type="checkbox" id="noteDelivered" checked> A service was delivered to the student (counts in reports)</label>
           <div class="tick-hint">Untick for reminders, call summaries, or handoff notes.</div>
           <label class="tick" id="notePrivateWrap"><input type="checkbox" id="notePrivate"> Only I can see this note</label>
+          <div id="referralBox" style="display:none;">
+            <label>Referred to</label>
+            <select id="noteReferTo"></select>
+            <input type="text" id="noteReferExternal" placeholder="e.g., Dr. Cruz, psychiatrist, City Clinic" style="display:none; margin-top:8px;">
+            <label class="tick"><input type="checkbox" id="noteInformed"> The student was told about this referral and agrees to share their information</label>
+          </div>
           <label>Topic discussed</label>
           <textarea id="noteTopic" rows="4" placeholder="What did you talk about?"></textarea>
           <label>Outcome / follow-up plan</label>
@@ -1700,6 +1706,26 @@ function limitNoteServices(){
   const sel = document.getElementById('noteService');
   [...sel.options].forEach(o => { o.hidden = o.disabled = !canService('write_note_services', o.value); });
 }
+
+function fillReferralOptions(selectedId){
+  const sel = document.getElementById('noteReferTo');
+  const people = (admins || []).filter(a => !a.me && a.status === 'Active');
+  sel.innerHTML = '<option value="">— Choose —</option>'
+    + people.map(a => `<option value="${a.id}">${escapeHtmlStaff(a.name)} · ${escapeHtmlStaff(a.role)}</option>`).join('')
+    + '<option value="external">Outside professional / clinic</option>';
+  if(selectedId) sel.value = String(selectedId);
+}
+function syncReferralBox(){
+  const isRef = document.getElementById('noteService').value === 'referral';
+  document.getElementById('referralBox').style.display = isRef ? '' : 'none';
+  document.getElementById('noteReferExternal').style.display =
+    (isRef && document.getElementById('noteReferTo').value === 'external') ? '' : 'none';
+  if(isRef) document.getElementById('notePrivate').checked = false;     // referral notes can't be private
+  document.getElementById('notePrivateWrap').style.display = (isRef || PERMS.notes_need_review) ? 'none' : '';
+}
+document.getElementById('noteService').addEventListener('change', syncReferralBox);
+document.getElementById('noteReferTo').addEventListener('change', syncReferralBox);
+
 function resetNoteForm(){
   limitNoteServices();
   document.getElementById('noteEditId').value = '';
@@ -1711,6 +1737,10 @@ function resetNoteForm(){
   document.getElementById('noteSaveBtn').textContent = 'Save note';
   document.getElementById('noteDelivered').checked = true;
   document.getElementById('notePrivate').checked = false;
+  fillReferralOptions();
+  document.getElementById('noteReferExternal').value = '';
+  document.getElementById('noteInformed').checked = false;
+  syncReferralBox();
 }
 function newNote(){ resetNoteForm(); showNotesView('form'); }
 function cancelNoteForm(){ resetNoteForm(); showNotesView('list'); }
@@ -1736,10 +1766,12 @@ function loadNotes(){
 }
 
 function noteBadge(n){
+  if(n.for_me) return '<span class="note-badge">Referred to you</span>';
   if(n.needs_review) return '<span class="note-badge">Needs review</span>';
   if(n.reviewed) return '<span class="note-badge ok">Reviewed</span>';
   return '';
 }
+
 function markNoteReviewed(id){
   fetch(`/api/staff/notes/${id}/review/`, {method:'POST', headers:{'X-CSRFToken':getCookie('csrftoken')}})
     .then(r=>r.json().then(d=>({ok:r.ok, d})))
@@ -1760,6 +1792,9 @@ function viewNote(id){
       <div class="note-meta"><b>${escapeHtmlStaff(n.date_label)} · ${escapeHtmlStaff(n.service_label)}</b><span>${escapeHtmlStaff(n.author)}${n.edited ? ' · edited' : ''}${noteBadge(n)}</span></div>
       ${n.is_private ? '<div class="lbl">🔒 Private: only you can see this</div>' : ''}
       ${n.service_delivered ? '' : '<div class="lbl">Not counted in reports</div>'}
+      ${n.referred_to ? `<div class="lbl">Referred to</div><div class="txt">${escapeHtmlStaff(n.referred_to)}</div>` : ''}
+      ${n.referred_to_external ? `<div class="lbl">Referred to (outside)</div><div class="txt">${escapeHtmlStaff(n.referred_to_external)}</div>` : ''}
+      ${n.service === 'referral' ? `<div class="lbl">Student informed</div><div class="txt">${n.student_informed ? 'Yes' : 'Not recorded'}</div>` : ''}
       ${n.topic ? `<div class="lbl">Topic discussed</div><div class="txt">${escapeHtmlStaff(n.topic)}</div>` : ''}
       ${n.realizations ? `<div class="lbl">Outcome / follow-up plan</div><div class="txt">${escapeHtmlStaff(n.realizations)}</div>` : ''}
       ${n.can_review ? `<div class="note-actions"><button class="pill-btn solid sm" onclick="markNoteReviewed(${n.id})">Mark as reviewed</button></div>` : ''}
@@ -1780,6 +1815,11 @@ function editNote(id){
   document.getElementById('noteSaveBtn').textContent = 'Update note';
   document.getElementById('noteDelivered').checked = n.service_delivered;
   document.getElementById('notePrivate').checked = n.is_private;
+  fillReferralOptions(n.referred_to_id);
+  if(!n.referred_to_id && n.referred_to_external) document.getElementById('noteReferTo').value = 'external';
+  document.getElementById('noteReferExternal').value = n.referred_to_external || '';
+  document.getElementById('noteInformed').checked = n.student_informed;
+  syncReferralBox();
   showNotesView('form');
 }
 
@@ -1792,6 +1832,9 @@ function saveNote(){
     service: document.getElementById('noteService').value,
     service_delivered: document.getElementById('noteDelivered').checked,
     is_private: document.getElementById('notePrivate').checked,
+    referred_to_id: (() => { const v = document.getElementById('noteReferTo').value; return v && v !== 'external' ? parseInt(v, 10) : null; })(),
+    referred_to_external: document.getElementById('noteReferTo').value === 'external' ? document.getElementById('noteReferExternal').value : '',
+    student_informed: document.getElementById('noteInformed').checked,
   };
   if(!payload.topic.trim() && !payload.realizations.trim()){ showToast('Write something first'); return; }
   const url = id ? `/api/staff/notes/${id}/update/` : `/api/staff/students/${notesStudent.id}/notes/`;

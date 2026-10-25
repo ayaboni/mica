@@ -278,6 +278,10 @@ class StudentNote(models.Model):
     needs_review = models.BooleanField(default=False)
     reviewed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='reviewed_student_notes')
     reviewed_at = models.DateTimeField(null=True, blank=True)
+    referred_to = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL,
+                                    related_name='referral_notes_received')
+    referred_to_external = models.CharField(max_length=120, blank=True)
+    student_informed = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
