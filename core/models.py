@@ -281,6 +281,7 @@ class StudentNote(models.Model):
     referred_to = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL,
                                     related_name='referral_notes_received')
     referred_to_external = models.CharField(max_length=120, blank=True)
+    referral_seen = models.BooleanField(default=False)
     student_informed = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

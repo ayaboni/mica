@@ -1930,7 +1930,7 @@ def staff_student_notes(request, student_id):
             needs_review=can_flag_needs_review(request.user), **payload)
         return JsonResponse({"note": _note_json(note, request.user)})
     readable = staff_permissions(request.user)['read_note_services']
-    # Your own notes are always visible to you; other people's only for services you may read.
+    student.staff_notes.filter(referred_to=request.user, referral_seen=False).update(referral_seen=True)
     notes = (student.staff_notes.select_related('author', 'reviewed_by', 'referred_to')
              .filter(Q(author=request.user)
                      | Q(referred_to=request.user)
@@ -1986,6 +1986,21 @@ def staff_note_review(request, note_id):
     note.reviewed_at = timezone.now()
     note.save(update_fields=['reviewed_by', 'reviewed_at'])
     return JsonResponse({"note": _note_json(note, request.user)})
+
+
+@login_required(login_url='login')
+@user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
+def staff_referral_inbox(request):
+    """Referral notes addressed to this staff member that they haven't opened yet."""
+    notes = (StudentNote.objects.filter(referred_to=request.user, referral_seen=False)
+             .select_related('student', 'author').order_by('-created_at'))
+    return JsonResponse({"referrals": [{
+        "note_id": n.id,
+        "student_code": f"MC-{1000 + n.student_id}",
+        "student_name": n.student.get_full_name() or n.student.username,
+        "from_name": (n.author.get_full_name() or n.author.username) if n.author else "Former staff",
+        "date": timezone.localtime(n.created_at).strftime("%b %d, %I:%M %p"),
+    } for n in notes]})
 
 
 @login_required(login_url='login')

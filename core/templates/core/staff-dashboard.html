@@ -517,9 +517,12 @@
         <button class="icon-btn" onclick="toggleTheme()" title="Toggle theme">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></svg>
         </button>
+        <button class="icon-btn" id="referralBtn" onclick="openReferrals()" title="Referred to you" style="display:none;">
+          <span style="font-size:15px;">📨</span><span class="ping" id="referralPing">0</span>
+        </button>
         <button class="icon-btn" onclick="goTo('alerts')" title="Risk alerts">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2a6 6 0 0 0-6 6v3.4c0 .8-.3 1.6-.9 2.2L4 15h16l-1.1-1.4a3.2 3.2 0 0 1-.9-2.2V8a6 6 0 0 0-6-6z"/><path d="M9.5 19a2.5 2.5 0 0 0 5 0"/></svg>
-          <span class="ping" id="bellPing">3</span>
+          <span class="ping" id="bellPing" style="display:none;">0</span>
         </button>
         <div class="avatar" style="background:var(--sky); cursor:pointer;" onclick="goTo('settings')">{{ request.user.first_name|slice:":1"|upper }}{{ request.user.last_name|slice:":1"|upper }}</div>
       </div>
@@ -1130,6 +1133,15 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="referralModal" style="z-index:110;">
+  <div class="modal" style="max-width:460px;">
+    <div class="modal-head">
+      <div><h2>Referred to you</h2><div class="sub">Notes other staff wrote for you.</div></div>
+      <button class="modal-close" onclick="closeReferrals()">✕</button>
+    </div>
+    <div class="modal-body" id="referralList"></div>
+  </div>
+</div>
 <div class="toast" id="toast"></div>
 <div id="studentWaitingBanner" class="waiting-banner-floating" style="display: none;" onclick="goTo('messages')">
   <span class="banner-dot"></span>
@@ -1397,9 +1409,45 @@ let panelArchived = false;
 let scheduleSubmitting = false;
 let seenLastMsg = {};
 let threadsById = {};
+let referralsList = [];
+let referralsInit = false;
+let lastReferralCount = 0;
 
 function initials(name){
   return name.split(' ').filter(Boolean).map(w=>w[0]).join('').slice(0,2).toUpperCase();
+}
+
+function pollReferrals(){
+  fetch("{% url 'staff_referral_inbox' %}").then(r => r.json()).then(d => {
+    referralsList = d.referrals || [];
+    const n = referralsList.length;
+    if(referralsInit && n > lastReferralCount){ playReferralSound(); showToast('A note was referred to you'); }
+    referralsInit = true; lastReferralCount = n;
+    document.getElementById('referralBtn').style.display = n ? '' : 'none';
+    document.getElementById('referralPing').textContent = n;
+  }).catch(() => {});
+}
+setInterval(pollReferrals, 10000);
+pollReferrals();
+
+function openReferrals(){
+  document.getElementById('referralList').innerHTML = referralsList.map(r => `
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; padding:10px 4px; border-bottom:1px solid var(--line);">
+      <div>
+        <div style="font-weight:700;">${escapeHtmlStaff(r.student_name)}</div>
+        <div style="font-size:12.5px; color:var(--ink-soft);">From ${escapeHtmlStaff(r.from_name)} · ${escapeHtmlStaff(r.date)}</div>
+      </div>
+      <button class="pill-btn solid" onclick="openReferral('${r.student_code}')">Open</button>
+    </div>`).join('') || '<div style="padding:12px; color:var(--ink-soft);">Nothing new.</div>';
+  document.getElementById('referralModal').classList.add('active');
+}
+function closeReferrals(){ document.getElementById('referralModal').classList.remove('active'); }
+function openReferral(code){
+  if(!studentsReal.find(x => x.code === code)) return showToast("Your staff role can't open student records.");
+  closeReferrals();
+  openStudentModal(code);
+  openNotesPanel();
+  setTimeout(pollReferrals, 800);
 }
 
 function pollStaffNotifications(){
@@ -2255,7 +2303,9 @@ function updateAlertStatus(id, action){
 function updateAlertCounts(){
   const openCount = alerts.filter(a=>a.status!=='Resolved').length;
   document.getElementById('alertNavCount').textContent = openCount;
-  document.getElementById('bellPing').textContent = openCount;
+  const bp = document.getElementById('bellPing');
+  bp.textContent = openCount;
+  bp.style.display = openCount ? '' : 'none';
   document.getElementById('dashRiskCount').textContent = openCount;
   document.getElementById('printRiskCount').textContent = openCount;
 }
@@ -2865,6 +2915,26 @@ function playNotificationSound() {
     notifSound.volume = getSoundVolume();
     notifSound.play().catch(err => console.log("Audio play blocked or failed:", err));
   }
+}
+
+function playReferralSound(){
+  try{
+    const vol = getSoundVolume();
+    if(!vol) return;
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    const ctx = window._micaAudio || (window._micaAudio = new Ctx());
+    if(ctx.state === 'suspended') ctx.resume();
+    [[659.25, 0], [987.77, 0.16], [1318.51, 0.32]].forEach(([freq, t]) => {
+      const osc = ctx.createOscillator(), gain = ctx.createGain();
+      osc.type = 'sine'; osc.frequency.value = freq;
+      const start = ctx.currentTime + t;
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(0.35 * vol, start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.45);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(start); osc.stop(start + 0.5);
+    });
+  }catch(e){}
 }
 
 function unlockAudio() {
