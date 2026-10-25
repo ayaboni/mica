@@ -2355,6 +2355,21 @@ def staff_dashboard_stats(request):
         feed.append((u.date_joined, "🫶", f"<b>{name(u)}</b> joined MICA"))
     feed.sort(key=lambda x: x[0], reverse=True)
 
+    # Engagement: share of active students who checked in at least once in the last 30 days
+    since30 = today - timedelta(days=29)
+    active_ids = set(MoodEntry.objects.filter(
+        user__in=students, date__gte=since30).values_list('user_id', flat=True))
+    totals, active = {}, {}
+    for uid, course in students.values_list('id', 'profile__course'):
+        key = course or 'Not set'
+        totals[key] = totals.get(key, 0) + 1
+        if uid in active_ids:
+            active[key] = active.get(key, 0) + 1
+    engagement_by_course = [
+        {"code": k, "rate": round(100 * active.get(k, 0) / v)} for k, v in sorted(totals.items())]
+    total_students = students.count()
+    checkin_rate_30d = round(100 * len(active_ids) / total_students) if total_students else None
+
     return JsonResponse({
         "students_total": students.count(),
         "new_students_month": students.filter(date_joined__gte=now - timedelta(days=30)).count(),
@@ -2365,6 +2380,8 @@ def staff_dashboard_stats(request):
         "flags_new_week": StudentFlag.objects.filter(created_at__gte=now - timedelta(days=7)).count(),
         "trend": {"labels": [d.strftime("%b %d") for d in trend_days], "values": [avg([d]) for d in trend_days]},
         "engagement": engagement,
+        "engagement_by_course": engagement_by_course,
+        "checkin_rate_30d": checkin_rate_30d,
         "feed": [{"icon": i, "text": t, "time": _time_ago(c)} for c, i, t in feed[:8]],
     })
 
