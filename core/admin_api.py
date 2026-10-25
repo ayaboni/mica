@@ -221,3 +221,18 @@ def staff_set_active(request, user_id):
             released = GuidanceThread.objects.filter(counselor=user).update(counselor=None)
             StudentFlag.objects.filter(assigned_to=user).exclude(status="resolved").update(assigned_to=None, status="new")
     return JsonResponse({"staff": _staff_json(user), "released_threads": released})
+
+
+@_admin
+@require_POST
+def staff_reset_password(request, user_id):
+    from .views import _send_reset_link
+    user = get_object_or_404(User, id=user_id, is_staff=True, is_superuser=False)
+    if not user.email:
+        return JsonResponse({"error": "This account has no email address."}, status=400)
+    try:
+        _send_reset_link(request, user.email)
+    except Exception:
+        logger.exception("Could not send a reset link to staff account %s.", user.pk)
+        return JsonResponse({"error": "Could not send the e-mail. Check the e-mail settings."}, status=502)
+    return JsonResponse({"status": "ok"})

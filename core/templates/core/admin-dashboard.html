@@ -515,7 +515,6 @@
               <option value="Pending">Pending Verification</option>
             </select>
           </div>
-          <button class="pill-btn danger" id="acctSuspendBtn" onclick="suspendAccount()">Archive Account</button>
           <button class="pill-btn solid" onclick="openCreateAccount()">+ Create Account</button>
         </div>
 
@@ -825,7 +824,7 @@
     <div class="modal-foot">
       <button class="pill-btn solid" onclick="saveAccountChanges()">Save Changes</button>
       <button class="pill-btn ghost" onclick="resetAccountPassword()">Reset Password</button>
-      <button class="pill-btn danger" onclick="suspendAccount()">Suspend Account</button>
+      <button class="pill-btn danger" id="acctSuspendBtn" onclick="suspendAccount()">Suspend Account</button>
     </div>
   </div>
 </div>
@@ -1055,7 +1054,7 @@ function openAccountModal(id){
   }
   document.getElementById('acctModalOverlay').classList.add('active');
   document.getElementById('acctModalStatus').closest('.field').style.display = isStaff ? 'none' : '';
-  document.getElementById('acctSuspendBtn').textContent = (isStaff && a.status === 'Suspended') ? 'Reactivate Account' : 'Archive Account';
+    document.getElementById('acctSuspendBtn').textContent = (isStaff && a.status === 'Suspended') ? 'Reactivate Account' : 'Suspend Account';
 }
 function saveAccountChanges(){
   const a = accounts.find(x=>x.id===activeAcctId);
@@ -1079,7 +1078,11 @@ function saveAccountChanges(){
   showToast('Account '+a.id+' updated');
 }
 function resetAccountPassword(){
-  showToast('Password reset link sent to '+accounts.find(x=>x.id===activeAcctId).email);
+  const a = accounts.find(x=>x.id===activeAcctId);
+  if(a.uid === undefined){ showToast('Sample account: no email sent'); return; }
+  api('/api/admin/staff/'+a.uid+'/reset-password/', {}).then(r=>{
+    showToast(r.ok ? 'Password reset link sent to '+a.email : (r.data.error || 'Could not send the link'));
+  });
 }
 function suspendAccount(){
   const a = accounts.find(x=>x.id===activeAcctId);
@@ -1087,13 +1090,15 @@ function suspendAccount(){
     a.status = 'Suspended'; renderAccounts(); closeModal('acctModalOverlay'); showToast('Account '+a.id+' suspended'); return;
   }
   const archiving = a.status !== 'Suspended';
-  if(archiving && !confirm('Archive '+a.name+'? They will be signed out and unable to log in. Their chats and cases will be released to other staff, and all records are kept.')) return;
+  if(archiving && !confirm('Suspend '+a.name+'? They will be signed out and unable to log in. Their chats and cases will be released to other staff, and all records are kept.')) return;
   api('/api/admin/staff/'+a.uid+'/active/', {active: !archiving}).then(r=>{
     if(!r.ok){ showToast(r.data.error || 'Could not update this account'); return; }
     Object.assign(a, staffToAccount(r.data.staff));
     renderAccounts();
     closeModal('acctModalOverlay');
-    showToast(archiving ? a.name+' archived' : a.name+' reactivated');
+    showToast(archiving
+      ? a.name+' suspended'+(r.data.released_threads ? ' · '+r.data.released_threads+' chat(s) released' : '')
+      : a.name+' reactivated');
   });
 }
 function openCreateAccount(){

@@ -1126,6 +1126,21 @@
 
 {{ staff_perms|json_script:"staff-perms" }}
 <script>
+(function(){
+  const _fetch = window.fetch;
+  window.fetch = function(...args){
+    return _fetch.apply(this, args).then(res => {
+      if(res.status === 401){
+        res.clone().json().then(d => {
+          if(d && (d.suspended || d.expired))
+            window.location.href = "{% url 'login' %}" + (d.suspended ? '?suspended=1' : '?expired=1');
+        }).catch(() => {});
+      }
+      return res;
+    });
+  };
+})();
+
 /* =========================================================
    PERMISSIONS
 ========================================================= */

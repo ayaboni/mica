@@ -691,6 +691,8 @@ def csrf_failure(request, reason=""):
 @ensure_csrf_cookie
 def login(request):
     # Redirect already-authenticated users to their respective dashboards
+    if request.GET.get('suspended'):
+        messages.error(request, "Your staff account has been suspended. Please contact the System Admin.")
     if request.user.is_authenticated:
         if request.user.is_superuser:
             return redirect('admin_dashboard')
@@ -747,6 +749,12 @@ def login(request):
                 _trust_browser(response, request, user)   # keep the 2 weeks rolling
             return response
         else:
+            suspended = User.objects.filter(
+                Q(username__iexact=username_input) | Q(email__iexact=username_input),
+                is_active=False, is_staff=True).first()
+            if suspended and suspended.check_password(password_input or ""):
+                messages.error(request, "Your staff account has been suspended. Please contact the System Admin.")
+                return render(request, 'core/login.html', status=403)
             attempts_left, wait = _record_failed_login(throttle_key)
             if wait:
                 return render(request, 'core/login.html', {
@@ -949,7 +957,7 @@ def _reset_accounts(identifier):
     allow_admins = getattr(settings, "PASSWORD_RESET_FOR_ADMINS", False)
     return [
         user for user in candidates
-        if user.is_active and user.email and user.has_usable_password()
+        if user.email and user.has_usable_password()
         and (allow_admins or not user.is_superuser)
     ]
 
@@ -2622,7 +2630,7 @@ def staff_care_team(request):
         "name": m.get_full_name() or m.username,
         "email": m.email,
         "role": _staff_role(m),
-        "status": "Active" if m.is_active else "Inactive",
+                "status": "Active" if m.is_active else "Suspended",
         "last_active": _time_ago(m.last_login),
         "me": m.id == request.user.id,
     } for m in members]})

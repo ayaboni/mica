@@ -21,10 +21,8 @@ class ArchivedStudentMiddleware:
                 return redirect("archived")
         return self.get_response(request)
 
-
 STAFF_IDLE_SECONDS = 15 * 60
 STUDENT_IDLE_SECONDS = 30 * 60
-
 
 class IdleTimeoutMiddleware:
     def __init__(self, get_response):
@@ -48,4 +46,17 @@ class IdleTimeoutMiddleware:
             if last is None or not is_poll:
                 request.session['last_activity'] = now
 
+        return self.get_response(request)
+
+class SuspendedAccountMiddleware:
+    """A staff member suspended while signed in is signed out on their next request."""
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        if not request.user.is_authenticated and '_auth_user_id' in request.session:
+            request.session.flush()
+            if request.path.startswith('/api/'):
+                return JsonResponse({'error': 'Account suspended.', 'suspended': True}, status=401)
+            return redirect(reverse('login') + '?suspended=1')
         return self.get_response(request)

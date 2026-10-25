@@ -77,4 +77,5 @@ urlpatterns = [
     path('api/admin/staff/create/', admin_api.staff_create, name='admin_staff_create'),
     path('api/admin/staff/<int:user_id>/subclass/', admin_api.staff_set_subclass, name='admin_staff_subclass'),
     path('api/admin/staff/<int:user_id>/active/', admin_api.staff_set_active, name='admin_staff_active'),
+    path('api/admin/staff/<int:user_id>/reset-password/', admin_api.staff_reset_password, name='admin_staff_reset_password'),
 ]
