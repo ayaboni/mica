@@ -224,6 +224,8 @@
   .modal-overlay{display:none; position:fixed; inset:0; background:rgba(20,22,15,.5); z-index:100; align-items:flex-start; justify-content:center; padding:50px 20px; overflow:auto;}
   .modal-overlay.active{display:flex;}
   .modal{background:var(--paper); border-radius:22px; width:100%; max-width:640px; box-shadow:var(--shadow); border:1px solid var(--line); animation:fadeIn .25s ease;}
+  #modalStatusBtn{margin-left:auto; color:var(--alert); border-color:transparent;}
+  #modalStatusBtn:hover{background:var(--alert-pale); color:var(--alert); border-color:var(--alert-pale);}
   .modal-head{display:flex; justify-content:space-between; align-items:flex-start; padding:26px 28px 18px; border-bottom:1px solid var(--line);}
   .modal-head h2{font-size:19px; font-weight:700;}
   .modal-head .sub{font-size:12.5px; color:var(--ink-soft); margin-top:4px;}
@@ -260,9 +262,12 @@
 .tmsg-bubble{max-width:65%; padding:10px 14px; border-radius:16px; font-size:13.5px; line-height:1.5;}
 .tmsg-row.student .tmsg-bubble{background:var(--peach); color:var(--ink); border-bottom-left-radius:4px;}
 .tmsg-row.counselor .tmsg-bubble{background:var(--sky-deep); color:#fff; border-bottom-right-radius:4px;}
+.archived-tag{background:var(--line); color:var(--ink-soft); font-size:10px; font-weight:700; padding:2px 7px; border-radius:999px; margin-left:6px; vertical-align:middle;}
+.archived-banner{padding:10px 18px; background:var(--peach); color:var(--peach-text); font-size:12.5px; border-bottom:1px solid var(--line);}
 .thread-composer{display:flex; gap:10px; padding:14px 16px; border-top:1px solid var(--line);}
 .thread-composer input{flex:1; border:1px solid var(--line); border-radius:999px; padding:10px 16px; font-family:inherit; font-size:13.5px; background:var(--cream); color:var(--ink);}
 .thread-composer input:focus{outline:none; border-color:var(--sky-deep);}
+.thread-composer input:disabled{opacity:.6; cursor:not-allowed;}
 .thread-empty{flex:1; display:flex; align-items:center; justify-content:center; color:var(--ink-soft); font-size:13px;}
 .thread-info{padding:10px 18px; border-bottom:1px solid var(--line); font-size:12.5px; color:var(--ink-soft);}
 
@@ -613,7 +618,7 @@
           <div class="toolbar-left">
             <select class="filter-select" id="studentStatusFilter" onchange="loadStudents()">
               <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
+              <option value="inactive">Archived</option>
               <option value="graduated">Graduated</option>
             </select>
             <select class="filter-select" id="studentRiskFilter" onchange="renderStudents()">
@@ -1360,6 +1365,7 @@ const SEND_URL    = "{% url 'staff_guidance_send' 0 %}";    // -> "/api/staff/gu
 
 let activeThreadId = null;
 let threadPollTimer = null;
+let panelArchived = false;
 let scheduleSubmitting = false;
 let seenLastMsg = {};
 let threadsById = {};
@@ -1411,7 +1417,13 @@ function loadGuidanceInbox(){
   return fetch("{% url 'staff_guidance_inbox' %}")
     .then(r=>r.json())
     .then(data=>{
+      data.threads.sort((a,b) => Number(a.archived) - Number(b.archived));
       threadsById = Object.fromEntries(data.threads.map(t => [t.id, t]));
+      const cur = threadsById[activeThreadId];
+      if(cur && document.getElementById('threadInput') && !!cur.archived !== panelArchived){
+        openGuidanceThread(activeThreadId, cur.student_name);
+        return;
+      }
       const list = document.getElementById('threadList');
       if(!data.threads.length){
         list.innerHTML = `<div class="thread-empty" style="height:100%;">No student conversations yet</div>`;
@@ -1422,7 +1434,7 @@ function loadGuidanceInbox(){
           <div class="thread-item ${t.id===activeThreadId?'active':''}" onclick="openGuidanceThread(${t.id}, '${t.student_name.replace(/'/g,"\\'")}')">
             <div class="avatar">${initials(t.student_name)}</div>
             <div class="t-info">
-              <div class="t-name">${t.student_name} ${t.awaiting_reply && t.id !== activeThreadId ? '<span style="background:var(--alert); color:#fff; font-size:10px; padding:2px 7px; border-radius:999px; margin-left:6px;">New</span>' : ''}</div>
+              <div class="t-name">${t.student_name}${t.archived ? '<span class="archived-tag">Archived</span>' : ''} ${t.awaiting_reply && t.id !== activeThreadId ? '<span style="background:var(--alert); color:#fff; font-size:10px; padding:2px 7px; border-radius:999px; margin-left:6px;">New</span>' : ''}</div>
               <div class="t-preview">${escapeHtmlStaff(t.last_message || 'No messages yet')}</div>
               <div class="t-counselor">${owner}</div>
             </div>
@@ -1438,6 +1450,8 @@ function openGuidanceThread(threadId, studentName){
   activeThreadId = threadId;
   loadGuidanceInbox();
   const t = threadsById[threadId];
+  const archived = !!(t && t.archived);
+  panelArchived = archived;
 
   // Locked: claimed by another counselor
   if (t && t.claimed && !t.mine) {
@@ -1458,21 +1472,21 @@ function openGuidanceThread(threadId, studentName){
   panel.innerHTML = `
     <div class="thread-view-head" style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
       <div style="min-width:0;">
-        <div>${studentName}</div>
+        <div>${studentName}${archived ? '<span class="archived-tag">Archived</span>' : ''}</div>
         <div id="threadStudentSub" style="font-size:12.5px; font-weight:500; color:var(--ink-soft); margin-top:2px;"></div>
       </div>
       <span style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
         ${t && !t.claimed ? `<button class="pill-btn ghost sm" onclick="claimThread(${threadId}, false)">Claim</button>` : ''}
         ${t && t.mine ? `<button class="pill-btn ghost sm" onclick="releaseThread(${threadId})">Release</button>` : ''}
         <button class="pill-btn ghost sm" onclick="openThreadNotes(${threadId})">📝 Notes</button>
-        <button class="pill-btn solid sm" onclick="openScheduleModal()">📅 Schedule Appointment</button>
+        ${archived ? '' : `<button class="pill-btn solid sm" onclick="openScheduleModal()">📅 Schedule Appointment</button>`}
       </span>
     </div>
-    <div class="thread-info" id="threadStudentInfo"></div>
+    ${archived ? `<div class="archived-banner">This student's account is archived, so they can't see new messages. Replies are turned off. You can still read the history.</div>` : ''}
     <div class="thread-messages" id="threadMessages"></div>
     <div class="thread-composer">
-      <input type="text" id="threadInput" placeholder="Reply to ${studentName}...">
-      <button class="pill-btn solid sm" onclick="sendStaffGuidanceMessage()">Send</button>
+      <input type="text" id="threadInput" placeholder="${archived ? 'Replies are off for archived students' : 'Reply to ' + studentName + '...'}" ${archived ? 'disabled' : ''}>
+      <button class="pill-btn solid sm" onclick="sendStaffGuidanceMessage()" ${archived ? 'disabled' : ''}>Send</button>
     </div>
   `;
   document.getElementById('threadInput').addEventListener('keydown', e=>{
@@ -1542,6 +1556,7 @@ function fetchThreadMessages(){
 }
 
 function sendStaffGuidanceMessage(){
+  if(threadsById[activeThreadId]?.archived) return denied("This student's account is archived.");
   if(!PERMS.chat_students) return denied("Your staff role doesn't allow chatting with students.");
   const input = document.getElementById('threadInput');
   const text = input.value.trim();
@@ -1564,11 +1579,11 @@ function openScheduleModal(){
       <span onclick="document.getElementById('scheduleModal').remove()" style="position:absolute; top:14px; right:18px; cursor:pointer; font-size:20px;">✕</span>
       <h3 style="margin-top:0;">Schedule Appointment</h3>
       <label style="font-weight:700; font-size:13px;">Date</label>
-      <input type="date" id="apptDate" style="width:100%; padding:10px; margin:6px 0 14px; border-radius:10px; border:1px solid #ddd; box-sizing:border-box;">
+      <input type="date" id="apptDate" style="background:#fff; width:100%; padding:10px; margin:6px 0 14px; border-radius:10px; border:1px solid #ddd; box-sizing:border-box;">
       <label style="font-weight:700; font-size:13px;">Time</label>
-      <input type="time" id="apptTime" style="width:100%; padding:10px; margin:6px 0 18px; border-radius:10px; border:1px solid #ddd; box-sizing:border-box;">
+      <input type="time" id="apptTime" style="background:#fff; width:100%; padding:10px; margin:6px 0 18px; border-radius:10px; border:1px solid #ddd; box-sizing:border-box;">
       <label style="font-weight:700; font-size:13px;">Service</label>
-        <select id="apptService" style="width:100%; padding:10px; margin:6px 0 18px; border-radius:10px; border:1px solid #ddd; box-sizing:border-box; font-family:inherit;">
+        <select id="apptService" style="background:#fff; color:#2b2b2b; width:100%; padding:10px; margin:6px 0 18px; border-radius:10px; border:1px solid #ddd; box-sizing:border-box; font-family:inherit;">
           <option value="counseling">Counseling</option>
           <option value="information">Information</option>
           <option value="testing">Testing</option>
@@ -1652,8 +1667,6 @@ function openNotesPanel(){
   if(!s) return;
   notesStudent = s;
   logRecordAccess(s.id, 'view_notes');
-  loadAssessmentPanel(s);
-  logRecordAccess(s.id, 'view_assessment');
   document.getElementById('notesTitle').textContent = 'Notes — ' + s.name;
   showNotesView('list');
   document.getElementById('notesModal').classList.add('active');
@@ -1899,7 +1912,17 @@ function openStatusDialog(){
   document.getElementById('statusModal').classList.add('active');
 }
 
+function syncStatusNote(){
+  const other = document.getElementById('statusReason').value === 'other';
+  const note = document.getElementById('statusNote');
+  note.style.display = other ? '' : 'none';
+  if(!other) note.value = '';
+}
+document.getElementById('statusReason').addEventListener('change', syncStatusNote);
+
 function closeStatusDialog(){
+  document.getElementById('statusReason').selectedIndex = 0;
+  syncStatusNote();
   document.getElementById('statusModal').classList.remove('active');
 }
 
@@ -1954,6 +1977,7 @@ function logRecordAccess(studentId, action){
 function openStudentChat(schedule){
   const s = studentsReal.find(x=>x.code===currentStudentCode);
   if(!s) return;
+  if(s.account_status && s.account_status !== 'active'){ showToast("This student's account is archived."); return; }
   fetch(`/api/staff/students/${s.id}/thread/`, {
     method:'POST',
     headers:{'X-CSRFToken':getCookie('csrftoken')}

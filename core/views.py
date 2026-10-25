@@ -49,15 +49,11 @@ from functools import lru_cache
 from pathlib import Path
 
 import json
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_protect
-from django.views.decorators.cache import never_cache
-
-import json
 import requests
 from django.conf import settings
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponseForbidden
 from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
+from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_POST
 
 from django.contrib.auth.forms import PasswordChangeForm
@@ -682,6 +678,13 @@ def login_verify(request, token):
     if remember_me:
         _trust_browser(response, request, user)
     return response
+
+
+def csrf_failure(request, reason=""):
+    # A stale confirm page just needs a fresh one, not an error.
+    if request.method == "POST" and request.path.startswith("/login/verify/"):
+        return redirect(request.path)
+    return HttpResponseForbidden("Your page expired. Please go back, refresh, and try again.")
 
 
 @never_cache
@@ -1448,7 +1451,7 @@ def guidance_messages(request):
                 entry["appointment"] = {
                     "id": appt.id,
                     "status": appt.status,
-                    "scheduled_time": appt.scheduled_time.strftime("%B %d, %Y %I:%M%p"),
+                    "scheduled_time": timezone.localtime(appt.scheduled_time).strftime("%B %d, %Y %I:%M%p"),
                 }
                 entry["content"] = re.sub(r"\s*\[appointment:\d+\]", "", m.content)
         msgs.append(entry)
@@ -1642,6 +1645,10 @@ def mark_notifications_read(request):
 
 # -- Staff Side --
 
+def _student_archived(student):
+    profile = getattr(student, 'profile', None)
+    return bool(profile and profile.account_status != 'active')
+
 def _staff_role(user):
     """Role label only. Safe to show to students."""
     if user.is_superuser:
@@ -1678,12 +1685,13 @@ def release_thread(request, thread_id):
 @user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
 @require_perm('chat_students')
 def staff_guidance_inbox(request):
-    threads = GuidanceThread.objects.select_related('student', 'counselor', 'counselor__staff_profile')
+    threads = GuidanceThread.objects.select_related('student', 'student__profile', 'counselor', 'counselor__staff_profile')
     data = []
     for t in threads:
         last = t.messages.last()
         mine = t.counselor_id == request.user.id
         visible = mine or t.counselor_id is None
+        archived = _student_archived(t.student)
         data.append({
             "id": t.id,
             "student_id": t.student_id,
@@ -1694,7 +1702,8 @@ def staff_guidance_inbox(request):
             "counselor_name": (t.counselor.get_full_name() or t.counselor.username) if t.counselor else "",
             "last_message": (last.content if last else "") if visible else "🔒 Private conversation",
             "last_message_id": last.id if last else 0,
-            "awaiting_reply": bool(last) and last.sender_id == t.student_id and visible,
+            "awaiting_reply": bool(last) and last.sender_id == t.student_id and visible and not archived,
+            "archived": archived,
         })
     return JsonResponse({"threads": data})
 
@@ -1794,6 +1803,9 @@ def staff_guidance_send(request, thread_id):
     content = json.loads(request.body).get("message", "").strip()
     if not content:
         return JsonResponse({"error": "Empty message."}, status=400)
+    
+    if _student_archived(thread.student):
+        return JsonResponse({"error": "This student's account is archived. They can't read new messages."}, status=409)
 
     if not thread.counselor_id and can(request.user, 'take_cases'):
         thread.counselor = request.user
@@ -1938,6 +1950,9 @@ def staff_note_review(request, note_id):
 @require_POST
 def staff_schedule_appointment(request, thread_id):
     thread = get_object_or_404(GuidanceThread, id=thread_id)
+    if _student_archived(thread.student):
+        return JsonResponse({"error": "This student's account is archived."}, status=409)
+    
     if thread.counselor_id and thread.counselor_id != request.user.id:
         return JsonResponse({"error": "Claimed by another counselor."}, status=403)
 

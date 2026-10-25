@@ -15,7 +15,7 @@ from django.shortcuts import get_object_or_404
 from django.utils.crypto import get_random_string
 from django.views.decorators.http import require_POST
 
-from .models import SERVICES, StaffProfile, StaffSubclass
+from .models import SERVICES, StaffProfile, StaffSubclass, GuidanceThread, StudentFlag
 from .permissions import BOOL_FIELDS, PERMISSION_FIELDS, SERVICE_FIELDS, SERVICE_KEYS, subclass_json
 
 logger = logging.getLogger(__name__)
@@ -202,3 +202,22 @@ def staff_set_subclass(request, user_id):
     profile.subclass = sub
     profile.save(update_fields=["subclass"])
     return JsonResponse({"staff": _staff_json(user)})
+
+
+@_admin
+@require_POST
+def staff_set_active(request, user_id):
+    user = get_object_or_404(User, id=user_id, is_staff=True, is_superuser=False)
+    data = _body(request)
+    if data is None:
+        return JsonResponse({"error": "Invalid request."}, status=400)
+    active = bool(data.get("active"))
+    released = 0
+    with transaction.atomic():
+        user.is_active = active
+        user.save(update_fields=["is_active"])
+        if not active:
+            # Don't leave chats or cases stuck with someone who can't log in.
+            released = GuidanceThread.objects.filter(counselor=user).update(counselor=None)
+            StudentFlag.objects.filter(assigned_to=user).exclude(status="resolved").update(assigned_to=None, status="new")
+    return JsonResponse({"staff": _staff_json(user), "released_threads": released})

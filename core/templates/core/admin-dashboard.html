@@ -515,6 +515,7 @@
               <option value="Pending">Pending Verification</option>
             </select>
           </div>
+          <button class="pill-btn danger" id="acctSuspendBtn" onclick="suspendAccount()">Archive Account</button>
           <button class="pill-btn solid" onclick="openCreateAccount()">+ Create Account</button>
         </div>
 
@@ -1052,7 +1053,9 @@ function openAccountModal(id){
   if(isStaff){
     fillSubclassSelect('acctModalSubclass', a.subclassId);
   }
-    document.getElementById('acctModalOverlay').classList.add('active');
+  document.getElementById('acctModalOverlay').classList.add('active');
+  document.getElementById('acctModalStatus').closest('.field').style.display = isStaff ? 'none' : '';
+  document.getElementById('acctSuspendBtn').textContent = (isStaff && a.status === 'Suspended') ? 'Reactivate Account' : 'Archive Account';
 }
 function saveAccountChanges(){
   const a = accounts.find(x=>x.id===activeAcctId);
@@ -1080,10 +1083,18 @@ function resetAccountPassword(){
 }
 function suspendAccount(){
   const a = accounts.find(x=>x.id===activeAcctId);
-  a.status = 'Suspended';
-  renderAccounts();
-  closeModal('acctModalOverlay');
-  showToast('Account '+a.id+' suspended');
+  if(a.uid === undefined){            // sample rows
+    a.status = 'Suspended'; renderAccounts(); closeModal('acctModalOverlay'); showToast('Account '+a.id+' suspended'); return;
+  }
+  const archiving = a.status !== 'Suspended';
+  if(archiving && !confirm('Archive '+a.name+'? They will be signed out and unable to log in. Their chats and cases will be released to other staff, and all records are kept.')) return;
+  api('/api/admin/staff/'+a.uid+'/active/', {active: !archiving}).then(r=>{
+    if(!r.ok){ showToast(r.data.error || 'Could not update this account'); return; }
+    Object.assign(a, staffToAccount(r.data.staff));
+    renderAccounts();
+    closeModal('acctModalOverlay');
+    showToast(archiving ? a.name+' archived' : a.name+' reactivated');
+  });
 }
 function openCreateAccount(){
   document.getElementById('createError').textContent = '';

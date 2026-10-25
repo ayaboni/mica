@@ -20,7 +20,7 @@ from dotenv import load_dotenv
 load_dotenv(BASE_DIR / '.env', override=True)
 
 GEMINI_API_KEY= os.getenv("GEMINI_API_KEY")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemimi-3.5-flash-lite")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite")
 
 VOSK_MODEL_PATH = Path(os.getenv(
     "VOSK_MODEL_PATH",
@@ -187,3 +187,4 @@ PASSWORD_RESET_EMAIL_VIA = os.getenv("PASSWORD_RESET_EMAIL_VIA", "firebase").str
 # Self-service reset is off for the system admin (superuser) account. Flip to True to allow it.
 PASSWORD_RESET_FOR_ADMINS = False
 
+CSRF_FAILURE_VIEW = 'core.views.csrf_failure'
