@@ -1082,8 +1082,8 @@
             </select>
           <label>Topic discussed</label>
           <textarea id="noteTopic" rows="4" placeholder="What did you talk about?"></textarea>
-          <label>Student's realizations</label>
-          <textarea id="noteReal" rows="4" placeholder="What did the student realize after the talk?"></textarea>
+          <label>Outcome / follow-up plan</label>
+          <textarea id="noteReal" rows="4" placeholder="Outcome of the session, plan for the next one, or who the student was referred to"></textarea>
           <div style="display:flex; gap:8px; margin-top:14px;">
             <button class="pill-btn solid sm" id="noteSaveBtn" onclick="saveNote()">Save note</button>
             <button class="pill-btn ghost sm" onclick="cancelNoteForm()">Cancel</button>
@@ -1744,7 +1744,7 @@ function viewNote(id){
     <div class="note-card" style="margin-top:14px;">
       <div class="note-meta"><b>${escapeHtmlStaff(n.date_label)} · ${escapeHtmlStaff(n.service_label)}</b><span>${escapeHtmlStaff(n.author)}${n.edited ? ' · edited' : ''}${noteBadge(n)}</span></div>
       ${n.topic ? `<div class="lbl">Topic discussed</div><div class="txt">${escapeHtmlStaff(n.topic)}</div>` : ''}
-      ${n.realizations ? `<div class="lbl">Student's realizations</div><div class="txt">${escapeHtmlStaff(n.realizations)}</div>` : ''}
+      ${n.realizations ? `<div class="lbl">Outcome / follow-up plan</div><div class="txt">${escapeHtmlStaff(n.realizations)}</div>` : ''}
       ${n.can_review ? `<div class="note-actions"><button class="pill-btn solid sm" onclick="markNoteReviewed(${n.id})">Mark as reviewed</button></div>` : ''}
       ${n.reviewed && n.reviewed_by ? `<div class="lbl">Reviewed by</div><div class="txt">${escapeHtmlStaff(n.reviewed_by)}</div>` : ''}
       ${n.can_edit ? `<div class="note-actions"><button class="pill-btn ghost sm" onclick="editNote(${n.id})">Edit</button><button class="pill-btn ghost sm" onclick="deleteNote(${n.id})">Delete</button></div>` : ''}
@@ -1878,7 +1878,7 @@ function loadAssessmentPanel(s){
         </div>`).join('');
       box.innerHTML = `
         <div class="assess-date">Taken on ${escapeHtmlStaff(d.taken_on)}</div>
-        <div class="assess-lbl" style="margin-top:0;">Conditions experienced or diagnosed</div>
+        <div class="assess-lbl" style="margin-top:0;">Conditions experienced reported by the student</div>
         ${conds}
         <div class="assess-lbl">How often in the past few weeks</div>
         ${rows}
@@ -2411,30 +2411,6 @@ function showAssessment(i){
 
 function closeAssessModal(){ document.getElementById('assessModal').classList.remove('active'); }
 
-function exportAssessmentsExcel(){
-  if(!PERMS.export_records) return denied();
-  if(!confirm('This file contains sensitive student information. Download it?')) return;
-  const latest = [], all = [];
-  assessData.forEach(s => {
-    const base = {"Student": s.name, "Student No.": s.student_number, "Course": s.course, "Year": s.year};
-    if(!s.history.length){ latest.push({...base, "Status": "Not yet"}); return; }
-    s.history.forEach((h, i) => {
-      const row = {...base, "Status": "Completed", "Date taken": h.taken_on,
-        "Conditions": h.conditions.join(', '),
-        "Sought help before": yesNo(h.sought_help_before),
-        "Has support system": yesNo(h.has_support_system)};
-      h.answers.forEach(a => { row[a.label] = a.answer; });
-      all.push(row);
-      if(i === 0) latest.push(row);
-    });
-  });
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(latest), "Latest per student");
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(all), "All attempts");
-  XLSX.writeFile(wb, "MICA_assessment_records.xlsx");
-  showToast('Excel file downloaded');
-}
-
 /* =========================================================
    RENDER: APPOINTMENTS
 ========================================================= */
@@ -2706,7 +2682,35 @@ function exportStudentsExcel(){
   const ws = XLSX.utils.json_to_sheet(rows);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Students");
+  MicaLoader.show('Preparing your file…');
   XLSX.writeFile(wb, "MICA_students_export.xlsx");
+  MicaLoader.finish();
+  showToast('Excel file downloaded');
+}
+
+function exportAssessmentsExcel(){
+  if(!PERMS.export_records) return denied();
+  if(!confirm('This file contains sensitive student information. Download it?')) return;
+  const latest = [], all = [];
+  assessData.forEach(s => {
+    const base = {"Student": s.name, "Student No.": s.student_number, "Course": s.course, "Year": s.year};
+    if(!s.history.length){ latest.push({...base, "Status": "Not yet"}); return; }
+    s.history.forEach((h, i) => {
+      const row = {...base, "Status": "Completed", "Date taken": h.taken_on,
+        "Conditions": h.conditions.join(', '),
+        "Sought help before": yesNo(h.sought_help_before),
+        "Has support system": yesNo(h.has_support_system)};
+      h.answers.forEach(a => { row[a.label] = a.answer; });
+      all.push(row);
+      if(i === 0) latest.push(row);
+    });
+  });
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(latest), "Latest per student");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(all), "All attempts");
+  MicaLoader.show('Preparing your file…');
+  XLSX.writeFile(wb, "MICA_assessment_records.xlsx");
+  MicaLoader.finish();
   showToast('Excel file downloaded');
 }
 
@@ -2715,10 +2719,11 @@ function exportPdfReport(){
   document.getElementById('printDate').textContent = "Period: "+document.getElementById('reportPeriod').value+" · Generated "+new Date().toLocaleDateString();
   const el = document.getElementById('printableReport');
   el.style.left='0'; el.style.position='fixed'; el.style.top='-3000px';
-  html2pdf().from(el).set({filename:'MICA_summary_report.pdf', margin:10}).save().then(()=>{
-    el.style.position='absolute'; el.style.left='-9999px'; el.style.top='0';
-  });
-  showToast('PDF report generated');
+  MicaLoader.show('Preparing your PDF…');
+  const reset = () => { el.style.position='absolute'; el.style.left='-9999px'; el.style.top='0'; };
+  html2pdf().from(el).set({filename:'MICA_summary_report.pdf', margin:10}).save()
+    .then(() => { reset(); MicaLoader.finish(); showToast('PDF report downloaded'); })
+    .catch(() => { reset(); MicaLoader.finish(); showToast('Could not generate the PDF'); });
 }
 
 /* =========================================================
