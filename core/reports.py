@@ -241,11 +241,24 @@ def analytics(request):
     total = students.count()
     done = students.filter(assessment__completed_at__isnull=False, assessment__skipped=False).count()
 
+    active_ids = set(MoodEntry.objects.filter(
+        user__in=students, date__range=(start, end)).values_list("user_id", flat=True))
+    totals, hit = {}, {}
+    for uid, course in students.values_list("id", "profile__course"):
+        totals[course or ""] = totals.get(course or "", 0) + 1
+        if uid in active_ids:
+            hit[course or ""] = hit.get(course or "", 0) + 1
+    checkin_by_course = [
+        {"code": k or "Not set", "rate": round(100 * hit.get(k, 0) / v), "students": v}
+        for k, v in sorted(totals.items())
+    ]
+
     return JsonResponse({
         "period": {"from": start.isoformat(), "to": end.isoformat()},
         "appointments": appointments,
         "flags": flags,
         "assessment": {"completed": done, "total": total, "rate": round(100 * done / total) if total else None},
+        "checkin_by_course": checkin_by_course,
     })
 
 

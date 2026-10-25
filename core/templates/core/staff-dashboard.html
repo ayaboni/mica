@@ -905,12 +905,25 @@
             </div>
           </div>
           <div id="anCards" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:16px; margin-bottom:18px;"></div>
+
+          <div class="grid-2" style="grid-template-columns:1fr 1fr; margin-bottom:18px;">
+            <div class="card panel">
+              <div class="panel-head"><div><h3>Risk flags</h3><div class="sub">Opened and resolved in the period, open now as of today</div></div></div>
+              <canvas id="flagChart" height="170"></canvas>
+            </div>
+            <div class="card panel">
+              <div class="panel-head"><div><h3>Assessment completion</h3><div class="sub">Active students</div></div></div>
+              <canvas id="assessChart" height="170"></canvas>
+            </div>
+          </div>
+
           <div class="card panel" style="margin-bottom:18px;">
             <div class="panel-head"><div><h3>Appointments by status</h3><div class="sub">Scheduled in the selected period</div></div></div>
             <canvas id="apptChart" height="90"></canvas>
           </div>
+
           <div class="card panel">
-            <div class="panel-head"><div><h3>Students who checked in at least once in the last 30 days</h3><div class="sub">Check-in completion rate</div></div></div>
+            <div class="panel-head"><div><h3>Check-in rate by course</h3><div class="sub">Share of students who checked in at least once in the selected period</div></div></div>
             <canvas id="programChart" height="110"></canvas>
           </div>
         </div>
@@ -2859,17 +2872,6 @@ function renderMoodCharts(){
   });
 }
 
-function renderReportChart(){
-  const ctx = document.getElementById('programChart');
-  if(charts.program) charts.program.destroy();
-  const rows = (dashData && dashData.engagement_by_course) || [];
-  charts.program = new Chart(ctx,{
-    type:'bar',
-    data:{labels:rows.map(r=>courseLabel(r.code)), datasets:[{data:rows.map(r=>r.rate), backgroundColor:'#786251', borderRadius:8, maxBarThickness:34}]},
-    options:{plugins:{legend:{display:false}}, scales:{y:{min:0,max:100, grid:baseGrid(), ticks:{font:chartFont, callback:v=>v+'%'}}, x:{grid:{display:false}, ticks:{font:chartFont}}}}
-  });
-}
-
 /* ---------- Service Reports ---------- */
 const SERVICE_ICON = {information:'📢', counseling:'💬', testing:'📝', referral:'🤝'};
 const SERVICE_KEYS_UI = ['information','counseling','testing','referral'];
@@ -2880,12 +2882,12 @@ function showReportTab(tab, el){
   el.classList.add('active');
   document.querySelectorAll('.rpanel').forEach(p => p.hidden = true);
   document.getElementById('rep-' + tab).hidden = false;
-  if(tab === 'analytics'){ renderReportChart(); loadAnalytics(); } else loadServiceReport();
+  if(tab === 'analytics') loadAnalytics(); else loadServiceReport();
 }
 
 function refreshReports(){
   const analyticsOpen = !document.getElementById('rep-analytics').hidden;
-  if(analyticsOpen){ renderReportChart(); loadAnalytics(); }
+  if(analyticsOpen) loadAnalytics();
   else loadServiceReport();
 }
 
@@ -3066,6 +3068,35 @@ function renderAnalytics(d){
           datasets:[{data:d.appointments.map(x => x.count), backgroundColor:'#786251', borderRadius:8, maxBarThickness:46}]},
     options:{plugins:{legend:{display:false}},
              scales:{y:{beginAtZero:true, ticks:{precision:0, font:chartFont}, grid:baseGrid()},
+                     x:{grid:{display:false}, ticks:{font:chartFont}}}}});
+  if(charts.flag) charts.flag.destroy();
+  charts.flag = new Chart(document.getElementById('flagChart'), {
+    type:'bar',
+    data:{labels:['Opened','Resolved','Open now'],
+          datasets:[{data:[f.opened, f.resolved, f.open_now],
+                     backgroundColor:['#C0684E','#5F7F68','#9CC5E8'], borderRadius:8, maxBarThickness:46}]},
+    options:{plugins:{legend:{display:false}},
+             scales:{y:{beginAtZero:true, ticks:{precision:0, font:chartFont}, grid:baseGrid()},
+                     x:{grid:{display:false}, ticks:{font:chartFont}}}}
+  });
+
+  if(charts.assess) charts.assess.destroy();
+  charts.assess = new Chart(document.getElementById('assessChart'), {
+    type:'doughnut',
+    data:{labels:['Completed','Not yet'],
+          datasets:[{data:[a.completed, Math.max(a.total - a.completed, 0)],
+                     backgroundColor:['#5F7F68','#C9C6B8'], borderWidth:0}]},
+    options:{cutout:'62%', plugins:{legend:{position:'bottom', labels:{font:chartFont, boxWidth:10, padding:16}}}}
+  });
+
+  const rows = d.checkin_by_course || [];
+  if(charts.program) charts.program.destroy();
+  charts.program = new Chart(document.getElementById('programChart'), {
+    type:'bar',
+    data:{labels:rows.map(r => r.code),
+          datasets:[{data:rows.map(r => r.rate), backgroundColor:'#786251', borderRadius:8, maxBarThickness:34}]},
+    options:{plugins:{legend:{display:false}},
+             scales:{y:{min:0, max:100, grid:baseGrid(), ticks:{font:chartFont, callback:v => v + '%'}},
                      x:{grid:{display:false}, ticks:{font:chartFont}}}}
   });
 }
