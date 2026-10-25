@@ -82,4 +82,5 @@ class AccessLogAdmin(LockedLogAdmin):
 
 @admin.register(StudentStatusLog)
 class StudentStatusLogAdmin(LockedLogAdmin):
-    list_display = ('created_at', 'student', 'changed_by', 'old_status', 'new_status', 'reason')
+        list_display = ('created_at', 'student', 'changed_by', 'old_status', 'new_status', 'reason',
+                    'exit_interview_done', 'evaluation_done')

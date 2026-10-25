@@ -2531,6 +2531,8 @@ def staff_student_status(request, student_id):
     reason = body.get("reason", "")
     force = bool(body.get("force"))
     note = (body.get("note") or "").strip()[:200]
+    exit_done = bool(body.get("exit_interview_done"))
+    eval_done = bool(body.get("evaluation_done"))
     old_status = profile.account_status
 
     if new_status not in dict(ACCOUNT_STATUS):
@@ -2550,6 +2552,14 @@ def staff_student_status(request, student_id):
         return JsonResponse({"error": "Please choose a reason."}, status=400)
     if reason == "other" and not note:
         return JsonResponse({"error": "Please describe the reason."}, status=400)
+
+    if new_status == "active":
+        exit_done = eval_done = False
+    else:
+        if reason != "transferred":
+            exit_done = False
+        if reason not in ("transferred", "graduated"):
+            eval_done = False
 
     upcoming = Appointment.objects.none()
     if new_status != "active":
@@ -2578,7 +2588,8 @@ def staff_student_status(request, student_id):
         StudentStatusLog.objects.create(
             student=student, changed_by=request.user,
             old_status=old_status, new_status=new_status, reason=reason,
-            note=note if new_status != "active" else "")
+            note=note if new_status != "active" else "",
+            exit_interview_done=exit_done, evaluation_done=eval_done)
 
     return JsonResponse({"status": "ok", "account_status": new_status, "reason": reason})
 

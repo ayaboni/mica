@@ -1010,6 +1010,15 @@
           <option value="other">Other</option>
         </select>
         <input type="text" id="statusNote" maxlength="200" placeholder="Describe the reason" class="filter-select" style="width:100%; margin-top:8px; display:none;">
+        <div id="statusClearance" style="display:none; margin-top:12px; font-size:13px;">
+          <div style="font-weight:600; margin-bottom:6px;">Clearance</div>
+          <label id="exitWrap" style="display:none; align-items:center; gap:8px; margin-bottom:6px;">
+            <input type="checkbox" id="statusExit" style="accent-color:var(--sage-deep);"> Exit interview done
+          </label>
+          <label id="evalWrap" style="display:none; align-items:center; gap:8px;">
+            <input type="checkbox" id="statusEval" style="accent-color:var(--sage-deep);"> Evaluation form submitted
+          </label>
+        </div>
       </div>
       <div id="statusMsg" style="font-size:13px;"></div>
     </div>
@@ -1905,6 +1914,7 @@ function openStatusDialog(){
   document.getElementById('statusSub').textContent = s.name + ' · ' + s.student_number;
   document.getElementById('statusNote').value='';
   document.getElementById('statusNote').style.display='none';
+  syncStatusNote();
   document.getElementById('statusReasonWrap').style.display = reactivating ? 'none' : '';
   const btn = document.getElementById('statusConfirmBtn');
   btn.textContent = reactivating ? 'Reactivate' : 'Archive';
@@ -1913,10 +1923,18 @@ function openStatusDialog(){
 }
 
 function syncStatusNote(){
-  const other = document.getElementById('statusReason').value === 'other';
+  const reason = document.getElementById('statusReason').value;
   const note = document.getElementById('statusNote');
-  note.style.display = other ? '' : 'none';
-  if(!other) note.value = '';
+  note.style.display = reason === 'other' ? '' : 'none';
+  if(reason !== 'other') note.value = '';
+
+  const showExit = reason === 'transferred';
+  const showEval = reason === 'transferred' || reason === 'graduated';
+  document.getElementById('exitWrap').style.display = showExit ? 'flex' : 'none';
+  document.getElementById('evalWrap').style.display = showEval ? 'flex' : 'none';
+  document.getElementById('statusClearance').style.display = (showExit || showEval) ? '' : 'none';
+  if(!showExit) document.getElementById('statusExit').checked = false;
+  if(!showEval) document.getElementById('statusEval').checked = false;
 }
 document.getElementById('statusReason').addEventListener('change', syncStatusNote);
 
@@ -1938,7 +1956,12 @@ function submitStatus(force){
   fetch(`/api/staff/students/${s.id}/status/`, {
     method:'POST',
     headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},
-    body: JSON.stringify({status, reason, force, note: document.getElementById('statusNote').value})
+    body: JSON.stringify({
+      status, reason, force,
+      note: document.getElementById('statusNote').value,
+      exit_interview_done: document.getElementById('statusExit').checked,
+      evaluation_done: document.getElementById('statusEval').checked
+    })
   })
   .then(r => r.json().then(d => ({ok:r.ok, d})))
   .then(({ok, d}) => {

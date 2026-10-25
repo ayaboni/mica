@@ -335,7 +335,8 @@ class StudentStatusLog(models.Model):
     reason = models.CharField(max_length=20, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     note = models.CharField(max_length=200, blank=True)
-
+    exit_interview_done = models.BooleanField(default=False)
+    evaluation_done = models.BooleanField(default=False)
     class Meta:
         ordering = ['-created_at']
 
