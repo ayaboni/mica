@@ -275,6 +275,9 @@
   .note-form label{display:block; font-size:12px; font-weight:700; color:var(--ink-soft); margin:12px 0 5px;}
   .note-form input, .note-form textarea{width:100%; box-sizing:border-box; padding:10px 12px; border-radius:12px; border:1.5px solid var(--line); background:var(--cream); font-family:inherit; font-size:14px; color:inherit; resize:vertical;}
   .note-form select{width:100%; padding:10px 12px; border-radius:12px; border:1.5px solid var(--line); background:var(--cream); font-family:inherit; font-size:14px; color:inherit;}
+  .note-form .tick{display:flex; align-items:center; gap:8px; font-size:13px; font-weight:700; color:var(--ink-soft); margin:12px 0 0;}
+  .note-form .tick input{width:auto; flex:none; padding:0; margin:0; accent-color:var(--sage-deep);}
+  .note-form .tick-hint{font-size:12px; color:var(--ink-soft); margin:2px 0 0 26px;}
   .note-card{background:var(--cream); border-radius:14px; padding:14px 16px; margin-bottom:12px;}
   .note-meta{display:flex; justify-content:space-between; gap:10px; font-size:11.5px; color:var(--ink-soft);}
   .note-card .lbl{font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-soft); font-weight:700; margin-top:10px;}
@@ -1080,6 +1083,9 @@
               <option value="testing">Testing</option>
               <option value="referral">Referral</option>
             </select>
+          <label class="tick"><input type="checkbox" id="noteDelivered" checked> A service was delivered to the student (counts in reports)</label>
+          <div class="tick-hint">Untick for reminders, call summaries, or handoff notes.</div>
+          <label class="tick" id="notePrivateWrap"><input type="checkbox" id="notePrivate"> Only I can see this note</label>
           <label>Topic discussed</label>
           <textarea id="noteTopic" rows="4" placeholder="What did you talk about?"></textarea>
           <label>Outcome / follow-up plan</label>
@@ -1703,6 +1709,8 @@ function resetNoteForm(){
   const firstOk = (PERMS.write_note_services || [])[0] || 'counseling';
   document.getElementById('noteService').value = canService('write_note_services','counseling') ? 'counseling' : firstOk;
   document.getElementById('noteSaveBtn').textContent = 'Save note';
+  document.getElementById('noteDelivered').checked = true;
+  document.getElementById('notePrivate').checked = false;
 }
 function newNote(){ resetNoteForm(); showNotesView('form'); }
 function cancelNoteForm(){ resetNoteForm(); showNotesView('list'); }
@@ -1720,7 +1728,7 @@ function loadNotes(){
       }
       box.innerHTML = notesCache.map(n=>`
         <button class="note-row" onclick="viewNote(${n.id})">
-          <div class="d"><span>${escapeHtmlStaff(n.date_label)} · ${escapeHtmlStaff(n.service_label)}</span><span>${escapeHtmlStaff(n.author)}${noteBadge(n)}</span></div>
+          <div class="d"><span>${escapeHtmlStaff(n.date_label)} · ${escapeHtmlStaff(n.service_label)}</span><span>${n.is_private ? '🔒 ' : ''}${escapeHtmlStaff(n.author)}${noteBadge(n)}</span></div>
           <div class="p">${escapeHtmlStaff(previewText(n.topic || n.realizations, 10))}</div>
         </button>`).join('');
     })
@@ -1750,6 +1758,8 @@ function viewNote(id){
     <button class="pill-btn ghost sm" onclick="showNotesView('list')">← All notes</button>
     <div class="note-card" style="margin-top:14px;">
       <div class="note-meta"><b>${escapeHtmlStaff(n.date_label)} · ${escapeHtmlStaff(n.service_label)}</b><span>${escapeHtmlStaff(n.author)}${n.edited ? ' · edited' : ''}${noteBadge(n)}</span></div>
+      ${n.is_private ? '<div class="lbl">🔒 Private: only you can see this</div>' : ''}
+      ${n.service_delivered ? '' : '<div class="lbl">Not counted in reports</div>'}
       ${n.topic ? `<div class="lbl">Topic discussed</div><div class="txt">${escapeHtmlStaff(n.topic)}</div>` : ''}
       ${n.realizations ? `<div class="lbl">Outcome / follow-up plan</div><div class="txt">${escapeHtmlStaff(n.realizations)}</div>` : ''}
       ${n.can_review ? `<div class="note-actions"><button class="pill-btn solid sm" onclick="markNoteReviewed(${n.id})">Mark as reviewed</button></div>` : ''}
@@ -1768,6 +1778,8 @@ function editNote(id){
   document.getElementById('noteReal').value = n.realizations;
   document.getElementById('noteService').value = n.service;
   document.getElementById('noteSaveBtn').textContent = 'Update note';
+  document.getElementById('noteDelivered').checked = n.service_delivered;
+  document.getElementById('notePrivate').checked = n.is_private;
   showNotesView('form');
 }
 
@@ -1778,6 +1790,8 @@ function saveNote(){
     topic: document.getElementById('noteTopic').value,
     realizations: document.getElementById('noteReal').value,
     service: document.getElementById('noteService').value,
+    service_delivered: document.getElementById('noteDelivered').checked,
+    is_private: document.getElementById('notePrivate').checked,
   };
   if(!payload.topic.trim() && !payload.realizations.trim()){ showToast('Write something first'); return; }
   const url = id ? `/api/staff/notes/${id}/update/` : `/api/staff/students/${notesStudent.id}/notes/`;

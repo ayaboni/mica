@@ -271,6 +271,8 @@ class StudentNote(models.Model):
     topic = models.TextField(blank=True)
     realizations = models.TextField(blank=True)
     service = models.CharField(max_length=20, choices=SERVICES, default='counseling')
+    service_delivered = models.BooleanField(default=True)
+    is_private = models.BooleanField(default=False)
     session_date = models.DateField(default=timezone.localdate)
     # Notes written by a role that needs sign-off wait here until a reviewer marks them reviewed.
     needs_review = models.BooleanField(default=False)

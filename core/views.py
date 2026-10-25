@@ -1851,6 +1851,8 @@ def _note_json(n, me):
         "realizations": n.realizations,
         "service": n.service,
         "service_label": n.get_service_display(),
+        "service_delivered": n.service_delivered,
+        "is_private": n.is_private,
         "session_date": n.session_date.isoformat(),
         "date_label": n.session_date.strftime("%b %d, %Y"),
         "author": (n.author.get_full_name() or n.author.username) if n.author else "Former staff",
@@ -1884,7 +1886,12 @@ def _read_note_payload(request):
     service = data.get("service") or "counseling"
     if service not in dict(SERVICES):
         return None, JsonResponse({"error": "Invalid service."}, status=400)
-    return {"topic": topic, "realizations": realizations, "session_date": session_date, "service": service}, None
+    is_private = bool(data.get("is_private", False))
+    if is_private and can_flag_needs_review(request.user):
+        return None, JsonResponse({"error": "Notes from your staff role need review, so they can't be private."}, status=400)
+    return {"topic": topic, "realizations": realizations, "session_date": session_date,
+            "service": service, "service_delivered": bool(data.get("service_delivered", True)),
+            "is_private": is_private}, None
 
 @login_required(login_url='login')
 @user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
@@ -1903,7 +1910,7 @@ def staff_student_notes(request, student_id):
     readable = staff_permissions(request.user)['read_note_services']
     # Your own notes are always visible to you; other people's only for services you may read.
     notes = (student.staff_notes.select_related('author', 'reviewed_by')
-             .filter(Q(service__in=readable) | Q(author=request.user)))
+             .filter(Q(author=request.user) | (Q(service__in=readable) & Q(is_private=False))))
     return JsonResponse({"notes": [_note_json(n, request.user) for n in notes],
                          "writable": staff_permissions(request.user)['write_note_services']})
 
@@ -1945,6 +1952,8 @@ def staff_note_delete(request, note_id):
 @require_POST
 def staff_note_review(request, note_id):
     note = get_object_or_404(StudentNote, id=note_id)
+    if note.is_private:
+        return JsonResponse({"error": "This note is private."}, status=403)
     if not can(request.user, 'read_note_services', note.service):
         return JsonResponse({"error": "Your staff role can't open this note."}, status=403)
     if note.author_id == request.user.id:
