@@ -411,7 +411,6 @@
   body.no-archive #modalStatusBtn,
   body.no-export [onclick*="exportStudentsExcel"],
   body.no-export [onclick*="exportAssessmentsExcel"],
-  body.no-export [onclick*="exportPdfReport"],
   body.no-export [onclick*="exportServiceReport"],
   body.no-schedule [onclick*="openScheduleModal"],
   body.no-writenotes [onclick*="newNote"]{display:none !important;}
@@ -423,6 +422,7 @@
   body.no-assess #modalAssessment,
   body.no-notes [onclick*="openNotesPanel"],
   body.no-notes [onclick*="openThreadNotes"]{display:none !important;}
+  body.no-export [onclick*="exportPeriod"],
   #noAccessNotice{display:none;}
   body.no-students #noAccessNotice{display:block;}
   .note-badge{display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px; background:#F6E3C2; color:#8A5A12; margin-left:6px;}
@@ -877,29 +877,23 @@
 
         <!-- ANALYTICS -->
         <div class="rpanel" id="rep-analytics" hidden>
-        <div class="grid-2" style="margin-bottom:22px;">
-          <div class="offset-card">
-            <div class="offset-inner panel">
-              <h3 style="margin-bottom:8px;">Generate Summary Report</h3>
-              <p style="font-size:13.5px; color:var(--ink-soft); line-height:1.6; margin-bottom:18px;">Export a printable PDF covering campus mood trends, engagement, and open risk flags for the selected period.</p>
-              <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                <select class="filter-select" id="reportPeriod"><option>Last 7 days</option><option selected>Last 30 days</option><option>This semester</option></select>
-                <button class="pill-btn solid sm" onclick="exportPdfReport()">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h9l5 5v13H6z"/><path d="M15 3v5h5"/></svg>
-                  Export PDF
-                </button>
-              </div>
+          <div class="card panel" style="margin-bottom:22px;">
+            <h3 style="margin-bottom:8px;">Period report</h3>
+            <p style="font-size:13.5px; color:var(--ink-soft); line-height:1.6; margin-bottom:18px;">
+              Everything for one period in a single file: summary, risk flags, appointments, service sessions, group activities and mood by course.
+              Student names and IDs are included. Notes, diary entries, Mica chats and assessment answers are not.
+              The student list export is on the Students tab.
+            </p>
+            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+              <select class="filter-select" id="exPeriod">
+                <option value="7">Last 7 days</option>
+                <option value="30" selected>Last 30 days</option>
+                <option value="90">Last 90 days</option>
+              </select>
+              <button class="pill-btn solid sm" onclick="exportPeriodExcel()">Export Excel</button>
+              <button class="pill-btn ghost sm" onclick="exportPeriodPdf()">Export PDF</button>
             </div>
           </div>
-          <div class="card panel">
-            <h3 style="margin-bottom:8px;">Export Raw Data</h3>
-            <p style="font-size:13.5px; color:var(--ink-soft); line-height:1.6; margin-bottom:18px;">Download the full student monitoring table as a spreadsheet for institutional reporting.</p>
-            <button class="pill-btn ghost sm" onclick="exportStudentsExcel()">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v13m0 0l-4-4m4 4l4-4"/><path d="M4 21h16"/></svg>
-              Export Excel (.xlsx)
-            </button>
-          </div>
-        </div>
           <div class="card panel" style="margin-bottom:18px;">
             <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
               <h3 style="margin:0;">System usage</h3>
@@ -915,23 +909,10 @@
             <div class="panel-head"><div><h3>Appointments by status</h3><div class="sub">Scheduled in the selected period</div></div></div>
             <canvas id="apptChart" height="90"></canvas>
           </div>
-        <div class="card panel">
-          <div class="panel-head"><div><h3>Students who checked in at least once ini the last 30 days</h3><div class="sub">Check-in completion rate</div></div></div>
-          <canvas id="programChart" height="110"></canvas>
-        </div>
-        </div>
-
-        <!-- hidden printable summary used for PDF export -->
-        <div id="printableReport" style="position:absolute; left:-9999px; top:0; width:700px; padding:30px; background:#fff; color:#111; font-family:Arial,sans-serif;">
-          <h1 style="font-size:22px; margin-bottom:2px;">MICA — Mental Health Monitoring Summary</h1>
-          <p style="font-size:12px; color:#555; margin-bottom:18px;" id="printDate"></p>
-          <table style="width:100%; border-collapse:collapse; font-size:13px;">
-            <tr><td style="padding:6px 0; border-bottom:1px solid #eee;">Students monitored</td><td style="text-align:right; border-bottom:1px solid #eee;" id="printStudents">–</td></tr>
-            <tr><td style="padding:6px 0; border-bottom:1px solid #eee;">Avg. campus mood (last 7 days)</td><td style="text-align:right; border-bottom:1px solid #eee;" id="printMood">–</td></tr>
-            <tr><td style="padding:6px 0; border-bottom:1px solid #eee;">Active risk flags</td><td style="text-align:right; border-bottom:1px solid #eee;" id="printRiskCount">–</td></tr>
-            <tr><td style="padding:6px 0; border-bottom:1px solid #eee;">Check-in rate (last 30 days)</td><td style="text-align:right; border-bottom:1px solid #eee;" id="printRate">–</td></tr>
-          </table>
-          <p style="font-size:11px; color:#888; margin-top:22px;">Generated by MICA Staff Dashboard · Thesis prototype · Confidential</p>
+          <div class="card panel">
+            <div class="panel-head"><div><h3>Students who checked in at least once in the last 30 days</h3><div class="sub">Check-in completion rate</div></div></div>
+            <canvas id="programChart" height="110"></canvas>
+          </div>
         </div>
       </section>
 
@@ -2960,7 +2941,7 @@ let semesters = [];
 function loadSemesters(){
   return fetch("{% url 'staff_semesters' %}").then(r => r.json()).then(d => {
     semesters = d.semesters || [];
-    ['repPeriod', 'anPeriod'].forEach(id => {
+    ['repPeriod', 'anPeriod', 'exPeriod'].forEach(id => {
       const sel = document.getElementById(id);
       [...sel.options].filter(o => o.value.startsWith('sem:')).forEach(o => o.remove());
       const beforeCustom = [...sel.options].find(o => o.value === 'custom') || null;
@@ -3044,8 +3025,8 @@ function deleteActivity(id){
 }
 
 /* ---------- Analytics ---------- */
-function anRange(){
-  const v = document.getElementById('anPeriod').value;
+function periodRange(selectId){
+  const v = document.getElementById(selectId).value;
   if(v.startsWith('sem:')){
     const s = semesters.find(x => 'sem:' + x.id === v);
     if(s) return {from: s.from, to: s.to};
@@ -3055,6 +3036,7 @@ function anRange(){
   from.setDate(from.getDate() - (days - 1));
   return {from: ymd(from), to: ymd(to)};
 }
+function anRange(){ return periodRange('anPeriod'); }
 
 function loadAnalytics(){
   const r = anRange();
@@ -3191,18 +3173,141 @@ function exportServiceReportPdf(){
     .catch(() => { MicaLoader.finish(); showToast('Could not generate the PDF'); });
 }
 
-function exportPdfReport(){
+async function fetchPeriodData(){
+  const r = periodRange('exPeriod');
+  const q = new URLSearchParams({from: r.from, to: r.to});
+  const get = async url => {
+    const res = await fetch(url + '?' + q);
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    return res.json();
+  };
+  const [p, s, a] = await Promise.all([
+    get("{% url 'staff_period_report' %}"),
+    get("{% url 'staff_service_report' %}"),
+    get("{% url 'staff_activities' %}")
+  ]);
+  return {p, s, acts: a.activities || []};
+}
+
+async function exportPeriodExcel(){
   if(!PERMS.export_records) return denied();
-  const d = dashData || {};
-  document.getElementById('printDate').textContent = "Generated " + new Date().toLocaleDateString();
-  document.getElementById('printStudents').textContent = d.students_total ?? '–';
-  document.getElementById('printMood').textContent = d.avg_mood_7d == null ? '–' : d.avg_mood_7d.toFixed(1) + ' / 5';
-  document.getElementById('printRate').textContent = d.checkin_rate_30d == null ? '–' : d.checkin_rate_30d + '%';
-  const clone = document.getElementById('printableReport').cloneNode(true);
-  clone.removeAttribute('id');
-  clone.style.position = 'static'; clone.style.left = 'auto'; clone.style.top = 'auto';
+  if(!confirm('This file contains student names and IDs. Download it?')) return;
+  let d;
+  try{ d = await fetchPeriodData(); }
+  catch(e){ return showToast('Could not load the report'); }
+  const {p, s, acts} = d, sm = p.summary;
+  const pct = v => v == null ? '-' : v + '%';
+  const keys = s.services.map(x => x.key);
+  const cap = k => k[0].toUpperCase() + k.slice(1);
+  const grid = (rows, nameOf) => rows.map(r => {
+    const row = {Group: nameOf(r)};
+    keys.forEach(k => { row[cap(k)] = r.counts[k]; });
+    row.Total = r.total;
+    return row;
+  });
+
+  const wb = XLSX.utils.book_new();
+  const add = (name, ws) => XLSX.utils.book_append_sheet(wb, ws, name);
+
+  add('Summary', XLSX.utils.aoa_to_sheet([
+    ['Item', 'Value'],
+    ['Period', p.period.from + ' to ' + p.period.to],
+    ['Students monitored (active now)', sm.students],
+    ['Average mood in period (out of 5)', sm.avg_mood == null ? '-' : sm.avg_mood],
+    ['Students who checked in at least once', pct(sm.checkin_rate)],
+    ['Assessment completed (all active students)', sm.assessment_done + ' of ' + sm.students + ' (' + pct(sm.assessment_rate) + ')'],
+    ['Risk flags opened in period', sm.flags_opened],
+    ['Risk flags resolved in period', sm.flags_resolved],
+    ['Open risk flags (as of ' + p.as_of + ')', sm.flags_open_now],
+    ['Individual sessions', s.totals.sessions],
+    ['Different students served', s.totals.students],
+    ['Group activities', s.totals.activities],
+    ['Group activity attendees', s.totals.attendees],
+  ]));
+  add('Risk flags', XLSX.utils.json_to_sheet(p.flags.map(f => ({
+    'Student': f.student, 'Student No.': f.student_number, 'Course': f.course, 'Year': f.year,
+    'Risk level (as of export)': f.risk_now, 'Status': f.status,
+    'Opened': f.opened, 'Resolved': f.resolved,
+    'Flagged by': f.flagged_by, 'Handled by': f.handled_by, 'Reason': f.reason
+  }))));
+  add('Appointments', XLSX.utils.json_to_sheet(p.appointments.map(a => ({
+    'Date': a.date, 'Time': a.time, 'Student': a.student, 'Student No.': a.student_number,
+    'Service': a.service, 'Counselor': a.counselor, 'Status': a.status
+  }))));
+  add('Sessions by service', XLSX.utils.json_to_sheet(s.services.map(x => ({
+    'Service': x.label, 'Sessions': x.sessions, 'Students': x.students,
+    'Group activities': x.activities, 'Attendees': x.attendees
+  }))));
+  add('Sessions by course', XLSX.utils.json_to_sheet(grid(s.by_course, r => r.label || 'Not set')));
+  add('Sessions by year', XLSX.utils.json_to_sheet(grid(s.by_year, r => yearLabel(r.year) || 'Not set')));
+  add('Group activities', XLSX.utils.json_to_sheet(acts.map(a => ({
+    'Date': a.date, 'Title': a.title, 'Service': a.service_label,
+    'Audience': a.audience, 'Attendees': a.attendee_count, 'Logged by': a.by
+  }))));
+  add('Mood by course', XLSX.utils.json_to_sheet(p.mood_by_course.map(c => ({
+    'Course': c.course, 'Average mood': c.avg_mood, 'Check-ins': c.checkins, 'Students': c.students
+  }))));
+
+  MicaLoader.show('Preparing your file…');
+  XLSX.writeFile(wb, `MICA_period_report_${p.period.from}_to_${p.period.to}.xlsx`);
+  MicaLoader.finish();
+  showToast('Excel file downloaded');
+}
+
+async function exportPeriodPdf(){
+  if(!PERMS.export_records) return denied();
+  if(!confirm('This file contains student names and IDs. Download it?')) return;
+  let d;
+  try{ d = await fetchPeriodData(); }
+  catch(e){ return showToast('Could not load the report'); }
+  const {p, s} = d, sm = p.summary;
+  const pct = v => v == null ? '-' : v + '%';
+  const td = 'padding:5px 4px; border-bottom:1px solid #eee;';
+  const line = (k, v) => `<tr><td style="${td}">${escapeHtmlStaff(k)}</td><td style="${td} text-align:right;">${escapeHtmlStaff(String(v))}</td></tr>`;
+  const svcRows = s.services.map(x => `<tr><td style="${td}">${escapeHtmlStaff(x.label)}</td>
+    <td style="${td} text-align:right;">${x.sessions}</td><td style="${td} text-align:right;">${x.students}</td>
+    <td style="${td} text-align:right;">${x.activities}</td><td style="${td} text-align:right;">${x.attendees}</td></tr>`).join('');
+  const moodRows = p.mood_by_course.map(c => `<tr><td style="${td}">${escapeHtmlStaff(c.course)}</td>
+    <td style="${td} text-align:right;">${c.avg_mood} / 5</td><td style="${td} text-align:right;">${c.students}</td></tr>`).join('')
+    || `<tr><td style="${td} color:#888;" colspan="3">Not enough data (courses need 3+ students)</td></tr>`;
+  const flagRows = p.flags.map(f => `<tr><td style="${td}">${escapeHtmlStaff(f.student)}</td>
+    <td style="${td}">${escapeHtmlStaff(f.student_number)}</td><td style="${td}">${escapeHtmlStaff(f.status)}</td>
+    <td style="${td}">${escapeHtmlStaff(f.opened)}</td><td style="${td}">${escapeHtmlStaff(f.resolved || '-')}</td></tr>`).join('')
+    || `<tr><td style="${td} color:#888;" colspan="5">No flags in this period</td></tr>`;
+
+  const el = document.createElement('div');
+  el.style.cssText = 'width:700px; padding:30px; background:#fff; color:#111; font-family:Arial,sans-serif; font-size:13px;';
+  el.innerHTML = `
+    <h1 style="font-size:22px; margin:0 0 2px;">MICA - Period Report</h1>
+    <p style="font-size:12px; color:#555; margin:0 0 16px;">${p.period.from} to ${p.period.to} · generated ${p.as_of}</p>
+    <h3 style="font-size:14px; margin:14px 0 4px;">Summary</h3>
+    <table style="width:100%; border-collapse:collapse;">
+      ${line('Students monitored (active now)', sm.students)}
+      ${line('Average mood in period', sm.avg_mood == null ? '-' : sm.avg_mood + ' / 5')}
+      ${line('Students who checked in at least once', pct(sm.checkin_rate))}
+      ${line('Assessment completed', sm.assessment_done + ' of ' + sm.students + ' (' + pct(sm.assessment_rate) + ')')}
+      ${line('Risk flags opened / resolved', sm.flags_opened + ' / ' + sm.flags_resolved)}
+      ${line('Open risk flags (as of ' + p.as_of + ')', sm.flags_open_now)}
+      ${line('Appointments in period', p.appointments.length)}
+    </table>
+    <h3 style="font-size:14px; margin:18px 0 4px;">Service sessions</h3>
+    <table style="width:100%; border-collapse:collapse;">
+      <tr><th style="text-align:left; ${td}">Service</th><th style="text-align:right; ${td}">Sessions</th><th style="text-align:right; ${td}">Students</th><th style="text-align:right; ${td}">Activities</th><th style="text-align:right; ${td}">Attendees</th></tr>
+      ${svcRows}
+    </table>
+    <h3 style="font-size:14px; margin:18px 0 4px;">Mood by course</h3>
+    <table style="width:100%; border-collapse:collapse;">
+      <tr><th style="text-align:left; ${td}">Course</th><th style="text-align:right; ${td}">Average</th><th style="text-align:right; ${td}">Students</th></tr>
+      ${moodRows}
+    </table>
+    <h3 style="font-size:14px; margin:18px 0 4px;">Risk flags</h3>
+    <table style="width:100%; border-collapse:collapse; font-size:12px;">
+      <tr><th style="text-align:left; ${td}">Student</th><th style="text-align:left; ${td}">Student No.</th><th style="text-align:left; ${td}">Status</th><th style="text-align:left; ${td}">Opened</th><th style="text-align:left; ${td}">Resolved</th></tr>
+      ${flagRows}
+    </table>
+    <p style="font-size:11px; color:#888; margin-top:20px;">The Excel version also lists every appointment and the reason for each flag. Generated by MICA Staff Dashboard. Confidential.</p>`;
   MicaLoader.show('Preparing your PDF…');
-  html2pdf().from(clone).set({filename:'MICA_summary_report.pdf', margin:10}).save()
+  html2pdf().from(el).set({filename:`MICA_period_report_${p.period.from}_to_${p.period.to}.pdf`, margin:10}).save()
     .then(() => { MicaLoader.finish(); showToast('PDF report downloaded'); })
     .catch(() => { MicaLoader.finish(); showToast('Could not generate the PDF'); });
 }
