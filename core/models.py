@@ -361,3 +361,17 @@ class PasswordResetRequest(models.Model):
 
     def __str__(self):
         return f"{self.email_key} @ {self.created_at:%Y-%m-%d %H:%M}"
+
+
+class Activity(models.Model):
+    """A group activity: seminar, webinar, Guidance Month event, training..."""
+    title = models.CharField(max_length=150)
+    service = models.CharField(max_length=20, choices=SERVICES, default='information')
+    date = models.DateField(default=timezone.localdate)
+    audience = models.CharField(max_length=150, blank=True)       # e.g. "BSIT 2nd year", "Peer Facilitators Society"
+    attendee_count = models.PositiveIntegerField(default=0)
+    created_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='logged_activities')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-date', '-created_at']

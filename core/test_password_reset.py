@@ -9,6 +9,7 @@ from django.core import mail
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.html import escape
 
 from . import firebase_reset
 from .firebase_reset import FirebaseResetError
@@ -55,6 +56,7 @@ class LoginPromptTests(TestCase):
         self.assertContains(response, '?username=a%20b%26c%3Dd')
 
 
+@override_settings(PASSWORD_RESET_EMAIL_VIA='firebase')
 class PasswordResetRequestTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user('lena', email='lena@example.com', password=OLD_PW)
@@ -443,7 +445,7 @@ class PasswordResetViaMicaTests(TestCase):
         self.assertEqual(message.to, ['lena@example.com'])
         link = 'https://mica.test/password-reset/firebase/?mode=resetPassword&oobCode=abc123'
         self.assertIn(link, message.body)
-        self.assertIn(link, message.alternatives[0][0])
+        self.assertIn(escape(link), message.alternatives[0][0])
 
     def test_unknown_accounts_get_the_same_page_and_no_email(self):
         with patch.object(firebase_reset, 'generate_reset_code') as generate:

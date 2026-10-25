@@ -212,7 +212,7 @@
     if (!(form instanceof HTMLFormElement)) return;
     if (e.defaultPrevented) return;
     if (form.hasAttribute('data-no-loader')) return;
-    if (a.hasAttribute('download')) return;
+    if (form.hasAttribute('download')) return;
     if (form.target && form.target !== '' && form.target !== '_self') return;
     show('Submitting…');
   });

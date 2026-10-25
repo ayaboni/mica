@@ -132,7 +132,7 @@ class StaffTutorialTests(TestCase):
         self.assertEqual(after, before)
 
     def test_an_existing_role_is_left_alone(self):
-        StaffProfile.objects.create(user=self.staff, role='psychologist')
+        StaffProfile.objects.update_or_create(user=self.staff, defaults={'role': 'psychologist'})
         self.client.post(reverse('api_tutorial_complete'), {'which': 'staff'})
         self.assertEqual(StaffProfile.objects.get(user=self.staff).role, 'psychologist')
 

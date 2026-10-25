@@ -841,10 +841,10 @@ SCALE_ANSWERS = {"Never", "Rarely", "Sometimes", "Often", "Always"}
 
 @login_required(login_url='login')
 def assessment_questionnaire(request):
-    if _pending_step(request.user) == 'consent':
-        return redirect('consent')
     if _needs_profile_setup(request.user):
         return redirect('complete_profile')
+    if _pending_step(request.user) == 'consent':
+        return redirect('consent')
 
     assessment, _ = AssessmentResponse.objects.get_or_create(user=request.user)
     is_retake = request.GET.get('retake') == 'true'
@@ -957,7 +957,7 @@ def _reset_accounts(identifier):
     allow_admins = getattr(settings, "PASSWORD_RESET_FOR_ADMINS", False)
     return [
         user for user in candidates
-        if user.email and user.has_usable_password()
+        if user.is_active and user.email and user.has_usable_password()
         and (allow_admins or not user.is_superuser)
     ]
 
@@ -1358,12 +1358,12 @@ def get_conversation(request, conversation_id):
 @ensure_csrf_cookie
 @login_required(login_url='login')
 def student_dashboard(request):
+    if _needs_profile_setup(request.user):
+        return redirect('complete_profile')
+
     step = _pending_step(request.user)
     if step:
         return redirect(step)
-    
-    if _needs_profile_setup(request.user):
-        return redirect('complete_profile')
 
     conversations = request.user.conversations.all()
     profile = get_profile(request.user)

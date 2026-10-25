@@ -1,5 +1,5 @@
 from django.urls import path
-from . import views, admin_api
+from . import views, admin_api, reports
 from django.contrib.auth import views as auth_views
 
 urlpatterns = [
@@ -71,6 +71,10 @@ urlpatterns = [
     path('api/staff/care-team/', views.staff_care_team, name='staff_care_team'),
     path('api/staff/profile/', views.staff_profile_update, name='staff_profile_update'),
     path('api/staff/notes/<int:note_id>/review/', views.staff_note_review, name='staff_note_review'),
+    path('api/staff/reports/services/', reports.service_report, name='staff_service_report'),
+    path('api/staff/activities/', reports.activities, name='staff_activities'),
+    path('api/staff/activities/<int:activity_id>/delete/', reports.activity_delete, name='staff_activity_delete'),
+    path('api/staff/analytics/', reports.analytics, name='staff_analytics'),
     path('api/admin/subclasses/', admin_api.subclasses, name='admin_subclasses'),
     path('api/admin/subclasses/<int:subclass_id>/update/', admin_api.subclass_update, name='admin_subclass_update'),
     path('api/admin/subclasses/<int:subclass_id>/delete/', admin_api.subclass_delete, name='admin_subclass_delete'),

@@ -3,6 +3,7 @@ from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import User
 from .models import StaffProfile, AccessLog, StudentStatusLog, StaffSubclass
 from .models import UserProfile, MoodEntry, ChatConversation, ChatMessage, StaffProfile, GuidanceThread, GuidanceMessage, AccessLog
+from .models import Activity
 
 admin.site.register(UserProfile)
 admin.site.register(ChatConversation)
@@ -84,3 +85,6 @@ class AccessLogAdmin(LockedLogAdmin):
 class StudentStatusLogAdmin(LockedLogAdmin):
         list_display = ('created_at', 'student', 'changed_by', 'old_status', 'new_status', 'reason',
                     'exit_interview_done', 'evaluation_done')
+
+
+admin.site.register(Activity)

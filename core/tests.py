@@ -1,9 +1,10 @@
 from django.contrib.auth.models import User
 from django.db import IntegrityError, transaction
-from django.test import TestCase
+from django.test import TestCase, SimpleTestCase
 from django.urls import reverse
 from django.utils import timezone
-from datetime import timedelta
+from datetime import date, timedelta
+from core.reports import aggregate_sessions
 
 import io
 import json
@@ -396,7 +397,7 @@ class LoginThrottleTests(TestCase):
         response = self.attempt('wrong')
         self.assertEqual(response.status_code, 429)
         self.assertContains(response, 'Too many failed attempts', status_code=429)
-        self.assertContains(response, '60 seconds', status_code=429)
+        self.assertContains(response, 'data-seconds="60"', status_code=429)
 
     def test_correct_password_is_refused_while_locked(self):
         for _ in range(5):
@@ -438,3 +439,16 @@ class LoginThrottleTests(TestCase):
             self.attempt('wrong')
         LoginThrottle.objects.update(last_failed_at=timezone.now() - timedelta(minutes=16))
         self.assertContains(self.attempt('wrong'), '4 attempts left')
+
+
+class ServiceCountTests(SimpleTestCase):
+    def test_note_and_appointment_same_day_count_once(self):
+        d = date(2026, 10, 5)
+        r = aggregate_sessions([(1, 'counseling', d, 'BSIT', '2')], [(1, 'counseling', d, 'BSIT', '2')])
+        self.assertEqual(r['by_service']['counseling'], 1)
+
+    def test_walk_in_note_and_unnoted_appointment_both_count(self):
+        d = date(2026, 10, 5)
+        r = aggregate_sessions([(2, 'counseling', d, 'BSIT', '2')], [(4, 'testing', d, 'BAPSY', '3')])
+        self.assertEqual(r['by_service']['counseling'], 1)
+        self.assertEqual(r['by_service']['testing'], 1)

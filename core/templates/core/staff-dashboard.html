@@ -320,6 +320,13 @@
   .tab-row{display:flex; gap:8px; margin-bottom:22px; border-bottom:1px solid var(--line); padding-bottom:0;}
   .tab-btn{padding:11px 4px; margin-right:22px; background:none; border:none; border-bottom:2.5px solid transparent; font-size:14px; font-weight:600; color:var(--ink-soft);}
   .tab-btn.active{color:var(--ink); border-color:var(--sage-deep);}
+  .rtab-btn{padding:11px 4px; margin-right:22px; background:none; border:none; border-bottom:2.5px solid transparent; font-size:14px; font-weight:600; color:var(--ink-soft); cursor:pointer;}
+  .rtab-btn.active{color:var(--ink); border-color:var(--sage-deep);}
+  .rpanel[hidden]{display:none;}
+  .rep-table{width:100%; border-collapse:collapse; font-size:13.5px;}
+  .rep-table th{text-align:left; padding:8px 10px; font-size:12px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.03em; border-bottom:1px solid var(--line);}
+  .rep-table td{padding:9px 10px; border-bottom:1px solid var(--line);}
+  .rep-table td.num, .rep-table th.num{text-align:right;}
   .subpanel{display:none;}
   .subpanel.active{display:block;}
   .toggle-row{display:flex; align-items:center; justify-content:space-between; padding:16px 0; border-bottom:1px solid var(--line);}
@@ -405,6 +412,7 @@
   body.no-export [onclick*="exportStudentsExcel"],
   body.no-export [onclick*="exportAssessmentsExcel"],
   body.no-export [onclick*="exportPdfReport"],
+  body.no-export [onclick*="exportServiceReport"],
   body.no-schedule [onclick*="openScheduleModal"],
   body.no-writenotes [onclick*="newNote"]{display:none !important;}
   body.no-students #sec-dashboard .stat-grid,
@@ -814,6 +822,61 @@
 
       <!-- ============ REPORTS ============ -->
       <section class="section" id="sec-reports">
+        <div class="tab-row">
+          <button class="rtab-btn active" onclick="showReportTab('services', this)">Service Reports</button>
+          <button class="rtab-btn" onclick="showReportTab('analytics', this)">Analytics</button>
+        </div>
+
+        <!-- SERVICE REPORTS -->
+        <div class="rpanel" id="rep-services">
+          <div class="card panel" style="margin-bottom:18px;">
+            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+              <select class="filter-select" id="repPeriod" onchange="repPeriodChanged()">
+                <option value="7">Last 7 days</option>
+                <option value="30" selected>Last 30 days</option>
+                <option value="90">Last 90 days</option>
+                <option value="month">This month</option>
+                <option value="custom">Custom range…</option>
+              </select>
+              <span id="repCustom" style="display:none; gap:8px; align-items:center;">
+                <input type="date" id="repFrom" class="filter-select" onchange="loadServiceReport()">
+                <span>to</span>
+                <input type="date" id="repTo" class="filter-select" onchange="loadServiceReport()">
+              </span>
+              <select class="filter-select" id="repCourse" onchange="loadServiceReport()"><option value="">All courses</option></select>
+              <select class="filter-select" id="repYear" onchange="loadServiceReport()">
+                <option value="">All year levels</option>
+                <option value="1">Year 1</option><option value="2">Year 2</option>
+                <option value="3">Year 3</option><option value="4">Year 4</option>
+              </select>
+              <button class="pill-btn solid sm" style="margin-left:auto;" onclick="exportServiceReportExcel()">Export Excel</button>
+              <button class="pill-btn ghost sm" onclick="exportServiceReportPdf()">Export PDF</button>
+            </div>
+            <div class="sub" id="repPeriodText" style="margin-top:10px; font-size:12.5px; color:var(--ink-soft);"></div>
+          </div>
+
+          <div id="repCards" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:16px; margin-bottom:10px;"></div>
+          <div id="repTotals" style="font-size:13px; font-weight:700; color:var(--ink-soft); margin:0 0 18px 4px;"></div>
+
+          <div class="card panel" style="margin-bottom:18px;">
+            <div class="panel-head"><div><h3>Sessions by course</h3><div class="sub">Individual sessions only</div></div></div>
+            <div id="repByCourse" style="overflow-x:auto;"></div>
+          </div>
+          <div class="card panel" style="margin-bottom:18px;">
+            <div class="panel-head"><div><h3>Sessions by year level</h3></div></div>
+            <div id="repByYear" style="overflow-x:auto;"></div>
+          </div>
+          <div class="card panel">
+            <div class="panel-head">
+              <div><h3>Group activities</h3><div class="sub">Seminars, webinars, Guidance Month events, trainings</div></div>
+              <button class="pill-btn solid sm" onclick="openActivityModal()">+ Log activity</button>
+            </div>
+            <div id="repActivities"></div>
+          </div>
+        </div>
+
+        <!-- ANALYTICS -->
+        <div class="rpanel" id="rep-analytics" hidden>
         <div class="grid-2" style="margin-bottom:22px;">
           <div class="offset-card">
             <div class="offset-inner panel">
@@ -837,9 +900,25 @@
             </button>
           </div>
         </div>
+          <div class="card panel" style="margin-bottom:18px;">
+            <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+              <h3 style="margin:0;">System usage</h3>
+              <select class="filter-select" id="anPeriod" onchange="loadAnalytics()">
+                <option value="7">Last 7 days</option>
+                <option value="30" selected>Last 30 days</option>
+                <option value="90">Last 90 days</option>
+              </select>
+            </div>
+          </div>
+          <div id="anCards" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:16px; margin-bottom:18px;"></div>
+          <div class="card panel" style="margin-bottom:18px;">
+            <div class="panel-head"><div><h3>Appointments by status</h3><div class="sub">Scheduled in the selected period</div></div></div>
+            <canvas id="apptChart" height="90"></canvas>
+          </div>
         <div class="card panel">
-          <div class="panel-head"><div><h3>Engagement by Program</h3><div class="sub">Check-in completion rate</div></div></div>
+          <div class="panel-head"><div><h3>Students who checked in at least once ini the last 30 days</h3><div class="sub">Check-in completion rate</div></div></div>
           <canvas id="programChart" height="110"></canvas>
+        </div>
         </div>
 
         <!-- hidden printable summary used for PDF export -->
@@ -1142,6 +1221,31 @@
     <div class="modal-body" id="referralList"></div>
   </div>
 </div>
+<div class="modal-overlay" id="activityModal" style="z-index:110;">
+  <div class="modal" style="max-width:460px;">
+    <div class="modal-head">
+      <div><h2>Log group activity</h2><div class="sub">Counts toward the service's report.</div></div>
+      <button class="modal-close" onclick="closeActivityModal()">✕</button>
+    </div>
+    <div class="modal-body note-form">
+      <label>Title</label>
+      <input id="actTitle" maxlength="150" placeholder="e.g., Stress management seminar">
+      <label>Service</label>
+      <select id="actService"></select>
+      <label>Date</label>
+      <input type="date" id="actDate">
+      <label>Audience</label>
+      <input id="actAudience" maxlength="150" placeholder="e.g., BSIT 2nd year, Peer Facilitators Society">
+      <label>Number of attendees</label>
+      <input type="number" id="actAttendees" min="0" value="0">
+      <p id="actError" style="color:#d9534f; font-size:13px; font-weight:700; min-height:18px; margin:10px 0 0;"></p>
+      <div style="display:flex; gap:10px; margin-top:10px;">
+        <button class="pill-btn solid" onclick="saveActivity()">Save activity</button>
+        <button class="pill-btn ghost" onclick="closeActivityModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
 <div class="toast" id="toast"></div>
 <div id="studentWaitingBanner" class="waiting-banner-floating" style="display: none;" onclick="goTo('messages')">
   <span class="banner-dot"></span>
@@ -1277,7 +1381,7 @@ function goTo(section){
   if(section==='mood') setTimeout(renderMoodCharts,10);
   if(section==='summary') loadSummary();
   if(section==='assessments') loadAssessments();
-  if(section==='reports') setTimeout(renderReportChart,10);
+  if(section==='reports') refreshReports();
 }
 
 function showTab(tab, el){
@@ -2785,6 +2889,177 @@ function renderReportChart(){
   });
 }
 
+/* ---------- Service Reports ---------- */
+const SERVICE_ICON = {information:'📢', counseling:'💬', testing:'📝', referral:'🤝'};
+const SERVICE_KEYS_UI = ['information','counseling','testing','referral'];
+function ymd(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+
+function showReportTab(tab, el){
+  document.querySelectorAll('.rtab-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.rpanel').forEach(p => p.hidden = true);
+  document.getElementById('rep-' + tab).hidden = false;
+  if(tab === 'analytics'){ renderReportChart(); loadAnalytics(); } else loadServiceReport();
+}
+
+function refreshReports(){
+  const analyticsOpen = !document.getElementById('rep-analytics').hidden;
+  if(analyticsOpen){ renderReportChart(); loadAnalytics(); }
+  else loadServiceReport();
+}
+
+function repRange(){
+  const v = document.getElementById('repPeriod').value;
+  const today = new Date();
+  if(v === 'custom') return {from: document.getElementById('repFrom').value, to: document.getElementById('repTo').value};
+  if(v === 'month') return {from: ymd(new Date(today.getFullYear(), today.getMonth(), 1)), to: ymd(today)};
+  const from = new Date(today); from.setDate(from.getDate() - (parseInt(v, 10) - 1));
+  return {from: ymd(from), to: ymd(today)};
+}
+function repPeriodChanged(){
+  const custom = document.getElementById('repPeriod').value === 'custom';
+  document.getElementById('repCustom').style.display = custom ? 'flex' : 'none';
+  if(custom && !document.getElementById('repFrom').value){
+    const t = new Date(), f = new Date(); f.setDate(f.getDate() - 29);
+    document.getElementById('repFrom').value = ymd(f);
+    document.getElementById('repTo').value = ymd(t);
+  }
+  loadServiceReport();
+}
+function fillRepCourses(){
+  const sel = document.getElementById('repCourse');
+  if(sel.options.length > 1 || !courseOptions.length) return;
+  courseOptions.forEach(c => { const o = document.createElement('option'); o.value = c.code; o.textContent = c.label; sel.appendChild(o); });
+}
+
+function loadServiceReport(){
+  fillRepCourses();
+  const r = repRange();
+  if(!r.from || !r.to) return;
+  const q = new URLSearchParams({from: r.from, to: r.to,
+    course: document.getElementById('repCourse').value, year: document.getElementById('repYear').value});
+  Promise.all([
+    fetch("{% url 'staff_service_report' %}?" + q).then(x => x.json()),
+    fetch("{% url 'staff_activities' %}?" + q).then(x => x.json())
+  ]).then(([rep, act]) => {
+    repData = rep;
+    repActs = act.activities || [];
+    renderServiceReport(rep);
+    renderActivities(repActs);
+  }).catch(() => showToast('Could not load the report'));
+}
+
+let repData = null;
+let repActs = [];
+
+function repTable(rows, labelOf){
+  const keys = repData.services.map(s => s.key);
+  if(!rows.length) return '<div style="padding:10px 0; color:var(--ink-soft);">No sessions in this period.</div>';
+  return `<table class="rep-table"><tr><th></th>${keys.map(k => `<th class="num">${k[0].toUpperCase() + k.slice(1)}</th>`).join('')}<th class="num">Total</th></tr>`
+    + rows.map(r => `<tr><td>${escapeHtmlStaff(labelOf(r))}</td>${keys.map(k => `<td class="num">${r.counts[k]}</td>`).join('')}<td class="num"><b>${r.total}</b></td></tr>`).join('')
+    + '</table>';
+}
+
+function renderServiceReport(d){
+  document.getElementById('repPeriodText').textContent =
+    'Showing ' + d.period.from + ' to ' + d.period.to + '. Course and year filters apply to individual sessions, not group activities.';
+  document.getElementById('repCards').innerHTML = d.services.map(s => `
+    <div class="card panel">
+      <div style="font-size:12.5px; font-weight:700; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.03em;">${SERVICE_ICON[s.key]} ${escapeHtmlStaff(s.label)}</div>
+      <div style="font-size:34px; font-weight:700; margin:6px 0 2px;">${s.sessions}</div>
+      <div style="font-size:12.5px; color:var(--ink-soft);">${s.sessions === 1 ? 'session' : 'sessions'} · ${s.students} ${s.students === 1 ? 'student' : 'students'}</div>
+      <div style="font-size:12.5px; color:var(--ink-soft); margin-top:8px;">${s.activities} group ${s.activities === 1 ? 'activity' : 'activities'} · ${s.attendees} attendees</div>
+    </div>`).join('');
+  const t = d.totals;
+  document.getElementById('repTotals').textContent =
+    `Total: ${t.sessions} sessions · ${t.students} different students · ${t.activities} group activities · ${t.attendees} attendees`;
+  document.getElementById('repByCourse').innerHTML = repTable(d.by_course, r => r.label || 'Not set');
+  document.getElementById('repByYear').innerHTML = repTable(d.by_year, r => yearLabel(r.year) || 'Not set');
+}
+
+/* ---------- Group activities ---------- */
+function renderActivities(list){
+  document.getElementById('repActivities').innerHTML = list.length ? list.map(a => `
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid var(--line);">
+      <div>
+        <div style="font-weight:700;">${escapeHtmlStaff(a.title)}</div>
+        <div style="font-size:12.5px; color:var(--ink-soft);">${a.date} · ${escapeHtmlStaff(a.service_label)}${a.audience ? ' · ' + escapeHtmlStaff(a.audience) : ''} · ${a.attendee_count} attended · by ${escapeHtmlStaff(a.by)}</div>
+      </div>
+      ${a.mine ? `<button class="pill-btn ghost sm" onclick="deleteActivity(${a.id})">Delete</button>` : ''}
+    </div>`).join('')
+    : '<div style="padding:10px 0; color:var(--ink-soft);">No group activities in this period.</div>';
+}
+function openActivityModal(){
+  const sel = document.getElementById('actService');
+  sel.innerHTML = '';
+  SERVICE_KEYS_UI.filter(k => canService('write_note_services', k)).forEach(k =>
+    sel.insertAdjacentHTML('beforeend', `<option value="${k}">${k[0].toUpperCase() + k.slice(1)}</option>`));
+  if(!sel.options.length) return denied();
+  document.getElementById('actTitle').value = '';
+  document.getElementById('actAudience').value = '';
+  document.getElementById('actAttendees').value = '0';
+  document.getElementById('actDate').value = ymd(new Date());
+  document.getElementById('actError').textContent = '';
+  document.getElementById('activityModal').classList.add('active');
+}
+function closeActivityModal(){ document.getElementById('activityModal').classList.remove('active'); }
+function saveActivity(){
+  fetch("{% url 'staff_activities' %}", {
+    method:'POST',
+    headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},
+    body: JSON.stringify({
+      title: document.getElementById('actTitle').value,
+      service: document.getElementById('actService').value,
+      date: document.getElementById('actDate').value,
+      audience: document.getElementById('actAudience').value,
+      attendee_count: document.getElementById('actAttendees').value
+    })
+  }).then(r => r.json().then(d => ({ok: r.ok, d}))).then(({ok, d}) => {
+    if(!ok){ document.getElementById('actError').textContent = d.error || 'Could not save.'; return; }
+    closeActivityModal(); showToast('Activity logged'); loadServiceReport();
+  });
+}
+function deleteActivity(id){
+  if(!confirm('Delete this activity?')) return;
+  fetch(`/api/staff/activities/${id}/delete/`, {method:'POST', headers:{'X-CSRFToken':getCookie('csrftoken')}})
+    .then(r => r.json().then(d => ({ok: r.ok, d})))
+    .then(({ok, d}) => { if(!ok) return showToast(d.error || 'Could not delete'); showToast('Activity deleted'); loadServiceReport(); });
+}
+
+/* ---------- Analytics ---------- */
+function loadAnalytics(){
+  const days = parseInt(document.getElementById('anPeriod').value, 10);
+  const to = new Date(), from = new Date();
+  from.setDate(from.getDate() - (days - 1));
+  fetch("{% url 'staff_analytics' %}?" + new URLSearchParams({from: ymd(from), to: ymd(to)}))
+    .then(r => r.json()).then(renderAnalytics)
+    .catch(() => showToast('Could not load analytics'));
+}
+function renderAnalytics(d){
+  const a = d.assessment, f = d.flags;
+  const card = (label, value, sub) => `
+    <div class="card panel">
+      <div style="font-size:12.5px; font-weight:700; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.03em;">${label}</div>
+      <div style="font-size:34px; font-weight:700; margin:6px 0 2px;">${value}</div>
+      <div style="font-size:12.5px; color:var(--ink-soft);">${sub}</div>
+    </div>`;
+  document.getElementById('anCards').innerHTML =
+    card('Risk flags opened', f.opened, 'in this period') +
+    card('Risk flags resolved', f.resolved, 'in this period') +
+    card('Open flags now', f.open_now, 'waiting for action') +
+    card('Assessment completed', a.rate == null ? '–' : a.rate + '%', a.completed + ' of ' + a.total + ' students');
+  const names = {pending:'Pending', confirmed:'Confirmed', completed:'Completed', declined:'Declined', cancelled:'Cancelled'};
+  if(charts.appt) charts.appt.destroy();
+  charts.appt = new Chart(document.getElementById('apptChart'), {
+    type:'bar',
+    data:{labels:d.appointments.map(x => names[x.status]),
+          datasets:[{data:d.appointments.map(x => x.count), backgroundColor:'#786251', borderRadius:8, maxBarThickness:46}]},
+    options:{plugins:{legend:{display:false}},
+             scales:{y:{beginAtZero:true, ticks:{precision:0, font:chartFont}, grid:baseGrid()},
+                     x:{grid:{display:false}, ticks:{font:chartFont}}}}
+  });
+}
+
 /* =========================================================
    EXPORTS
 ========================================================= */
@@ -2827,6 +3102,65 @@ function exportAssessmentsExcel(){
   XLSX.writeFile(wb, "MICA_assessment_records.xlsx");
   MicaLoader.finish();
   showToast('Excel file downloaded');
+}
+
+function exportServiceReportExcel(){
+  if(!PERMS.export_records) return denied();
+  if(!repData) return showToast('Nothing to export yet');
+  const keys = repData.services.map(s => s.key);
+  const cap = k => k[0].toUpperCase() + k.slice(1);
+  const grid = (rows, nameOf) => rows.map(r => {
+    const row = {Group: nameOf(r)};
+    keys.forEach(k => { row[cap(k)] = r.counts[k]; });
+    row.Total = r.total;
+    return row;
+  });
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(repData.services.map(s => ({
+    Service: s.label, Sessions: s.sessions, Students: s.students,
+    'Group activities': s.activities, Attendees: s.attendees
+  }))), 'By service');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(
+    grid(repData.by_course, r => r.label || 'Not set')), 'By course');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(
+    grid(repData.by_year, r => yearLabel(r.year) || 'Not set')), 'By year');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(repActs.map(a => ({
+    Date: a.date, Title: a.title, Service: a.service_label,
+    Audience: a.audience, Attendees: a.attendee_count, 'Logged by': a.by
+  }))), 'Group activities');
+  MicaLoader.show('Preparing your file…');
+  XLSX.writeFile(wb, `MICA_service_report_${repData.period.from}_to_${repData.period.to}.xlsx`);
+  MicaLoader.finish();
+  showToast('Excel file downloaded');
+}
+
+function exportServiceReportPdf(){
+  if(!PERMS.export_records) return denied();
+  if(!repData) return showToast('Nothing to export yet');
+  const d = repData, t = d.totals;
+  const cell = 'padding:6px 4px; border-bottom:1px solid #eee;';
+  const rows = d.services.map(s => `<tr>
+    <td style="${cell}">${escapeHtmlStaff(s.label)}</td>
+    <td style="${cell} text-align:right;">${s.sessions}</td>
+    <td style="${cell} text-align:right;">${s.students}</td>
+    <td style="${cell} text-align:right;">${s.activities}</td>
+    <td style="${cell} text-align:right;">${s.attendees}</td></tr>`).join('');
+  const el = document.createElement('div');
+  el.style.cssText = 'width:700px; padding:30px; background:#fff; color:#111; font-family:Arial,sans-serif;';
+  el.innerHTML = `
+    <h1 style="font-size:22px; margin:0 0 2px;">MICA - Guidance Service Report</h1>
+    <p style="font-size:12px; color:#555; margin:0 0 18px;">${d.period.from} to ${d.period.to}</p>
+    <table style="width:100%; border-collapse:collapse; font-size:13px;">
+      <tr><th style="text-align:left; ${cell}">Service</th><th style="text-align:right; ${cell}">Sessions</th>
+      <th style="text-align:right; ${cell}">Students</th><th style="text-align:right; ${cell}">Activities</th>
+      <th style="text-align:right; ${cell}">Attendees</th></tr>${rows}
+    </table>
+    <p style="font-size:13px; margin-top:14px;"><b>Total:</b> ${t.sessions} sessions, ${t.students} different students, ${t.activities} group activities, ${t.attendees} attendees</p>
+    <p style="font-size:11px; color:#888; margin-top:22px;">Generated by MICA Staff Dashboard. Confidential.</p>`;
+  MicaLoader.show('Preparing your PDF…');
+  html2pdf().from(el).set({filename:'MICA_service_report.pdf', margin:10}).save()
+    .then(() => { MicaLoader.finish(); showToast('PDF report downloaded'); })
+    .catch(() => { MicaLoader.finish(); showToast('Could not generate the PDF'); });
 }
 
 function exportPdfReport(){
