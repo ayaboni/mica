@@ -2911,6 +2911,10 @@ function refreshReports(){
 function repRange(){
   const v = document.getElementById('repPeriod').value;
   const today = new Date();
+  if(v.startsWith('sem:')){
+    const s = semesters.find(x => 'sem:' + x.id === v);
+    return s ? {from: s.from, to: s.to} : {from: '', to: ''};
+  }
   if(v === 'custom') return {from: document.getElementById('repFrom').value, to: document.getElementById('repTo').value};
   if(v === 'month') return {from: ymd(new Date(today.getFullYear(), today.getMonth(), 1)), to: ymd(today)};
   const from = new Date(today); from.setDate(from.getDate() - (parseInt(v, 10) - 1));
@@ -2951,6 +2955,19 @@ function loadServiceReport(){
 
 let repData = null;
 let repActs = [];
+let semesters = [];
+
+function loadSemesters(){
+  return fetch("{% url 'staff_semesters' %}").then(r => r.json()).then(d => {
+    semesters = d.semesters || [];
+    ['repPeriod', 'anPeriod'].forEach(id => {
+      const sel = document.getElementById(id);
+      [...sel.options].filter(o => o.value.startsWith('sem:')).forEach(o => o.remove());
+      const beforeCustom = [...sel.options].find(o => o.value === 'custom') || null;
+      semesters.forEach(s => sel.add(new Option(s.name, 'sem:' + s.id), beforeCustom));
+    });
+  }).catch(() => {});
+}
 
 function repTable(rows, labelOf){
   const keys = repData.services.map(s => s.key);
@@ -3027,14 +3044,25 @@ function deleteActivity(id){
 }
 
 /* ---------- Analytics ---------- */
-function loadAnalytics(){
-  const days = parseInt(document.getElementById('anPeriod').value, 10);
+function anRange(){
+  const v = document.getElementById('anPeriod').value;
+  if(v.startsWith('sem:')){
+    const s = semesters.find(x => 'sem:' + x.id === v);
+    if(s) return {from: s.from, to: s.to};
+  }
+  const days = parseInt(v, 10) || 30;
   const to = new Date(), from = new Date();
   from.setDate(from.getDate() - (days - 1));
-  fetch("{% url 'staff_analytics' %}?" + new URLSearchParams({from: ymd(from), to: ymd(to)}))
-    .then(r => r.json()).then(renderAnalytics)
+  return {from: ymd(from), to: ymd(to)};
+}
+
+function loadAnalytics(){
+  const r = anRange();
+  fetch("{% url 'staff_analytics' %}?" + new URLSearchParams({from: r.from, to: r.to}))
+    .then(x => x.json()).then(renderAnalytics)
     .catch(() => showToast('Could not load analytics'));
 }
+
 function renderAnalytics(d){
   const a = d.assessment, f = d.flags;
   const card = (label, value, sub) => `
@@ -3201,6 +3229,7 @@ function initAll(){
     loadStudents();
     loadAlerts();
     setInterval(()=>loadAlerts(true), 20000);
+    loadSemesters();
     loadDashboard();
   }
   loadCareTeam();

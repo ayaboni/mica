@@ -3,7 +3,7 @@ from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import User
 from .models import StaffProfile, AccessLog, StudentStatusLog, StaffSubclass
 from .models import UserProfile, MoodEntry, ChatConversation, ChatMessage, StaffProfile, GuidanceThread, GuidanceMessage, AccessLog
-from .models import Activity
+from .models import Activity, Semester
 
 admin.site.register(UserProfile)
 admin.site.register(ChatConversation)
@@ -88,3 +88,8 @@ class StudentStatusLogAdmin(LockedLogAdmin):
 
 
 admin.site.register(Activity)
+
+
+@admin.register(Semester)
+class SemesterAdmin(admin.ModelAdmin):
+    list_display = ('name', 'start_date', 'end_date')

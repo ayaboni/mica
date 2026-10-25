@@ -4,6 +4,7 @@ from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils import timezone
+from django.core.exceptions import ValidationError
 
 ACCOUNT_STATUS = [
     ("active", "Active"),
@@ -375,3 +376,20 @@ class Activity(models.Model):
 
     class Meta:
         ordering = ['-date', '-created_at']
+
+
+class Semester(models.Model):
+    """A named date range (e.g. "1st Sem AY 2026-2027") used by the report period dropdowns."""
+    name = models.CharField(max_length=80, unique=True)
+    start_date = models.DateField()
+    end_date = models.DateField()
+
+    class Meta:
+        ordering = ['-start_date']
+
+    def clean(self):
+        if self.start_date and self.end_date and self.end_date < self.start_date:
+            raise ValidationError("The end date can't be before the start date.")
+
+    def __str__(self):
+        return self.name

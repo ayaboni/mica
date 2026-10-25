@@ -75,6 +75,7 @@ urlpatterns = [
     path('api/staff/activities/', reports.activities, name='staff_activities'),
     path('api/staff/activities/<int:activity_id>/delete/', reports.activity_delete, name='staff_activity_delete'),
     path('api/staff/analytics/', reports.analytics, name='staff_analytics'),
+    path('api/staff/semesters/', reports.semesters, name='staff_semesters'),
     path('api/admin/subclasses/', admin_api.subclasses, name='admin_subclasses'),
     path('api/admin/subclasses/<int:subclass_id>/update/', admin_api.subclass_update, name='admin_subclass_update'),
     path('api/admin/subclasses/<int:subclass_id>/delete/', admin_api.subclass_delete, name='admin_subclass_delete'),

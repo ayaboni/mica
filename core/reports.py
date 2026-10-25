@@ -18,7 +18,7 @@ from django.utils import timezone
 from django.utils.dateparse import parse_date
 from django.views.decorators.http import require_POST
 
-from .models import Activity, Appointment, StudentFlag, StudentNote, COURSES, SERVICES
+from .models import Activity, Appointment, StudentFlag, StudentNote, Semester, COURSES, SERVICES
 from .permissions import can, require_perm, staff_permissions
 
 staff_only = user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
@@ -77,6 +77,16 @@ def _period(request):
     if (end - start).days > MAX_DAYS:
         start = end - timedelta(days=MAX_DAYS)
     return start, end
+
+
+@login_required(login_url='login')
+@staff_only
+@require_perm('view_students')
+def semesters(request):
+    return JsonResponse({"semesters": [
+        {"id": s.id, "name": s.name, "from": s.start_date.isoformat(), "to": s.end_date.isoformat()}
+        for s in Semester.objects.all()
+    ]})
 
 
 @login_required(login_url='login')
