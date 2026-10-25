@@ -18,7 +18,7 @@ from django.utils import timezone
 from django.utils.dateparse import parse_date
 from django.views.decorators.http import require_POST
 
-from .models import Activity, Appointment, StudentFlag, StudentNote, Semester, COURSES, SERVICES
+from .models import Activity, Appointment, StudentFlag, StudentNote, Semester, MoodEntry, COURSES, SERVICES
 from .permissions import can, require_perm, staff_permissions
 
 staff_only = user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
@@ -246,4 +246,109 @@ def analytics(request):
         "appointments": appointments,
         "flags": flags,
         "assessment": {"completed": done, "total": total, "rate": round(100 * done / total) if total else None},
+    })
+
+
+# ---------------------------------------------------------------- period report (export)
+@login_required(login_url='login')
+@staff_only
+@require_perm('view_students')
+@require_perm('export_records')
+def period_report(request):
+    """Everything the Analytics Excel/PDF needs for one period, except service sessions
+    (those come from service_report). No notes, diary text, chats or assessment answers."""
+    from .views import _student_risk          # imported late: views imports a lot
+
+    start, end = _period(request)
+    t0, t1 = _day_bounds(start, end)
+    today = timezone.localdate()
+    allowed = _allowed_services(request.user)
+
+    students = User.objects.filter(is_staff=False, is_superuser=False).filter(
+        Q(profile__account_status="active") | Q(profile__isnull=True))
+    total = students.count()
+
+    # mood + check-ins in the period
+    scores, checked, by_course = [], set(), {}
+    for uid, mood, course in MoodEntry.objects.filter(
+            user__in=students, date__range=(start, end)
+    ).values_list("user_id", "mood", "user__profile__course"):
+        try:
+            s = 5 - int(mood)
+        except (TypeError, ValueError):
+            continue
+        scores.append(s)
+        checked.add(uid)
+        c = by_course.setdefault(course or "", {"scores": [], "students": set()})
+        c["scores"].append(s)
+        c["students"].add(uid)
+
+    done = students.filter(assessment__completed_at__isnull=False, assessment__skipped=False).count()
+
+    flags_in_period = StudentFlag.objects.filter(
+        Q(created_at__range=(t0, t1)) | Q(resolved_at__range=(t0, t1))
+    ).select_related("student", "student__profile", "flagged_by", "assigned_to").order_by("created_at")
+
+    def person(u):
+        return (u.get_full_name() or u.username) if u else ""
+
+    def when(dt):
+        return timezone.localtime(dt).strftime("%Y-%m-%d %H:%M") if dt else ""
+
+    flag_rows = []
+    for f in flags_in_period:
+        p = getattr(f.student, "profile", None)
+        flag_rows.append({
+            "student": person(f.student),
+            "student_number": (p.student_number if p and p.student_number else "No ID"),
+            "course": COURSE_LABELS.get(p.course, p.course) if p and p.course else "Not set",
+            "year": p.year_level if p else "",
+            "risk_now": _student_risk(f.student, today),
+            "status": f.get_status_display(),
+            "opened": when(f.created_at),
+            "resolved": when(f.resolved_at),
+            "flagged_by": person(f.flagged_by),
+            "handled_by": person(f.assigned_to),
+            "reason": f.reason,
+        })
+
+    appt_rows = []
+    for a in Appointment.objects.filter(
+            service__in=allowed, scheduled_time__range=(t0, t1)
+    ).select_related("student", "student__profile", "counselor").order_by("scheduled_time"):
+        p = getattr(a.student, "profile", None)
+        local = timezone.localtime(a.scheduled_time)
+        appt_rows.append({
+            "date": local.strftime("%Y-%m-%d"),
+            "time": local.strftime("%I:%M %p"),
+            "student": person(a.student),
+            "student_number": (p.student_number if p and p.student_number else "No ID"),
+            "service": a.get_service_display(),
+            "counselor": person(a.counselor),
+            "status": a.get_status_display(),
+        })
+
+    course_rows = [{
+        "course": COURSE_LABELS.get(c, "Not set" if not c else c),
+        "avg_mood": round(sum(v["scores"]) / len(v["scores"]), 2),
+        "checkins": len(v["scores"]),
+        "students": len(v["students"]),
+    } for c, v in sorted(by_course.items()) if len(v["students"]) >= 3]    # same 3+ rule as the Mood tab
+
+    return JsonResponse({
+        "period": {"from": start.isoformat(), "to": end.isoformat()},
+        "as_of": today.isoformat(),
+        "summary": {
+            "students": total,
+            "avg_mood": round(sum(scores) / len(scores), 1) if scores else None,
+            "checkin_rate": round(100 * len(checked) / total) if total else None,
+            "assessment_done": done,
+            "assessment_rate": round(100 * done / total) if total else None,
+            "flags_opened": StudentFlag.objects.filter(created_at__range=(t0, t1)).count(),
+            "flags_resolved": StudentFlag.objects.filter(resolved_at__range=(t0, t1)).count(),
+            "flags_open_now": StudentFlag.objects.exclude(status="resolved").count(),
+        },
+        "flags": flag_rows,
+        "appointments": appt_rows,
+        "mood_by_course": course_rows,
     })
