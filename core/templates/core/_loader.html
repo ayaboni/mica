@@ -195,6 +195,7 @@
 
     var href = a.getAttribute('href');
     if (!href || href.charAt(0) === '#') return;
+    if (/^(blob|data|javascript):/i.test(href)) return;
     if (href.indexOf('mailto:') === 0 || href.indexOf('tel:') === 0) return;
 
     var url;
@@ -211,6 +212,7 @@
     if (!(form instanceof HTMLFormElement)) return;
     if (e.defaultPrevented) return;
     if (form.hasAttribute('data-no-loader')) return;
+    if (a.hasAttribute('download')) return;
     if (form.target && form.target !== '' && form.target !== '_self') return;
     show('Submitting…');
   });

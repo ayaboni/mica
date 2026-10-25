@@ -1878,7 +1878,7 @@ function loadAssessmentPanel(s){
         </div>`).join('');
       box.innerHTML = `
         <div class="assess-date">Taken on ${escapeHtmlStaff(d.taken_on)}</div>
-        <div class="assess-lbl" style="margin-top:0;">Conditions experienced reported by the student</div>
+        <div class="assess-lbl" style="margin-top:0;">Conditions reported by the student</div>
         ${conds}
         <div class="assess-lbl">How often in the past few weeks</div>
         ${rows}
@@ -2397,7 +2397,7 @@ function showAssessment(i){
   document.querySelectorAll('#assessDateChips .date-chip').forEach((b, idx) => b.classList.toggle('active', idx === i));
   document.getElementById('assessModalBody').innerHTML = `
     <div class="assess-box" style="margin-top:0;">
-      <div class="assess-lbl" style="margin-top:0;">Conditions experienced or diagnosed</div>
+      <div class="assess-lbl" style="margin-top:0;">Conditions reported by the student</div>
       ${condTags(h)}
       <div class="assess-lbl">How often in the past few weeks</div>
       ${h.answers.map(a => `
@@ -2717,13 +2717,13 @@ function exportAssessmentsExcel(){
 function exportPdfReport(){
   if(!PERMS.export_records) return denied();
   document.getElementById('printDate').textContent = "Period: "+document.getElementById('reportPeriod').value+" · Generated "+new Date().toLocaleDateString();
-  const el = document.getElementById('printableReport');
-  el.style.left='0'; el.style.position='fixed'; el.style.top='-3000px';
+  const clone = document.getElementById('printableReport').cloneNode(true);
+  clone.removeAttribute('id');
+  clone.style.position = 'static'; clone.style.left = 'auto'; clone.style.top = 'auto';
   MicaLoader.show('Preparing your PDF…');
-  const reset = () => { el.style.position='absolute'; el.style.left='-9999px'; el.style.top='0'; };
-  html2pdf().from(el).set({filename:'MICA_summary_report.pdf', margin:10}).save()
-    .then(() => { reset(); MicaLoader.finish(); showToast('PDF report downloaded'); })
-    .catch(() => { reset(); MicaLoader.finish(); showToast('Could not generate the PDF'); });
+  html2pdf().from(clone).set({filename:'MICA_summary_report.pdf', margin:10}).save()
+    .then(() => { MicaLoader.finish(); showToast('PDF report downloaded'); })
+    .catch(() => { MicaLoader.finish(); showToast('Could not generate the PDF'); });
 }
 
 /* =========================================================

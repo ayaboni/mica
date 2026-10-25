@@ -1712,6 +1712,8 @@ CONDITION_LABELS = {
     "Anxiety": "Anxiety", "Depression": "Depression",
     "ADHD": "ADHD / Attention difficulties", "OCD": "OCD",
     "Bipolar": "Bipolar Disorder", "PTSD": "PTSD / Trauma-related stress",
+    "Autism": "Autism spectrum", "Panic": "Panic attacks",
+    "Learning": "Learning difficulties (e.g., dyslexia)",
     "Eating": "Eating-related concerns", "Sleep": "Sleep difficulties",
     "None": "None of these",
 }
