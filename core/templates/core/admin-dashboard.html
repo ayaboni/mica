@@ -9,8 +9,8 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
   :root{
-    --sage:#A1BFA9; --sage-deep:#6E9078; --sage-pale:#E9F0E7;
-    --cream:#FAFAF7; --paper:#FFFFFF;
+    --sage:#A9C6A2; --sage-deep:#96B890; --sage-pale:#8EAE88;
+    --cream:#F7F4E9; --paper:#FFFFFF;
     --peach:#FFF8E7; --peach-deep:#F3E2B8; --peach-text:#5A4A3D;
     --brown:#8A6F4E; --brown-deep:#5A4A3D;
     --sky:#9CC5E8; --sky-deep:#3D6C8E; --sky-pale:#DCEBF6;
@@ -100,8 +100,8 @@
   .collapse-btn{width:32px; height:32px; border-radius:8px; border:none; background:transparent; color:var(--brown-deep); display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0;}
   .collapse-btn:hover{background:rgba(255,255,255,.35);}
   .collapse-btn svg{width:18px; height:18px;}
-  .menu-btn{display:none; margin-right:14px; flex-shrink:0;}
-  .sidebar.is-collapsed ~ .main .menu-btn{display:flex;}
+  .icon-btn.menu-btn{display:none; margin-right:14px; flex-shrink:0;}
+  .sidebar.is-collapsed ~ .main .icon-btn.menu-btn{display:flex;}
   .sidebar-backdrop{display:none; position:fixed; inset:0; background:rgba(20,16,10,.4); z-index:55;}
   .sidebar-backdrop.is-visible{display:block;}
   @media (max-width:860px){
@@ -146,6 +146,7 @@
   }
   body.dark .topbar{background:#233024;}
   .topbar .titlewrap .eyebrow{font-size:11.5px; color:rgba(255,255,255,.7); text-transform:uppercase; letter-spacing:.07em; font-weight:700;}
+  .topbar .titlewrap{margin-right:auto;}
   .topbar h2{font-size:21px; font-weight:700; color:#fff; font-family:'Baloo 2',sans-serif;}
   .topbar-actions{display:flex; align-items:center; gap:12px;}
   .searchbox{display:flex; align-items:center; gap:9px; background:var(--paper); border:none; border-radius:999px; padding:9px 16px; min-width:230px;}
@@ -268,8 +269,6 @@
     .field-grid{grid-template-columns:1fr;}
   }
   @media (max-width: 760px){
-    .sidebar{position:fixed; left:-280px; z-index:60; transition:left .2s ease; box-shadow:var(--shadow);}
-    .sidebar.open{left:0;}
     .stat-grid{grid-template-columns:1fr;}
     .searchbox{min-width:0; flex:1;}
     .topbar{padding:16px 18px;}
@@ -1019,14 +1018,14 @@ function renderAccounts(){
     <tr>
       <td>
         <div class="u-cell">
-          <div class="avatar" style="background:${avatarColor(a.role)};">${initials(a.name)}</div>
-          <div><div class="name">${a.name}</div><div class="email">${a.email}</div></div>
+          <div class="avatar" style="background:${avatarColor(a.role)};">${esc(initials(a.name))}</div>
+          <div><div class="name">${esc(a.name)}</div><div class="email">${esc(a.email)}</div></div>
         </div>
       </td>
-      <td class="mono-cell">${a.id}</td>
-      <td><span class="badge neutral">${a.role} — ${a.detail}</span></td>
-      <td><span class="badge ${badgeClass(a.status)}"><span class="dot"></span>${a.status}</span></td>
-      <td class="mono-cell">${a.lastLogin}</td>
+      <td class="mono-cell">${esc(a.id)}</td>
+      <td><span class="badge neutral">${esc(a.role)} — ${esc(a.detail)}</span></td>
+      <td><span class="badge ${badgeClass(a.status)}"><span class="dot"></span>${esc(a.status)}</span></td>
+      <td class="mono-cell">${esc(a.lastLogin)}</td>
       <td class="row-actions"><button class="pill-btn ghost sm" onclick="openAccountModal('${a.id}')">Manage</button></td>
     </tr>`).join('');
 
@@ -1039,10 +1038,10 @@ function openAccountModal(id){
   document.getElementById('acctModalTitle').textContent = a.name;
   document.getElementById('acctModalSub').textContent = a.id + ' · ' + a.email;
   document.getElementById('acctModalKv').innerHTML = `
-    <div class="kv"><div class="k">Program / Detail</div><div class="v">${a.detail}</div></div>
-    <div class="kv"><div class="k">Joined</div><div class="v">${a.joined}</div></div>
-    <div class="kv"><div class="k">Last Login</div><div class="v">${a.lastLogin}</div></div>
-    <div class="kv"><div class="k">User ID</div><div class="v mono">${a.id}</div></div>
+    <div class="kv"><div class="k">Program / Detail</div><div class="v">${esc(a.detail)}</div></div>
+    <div class="kv"><div class="k">Joined</div><div class="v">${esc(a.joined)}</div></div>
+    <div class="kv"><div class="k">Last Login</div><div class="v">${esc(a.lastLogin)}</div></div>
+    <div class="kv"><div class="k">User ID</div><div class="v mono">${esc(a.id)}</div></div>
   `;
   document.getElementById('acctModalRole').value = a.role;
   document.getElementById('acctModalStatus').value = a.status;
