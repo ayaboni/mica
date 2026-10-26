@@ -37,6 +37,8 @@ from .permissions import can, require_perm, staff_permissions, SERVICE_KEYS
 from .models import StudentStatusLog, ACCOUNT_STATUS, STATUS_REASONS
 from .models import AssessmentHistory
 import hashlib
+import hmac
+import re
 import logging
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
@@ -197,10 +199,10 @@ def google_register(request):
     remember_me = bool(payload.get("remember_me"))
     trusted = _is_trusted_browser(request, user)
 
-    # 4. Confirm by e-mail unless this browser was remembered earlier.
+    # 4. Confirm with an e-mailed code unless this browser was remembered earlier.
     to_email = user.email or email
     if to_email and not trusted:
-        ok, error = _send_login_link(request, user, remember_me, "google", to_email=to_email)
+        ok, error = _send_login_code(request, user, remember_me, "google", to_email=to_email)
         if not ok:
             return JsonResponse({"error": error}, status=429 if "Too many" in error else 503)
         return JsonResponse({"redirect": reverse("login_check_email")})
@@ -467,24 +469,41 @@ def _record_failed_login(key):
 def _plural(n, word):
     return f"{n} {word}{'' if n == 1 else 's'}"
 
-# -- E-mailed sign-in link ---------------------------------------------------
+# -- E-mailed sign-in code ---------------------------------------------------
 # Once the password (or Google identity) checks out we do NOT sign the user in
-# yet. We e-mail a single-use link; opening it and confirming finishes the
-# sign-in. A browser the user asked us to "Remember" is trusted for
-# TRUSTED_BROWSER_DAYS after they confirm once, and skips the e-mail.
+# yet. We e-mail a single-use 6-character code; typing (or pasting) it on the
+# "Check your email" page finishes the sign-in. A browser the user asked us to
+# "Remember" is trusted for TRUSTED_BROWSER_DAYS after they confirm once, and
+# skips the e-mail.
 
 logger = logging.getLogger(__name__)
 
-LOGIN_LINK_TTL = timedelta(minutes=getattr(settings, "LOGIN_LINK_TTL_MINUTES", 15))
-LOGIN_LINK_RESEND_COOLDOWN = 60      # seconds between e-mails to the same user
-LOGIN_LINK_MAX_PER_HOUR = 5          # stops anyone with the password mail-bombing the owner
+LOGIN_CODE_TTL = timedelta(minutes=getattr(settings, "LOGIN_CODE_TTL_MINUTES", 10))
+LOGIN_CODE_RESEND_COOLDOWN = 60      # seconds between e-mails to the same user
+LOGIN_CODE_MAX_PER_HOUR = 5          # stops anyone with the password mail-bombing the owner
+LOGIN_CODE_MAX_ATTEMPTS = 5          # wrong guesses allowed per code
+LOGIN_CODE_LENGTH = 6
+# No 0/O or 1/I/L, so a code is easy to read aloud and to type if it isn't pasted.
+LOGIN_CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
 REMEMBER_ME_SECONDS = 1209600        # 2 weeks, the existing "remember me" session length
 TRUSTED_BROWSER_MAX_AGE = getattr(settings, "TRUSTED_BROWSER_DAYS", 14) * 24 * 3600
 TRUSTED_COOKIE_SALT = "mica.trusted-browser"
 
 
-def _hash_token(token):
-    return hashlib.sha256(token.encode()).hexdigest()
+def _hash_code(user, code):
+    """Keyed hash of a code. Bound to the user and to SECRET_KEY, so the short code can't be
+    brute-forced offline from a copy of the database."""
+    msg = f"login-code:{user.pk}:{code}".encode()
+    return hmac.new(settings.SECRET_KEY.encode(), msg, hashlib.sha256).hexdigest()
+
+
+def _normalize_code(raw):
+    """What was typed or pasted -> the bare code: spaces, dashes and case don't matter."""
+    return re.sub(r"[^A-Za-z0-9]", "", raw or "").upper()
+
+
+def _new_login_code():
+    return "".join(secrets.choice(LOGIN_CODE_ALPHABET) for _ in range(LOGIN_CODE_LENGTH))
 
 
 def _mask_email(email):
@@ -519,65 +538,50 @@ def _trust_browser(response, request, user):
     )
 
 
-def _login_link_url(request, token):
-    path = reverse("login_verify", args=[token])
-    base = (getattr(settings, "SITE_URL", "") or "").rstrip("/")
-    return base + path if base else request.build_absolute_uri(path)
-
-
-def _send_login_link(request, user, remember_me, method, to_email=None):
-    """Create a single-use sign-in link and e-mail it. Returns (ok, error_message)."""
+def _send_login_code(request, user, remember_me, method, to_email=None):
+    """Create a single-use sign-in code and e-mail it. Returns (ok, error_message)."""
     to_email = to_email or user.email
     now = timezone.now()
 
     sent_last_hour = LoginVerification.objects.filter(
         user=user, created_at__gt=now - timedelta(hours=1)).count()
-    if sent_last_hour >= LOGIN_LINK_MAX_PER_HOUR:
+    if sent_last_hour >= LOGIN_CODE_MAX_PER_HOUR:
         return False, "Too many sign-in emails requested. Please wait a while and try again."
 
-    # A new link replaces any older, unused ones; also tidy out old rows.
+    # A new code replaces any older, unused ones; also tidy out old rows.
     LoginVerification.objects.filter(user=user, used_at__isnull=True).update(used_at=now)
     LoginVerification.objects.filter(created_at__lt=now - timedelta(days=1)).delete()
 
-    token = secrets.token_urlsafe(32)
+    code = _new_login_code()
     record = LoginVerification.objects.create(
-        user=user, token_hash=_hash_token(token), expires_at=now + LOGIN_LINK_TTL,
+        user=user, code_hash=_hash_code(user, code), expires_at=now + LOGIN_CODE_TTL,
         remember_me=remember_me, method=method,
         request_ip=request.META.get("REMOTE_ADDR") or None,
     )
 
     context = {
         "name": user.first_name or user.get_username(),
-        "link": _login_link_url(request, token),
+        "code": code,
         "when": timezone.localtime(now).strftime("%b %d, %Y at %I:%M %p"),
-        "ttl_minutes": int(LOGIN_LINK_TTL.total_seconds() // 60),
+        "ttl_minutes": int(LOGIN_CODE_TTL.total_seconds() // 60),
         "ip": record.request_ip,
     }
     try:
+        # The code is in the subject too, so it shows in the notification and is easy to copy.
         message = EmailMultiAlternatives(
-            "Your MICA sign-in link",
-            render_to_string("core/email/login_link.txt", context),
+            f"{code} is your MICA sign-in code",
+            render_to_string("core/email/login_code.txt", context),
             None, [to_email],
         )
-        message.attach_alternative(render_to_string("core/email/login_link.html", context), "text/html")
+        message.attach_alternative(render_to_string("core/email/login_code.html", context), "text/html")
         message.send(fail_silently=False)
     except Exception:
-        logger.exception("Could not send sign-in link to user %s", user.pk)
+        logger.exception("Could not send sign-in code to user %s", user.pk)
         record.delete()
         return False, "We couldn't send the sign-in email. Please try again in a moment."
 
     request.session["pending_login_user_id"] = user.pk
     return True, None
-
-
-def _usable_login_link(token):
-    """The LoginVerification for this token if it is still valid, else None."""
-    record = (LoginVerification.objects.select_related("user")
-              .filter(token_hash=_hash_token(token)).first())
-    if (record is None or record.used_at is not None
-            or record.expires_at <= timezone.now() or not record.user.is_active):
-        return None
-    return record
 
 
 def _password_login_target(user):
@@ -603,8 +607,9 @@ def _pending_login_user(request):
     return User.objects.filter(pk=uid, is_active=True).first() if uid else None
 
 
-def _link_page(request, step, status=200, **extra):
-    context = {"step": step, "ttl_minutes": int(LOGIN_LINK_TTL.total_seconds() // 60), **extra}
+def _code_page(request, status=200, **extra):
+    context = {"ttl_minutes": int(LOGIN_CODE_TTL.total_seconds() // 60),
+               "code_length": LOGIN_CODE_LENGTH, **extra}
     return render(request, "core/login-verify.html", context, status=status)
 
 
@@ -618,8 +623,8 @@ def login_check_email(request):
     cooldown = 0
     if latest:
         elapsed = (timezone.now() - latest.created_at).total_seconds()
-        cooldown = max(0, math.ceil(LOGIN_LINK_RESEND_COOLDOWN - elapsed))
-    return _link_page(request, "sent", masked_email=_mask_email(user.email), cooldown=cooldown)
+        cooldown = max(0, math.ceil(LOGIN_CODE_RESEND_COOLDOWN - elapsed))
+    return _code_page(request, masked_email=_mask_email(user.email), cooldown=cooldown)
 
 
 @require_POST
@@ -628,16 +633,16 @@ def login_resend(request):
     if user is None:
         return redirect("login")
     latest = LoginVerification.objects.filter(user=user).order_by("-created_at").first()
-    if latest and (timezone.now() - latest.created_at).total_seconds() < LOGIN_LINK_RESEND_COOLDOWN:
+    if latest and (timezone.now() - latest.created_at).total_seconds() < LOGIN_CODE_RESEND_COOLDOWN:
         messages.error(request, "Please wait a moment before requesting another email.")
         return redirect("login_check_email")
-    ok, error = _send_login_link(
+    ok, error = _send_login_code(
         request, user,
         remember_me=latest.remember_me if latest else False,
         method=latest.method if latest else "password",
     )
     if ok:
-        messages.success(request, "We sent you a new link.")
+        messages.success(request, "We sent you a new code.")
     else:
         messages.error(request, error)
     return redirect("login_check_email")
@@ -645,30 +650,40 @@ def login_resend(request):
 
 @never_cache
 @require_http_methods(["GET", "POST"])
-def login_verify(request, token):
-    """Landing page for the e-mailed link.
-
-    GET only shows a confirm button; the sign-in happens on POST. That way mail
-    scanners and link previews that open the URL can't use up the link.
-    """
-    record = _usable_login_link(token)
-    if record is None:
-        return _link_page(request, "invalid", status=410)
-
+def login_verify(request):
+    """Check the code typed on the 'Check your email' page and finish signing in."""
     if request.method == "GET":
-        return _link_page(request, "confirm",
-                          display_name=record.user.first_name or record.user.get_username())
+        return redirect("login_check_email")
 
+    user = _pending_login_user(request)
+    if user is None:
+        messages.error(request, "Your sign-in session expired. Please sign in again.")
+        return redirect("login")
+
+    code = _normalize_code(request.POST.get("code"))
     now = timezone.now()
     with transaction.atomic():
-        locked = (LoginVerification.objects.select_for_update().select_related("user")
-                  .filter(pk=record.pk).first())
-        if (locked is None or locked.used_at is not None
-                or locked.expires_at <= now or not locked.user.is_active):
-            return _link_page(request, "invalid", status=410)
-        # Burn this link and any other outstanding ones for the user.
-        LoginVerification.objects.filter(user=locked.user, used_at__isnull=True).update(used_at=now)
-        user, remember_me, method = locked.user, locked.remember_me, locked.method
+        record = (LoginVerification.objects.select_for_update()
+                  .filter(user=user, used_at__isnull=True, expires_at__gt=now)
+                  .order_by("-created_at").first())
+        if record is None:
+            messages.error(request, "That code has expired. Request a new one below.")
+            return redirect("login_check_email")
+        if record.attempts >= LOGIN_CODE_MAX_ATTEMPTS:
+            messages.error(request, "Too many incorrect tries. Request a new code below.")
+            return redirect("login_check_email")
+        if len(code) != LOGIN_CODE_LENGTH or not constant_time_compare(_hash_code(user, code), record.code_hash):
+            record.attempts += 1
+            record.save(update_fields=["attempts"])
+            left = LOGIN_CODE_MAX_ATTEMPTS - record.attempts
+            if left <= 0:
+                messages.error(request, "Too many incorrect tries. Request a new code below.")
+            else:
+                messages.error(request, f"That code isn't right. {left} {'try' if left == 1 else 'tries'} left.")
+            return redirect("login_check_email")
+        # Right code: burn it and any other outstanding ones for the user.
+        LoginVerification.objects.filter(user=user, used_at__isnull=True).update(used_at=now)
+        remember_me, method = record.remember_me, record.method
 
     auth_login(request, user)
     request.session.set_expiry(REMEMBER_ME_SECONDS if remember_me else 0)
@@ -681,9 +696,9 @@ def login_verify(request, token):
 
 
 def csrf_failure(request, reason=""):
-    # A stale confirm page just needs a fresh one, not an error.
-    if request.method == "POST" and request.path.startswith("/login/verify/"):
-        return redirect(request.path)
+    # A stale code page just needs a fresh one, not an error.
+    if request.method == "POST" and request.path.rstrip("/") == "/login/verify":
+        return redirect("login_check_email")
     return HttpResponseForbidden("Your page expired. Please go back, refresh, and try again.")
 
 
@@ -729,18 +744,18 @@ def login(request):
             trusted = _is_trusted_browser(request, user)
 
             if user.email and not trusted and not user.is_superuser:
-                # Password is right, but confirm by e-mail before signing in.
+                # Password is right, but confirm with an e-mailed code before signing in.
                 # (Admin/superuser accounts are exempt: they sign in with the password alone.)
-                ok, error = _send_login_link(request, user, remember_me, 'password')
+                ok, error = _send_login_code(request, user, remember_me, 'password')
                 if not ok:
                     messages.error(request, error)
                     return render(request, 'core/login.html',
                                   status=429 if 'Too many' in error else 503)
                 return redirect('login_check_email')
             if not user.email:
-                # Nowhere to send a link (e.g. an admin created without an
+                # Nowhere to send a code (e.g. an admin created without an
                 # address), so don't lock them out. Add an email to enable it.
-                logger.warning("User %s has no email; signing in without an email link.", user.pk)
+                logger.warning("User %s has no email; signing in without an email code.", user.pk)
 
             auth_login(request, user)
             request.session.set_expiry(REMEMBER_ME_SECONDS if remember_me else 0)  # else: ends with the browser

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex">
-  <title>{% if step == 'sent' %}Check your email{% elif step == 'confirm' %}Confirm sign-in{% else %}Link expired{% endif %} — MICA</title>
+  <title>Check your email — MICA</title>
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
     body { margin:0; font-family:'Nunito', sans-serif; background:#FAF7EE; color:#3A2E28; }
@@ -24,6 +24,9 @@
     .msg-success { color:#5f7f58; font-weight:bold; font-size:13px; }
     .hint { font-size:12.5px; margin-top:18px; }
     .envelope { font-size:44px; margin-bottom:6px; }
+    .code-input { width:100%; box-sizing:border-box; text-align:center; font-family:'Courier New', Courier, monospace; font-size:32px; font-weight:700; letter-spacing:10px; text-transform:uppercase; padding:14px 8px 14px 18px; border:2px solid #CDBFA6; border-radius:16px; background:#fff; color:#3A2E28; margin:6px 0 14px; }
+    .code-input:focus { outline:none; border-color:#8B6F4E; box-shadow:0 0 0 4px rgba(139,111,78,.18); }
+    .code-input::placeholder { color:#D5CAB7; letter-spacing:10px; }
   </style>
 </head>
 <body>
@@ -40,43 +43,56 @@
         {% endfor %}
       {% endif %}
 
-      {% if step == 'sent' %}
-        <div class="envelope" aria-hidden="true">✉️</div>
-        <h2>Check your email</h2>
-        <p>We sent a sign-in link to <strong>{{ masked_email }}</strong>. Open it to finish signing in. It works once and expires in {{ ttl_minutes }} minutes.</p>
-        <form method="post" action="{% url 'login_resend' %}" id="resendForm">
-          {% csrf_token %}
-          <button type="submit" id="resendBtn" class="secondary" {% if cooldown %}disabled data-cooldown="{{ cooldown }}"{% endif %}>Resend link</button>
-        </form>
-        <p class="hint">Can't find it? Check your spam folder. You can open the link on any device, and that device is the one that gets signed in.</p>
-        <script>
-          (function(){
-            var btn = document.getElementById('resendBtn');
-            var left = parseInt(btn.getAttribute('data-cooldown') || '0', 10);
-            if (!left) return;
-            function tick(){
-              if (left <= 0) { btn.disabled = false; btn.textContent = 'Resend link'; return; }
-              btn.textContent = 'Resend link in ' + left + 's';
-              left--; setTimeout(tick, 1000);
-            }
-            tick();
-          })();
-        </script>
+      <div class="envelope" aria-hidden="true">✉️</div>
+      <h2>Check your email</h2>
+      <p>We sent a {{ code_length }}-character code to <strong>{{ masked_email }}</strong>. Enter it below to finish signing in. It works once and expires in {{ ttl_minutes }} minutes.</p>
 
-      {% elif step == 'confirm' %}
-        <h2>Confirm sign-in</h2>
-        <p>Sign in to MICA as <strong>{{ display_name }}</strong>?</p>
-        <form method="post">
-          {% csrf_token %}
-          <button type="submit">Sign me in</button>
-        </form>
-        <p class="hint">Didn't try to sign in? Just close this page. Nothing will happen.</p>
+      <form method="post" action="{% url 'login_verify' %}" id="codeForm" autocomplete="off">
+        {% csrf_token %}
+        <input type="text" name="code" id="codeInput" class="code-input" placeholder="••••••"
+               maxlength="24" inputmode="text" autocomplete="one-time-code" autocapitalize="characters"
+               autocorrect="off" spellcheck="false" autofocus required aria-label="{{ code_length }}-character sign-in code">
+        <button type="submit" id="codeBtn" disabled>Sign in</button>
+      </form>
 
-      {% else %}
-        <h2>This link has expired</h2>
-        <p>Sign-in links work once and only for {{ ttl_minutes }} minutes. Please sign in again to get a new one.</p>
-        <a href="{% url 'login' %}" class="back-btn">Back to Login</a>
-      {% endif %}
+      <form method="post" action="{% url 'login_resend' %}" id="resendForm">
+        {% csrf_token %}
+        <button type="submit" id="resendBtn" class="secondary" {% if cooldown %}disabled data-cooldown="{{ cooldown }}"{% endif %}>Send a new code</button>
+      </form>
+      <p class="hint">Can't find it? Check your spam folder. You can paste the code straight in &mdash; spaces and lower-case letters are fine.</p>
+      <script>
+        (function(){
+          var LEN = {{ code_length }};
+          var input = document.getElementById('codeInput');
+          var btn = document.getElementById('codeBtn');
+          var form = document.getElementById('codeForm');
+          var sent = false;
+          function clean(){
+            // Keep letters/digits only, so a pasted "ABC-DEF" or " abc def " still works.
+            input.value = input.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, LEN);
+            btn.disabled = input.value.length !== LEN;
+            return input.value.length === LEN;
+          }
+          input.addEventListener('input', function(){
+            if (clean() && !sent) { sent = true; form.submit(); }    // full code in: sign in straight away
+          });
+          form.addEventListener('submit', function(e){
+            if (!clean()) { e.preventDefault(); return; }
+            sent = true; btn.disabled = true; btn.textContent = 'Checking…';
+          });
+          clean();
+
+          var resend = document.getElementById('resendBtn');
+          var left = parseInt(resend.getAttribute('data-cooldown') || '0', 10);
+          if (!left) return;
+          function tick(){
+            if (left <= 0) { resend.disabled = false; resend.textContent = 'Send a new code'; return; }
+            resend.textContent = 'Send a new code in ' + left + 's';
+            left--; setTimeout(tick, 1000);
+          }
+          tick();
+        })();
+      </script>
     </div>
   </div>
 </body>

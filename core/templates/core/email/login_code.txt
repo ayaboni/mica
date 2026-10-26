@@ -1,0 +1,16 @@
+{% autoescape off %}Hi {{ name }},
+
+Your MICA sign-in code is:
+
+{{ code }}
+
+Enter it on the "Check your email" page to finish signing in. (Double-click the code to select it, then copy and paste.)
+
+The code works once and expires in {{ ttl_minutes }} minutes. It was requested on {{ when }}.
+
+If this wasn't you, you can ignore this email. Nobody can sign in without the code. If you're worried, change your password.{% if ip %}
+
+Request came from IP address {{ ip }}.{% endif %}
+
+— MICA
+{% endautoescape %}

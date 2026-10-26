@@ -14,8 +14,8 @@ from .views import firebase_auth
 
 
 @override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend', SITE_URL='https://mica.test')
-class EmailSignInLinkTests(TestCase):
-    """Password sign-in must be confirmed by an e-mailed link, unless the
+class EmailSignInCodeTests(TestCase):
+    """Password sign-in must be confirmed by an e-mailed 6-character code, unless the
     browser was remembered."""
     PASSWORD = 'Right-pw1'
 
@@ -35,12 +35,15 @@ class EmailSignInLinkTests(TestCase):
     def signed_in(self):
         return '_auth_user_id' in self.client.session
 
-    def link_path(self, index=-1):
-        match = re.search(r'https://mica\.test(/login/verify/\S+)', mail.outbox[index].body)
-        return match.group(1)
+    def code(self, index=-1):
+        """The code in the e-mail: alone on its own line in the plain-text body."""
+        return re.search(r'^([A-Z2-9]{6})$', mail.outbox[index].body, re.M).group(1)
+
+    def submit(self, code=None):
+        return self.client.post(reverse('login_verify'), {'code': code or self.code()})
 
     def confirm(self):
-        return self.client.post(self.link_path())
+        return self.submit()
 
     def browser_restart(self):
         """Sign out and drop the session, but keep the remembered-browser cookie."""
@@ -51,70 +54,108 @@ class EmailSignInLinkTests(TestCase):
             self.client.cookies[self.cookie_name] = value
 
     # -- the basic flow --
-    def test_correct_password_sends_link_instead_of_signing_in(self):
+    def test_correct_password_sends_code_instead_of_signing_in(self):
         response = self.login()
         self.assertRedirects(response, reverse('login_check_email'), fetch_redirect_response=False)
         self.assertFalse(self.signed_in())
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].to, ['lena@example.com'])
-        self.assertIn('/login/verify/', mail.outbox[0].body)
+        self.assertNotIn('/login/verify/', mail.outbox[0].body)       # a code, not a link
+
+    def test_code_is_six_easy_characters_and_in_the_subject(self):
+        self.login()
+        code = self.code()
+        self.assertEqual(len(code), 6)
+        self.assertFalse(set(code) & set('01OIL'))
+        self.assertIn(code, mail.outbox[0].subject)
+        html = mail.outbox[0].alternatives[0][0]
+        self.assertIn(code, html)
 
     def test_wrong_password_sends_nothing(self):
         self.login(password='nope')
         self.assertEqual(len(mail.outbox), 0)
         self.assertFalse(self.signed_in())
 
-    def test_opening_the_link_only_shows_a_button_and_posting_signs_in(self):
+    def test_right_code_signs_in(self):
         self.login()
-        path = self.link_path()
-        self.assertEqual(self.client.get(path).status_code, 200)
-        self.assertFalse(self.signed_in())          # a scanner opening the URL does nothing
-        response = self.client.post(path)
+        response = self.submit()
         self.assertRedirects(response, reverse('assessment'), fetch_redirect_response=False)
         self.assertTrue(self.signed_in())
 
-    def test_link_works_only_once(self):
+    def test_code_ignores_case_spaces_and_dashes(self):
         self.login()
-        self.confirm()
-        self.client.logout()
-        self.assertEqual(self.client.post(self.link_path()).status_code, 410)
-        self.assertFalse(self.signed_in())
-
-    def test_expired_link_is_rejected(self):
-        self.login()
-        LoginVerification.objects.update(expires_at=timezone.now() - timedelta(seconds=1))
-        self.assertEqual(self.client.get(self.link_path()).status_code, 410)
-        self.assertEqual(self.client.post(self.link_path()).status_code, 410)
-        self.assertFalse(self.signed_in())
-
-    def test_garbage_token_is_rejected(self):
-        self.assertEqual(self.client.get(reverse('login_verify', args=['not-a-real-token'])).status_code, 410)
-
-    def test_newer_link_replaces_older_one(self):
-        self.login()
-        first = self.link_path()
-        self.login()
-        self.assertEqual(self.client.post(first).status_code, 410)
-        self.assertEqual(self.confirm().status_code, 302)
+        code = self.code()
+        pasted = ' ' + code[:3].lower() + '-' + code[3:].lower() + ' '
+        self.assertEqual(self.submit(pasted).status_code, 302)
         self.assertTrue(self.signed_in())
 
-    def test_link_for_disabled_account_is_rejected(self):
+    def test_wrong_code_does_not_sign_in_and_counts_a_try(self):
         self.login()
-        User.objects.filter(pk=self.user.pk).update(is_active=False)
-        self.assertEqual(self.client.post(self.link_path()).status_code, 410)
+        response = self.submit('ZZZZZZ' if self.code() != 'ZZZZZZ' else 'YYYYYY')
+        self.assertRedirects(response, reverse('login_check_email'), fetch_redirect_response=False)
+        self.assertFalse(self.signed_in())
+        self.assertEqual(LoginVerification.objects.get().attempts, 1)
+
+    def test_too_many_wrong_tries_locks_that_code(self):
+        self.login()
+        right = self.code()
+        wrong = 'ZZZZZZ' if right != 'ZZZZZZ' else 'YYYYYY'
+        for _ in range(5):
+            self.submit(wrong)
+        self.submit(right)                              # too late: this code is spent
         self.assertFalse(self.signed_in())
 
-    def test_token_is_stored_hashed(self):
+    def test_code_works_only_once(self):
         self.login()
-        token = self.link_path().rstrip('/').split('/')[-1]
-        self.assertNotEqual(LoginVerification.objects.get().token_hash, token)
+        code = self.code()
+        self.submit(code)
+        self.client.logout()
+        self.submit(code)
+        self.assertFalse(self.signed_in())
+
+    def test_expired_code_is_rejected(self):
+        self.login()
+        LoginVerification.objects.update(expires_at=timezone.now() - timedelta(seconds=1))
+        self.submit()
+        self.assertFalse(self.signed_in())
+
+    def test_verify_page_redirects_when_opened_directly(self):
+        self.assertRedirects(self.client.get(reverse('login_verify')), reverse('login_check_email'),
+                             fetch_redirect_response=False)
+
+    def test_code_needs_a_pending_sign_in(self):
+        response = self.client.post(reverse('login_verify'), {'code': 'ABC234'})
+        self.assertRedirects(response, reverse('login'), fetch_redirect_response=False)
+
+    def test_newer_code_replaces_older_one(self):
+        self.login()
+        first = self.code()
+        self.login()
+        second = self.code()
+        if first != second:
+            self.submit(first)
+            self.assertFalse(self.signed_in())
+        self.assertEqual(self.submit(second).status_code, 302)
+        self.assertTrue(self.signed_in())
+
+    def test_code_for_disabled_account_is_rejected(self):
+        self.login()
+        User.objects.filter(pk=self.user.pk).update(is_active=False)
+        self.submit()
+        self.assertFalse(self.signed_in())
+
+    def test_code_is_stored_hashed(self):
+        self.login()
+        record = LoginVerification.objects.get()
+        self.assertNotEqual(record.code_hash, self.code())
+        self.assertEqual(len(record.code_hash), 64)
 
     def test_staff_go_to_their_dashboard_after_confirming(self):
         User.objects.filter(pk=self.user.pk).update(is_staff=True)
         self.login()
         self.assertRedirects(self.confirm(), reverse('staff_dashboard'), fetch_redirect_response=False)
 
-    def test_admin_superuser_signs_in_without_an_email_link(self):
+    def test_admin_superuser_signs_in_without_an_email_code(self):
         admin = User.objects.create_superuser('boss', email='boss@example.com', password=self.PASSWORD)
         response = self.login(username='boss')
         self.assertRedirects(response, reverse('admin_dashboard'), fetch_redirect_response=False)
@@ -127,7 +168,7 @@ class EmailSignInLinkTests(TestCase):
         self.login(username='boss', password='wrong')
         self.assertFalse(self.signed_in())
 
-    def test_staff_who_are_not_superusers_still_need_the_link(self):
+    def test_staff_who_are_not_superusers_still_need_the_code(self):
         User.objects.filter(pk=self.user.pk).update(is_staff=True, is_superuser=False)
         self.login()
         self.assertFalse(self.signed_in())
@@ -212,16 +253,26 @@ class EmailSignInLinkTests(TestCase):
         self.assertRedirects(self.client.get(reverse('login_check_email')), reverse('login'),
                              fetch_redirect_response=False)
 
-    def test_resend_is_rate_limited_then_replaces_the_old_link(self):
+    def test_check_email_page_has_the_code_box(self):
         self.login()
-        first = self.link_path()
+        response = self.client.get(reverse('login_check_email'))
+        self.assertContains(response, 'name="code"')
+        self.assertContains(response, 'one-time-code')
+
+    def test_resend_is_rate_limited_then_replaces_the_old_code(self):
+        self.login()
+        first = self.code()
         self.client.post(reverse('login_resend'))
         self.assertEqual(len(mail.outbox), 1)        # still inside the cooldown
         LoginVerification.objects.update(created_at=timezone.now() - timedelta(minutes=2))
         self.client.post(reverse('login_resend'))
         self.assertEqual(len(mail.outbox), 2)
-        self.assertEqual(self.client.post(first).status_code, 410)
-        self.assertEqual(self.confirm().status_code, 302)
+        second = self.code()
+        if first != second:
+            self.submit(first)
+            self.assertFalse(self.signed_in())
+        self.assertEqual(self.submit(second).status_code, 302)
+        self.assertTrue(self.signed_in())
 
     def test_resend_keeps_the_remember_me_choice(self):
         self.login(remember=True)
@@ -237,7 +288,7 @@ class EmailSignInLinkTests(TestCase):
         self.assertEqual(len(mail.outbox), 5)
         self.assertFalse(self.signed_in())
 
-    def test_email_failure_does_not_sign_in_and_leaves_no_link(self):
+    def test_email_failure_does_not_sign_in_and_leaves_no_code(self):
         with patch('core.views.EmailMultiAlternatives.send', side_effect=OSError('smtp down')):
             response = self.login()
         self.assertEqual(response.status_code, 503)
@@ -246,8 +297,8 @@ class EmailSignInLinkTests(TestCase):
 
 
 @override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend', SITE_URL='https://mica.test')
-class GoogleEmailLinkTests(TestCase):
-    """Google sign-in goes through the same e-mailed link."""
+class GoogleEmailCodeTests(TestCase):
+    """Google sign-in goes through the same e-mailed code."""
     EMAIL = 'gina@example.com'
 
     def google_login(self, remember=False):
@@ -263,24 +314,25 @@ class GoogleEmailLinkTests(TestCase):
     def signed_in(self):
         return '_auth_user_id' in self.client.session
 
-    def link_path(self):
-        return re.search(r'https://mica\.test(/login/verify/\S+)', mail.outbox[-1].body).group(1)
+    def submit_code(self):
+        code = re.search(r'^([A-Z2-9]{6})$', mail.outbox[-1].body, re.M).group(1)
+        return self.client.post(reverse('login_verify'), {'code': code})
 
-    def test_google_sign_in_sends_a_link_instead_of_signing_in(self):
+    def test_google_sign_in_sends_a_code_instead_of_signing_in(self):
         response = self.google_login()
         self.assertEqual(response.json()['redirect'], reverse('login_check_email'))
         self.assertFalse(self.signed_in())
         self.assertEqual(mail.outbox[0].to, [self.EMAIL])
 
-    def test_confirming_the_link_continues_to_profile_setup(self):
+    def test_entering_the_code_continues_to_profile_setup(self):
         self.google_login()
-        response = self.client.post(self.link_path())
+        response = self.submit_code()
         self.assertRedirects(response, reverse('complete_profile'), fetch_redirect_response=False)
         self.assertTrue(self.signed_in())
 
     def test_remember_me_from_the_login_page_skips_the_email_next_time(self):
         self.google_login(remember=True)
-        self.client.post(self.link_path())
+        self.submit_code()
         user = User.objects.get(email=self.EMAIL)
         cookie = self.client.cookies[f'mica_tb_{user.pk}'].value
         self.client.logout()
@@ -292,7 +344,7 @@ class GoogleEmailLinkTests(TestCase):
 
     def test_without_remember_me_google_sign_in_asks_again(self):
         self.google_login()
-        self.client.post(self.link_path())
+        self.submit_code()
         self.client.logout()
         self.google_login()
         self.assertEqual(len(mail.outbox), 2)

@@ -315,19 +315,20 @@ class AccessLog(models.Model):
 
 
 class LoginVerification(models.Model):
-    """A single-use, e-mailed sign-in link.
+    """A single-use, e-mailed sign-in code (6 characters).
 
-    Only a SHA-256 hash of the token is stored, so a database leak can't be
-    used to sign in. `used_at` is set when the link is used *or* replaced by a
-    newer one.
+    Only a keyed hash of the code is stored, so a database leak can't be used to
+    sign in. `used_at` is set when the code is used *or* replaced by a newer one.
+    `attempts` counts wrong guesses; after a few the code is refused.
     """
     METHOD_CHOICES = [('password', 'Password'), ('google', 'Google')]
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='login_verifications')
-    token_hash = models.CharField(max_length=64, unique=True)
+    code_hash = models.CharField(max_length=64)
     created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField()
     used_at = models.DateTimeField(null=True, blank=True)
+    attempts = models.PositiveSmallIntegerField(default=0)
     remember_me = models.BooleanField(default=False)
     method = models.CharField(max_length=10, choices=METHOD_CHOICES, default='password')
     request_ip = models.GenericIPAddressField(null=True, blank=True)

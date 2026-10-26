@@ -147,11 +147,11 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # Email
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
 
-# With no EMAIL_HOST in .env, e-mails (including sign-in links) are printed to
+# With no EMAIL_HOST in .env, e-mails (including sign-in codes) are printed to
 # the console, which is handy in development. For real delivery put these in .env:
 #   EMAIL_HOST, EMAIL_PORT, EMAIL_HOST_USER, EMAIL_HOST_PASSWORD, EMAIL_USE_TLS,
 #   DEFAULT_FROM_EMAIL, and SITE_URL (e.g. https://mica.yourschool.edu) so the
-#   sign-in links point at the public address.
+#   password-reset links point at the public address.
 if os.getenv("EMAIL_HOST"):
     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
     EMAIL_HOST = os.getenv("EMAIL_HOST")
@@ -166,8 +166,8 @@ else:
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "MICA <no-reply@mica.local>")
 SITE_URL = os.getenv("SITE_URL", "")
 
-# E-mailed sign-in link
-LOGIN_LINK_TTL_MINUTES = 15      # how long a link stays valid
+# E-mailed sign-in code (6 characters)
+LOGIN_CODE_TTL_MINUTES = 10      # how long a code stays valid
 TRUSTED_BROWSER_DAYS = 14        # "Remember me" skips the e-mail this long
 
 # Forgot password: Firebase sends the reset e-mail (see core/firebase_reset.py).
@@ -182,7 +182,7 @@ FIREBASE_WEB_CONFIG = {
 #   "firebase": Firebase sends it. Needs the Password reset template's action URL (Firebase
 #               console) set to https://YOUR-SITE/password-reset/firebase/
 #   "mica":     Firebase only creates the one-time code; MICA e-mails the link using the same
-#               e-mail settings as the sign-in links. Use this if the console won't let you
+#               e-mail settings as the sign-in codes. Use this if the console won't let you
 #               change the action URL.
 PASSWORD_RESET_EMAIL_VIA = os.getenv("PASSWORD_RESET_EMAIL_VIA", "firebase").strip().lower()
 # Self-service reset is off for the system admin (superuser) account. Flip to True to allow it.
