@@ -66,19 +66,30 @@
           var input = document.getElementById('codeInput');
           var btn = document.getElementById('codeBtn');
           var form = document.getElementById('codeForm');
-          var sent = false;
+          var sent = false;                    // true once the code has been posted: never post it twice
           function clean(){
             // Keep letters/digits only, so a pasted "ABC-DEF" or " abc def " still works.
             input.value = input.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, LEN);
-            btn.disabled = input.value.length !== LEN;
+            btn.disabled = sent || input.value.length !== LEN;
             return input.value.length === LEN;
           }
-          input.addEventListener('input', function(){
-            if (clean() && !sent) { sent = true; form.submit(); }    // full code in: sign in straight away
-          });
+          // Every way of submitting (auto-submit, Enter, the button) goes through this one handler.
+          // A second POST would use up the code and make the browser drop the sign-in response.
           form.addEventListener('submit', function(e){
-            if (!clean()) { e.preventDefault(); return; }
-            sent = true; btn.disabled = true; btn.textContent = 'Checking…';
+            if (sent || !clean()) { e.preventDefault(); return; }
+            sent = true;
+            input.readOnly = true;
+            btn.disabled = true; btn.textContent = 'Checking…';
+          });
+          input.addEventListener('input', function(){
+            if (clean() && !sent) {              // full code in: sign in straight away
+              if (form.requestSubmit) { form.requestSubmit(); } else { form.submit(); }
+            }
+          });
+          // Back button: the page can come back frozen in its "Checking…" state.
+          window.addEventListener('pageshow', function(e){
+            if (!e.persisted) return;
+            sent = false; input.readOnly = false; input.value = ''; btn.textContent = 'Sign in'; clean(); input.focus();
           });
           clean();
 

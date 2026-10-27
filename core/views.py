@@ -654,6 +654,8 @@ def login_verify(request):
     """Check the code typed on the 'Check your email' page and finish signing in."""
     if request.method == "GET":
         return redirect("login_check_email")
+    if request.user.is_authenticated:          # already signed in (second tab, repeated submit)
+        return redirect("login")               # the login view sends them to their dashboard
 
     user = _pending_login_user(request)
     if user is None:

@@ -123,6 +123,14 @@ class EmailSignInCodeTests(TestCase):
         self.assertRedirects(self.client.get(reverse('login_verify')), reverse('login_check_email'),
                              fetch_redirect_response=False)
 
+    def test_submitting_the_code_again_when_already_signed_in_is_harmless(self):
+        self.login()
+        code = self.code()
+        self.submit(code)
+        response = self.submit(code)               # e.g. a double submit
+        self.assertRedirects(response, reverse('login'), fetch_redirect_response=False)
+        self.assertTrue(self.signed_in())
+
     def test_code_needs_a_pending_sign_in(self):
         response = self.client.post(reverse('login_verify'), {'code': 'ABC234'})
         self.assertRedirects(response, reverse('login'), fetch_redirect_response=False)
