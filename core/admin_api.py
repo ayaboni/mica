@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 import json
 import logging
+import csv
 
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.models import User
@@ -19,12 +20,13 @@ from django.db import connection, transaction
 from django.db.models import Count, Q
 from django.core.paginator import Paginator
 from django.utils import timezone
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils.crypto import get_random_string
+from django.utils.dateparse import parse_date
 from django.views.decorators.http import require_POST
 
-from .models import (COURSES, SERVICES, StaffProfile, StaffSubclass, GuidanceThread, GuidanceMessage,
+from .models import (COURSES, SERVICES, STATUS_REASONS, StaffProfile, StaffSubclass, GuidanceThread, GuidanceMessage,
                      StudentFlag, StudentNote, Appointment, AccessLog, StudentStatusLog,
                      LoginThrottle, MoodEntry, ChatConversation)
 from .permissions import BOOL_FIELDS, PERMISSION_FIELDS, SERVICE_FIELDS, SERVICE_KEYS, subclass_json
@@ -492,3 +494,121 @@ def student_reset_password(request, user_id):
         logger.exception("Could not send a reset link to student account %s.", user.pk)
         return JsonResponse({"error": "Could not send the email. Check the email settings."}, status=502)
     return JsonResponse({"status": "ok"})
+
+
+# ---------------------------------------------------------------- audit log
+AUDIT_ACTIONS = [
+    ("view_profile", "Opened student profile"),
+    ("open_chat", "Opened guidance chat"),
+    ("view_notes", "Viewed student notes"),
+    ("view_assessment", "Viewed assessment"),
+    ("status_change", "Changed account status"),
+]
+AUDIT_LABEL = dict(AUDIT_ACTIONS)
+
+
+def _person_filter(qs, field, text):
+    """'juan cruz' must match both words, in username, first name or last name."""
+    for token in (text or "").split()[:5]:
+        qs = qs.filter(Q(**{field + "__username__icontains": token})
+                       | Q(**{field + "__first_name__icontains": token})
+                       | Q(**{field + "__last_name__icontains": token}))
+    return qs
+
+
+def _audit_name(u):
+    return (u.get_full_name() or u.username) if u else "Former staff"
+
+
+def _audit_role(u):
+    if u is None:
+        return "-"
+    if u.is_superuser:
+        return "System Admin"
+    sp = getattr(u, "staff_profile", None)
+    return sp.role_label if sp else "Guidance Staff"
+
+
+def _audit_rows(request, limit):
+    """AccessLog and StudentStatusLog merged into one list, newest first."""
+    g = request.GET
+    action = g.get("action", "all")
+    d_from = parse_date(g.get("date_from") or "")
+    d_to = parse_date(g.get("date_to") or "")
+
+    def narrow(qs):
+        qs = _person_filter(qs, "student", g.get("student"))
+        if d_from:
+            qs = qs.filter(created_at__date__gte=d_from)
+        if d_to:
+            qs = qs.filter(created_at__date__lte=d_to)
+        return qs
+
+    rows = []
+    if action != "status_change":
+        qs = AccessLog.objects.select_related("staff", "staff__staff_profile__subclass", "student")
+        if action != "all":
+            qs = qs.filter(action=action)
+        qs = _person_filter(narrow(qs), "staff", g.get("staff"))
+        for a in qs.order_by("-created_at")[:limit]:
+            rows.append({"when": a.created_at, "staff": _audit_name(a.staff), "role": _audit_role(a.staff),
+                         "action": AUDIT_LABEL.get(a.action, a.action), "student": _audit_name(a.student),
+                         "detail": ""})
+
+    if action in ("all", "status_change"):
+        qs = StudentStatusLog.objects.select_related("changed_by", "changed_by__staff_profile__subclass", "student")
+        qs = narrow(qs)
+        if g.get("staff", "").strip():
+            qs = _person_filter(qs, "changed_by", g.get("staff"))
+        states = {"active": "Active", "inactive": "Archived", "graduated": "Graduated"}
+        reasons = dict(STATUS_REASONS)
+        for l in qs.order_by("-created_at")[:limit]:
+            bits = ["%s to %s" % (states.get(l.old_status, l.old_status), states.get(l.new_status, l.new_status))]
+            if l.reason:
+                bits.append(reasons.get(l.reason, l.reason))
+            if l.note:
+                bits.append(l.note)
+            if l.exit_interview_done:
+                bits.append("exit interview done")
+            if l.evaluation_done:
+                bits.append("evaluation done")
+            rows.append({"when": l.created_at, "staff": _audit_name(l.changed_by), "role": _audit_role(l.changed_by),
+                         "action": AUDIT_LABEL["status_change"], "student": _audit_name(l.student),
+                         "detail": " · ".join(bits)})
+
+    rows.sort(key=lambda r: r["when"], reverse=True)
+    return rows[:limit]
+
+
+def _stamp(dt):
+    return timezone.localtime(dt).strftime("%Y-%m-%d %H:%M:%S")
+
+
+@_admin
+def audit_logs(request):
+    """One page of the audit log. Who did what to which student, never what a student wrote."""
+    rows = _audit_rows(request, 1000)
+    page = Paginator(rows, 25).get_page(request.GET.get("page"))
+    return JsonResponse({
+        "rows": [dict(r, when=_stamp(r["when"])) for r in page],
+        "page": page.number, "pages": page.paginator.num_pages, "total": page.paginator.count,
+    })
+
+
+def _csv_safe(value):
+    """Stops Excel from running a name like =HYPERLINK(...) as a formula."""
+    value = str(value or "")
+    return "'" + value if value[:1] in ("=", "+", "-", "@") else value
+
+
+@_admin
+def audit_logs_csv(request):
+    rows = _audit_rows(request, 5000)
+    response = HttpResponse(content_type="text/csv")
+    response["Content-Disposition"] = 'attachment; filename="mica-audit-log-%s.csv"' % timezone.localdate().isoformat()
+    w = csv.writer(response)
+    w.writerow(["Timestamp", "Staff", "Role", "Action", "Student", "Details"])
+    for r in rows:
+        w.writerow([_stamp(r["when"]), _csv_safe(r["staff"]), _csv_safe(r["role"]),
+                    r["action"], _csv_safe(r["student"]), _csv_safe(r["detail"])])
+    return response

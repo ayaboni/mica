@@ -580,32 +580,48 @@
 
       <!-- ============ AUDIT LOGS ============ -->
       <section class="section" id="sec-logs">
+        <p style="color:var(--ink-soft); font-size:13.5px; margin-bottom:20px; max-width:680px;">
+          Every time staff open a student's profile, chat, notes or assessment, and every time a student's
+          account status changes. Newest first. Student answers and messages are never shown here.
+        </p>
         <div class="toolbar">
           <div class="toolbar-left">
-            <select class="filter-select" id="logRoleFilter" onchange="renderLogs()">
-              <option value="all">All Actors</option>
-              <option value="Admin">System Admin</option>
-              <option value="Counselor">Counselor</option>
-              <option value="Student">Student</option>
-              <option value="System">System / Automated</option>
+            <div class="searchbox" style="border:1.5px solid var(--line);">
+              <input id="logStaff" placeholder="Staff name or username" oninput="logFiltersChanged()">
+            </div>
+            <div class="searchbox" style="border:1.5px solid var(--line);">
+              <input id="logStudent" placeholder="Student name or username" oninput="logFiltersChanged()">
+            </div>
+            <select class="filter-select" id="logAction" onchange="loadAuditLogs(1)">
+              <option value="all">All actions</option>
+              <option value="view_profile">Opened student profile</option>
+              <option value="open_chat">Opened guidance chat</option>
+              <option value="view_notes">Viewed student notes</option>
+              <option value="view_assessment">Viewed assessment</option>
+              <option value="status_change">Changed account status</option>
             </select>
-            <select class="filter-select" id="logStatusFilter" onchange="renderLogs()">
-              <option value="all">All Outcomes</option>
-              <option value="Success">Success</option>
-              <option value="Failed">Failed</option>
-            </select>
+            <input type="date" class="filter-select" id="logFrom" title="From" onchange="loadAuditLogs(1)">
+            <input type="date" class="filter-select" id="logTo" title="To" onchange="loadAuditLogs(1)">
           </div>
-          <button class="pill-btn ghost sm" onclick="showToast('Audit log export queued (CSV)')">Export Log</button>
+          <div style="display:flex; gap:8px;">
+            <button class="pill-btn ghost sm" onclick="refreshAuditLogs(this)">Refresh</button>
+            <button class="pill-btn ghost sm" onclick="exportAuditLogs()">Export CSV</button>
+          </div>
         </div>
 
         <div class="card" style="overflow-x:auto;">
-          <table>
+          <table style="table-layout:fixed;">
+            <colgroup>
+              <col style="width:165px"><col style="width:15%"><col style="width:11%">
+              <col style="width:15%"><col style="width:15%"><col>
+            </colgroup>
             <thead>
-              <tr><th>Timestamp</th><th>Actor</th><th>Role</th><th>Action</th><th>IP Address</th><th>Outcome</th></tr>
+              <tr><th>Timestamp</th><th>Staff</th><th>Role</th><th>Action</th><th>Student</th><th>Details</th></tr>
             </thead>
             <tbody id="logsTbody"></tbody>
           </table>
         </div>
+        <div class="pager" id="logPager"></div>
       </section>
 
       <!-- ============ DATA PRIVACY & COMPLIANCE ============ -->
@@ -940,17 +956,6 @@
 ========================================================= */
 let accounts = [];
 
-let logs = [
-  {ts:'2026-09-03 08:30:12', actor:'j.delacruz@mica.edu.ph', role:'Counselor', action:'User login successful', ip:'192.168.1.45', status:'Success'},
-  {ts:'2026-09-03 07:58:41', actor:'System', role:'System', action:'Automated nightly backup completed', ip:'internal', status:'Success'},
-  {ts:'2026-09-02 22:14:03', actor:'unknown@mailinator.com', role:'Student', action:'Failed login attempt (5x) — account locked', ip:'203.177.20.19', status:'Failed'},
-  {ts:'2026-09-02 14:15:00', actor:'a.bautista@mica.edu.ph', role:'Admin', action:'Password reset issued for USR-908', ip:'192.168.1.10', status:'Success'},
-  {ts:'2026-09-02 11:02:37', actor:'m.reyes@mica.edu.ph', role:'Counselor', action:'Accessed student record with case reason logged', ip:'192.168.1.52', status:'Success'},
-  {ts:'2026-09-01 19:44:10', actor:'a.bautista@mica.edu.ph', role:'Admin', action:'Updated role permissions for Guidance Counselor', ip:'192.168.1.10', status:'Success'},
-  {ts:'2026-09-01 09:12:55', actor:'stu-905@student.edu.ph', role:'Student', action:'Submitted data access request', ip:'10.20.4.18', status:'Success'},
-  {ts:'2026-08-31 16:03:21', actor:'System', role:'System', action:'API rate limit exceeded — throttled requests', ip:'internal', status:'Failed'},
-];
-
 let privacyRequests = [
   {id:'DSR-118', who:'Student #908 (anonymized)', type:'Data Access', submitted:'2026-08-30', status:'In Progress'},
   {id:'DSR-117', who:'Student #874 (anonymized)', type:'Right to Erasure', submitted:'2026-08-27', status:'Pending Review'},
@@ -1018,6 +1023,7 @@ function goTo(section){
   document.getElementById('topEyebrow').textContent = eyebrows[section][0];
   document.getElementById('topTitle').textContent = eyebrows[section][1];
   document.getElementById('sidebar').classList.remove('open');
+  if(section === 'logs') loadAuditLogs(1);
 }
 function goTab(tab){
   document.querySelectorAll('#sec-settings .subpanel').forEach(p=>p.classList.remove('active'));
@@ -1220,7 +1226,8 @@ function openStudentModal(id){
     ['Year level', yearText(s.year)],
     ['Status', s.status_label + (s.reason ? ' · ' + s.reason : '')],
     ['Last login', s.last_login],
-    ['Signs in with', s.google ? 'Google' : 'Email and password']
+    ['Signs in with', s.google ? 'Google, then email code'
+                      : (s.email ? 'Password, then email code' : 'Password only (no email on file)')]
   ].map(([k, v]) => '<div class="kv"><div class="k">' + esc(k) + '</div><div class="v">' + esc(v) + '</div></div>').join('');
 
   document.getElementById('stuAction').innerHTML =
@@ -1473,21 +1480,60 @@ function submitCreateStaff(){
 }
 
 /* =========================================================
-   AUDIT LOGS
+   AUDIT LOGS (real data)
 ========================================================= */
-function renderLogs(){
-  const roleF = document.getElementById('logRoleFilter').value;
-  const statusF = document.getElementById('logStatusFilter').value;
-  const list = logs.filter(l=> (roleF==='all'||l.role===roleF) && (statusF==='all'||l.status===statusF) );
-  document.getElementById('logsTbody').innerHTML = list.map(l=>`
-    <tr>
-      <td class="mono-cell">${l.ts}</td>
-      <td>${l.actor}</td>
-      <td><span class="badge neutral">${l.role}</span></td>
-      <td>${l.action}</td>
-      <td class="mono-cell">${l.ip}</td>
-      <td><span class="badge ${l.status==='Success'?'stable':'urgent'}"><span class="dot"></span>${l.status}</span></td>
-    </tr>`).join('');
+let logTimer = null;
+
+function logParams(page){
+  const p = new URLSearchParams({
+    staff: document.getElementById('logStaff').value.trim(),
+    student: document.getElementById('logStudent').value.trim(),
+    action: document.getElementById('logAction').value,
+    date_from: document.getElementById('logFrom').value,
+    date_to: document.getElementById('logTo').value
+  });
+  if(page) p.set('page', page);
+  return p;
+}
+
+function logFiltersChanged(){
+  clearTimeout(logTimer);
+  logTimer = setTimeout(()=>loadAuditLogs(1), 300);
+}
+
+function loadAuditLogs(page){
+  const body = document.getElementById('logsTbody');
+  return api('/api/admin/audit/?' + logParams(page || 1)).then(r=>{
+    if(!r.ok){
+      body.innerHTML = '<tr><td colspan="6"><div class="sc-empty">Could not load the audit log. Refresh and try again.</div></td></tr>';
+      return;
+    }
+    const d = r.data;
+    body.innerHTML = d.rows.length ? d.rows.map(l=>`
+      <tr>
+        <td class="mono-cell">${esc(l.when)}</td>
+        <td>${esc(l.staff)}</td>
+        <td><span class="badge neutral">${esc(l.role)}</span></td>
+        <td>${esc(l.action)}</td>
+        <td>${esc(l.student)}</td>
+        <td style="color:var(--ink-soft); font-size:12.5px; overflow-wrap:anywhere;">${esc(l.detail)}</td>
+      </tr>`).join('')
+      : '<tr><td colspan="6"><div class="sc-empty">No log entries match these filters.</div></td></tr>';
+    document.getElementById('logPager').innerHTML = d.pages > 1
+      ? `<button class="pill-btn ghost sm" ${d.page <= 1 ? 'disabled' : ''} onclick="loadAuditLogs(${d.page - 1})">← Previous</button>
+         <span>Page ${d.page} of ${d.pages} · ${d.total} entries</span>
+         <button class="pill-btn ghost sm" ${d.page >= d.pages ? 'disabled' : ''} onclick="loadAuditLogs(${d.page + 1})">Next →</button>`
+      : `<span>${d.total} entr${d.total === 1 ? 'y' : 'ies'}</span>`;
+  });
+}
+
+function refreshAuditLogs(btn){
+  btn.disabled = true;
+  loadAuditLogs(1).finally(()=>{ btn.disabled = false; showToast('Audit log refreshed'); });
+}
+
+function exportAuditLogs(){
+  window.location.href = '/api/admin/audit/export/?' + logParams();
 }
 
 /* =========================================================
@@ -1647,7 +1693,6 @@ function toggleTheme(){ document.body.classList.toggle('dark'); }
 
 function initAll(){
   renderAccounts();
-  renderLogs();
   renderPrivacy();
   renderIntegrations();
   renderBackups();

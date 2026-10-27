@@ -1,6 +1,6 @@
 from django.contrib.auth.models import User
 from django.db import IntegrityError, transaction
-from django.test import TestCase, SimpleTestCase
+from django.test import TestCase, SimpleTestCase, RequestFactory, override_settings
 from django.urls import reverse
 from django.utils import timezone
 from datetime import date, timedelta
@@ -17,9 +17,8 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import RequestFactory, SimpleTestCase, override_settings
 
-from .models import LoginThrottle, UserProfile
+from .models import LoginThrottle, UserProfile, AccessLog, StudentStatusLog
 from .views import _load_speech_model, speech_to_text, firebase_auth
 
 
@@ -452,3 +451,41 @@ class ServiceCountTests(SimpleTestCase):
         r = aggregate_sessions([(2, 'counseling', d, 'BSIT', '2')], [(4, 'testing', d, 'BAPSY', '3')])
         self.assertEqual(r['by_service']['counseling'], 1)
         self.assertEqual(r['by_service']['testing'], 1)
+
+
+class AuditLogApiTests(TestCase):
+    def setUp(self):
+        self.admin = User.objects.create_superuser("boss", "boss@x.com", "Pass1234!")
+        self.staff = User.objects.create_user("counselor1", "c@x.com", "Pass1234!",
+                                              is_staff=True, first_name="Jo", last_name="Cruz")
+        self.student = User.objects.create_user("stu1", "s@x.com", "Pass1234!",
+                                                first_name="Ana", last_name="Lim")
+        AccessLog.objects.create(staff=self.staff, student=self.student, action="open_chat")
+        StudentStatusLog.objects.create(student=self.student, changed_by=self.admin,
+                                        old_status="active", new_status="inactive", reason="dropped")
+
+    def test_merges_both_logs(self):
+        self.client.force_login(self.admin)
+        data = self.client.get("/api/admin/audit/").json()
+        self.assertEqual(data["total"], 2)
+
+    def test_action_filter(self):
+        self.client.force_login(self.admin)
+        data = self.client.get("/api/admin/audit/?action=status_change").json()
+        self.assertEqual(data["total"], 1)
+        self.assertIn("Active to Archived", data["rows"][0]["detail"])
+
+    def test_staff_filter(self):
+        self.client.force_login(self.admin)
+        data = self.client.get("/api/admin/audit/?staff=cruz").json()
+        self.assertEqual(data["total"], 1)
+
+    def test_csv_export(self):
+        self.client.force_login(self.admin)
+        r = self.client.get("/api/admin/audit/export/")
+        self.assertEqual(r["Content-Type"], "text/csv")
+        self.assertIn("Timestamp", r.content.decode())
+
+    def test_non_admin_blocked(self):
+        self.client.force_login(self.staff)
+        self.assertEqual(self.client.get("/api/admin/audit/").status_code, 302)
