@@ -32,7 +32,7 @@ class StaffProfileInline(admin.StackedInline):
     can_delete = False
     extra = 0
     max_num = 1
-    fields = ('subclass', 'role', 'license_number')
+    fields = ('subclass', 'role', 'license_number', 'must_complete_setup')
     verbose_name_plural = 'Guidance office role'
 
 

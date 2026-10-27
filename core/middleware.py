@@ -60,3 +60,23 @@ class SuspendedAccountMiddleware:
                 return JsonResponse({'error': 'Account suspended.', 'suspended': True}, status=401)
             return redirect(reverse('login') + '?suspended=1')
         return self.get_response(request)
+
+SETUP_ALLOWED = ("/staff/setup/", "/logout/", "/static/", "/media/")
+
+class StaffSetupMiddleware:
+    """A brand-new staff account (created by the admin, no password yet) can only reach the
+    first-time setup page until it has set a password and confirmed its details."""
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        user = request.user
+        if (user.is_authenticated and user.is_staff and not user.is_superuser
+                and not request.path.startswith(SETUP_ALLOWED)):
+            from .models import StaffProfile
+            profile = StaffProfile.objects.filter(user=user).only("must_complete_setup").first()
+            if profile and profile.must_complete_setup:
+                if request.path.startswith("/api/"):
+                    return JsonResponse({"error": "Finish setting up your account first.", "setup_required": True}, status=403)
+                return redirect("staff_setup")
+        return self.get_response(request)

@@ -60,6 +60,7 @@ from django.views.decorators.http import require_POST
 
 from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth import update_session_auth_hash
+from django.contrib.auth.password_validation import validate_password
 
 from django.conf import settings
 from google import genai
@@ -623,9 +624,32 @@ def _check_code(user, purpose, raw_code):
         return record, None
 
 
+def _needs_staff_setup(user):
+    """True for a staff account the admin just created that hasn't finished first-time setup."""
+    if not user.is_staff or user.is_superuser:
+        return False
+    sp = StaffProfile.objects.filter(user=user).first()
+    return bool(sp and sp.must_complete_setup)
+
+
+def _fresh_staff_user(username):
+    """The brand-new staff account (no password yet) with this username, or None.
+    Such accounts sign in with just their username and an e-mailed code."""
+    username = (username or "").strip()
+    if not username:
+        return None
+    user = (User.objects.filter(username__iexact=username, is_staff=True, is_superuser=False, is_active=True)
+            .order_by("id").first())
+    if user is None or user.has_usable_password() or not _needs_staff_setup(user):
+        return None
+    return user
+
+
 def _password_login_target(user):
     if user.is_superuser:
         return reverse("admin_dashboard")
+    if _needs_staff_setup(user):
+        return reverse("staff_setup")      # first sign-in: set a password and confirm details first
     if user.is_staff:
         return reverse("staff_dashboard")
     assessment, _ = AssessmentResponse.objects.get_or_create(user=user)
@@ -734,7 +758,7 @@ def login(request):
         if request.user.is_superuser:
             return redirect('admin_dashboard')
         elif request.user.is_staff:
-            return redirect('staff_dashboard')
+            return redirect(_password_login_target(request.user))
         assessment, _ = AssessmentResponse.objects.get_or_create(user=request.user)
         if not assessment.completed_at:
             return redirect('assessment')
@@ -752,6 +776,19 @@ def login(request):
                 'lockout_seconds': wait,
                 'show_forgot_prompt': True, 'forgot_username': username_input or '',
             }, status=429)
+
+        # A brand-new staff account has no password yet: the username alone starts sign-in and
+        # an e-mailed code proves it's them (whatever was typed in the password box is ignored).
+        fresh = _fresh_staff_user(username_input)
+        if fresh is not None:
+            if not fresh.email:
+                messages.error(request, "This account has no email address yet. Please contact the System Admin.")
+                return render(request, 'core/login.html', status=400)
+            ok, error = _send_login_code(request, fresh, False, 'password')
+            if not ok:
+                messages.error(request, error)
+                return render(request, 'core/login.html', status=429 if 'Too many' in error else 503)
+            return redirect('login_check_email')
 
         user = authenticate(request, username=username_input, password=password_input)
 
@@ -1168,6 +1205,56 @@ def change_password(request):
         'form': PasswordChangeForm(request.user), 'step': step, 'cooldown': cooldown,
         'masked_email': _mask_email(user.email), 'code_length': LOGIN_CODE_LENGTH,
         'ttl_minutes': int(LOGIN_CODE_TTL.total_seconds() // 60),
+    })
+
+
+@never_cache
+@login_required(login_url='login')
+def staff_setup(request):
+    """First sign-in of an admin-created staff account: choose a password and confirm basic details.
+    Once saved, the account is an ordinary staff account (no longer 'fresh')."""
+    user = request.user
+    sp = StaffProfile.objects.filter(user=user).first()
+    if user.is_superuser or not user.is_staff or sp is None or not sp.must_complete_setup:
+        return redirect('login')           # the login view sends them to the right place
+
+    errors = []
+    values = {"first_name": user.first_name, "last_name": user.last_name, "license_number": sp.license_number}
+    if request.method == 'POST':
+        values = {
+            "first_name": (request.POST.get("first_name") or "").strip()[:150],
+            "last_name": (request.POST.get("last_name") or "").strip()[:150],
+            "license_number": (request.POST.get("license_number") or "").strip()[:50],
+        }
+        pw1 = request.POST.get("new_password1") or ""
+        pw2 = request.POST.get("new_password2") or ""
+        if not values["first_name"]:
+            errors.append("Please enter your first name.")
+        if not pw1:
+            errors.append("Please choose a password.")
+        elif pw1 != pw2:
+            errors.append("The two passwords don't match.")
+        else:
+            user.first_name, user.last_name = values["first_name"], values["last_name"]   # lets the similarity check see the name
+            try:
+                validate_password(pw1, user)
+            except ValidationError as e:
+                errors.extend(e.messages)
+        if not errors:
+            with transaction.atomic():
+                user.set_password(pw1)
+                user.save()
+                sp.license_number = values["license_number"]
+                sp.must_complete_setup = False
+                sp.save(update_fields=["license_number", "must_complete_setup"])
+            update_session_auth_hash(request, user)       # stay signed in after the password is set
+            messages.success(request, "You're all set. Welcome to MICA!")
+            return redirect('staff_dashboard')
+        user.refresh_from_db(fields=["first_name", "last_name"])
+
+    return render(request, 'core/staff-setup.html', {
+        "errors": errors, "values": values, "username": user.username, "email": user.email,
+        "role_label": sp.role_label,
     })
 
 

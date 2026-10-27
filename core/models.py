@@ -217,6 +217,10 @@ class StaffProfile(models.Model):
     subclass = models.ForeignKey(StaffSubclass, null=True, blank=True, on_delete=models.PROTECT, related_name='members')
     # Set once the staff member finishes or skips the first-visit Staff Console tour.
     has_seen_tutorial = models.BooleanField(default=False)
+    # True for an account the admin just created: it has no password yet. The staff member signs in
+    # with their username + an e-mailed code, then must set a password and confirm their details.
+    # Cleared when they finish that first-time setup.
+    must_complete_setup = models.BooleanField(default=False)
 
     @property
     def role_label(self):

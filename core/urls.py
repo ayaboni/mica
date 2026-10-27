@@ -18,6 +18,7 @@ urlpatterns = [
     path('archived/', views.archived, name='archived'),
     path('api/keepalive/', views.api_keepalive, name='api_keepalive'),
     path('logout/', views.user_logout, name='logout'),
+    path('staff/setup/', views.staff_setup, name='staff_setup'),
     path('password-reset/', views.password_reset_request, name='password_reset'),
     path('password-reset/firebase/', views.password_reset_firebase, name='password_reset_firebase'),
     path('password-reset/firebase/complete/', views.password_reset_firebase_complete, name='password_reset_firebase_complete'),

@@ -3,6 +3,7 @@
 Used by the "Roles & Permissions" and "User Accounts" tabs of the admin dashboard.
 """
 
+import re
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -168,10 +169,11 @@ def site_settings_save(request):
 def _staff_json(user):
     sp = getattr(user, "staff_profile", None)
     sub = sp.subclass if sp and sp.subclass_id else None
+    fresh = bool(sp and sp.must_complete_setup)
     if not user.is_active:
         status = "Suspended"
-    elif user.last_login is None:
-        status = "Pending"
+    elif fresh or user.last_login is None:
+        status = "Pending"             # hasn't finished first-time setup / never signed in
     else:
         status = "Active"
     return {
@@ -182,6 +184,7 @@ def _staff_json(user):
         "subclass_id": sub.id if sub else None,
         "subclass": sub.name if sub else (sp.get_role_display() if sp else "Guidance Staff"),
         "status": status,
+        "fresh": fresh,
         "last_login": user.last_login.strftime("%Y-%m-%d %H:%M") if user.last_login else "\u2014",
         "joined": user.date_joined.strftime("%Y-%m-%d"),
     }
@@ -194,27 +197,31 @@ def staff_accounts(request):
     return JsonResponse({"staff": [_staff_json(u) for u in users]})
 
 
-def _unique_username(email):
-    base = (email.split("@")[0] or "staff")[:30]
-    name, n = base, 1
-    while User.objects.filter(username__iexact=name).exists():
-        n += 1
-        name = "%s%d" % (base, n)
-    return name
+USERNAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{2,29}$")
 
 
 @_admin
 @require_POST
 def staff_create(request):
-    from .views import _send_reset_link        # imported late: views imports a lot
+    """Create a fresh staff account: names, username, e-mail and role, but no password.
 
+    The staff member signs in with just the username, confirms an e-mailed code, then sets
+    their own password (see views.staff_setup)."""
     data = _body(request)
     if data is None:
         return JsonResponse({"error": "Invalid request."}, status=400)
-    full_name = " ".join(str(data.get("name") or "").split())[:150]
+    first = " ".join(str(data.get("first_name") or "").split())[:150]
+    last = " ".join(str(data.get("last_name") or "").split())[:150]
+    username = str(data.get("username") or "").strip()
     email = str(data.get("email") or "").strip().lower()
-    if not full_name:
-        return JsonResponse({"error": "Please enter the staff member\u2019s name."}, status=400)
+    if not first:
+        return JsonResponse({"error": "Please enter the staff member\u2019s first name."}, status=400)
+    if not last:
+        return JsonResponse({"error": "Please enter the staff member\u2019s last name."}, status=400)
+    if not USERNAME_RE.match(username):
+        return JsonResponse({"error": "Username must be 3\u201330 characters: letters, numbers, dots, dashes or underscores."}, status=400)
+    if User.objects.filter(Q(username__iexact=username) | Q(email__iexact=username)).exists():
+        return JsonResponse({"error": "That username is already taken."}, status=409)
     try:
         validate_email(email)
     except ValidationError:
@@ -225,25 +232,15 @@ def staff_create(request):
     if sub is None:
         return JsonResponse({"error": "Choose a staff role for this account."}, status=400)
 
-    first, _, last = full_name.partition(" ")
     with transaction.atomic():
-        user = User.objects.create_user(
-            username=_unique_username(email), email=email, first_name=first[:150], last_name=last[:150],
-            password=get_random_string(32), is_staff=True,
-        )
+        user = User.objects.create_user(          # password=None -> unusable password: nobody can sign in with one
+            username=username, email=email, first_name=first, last_name=last, password=None, is_staff=True)
         profile, _ = StaffProfile.objects.get_or_create(user=user, defaults={"role": "other"})
         profile.subclass = sub
         profile.license_number = str(data.get("license_number") or "").strip()[:50]
+        profile.must_complete_setup = True
         profile.save()
-
-    # The random password is never shown; the new staff member sets their own from the e-mailed link.
-    email_sent = True
-    try:
-        _send_reset_link(request, email)
-    except Exception:
-        logger.exception("Could not e-mail the set-password link to a new staff account.")
-        email_sent = False
-    return JsonResponse({"staff": _staff_json(user), "email_sent": email_sent}, status=201)
+    return JsonResponse({"staff": _staff_json(user)}, status=201)
 
 
 @_admin
@@ -286,6 +283,9 @@ def staff_set_active(request, user_id):
 def staff_reset_password(request, user_id):
     from .views import _send_reset_link
     user = get_object_or_404(User, id=user_id, is_staff=True, is_superuser=False)
+    sp = getattr(user, "staff_profile", None)
+    if sp and sp.must_complete_setup:
+        return JsonResponse({"error": "This account is new and has no password yet. They set one the first time they sign in."}, status=400)
     if not user.email:
         return JsonResponse({"error": "This account has no email address."}, status=400)
     try:

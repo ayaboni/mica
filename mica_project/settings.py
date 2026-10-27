@@ -62,6 +62,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'core.middleware.SuspendedAccountMiddleware',
     'core.middleware.ArchivedStudentMiddleware',
+    'core.middleware.StaffSetupMiddleware',
     'core.middleware.IdleTimeoutMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',

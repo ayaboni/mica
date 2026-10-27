@@ -933,15 +933,19 @@
 <div class="modal-overlay" id="createModalOverlay">
   <div class="modal">
     <div class="modal-head">
-      <div><h2>Create staff account</h2><div class="sub">They get an email to set their own password</div></div>
+      <div><h2>Create staff account</h2><div class="sub">They sign in with this username and an emailed code, then set their own password</div></div>
       <button class="modal-close" onclick="closeModal('createModalOverlay')">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
       </button>
     </div>
     <div class="modal-body">
       <div class="field-grid">
-        <div class="field"><label>Full name</label><input id="createName" placeholder="e.g. Maria Santos"></div>
-        <div class="field"><label>Email</label><input id="createEmail" placeholder="name@school.edu.ph"></div>
+        <div class="field"><label>First name</label><input id="createFirst" maxlength="150" placeholder="e.g. Maria"></div>
+        <div class="field"><label>Last name</label><input id="createLast" maxlength="150" placeholder="e.g. Santos"></div>
+      </div>
+      <div class="field-grid">
+        <div class="field"><label>Username</label><input id="createUsername" maxlength="30" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="e.g. msantos"></div>
+        <div class="field"><label>Email</label><input id="createEmail" type="email" placeholder="name@school.edu.ph"></div>
       </div>
       <div class="field" id="createSubclassWrap"><label>Staff role</label><select id="createSubclass"></select></div>
       <div class="form-error" id="createError"></div>
@@ -1087,10 +1091,12 @@ function openAccountModal(id){
   const a = accounts.find(x => x.id === id);
   document.getElementById('acctModalTitle').textContent = a.name;
   document.getElementById('acctModalSub').textContent = a.email || 'No email on file';
-  document.getElementById('acctResetBtn').disabled = !a.email;
+  document.getElementById('acctResetBtn').disabled = !a.email || a.fresh;
+  document.getElementById('acctResetBtn').title = a.fresh ? 'New account: they set a password the first time they sign in' : '';
   document.getElementById('acctModalKv').innerHTML = `
+    <div class="kv"><div class="k">Username</div><div class="v">${esc(a.username)}</div></div>
     <div class="kv"><div class="k">Staff role</div><div class="v">${esc(a.detail)}</div></div>
-    <div class="kv"><div class="k">Status</div><div class="v">${esc(a.status)}</div></div>
+    <div class="kv"><div class="k">Status</div><div class="v">${esc(a.status)}${a.fresh ? ' · awaiting first sign-in setup' : ''}</div></div>
     <div class="kv"><div class="k">Joined</div><div class="v">${esc(a.joined)}</div></div>
     <div class="kv"><div class="k">Last login</div><div class="v">${esc(a.lastLogin)}</div></div>`;
   fillSubclassSelect('acctModalSubclass', a.subclassId);
@@ -1486,24 +1492,24 @@ function fillSubclassSelect(selectId, selectedId){
 /* Real staff accounts replace the sample "Counselor" rows. */
 function staffToAccount(st){
   return {id:'STF-'+st.id, uid:st.id, subclassId:st.subclass_id, name:st.name, email:st.email, role:'Counselor',
+          username:st.username, fresh:!!st.fresh,
           detail:st.subclass, status:st.status, lastLogin:st.last_login, joined:st.joined};
 }
 
 function submitCreateStaff(){
   const err = document.getElementById('createError'); err.textContent = '';
   const body = {
-    name: document.getElementById('createName').value.trim(),
+    first_name: document.getElementById('createFirst').value.trim(),
+    last_name: document.getElementById('createLast').value.trim(),
+    username: document.getElementById('createUsername').value.trim(),
     email: document.getElementById('createEmail').value.trim(),
     subclass_id: parseInt(document.getElementById('createSubclass').value, 10) || null,
   };
   api('/api/admin/staff/create/', body).then(r=>{
     if(!r.ok){ err.textContent = r.data.error || 'Could not create the account.'; return; }
     closeModal('createModalOverlay');
-    document.getElementById('createName').value='';
-    document.getElementById('createEmail').value='';
-    showToast(r.data.email_sent
-      ? 'Staff account created. Set-password email sent to '+r.data.staff.email
-      : 'Account created, but the set-password email could not be sent. Use Reset Password.');
+    ['createFirst','createLast','createUsername','createEmail'].forEach(id=>{ document.getElementById(id).value=''; });
+    showToast('Account created. '+r.data.staff.name+' signs in with the username “'+r.data.staff.username+'” and an emailed code.');
     loadStaffAccounts();
     loadSubclasses();
   });
