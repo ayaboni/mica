@@ -16,14 +16,15 @@ from django.core.exceptions import ValidationError
 from django.conf import settings
 from django.contrib.sessions.models import Session
 from django.db import connection, transaction
-from django.db.models import Count
+from django.db.models import Count, Q
+from django.core.paginator import Paginator
 from django.utils import timezone
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.utils.crypto import get_random_string
 from django.views.decorators.http import require_POST
 
-from .models import (SERVICES, StaffProfile, StaffSubclass, GuidanceThread, GuidanceMessage,
+from .models import (COURSES, SERVICES, StaffProfile, StaffSubclass, GuidanceThread, GuidanceMessage,
                      StudentFlag, StudentNote, Appointment, AccessLog, StudentStatusLog,
                      LoginThrottle, MoodEntry, ChatConversation)
 from .permissions import BOOL_FIELDS, PERMISSION_FIELDS, SERVICE_FIELDS, SERVICE_KEYS, subclass_json
@@ -393,3 +394,101 @@ def dashboard_stats(request):
         "attention": attention,
         "staff_activity": staff_rows,
     })
+
+
+STATUS_LABEL = {"active": "Active", "inactive": "Archived", "graduated": "Graduated"}
+
+
+@_admin
+def students_list(request):
+    """One page of students for the admin cards. Account info only, nothing a student wrote."""
+    from .views import _time_ago, _throttle_key       # imported late: views imports a lot
+
+    base = User.objects.filter(is_staff=False, is_superuser=False)
+    active_q = Q(profile__account_status="active") | Q(profile__isnull=True)
+    counts = {
+        "all": base.count(),
+        "active": base.filter(active_q).count(),
+        "inactive": base.filter(profile__account_status="inactive").count(),
+        "graduated": base.filter(profile__account_status="graduated").count(),
+    }
+
+    qs = base.select_related("profile")
+    status = request.GET.get("status", "all")
+    if status == "active":
+        qs = qs.filter(active_q)
+    elif status in ("inactive", "graduated"):
+        qs = qs.filter(profile__account_status=status)
+    course = request.GET.get("course", "").strip()
+    if course:
+        qs = qs.filter(profile__course=course)
+    for token in request.GET.get("q", "").split()[:5]:      # "juan cruz" must match both words
+        qs = qs.filter(Q(username__icontains=token) | Q(first_name__icontains=token)
+                       | Q(last_name__icontains=token) | Q(email__icontains=token)
+                       | Q(profile__student_number__icontains=token))
+    qs = qs.order_by("last_name", "first_name", "username")
+
+    paginator = Paginator(qs, 12)
+    page = paginator.get_page(request.GET.get("page"))
+    keys = [_throttle_key(u.username) for u in page]
+    locked = set(LoginThrottle.objects.filter(
+        username_key__in=keys, locked_until__gt=timezone.now()).values_list("username_key", flat=True))
+    course_names = dict(COURSES)
+
+    rows = []
+    for u in page:
+        p = getattr(u, "profile", None)
+        state = p.account_status if p else "active"
+        rows.append({
+            "id": u.id,
+            "name": u.get_full_name() or u.username,
+            "username": u.username,
+            "email": u.email,
+            "student_number": p.student_number if p and p.student_number else "No ID",
+            "course": p.course if p and p.course else "",
+            "course_label": course_names.get(p.course, p.course) if p and p.course else "",
+            "year": p.year_level if p else "",
+            "status": state,
+            "status_label": STATUS_LABEL.get(state, state),
+            "reason": p.get_status_reason_display() if p and p.status_reason else "",
+            "last_login": _time_ago(u.last_login),
+            "joined": u.date_joined.strftime("%Y-%m-%d"),
+            "google": bool(p and p.firebase_uid),
+            "has_password": u.has_usable_password(),
+            "locked": _throttle_key(u.username) in locked,
+            "setup_pending": bool(p and p.needs_profile_setup),
+        })
+
+    return JsonResponse({
+        "students": rows, "counts": counts, "page": page.number,
+        "pages": paginator.num_pages, "total": paginator.count,
+        "courses": [{"code": c, "label": l} for c, l in COURSES],
+    })
+
+
+@_admin
+@require_POST
+def student_unlock(request, user_id):
+    from .views import _throttle_key
+    user = get_object_or_404(User, id=user_id, is_staff=False, is_superuser=False)
+    key = _throttle_key(user.username)
+    was_locked = LoginThrottle.objects.filter(username_key=key, locked_until__gt=timezone.now()).exists()
+    LoginThrottle.objects.filter(username_key=key).delete()      # also clears the failed-attempt counter
+    return JsonResponse({"status": "ok", "was_locked": was_locked})
+
+
+@_admin
+@require_POST
+def student_reset_password(request, user_id):
+    from .views import _send_reset_link
+    user = get_object_or_404(User, id=user_id, is_staff=False, is_superuser=False)
+    if not user.is_active or not user.email:
+        return JsonResponse({"error": "This account is disabled or has no email address."}, status=400)
+    if not user.has_usable_password():
+        return JsonResponse({"error": "This student signs in with Google, so there is no password to reset."}, status=400)
+    try:
+        _send_reset_link(request, user.email)
+    except Exception:
+        logger.exception("Could not send a reset link to student account %s.", user.pk)
+        return JsonResponse({"error": "Could not send the email. Check the email settings."}, status=502)
+    return JsonResponse({"status": "ok"})

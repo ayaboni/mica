@@ -88,4 +88,7 @@ urlpatterns = [
     path('api/admin/staff/<int:user_id>/active/', admin_api.staff_set_active, name='admin_staff_active'),
     path('api/admin/staff/<int:user_id>/reset-password/', admin_api.staff_reset_password, name='admin_staff_reset_password'),
     path('api/admin/dashboard/', admin_api.dashboard_stats, name='admin_dashboard_stats'),
+    path('api/admin/students/', admin_api.students_list, name='admin_students'),
+    path('api/admin/students/<int:user_id>/unlock/', admin_api.student_unlock, name='admin_student_unlock'),
+    path('api/admin/students/<int:user_id>/reset-password/', admin_api.student_reset_password, name='admin_student_reset_password'),
 ]

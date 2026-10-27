@@ -329,6 +329,19 @@
   body.dark .service-row .s-icon,
   body.dark .stat-card .icon-chip[style*="sage-pale"]{background:rgba(150,184,144,.22) !important; color:#CFE5CA !important;}
 
+  .stu-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(270px,1fr)); gap:16px;}
+  .stu-card{padding:18px 20px; display:flex; flex-direction:column; gap:14px; min-width:0;}
+  .stu-top{display:flex; align-items:center; gap:12px; min-width:0;}
+  .stu-top .avatar{width:42px; height:42px; font-size:14px;}
+  .stu-name{font-weight:700; font-size:14.5px; overflow-wrap:anywhere;}
+  .stu-sub{font-size:12px; color:var(--ink-soft); overflow-wrap:anywhere;}
+  .stu-meta{display:grid; grid-template-columns:1fr 1fr; gap:10px 14px;}
+  .stu-meta .k{font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-soft); font-weight:700;}
+  .stu-meta .v{font-size:12.5px; font-weight:600; overflow-wrap:anywhere;}
+  .stu-tags{display:flex; gap:6px; flex-wrap:wrap;}
+  .stu-actions{margin-top:auto;}
+  .pager{display:flex; justify-content:center; align-items:center; gap:14px; margin-top:22px; font-size:13px; color:var(--ink-soft);}
+
 </style>
 </head>
 <body>
@@ -359,7 +372,7 @@
       <button class="nav-item" data-section="accounts" onclick="goTo('accounts')">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17.5" cy="9" r="2.4"/><path d="M15.8 13a5 5 0 0 1 5.2 5"/></svg>
         User Accounts
-        <span class="count" id="acctNavCount">0</span>
+        <span class="count" id="acctNavCount">–</span>
       </button>
       <button class="nav-item" data-section="roles" onclick="goTo('roles')">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
@@ -498,31 +511,49 @@
 
       <!-- ============ USER ACCOUNTS ============ -->
       <section class="section" id="sec-accounts">
-        <div class="toolbar">
-          <div class="toolbar-left">
-            <select class="filter-select" id="acctRoleFilter" onchange="renderAccounts()">
-              <option value="all">All Roles</option>
-              <option value="Student">Students</option>
-              <option value="Counselor">Counselors / Psychiatrists</option>
-              <option value="Admin">System Admins</option>
-            </select>
-            <select class="filter-select" id="acctStatusFilter" onchange="renderAccounts()">
-              <option value="all">All Statuses</option>
-              <option value="Active">Active</option>
-              <option value="Suspended">Suspended</option>
-              <option value="Pending">Pending Verification</option>
-            </select>
-          </div>
-          <button class="pill-btn solid" onclick="openCreateAccount()">+ Create Account</button>
+        <div class="tab-row">
+          <button class="tab-btn active" data-atab="staff" onclick="showAcctTab('staff')">Staff</button>
+          <button class="tab-btn" data-atab="students" onclick="showAcctTab('students')">Students <span class="badge neutral" id="stuTabCount" style="margin-left:6px; padding:2px 9px;">0</span></button>
         </div>
 
-        <div class="card" style="overflow-x:auto;">
-          <table>
-            <thead>
-              <tr><th>User</th><th>User ID</th><th>Role</th><th>Status</th><th>Last Login</th><th>Action</th></tr>
-            </thead>
-            <tbody id="acctTbody"></tbody>
-          </table>
+        <div class="subpanel active" id="atab-staff">
+          <div class="toolbar">
+            <div class="toolbar-left">
+              <select class="filter-select" id="acctStatusFilter" onchange="renderAccounts()">
+                <option value="all">All Statuses</option>
+                <option value="Active">Active</option>
+                <option value="Suspended">Suspended</option>
+                <option value="Pending">Pending (never signed in)</option>
+              </select>
+            </div>
+            <button class="pill-btn solid" onclick="openCreateAccount()">+ Create staff account</button>
+          </div>
+          <div class="card" style="overflow-x:auto;">
+            <table>
+              <thead><tr><th>Staff</th><th>Role</th><th>Status</th><th>Last Login</th><th>Action</th></tr></thead>
+              <tbody id="acctTbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="subpanel" id="atab-students">
+          <div class="toolbar">
+            <div class="toolbar-left">
+              <div class="searchbox" style="border:1.5px solid var(--line);">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--ink-soft)" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+                <input id="stuSearch" placeholder="Name, username, email or student number" oninput="stuFiltersChanged()">
+              </div>
+              <select class="filter-select" id="stuStatus" onchange="stuFiltersChanged()">
+                <option value="all">All statuses</option>
+                <option value="active">Active</option>
+                <option value="inactive">Archived</option>
+                <option value="graduated">Graduated</option>
+              </select>
+              <select class="filter-select" id="stuCourse" onchange="stuFiltersChanged()"><option value="">All courses</option></select>
+            </div>
+          </div>
+          <div class="stu-grid" id="stuGrid"></div>
+          <div class="pager" id="stuPager"></div>
         </div>
       </section>
 
@@ -784,13 +815,13 @@
   </div>
 </div>
 
-<!-- ================= ACCOUNT MODAL ================= -->
+<!-- ================= STAFF ACCOUNT MODAL ================= -->
 <div class="modal-overlay" id="acctModalOverlay">
   <div class="modal">
     <div class="modal-head">
       <div>
         <h2 id="acctModalTitle">Account Details</h2>
-        <div class="sub" id="acctModalSub">USR-000</div>
+        <div class="sub" id="acctModalSub"></div>
       </div>
       <button class="modal-close" onclick="closeModal('acctModalOverlay')">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
@@ -798,31 +829,56 @@
     </div>
     <div class="modal-body">
       <div class="kv-grid" id="acctModalKv"></div>
-      <div class="field">
-        <label>Role</label>
-        <select id="acctModalRole">
-          <option value="Student">Student</option>
-          <option value="Counselor">Guidance Staff</option>
-          <option value="Admin">System Admin</option>
-        </select>
-      </div>
-      <div class="field" id="acctSubclassWrap" style="display:none;">
+      <div class="field" id="acctSubclassWrap">
         <label>Staff role</label>
         <select id="acctModalSubclass"></select>
-      </div>
-      <div class="field">
-        <label>Status</label>
-        <select id="acctModalStatus">
-          <option value="Active">Active</option>
-          <option value="Suspended">Suspended</option>
-          <option value="Pending">Pending Verification</option>
-        </select>
       </div>
     </div>
     <div class="modal-foot">
       <button class="pill-btn solid" onclick="saveAccountChanges()">Save Changes</button>
-      <button class="pill-btn ghost" onclick="resetAccountPassword()">Reset Password</button>
+      <button class="pill-btn ghost" id="acctResetBtn" onclick="resetAccountPassword()">Reset Password</button>
       <button class="pill-btn danger" id="acctSuspendBtn" onclick="suspendAccount()">Suspend Account</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= STUDENT ACCOUNT MODAL ================= -->
+<div class="modal-overlay" id="stuModalOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <div><h2 id="stuModalName">Student</h2><div class="sub" id="stuModalSub"></div></div>
+      <button class="modal-close" onclick="closeModal('stuModalOverlay')">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="kv-grid" id="stuModalKv"></div>
+
+      <h3 style="font-size:14px; margin-bottom:10px;">Account status</h3>
+      <div class="field"><label>Change to</label><select id="stuAction" onchange="syncStuAction()"></select></div>
+      <div class="field" id="stuReasonWrap">
+        <label>Reason</label>
+        <select id="stuReason" onchange="syncStuAction()">
+          <option value="not_enrolled">Not enrolled this semester</option>
+          <option value="dropped">Dropped out</option>
+          <option value="transferred">Transferred</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="field" id="stuNoteWrap" style="display:none;"><label>Describe the reason</label><input id="stuNote" maxlength="200"></div>
+      <div id="stuClearance" style="display:none; margin-bottom:14px; font-size:13px;">
+        <label id="stuExitWrap" style="display:none; align-items:center; gap:8px; margin-bottom:6px;"><input type="checkbox" id="stuExit" style="accent-color:var(--sage-deep);"> Exit interview done</label>
+        <label id="stuEvalWrap" style="display:none; align-items:center; gap:8px;"><input type="checkbox" id="stuEval" style="accent-color:var(--sage-deep);"> Evaluation form submitted</label>
+      </div>
+      <div class="form-error" id="stuError"></div>
+      <button class="pill-btn solid sm" onclick="applyStudentStatus(false)">Apply</button>
+
+      <h3 style="font-size:14px; margin:26px 0 10px;">Sign-in help</h3>
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <button class="pill-btn ghost sm" id="stuResetBtn" onclick="resetStudentPassword()">Send password reset link</button>
+        <button class="pill-btn ghost sm" id="stuUnlockBtn" onclick="unlockStudent()">Unlock login</button>
+      </div>
+      <p id="stuSignInNote" style="font-size:12px; color:var(--ink-soft); margin-top:10px;"></p>
     </div>
   </div>
 </div>
@@ -831,7 +887,7 @@
 <div class="modal-overlay" id="createModalOverlay">
   <div class="modal">
     <div class="modal-head">
-      <div><h2>Create Account</h2><div class="sub">Provision a new student, counselor, or admin account</div></div>
+      <div><h2>Create staff account</h2><div class="sub">They get an email to set their own password</div></div>
       <button class="modal-close" onclick="closeModal('createModalOverlay')">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
       </button>
@@ -839,24 +895,13 @@
     <div class="modal-body">
       <div class="field-grid">
         <div class="field"><label>Full name</label><input id="createName" placeholder="e.g. Maria Santos"></div>
-        <div class="field"><label>Institutional email</label><input id="createEmail" placeholder="name@mica.edu.ph"></div>
+        <div class="field"><label>Email</label><input id="createEmail" placeholder="name@school.edu.ph"></div>
       </div>
-      <div class="field-grid">
-        <div class="field">
-          <label>Role</label>
-          <select id="createRole" onchange="syncCreateRole()">
-            <option value="Student">Student</option>
-            <option value="Counselor">Guidance Staff</option>
-            <option value="Admin">System Admin</option>
-          </select>
-        </div>
-        <div class="field" id="createDeptWrap"><label>Program / department</label><input id="createDept" placeholder="e.g. BS Computer Science"></div>
-        <div class="field" id="createSubclassWrap" style="display:none;"><label>Staff role</label><select id="createSubclass"></select></div>
-      </div>
+      <div class="field" id="createSubclassWrap"><label>Staff role</label><select id="createSubclass"></select></div>
       <div class="form-error" id="createError"></div>
     </div>
     <div class="modal-foot">
-      <button class="pill-btn solid" onclick="submitCreateAccount()">Create Account</button>
+      <button class="pill-btn solid" onclick="submitCreateStaff()">Create Account</button>
       <button class="pill-btn ghost" onclick="closeModal('createModalOverlay')">Cancel</button>
     </div>
   </div>
@@ -893,26 +938,7 @@
 /* =========================================================
    DATA
 ========================================================= */
-let seq = 900;
-const programs = ['BS Computer Science','BS Psychology','BS Nursing','BS Business Administration','BS Architecture','BS Education'];
-
-let accounts = [
-  {id:'USR-001', name:'Dr. Jasmine Dela Cruz', email:'j.delacruz@mica.edu.ph', role:'Counselor', detail:'Guidance Counselor', status:'Active', lastLogin:'Today, 08:30 AM', joined:'2025-06-14'},
-  {id:'USR-002', name:'Mark Reyes, RPsy', email:'m.reyes@mica.edu.ph', role:'Counselor', detail:'Psychiatrist', status:'Active', lastLogin:'Yesterday', joined:'2025-06-20'},
-  {id:'USR-003', name:'Ana Bautista', email:'a.bautista@mica.edu.ph', role:'Admin', detail:'System Admin', status:'Active', lastLogin:'2 hours ago', joined:'2025-01-10'},
-  {id:'USR-004', name:'Leo Fernandez', email:'l.fernandez@mica.edu.ph', role:'Admin', detail:'Support Admin', status:'Active', lastLogin:'3 days ago', joined:'2025-03-02'},
-  {id:'USR-005', name:'Grace Tan, RPm', email:'g.tan@mica.edu.ph', role:'Counselor', detail:'Guidance Counselor', status:'Pending', lastLogin:'—', joined:'2026-08-28'},
-];
-for(let i=0;i<10;i++){
-  seq++;
-  accounts.push({
-    id:'USR-'+seq, name:'Student #'+seq, email:'stu-'+seq+'@student.edu.ph',
-    role:'Student', detail:programs[i%programs.length],
-    status:(i===3?'Suspended':(i===7?'Pending':'Active')),
-    lastLogin: i%2===0? (i+1)+' hours ago' : (i+1)+' days ago',
-    joined:'2025-08-0'+((i%9)+1)
-  });
-}
+let accounts = [];
 
 let logs = [
   {ts:'2026-09-03 08:30:12', actor:'j.delacruz@mica.edu.ph', role:'Counselor', action:'User login successful', ip:'192.168.1.45', status:'Success'},
@@ -1004,161 +1030,273 @@ function goTab(tab){
    ACCOUNTS
 ========================================================= */
 function renderAccounts(){
-  const roleF = document.getElementById('acctRoleFilter').value;
   const statusF = document.getElementById('acctStatusFilter').value;
-  const list = accounts.filter(a=>
-    (roleF==='all'||a.role===roleF) && (statusF==='all'||a.status===statusF)
-  );
-  const initials = n=>n.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
-  const badgeClass = s=> s==='Active'?'stable':(s==='Suspended'?'urgent':'watch');
-  const avatarColor = r=> r==='Admin'?'var(--sky)':(r==='Counselor'?'var(--sage)':'var(--peach-deep)');
-
-  document.getElementById('acctTbody').innerHTML = list.map(a=>`
+  const list = accounts.filter(a => statusF === 'all' || a.status === statusF);
+  const initials = n => n.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
+  const badgeClass = s => s === 'Active' ? 'stable' : (s === 'Suspended' ? 'urgent' : 'watch');
+  document.getElementById('acctTbody').innerHTML = list.length ? list.map(a=>`
     <tr>
-      <td>
-        <div class="u-cell">
-          <div class="avatar" style="background:${avatarColor(a.role)};">${esc(initials(a.name))}</div>
-          <div><div class="name">${esc(a.name)}</div><div class="email">${esc(a.email)}</div></div>
-        </div>
-      </td>
-      <td class="mono-cell">${esc(a.id)}</td>
-      <td><span class="badge neutral">${esc(a.role)} — ${esc(a.detail)}</span></td>
+      <td><div class="u-cell"><div class="avatar" style="background:var(--sage);">${esc(initials(a.name))}</div>
+        <div><div class="name">${esc(a.name)}</div><div class="email">${esc(a.email)}</div></div></div></td>
+      <td><span class="badge neutral">${esc(a.detail)}</span></td>
       <td><span class="badge ${badgeClass(a.status)}"><span class="dot"></span>${esc(a.status)}</span></td>
       <td class="mono-cell">${esc(a.lastLogin)}</td>
-      <td class="row-actions"><button class="pill-btn ghost sm" onclick="openAccountModal('${a.id}')">Manage</button></td>
-    </tr>`).join('');
-
-  document.getElementById('acctNavCount').textContent = accounts.length;
+      <td><button class="pill-btn ghost sm" onclick="openAccountModal('${a.id}')">Manage</button></td>
+    </tr>`).join('')
+    : '<tr><td colspan="5"><div class="sc-empty">No staff accounts match.</div></td></tr>';
 }
 
 function openAccountModal(id){
   activeAcctId = id;
-  const a = accounts.find(x=>x.id===id);
+  const a = accounts.find(x => x.id === id);
   document.getElementById('acctModalTitle').textContent = a.name;
-  document.getElementById('acctModalSub').textContent = a.id + ' · ' + a.email;
+  document.getElementById('acctModalSub').textContent = a.email || 'No email on file';
+  document.getElementById('acctResetBtn').disabled = !a.email;
   document.getElementById('acctModalKv').innerHTML = `
-    <div class="kv"><div class="k">Program / Detail</div><div class="v">${esc(a.detail)}</div></div>
+    <div class="kv"><div class="k">Staff role</div><div class="v">${esc(a.detail)}</div></div>
+    <div class="kv"><div class="k">Status</div><div class="v">${esc(a.status)}</div></div>
     <div class="kv"><div class="k">Joined</div><div class="v">${esc(a.joined)}</div></div>
-    <div class="kv"><div class="k">Last Login</div><div class="v">${esc(a.lastLogin)}</div></div>
-    <div class="kv"><div class="k">User ID</div><div class="v mono">${esc(a.id)}</div></div>
-  `;
-  document.getElementById('acctModalRole').value = a.role;
-  document.getElementById('acctModalStatus').value = a.status;
-  // Real staff accounts can be moved between staff roles.
-  const isStaff = a.uid !== undefined;
-  document.getElementById('acctSubclassWrap').style.display = isStaff ? '' : 'none';
-  if(isStaff){
-    fillSubclassSelect('acctModalSubclass', a.subclassId);
-  }
+    <div class="kv"><div class="k">Last login</div><div class="v">${esc(a.lastLogin)}</div></div>`;
+  fillSubclassSelect('acctModalSubclass', a.subclassId);
+  document.getElementById('acctSuspendBtn').textContent = a.status === 'Suspended' ? 'Reactivate Account' : 'Suspend Account';
   document.getElementById('acctModalOverlay').classList.add('active');
-  document.getElementById('acctModalStatus').closest('.field').style.display = isStaff ? 'none' : '';
-    document.getElementById('acctSuspendBtn').textContent = (isStaff && a.status === 'Suspended') ? 'Reactivate Account' : 'Suspend Account';
 }
+
 function saveAccountChanges(){
-  const a = accounts.find(x=>x.id===activeAcctId);
-  a.role = document.getElementById('acctModalRole').value;
-  a.status = document.getElementById('acctModalStatus').value;
-  if(a.uid !== undefined){
-    const subId = parseInt(document.getElementById('acctModalSubclass').value, 10);
-    if(subId && subId !== a.subclassId){
-      api('/api/admin/staff/'+a.uid+'/subclass/', {subclass_id: subId}).then(r=>{
-        if(!r.ok){ showToast(r.data.error || 'Could not change the staff role'); return; }
-        Object.assign(a, staffToAccount(r.data.staff), {status:a.status});
-        renderAccounts();
-        closeModal('acctModalOverlay');
-        showToast(a.name+' is now '+a.detail);
-      });
-      return;
-    }
-  }
-  renderAccounts();
-  closeModal('acctModalOverlay');
-  showToast('Account '+a.id+' updated');
-}
-function resetAccountPassword(){
-  const a = accounts.find(x=>x.id===activeAcctId);
-  if(a.uid === undefined){ showToast('Sample account: no email sent'); return; }
-  api('/api/admin/staff/'+a.uid+'/reset-password/', {}).then(r=>{
-    showToast(r.ok ? 'Password reset link sent to '+a.email : (r.data.error || 'Could not send the link'));
+  const a = accounts.find(x => x.id === activeAcctId);
+  const subId = parseInt(document.getElementById('acctModalSubclass').value, 10);
+  if(!subId || subId === a.subclassId){ closeModal('acctModalOverlay'); return; }
+  api('/api/admin/staff/'+a.uid+'/subclass/', {subclass_id: subId}).then(r=>{
+    if(!r.ok){ showToast(r.data.error || 'Could not change the staff role'); return; }
+    Object.assign(a, staffToAccount(r.data.staff));
+    renderAccounts();
+    closeModal('acctModalOverlay');
+    showToast(a.name + ' is now ' + a.detail);
   });
 }
+
+function resetAccountPassword(){
+  const a = accounts.find(x => x.id === activeAcctId);
+  api('/api/admin/staff/'+a.uid+'/reset-password/', {}).then(r=>{
+    showToast(r.ok ? 'Password reset link sent to ' + a.email : (r.data.error || 'Could not send the link'));
+  });
+}
+
 function suspendAccount(){
-  const a = accounts.find(x=>x.id===activeAcctId);
-  if(a.uid === undefined){            // sample rows
-    a.status = 'Suspended'; renderAccounts(); closeModal('acctModalOverlay'); showToast('Account '+a.id+' suspended'); return;
-  }
-  const archiving = a.status !== 'Suspended';
-  if(archiving && !confirm('Suspend '+a.name+'? They will be signed out and unable to log in. Their chats and cases will be released to other staff, and all records are kept.')) return;
-  api('/api/admin/staff/'+a.uid+'/active/', {active: !archiving}).then(r=>{
+  const a = accounts.find(x => x.id === activeAcctId);
+  const suspending = a.status !== 'Suspended';
+  if(suspending && !confirm('Suspend '+a.name+'? They will be signed out and unable to log in. Their chats and cases will be released to other staff, and all records are kept.')) return;
+  api('/api/admin/staff/'+a.uid+'/active/', {active: !suspending}).then(r=>{
     if(!r.ok){ showToast(r.data.error || 'Could not update this account'); return; }
     Object.assign(a, staffToAccount(r.data.staff));
     renderAccounts();
     closeModal('acctModalOverlay');
-    showToast(archiving
-      ? a.name+' suspended'+(r.data.released_threads ? ' · '+r.data.released_threads+' chat(s) released' : '')
-      : a.name+' reactivated');
+    showToast(suspending
+      ? a.name + ' suspended' + (r.data.released_threads ? ' · ' + r.data.released_threads + ' chat(s) released' : '')
+      : a.name + ' reactivated');
   });
 }
+
 function openCreateAccount(){
   document.getElementById('createError').textContent = '';
   fillSubclassSelect('createSubclass');
-  syncCreateRole();
   document.getElementById('createModalOverlay').classList.add('active');
 }
-function syncCreateRole(){
-  const staff = document.getElementById('createRole').value === 'Counselor';
-  document.getElementById('createSubclassWrap').style.display = staff ? '' : 'none';
-  document.getElementById('createDeptWrap').style.display = staff ? 'none' : '';
+
+function loadStaffAccounts(){
+  return api('/api/admin/staff/').then(r=>{
+    if(!r.ok) return;
+    accounts = (r.data.staff || []).map(staffToAccount);
+    renderAccounts();
+  });
 }
-function submitCreateAccount(){
-  if(document.getElementById('createRole').value === 'Counselor'){ return submitCreateStaff(); }
-  const name = document.getElementById('createName').value.trim() || 'New User';
-  const email = document.getElementById('createEmail').value.trim() || 'new.user@mica.edu.ph';
-  const role = document.getElementById('createRole').value;
-  const dept = document.getElementById('createDept').value.trim() || (role==='Student'?'Unassigned Program':role);
-  seq++;
-  accounts.unshift({id:'USR-'+seq, name, email, role, detail:dept, status:'Pending', lastLogin:'—', joined:new Date().toISOString().slice(0,10)});
-  document.getElementById('acctRoleFilter').value='all';
-  document.getElementById('acctStatusFilter').value='all';
-  renderAccounts();
-  closeModal('createModalOverlay');
-  showToast('Account created — verification email sent to '+email);
-  document.getElementById('createName').value='';
-  document.getElementById('createEmail').value='';
-  document.getElementById('createDept').value='';
+
+let gsTimer = null;
+function handleGlobalSearch(q){
+  clearTimeout(gsTimer);
+  gsTimer = setTimeout(()=>{
+    q = q.trim();
+    if(!q) return;
+    goTo('accounts');
+    showAcctTab('students');
+    document.getElementById('stuSearch').value = q;
+    loadStudentsPage(1);
+  }, 350);
 }
-function closeModal(id){ document.getElementById(id).classList.remove('active'); }
 
 /* =========================================================
    ROLES & PERMISSIONS
 ========================================================= */
-const permSets = {
-  super: [
-    ['Manage all user accounts', true], ['Configure system settings', true],
-    ['Access audit logs', true], ['Manage data privacy requests', true],
-    ['View full student clinical records', true], ['Manage roles & permissions', true]
-  ],
-  counselor: [
-    ['View assigned student records (with logged reason)', true], ['Manage appointments', true],
-    ['Issue & escalate risk alerts', true], ['Access AI coaching logs', true],
-    ['Export case reports', true], ['Manage user accounts', false]
-  ],
-  student: [
-    ['View own mood & journal history', true], ['Book appointments with counselors', true],
-    ['Manage own data & consent settings', true], ['View other students\' data', false]
-  ]
+
+
+/* =========================================================
+   STUDENT ACCOUNTS (cards)
+========================================================= */
+let stuPage = 1, stuData = [], stuTimer = null, activeStu = null, stuCoursesLoaded = false;
+const STU_BADGE = {active:'stable', inactive:'watch', graduated:'neutral'};
+const STU_ACTIONS = {
+  active:    [['inactive','Archive'], ['graduated','Mark as graduated']],
+  inactive:  [['active','Reactivate'], ['graduated','Mark as graduated']],
+  graduated: [['active','Reactivate']]
 };
-function renderPermList(targetId, list, editable){
-  document.getElementById(targetId).innerHTML = list.map(([label,on])=>`
-    <div class="toggle-row" style="padding:11px 0;">
-      <div class="t-label" style="font-size:13px;">${label}</div>
-      <button class="switch ${on?'on':''}" ${editable?'onclick="toggleSwitch(this)"':'disabled'}><span class="knob"></span></button>
-    </div>`).join('');
+const yearText = y => y ? 'Year ' + y : '-';
+
+function showAcctTab(tab){
+  document.querySelectorAll('#sec-accounts .tab-btn').forEach(b => b.classList.toggle('active', b.dataset.atab === tab));
+  document.querySelectorAll('#sec-accounts .subpanel').forEach(p => p.classList.toggle('active', p.id === 'atab-' + tab));
+  if(tab === 'students') loadStudentsPage(stuPage);
 }
-function renderRoles(){
-  renderPermList('permSuperAdmin', permSets.super, false);
-  renderPermList('permCounselor', permSets.counselor, true);
-  renderPermList('permStudent', permSets.student, false);
+
+function stuFiltersChanged(){
+  clearTimeout(stuTimer);
+  stuTimer = setTimeout(() => loadStudentsPage(1), 300);
+}
+
+function loadStudentsPage(page){
+  stuPage = page || 1;
+  const grid = document.getElementById('stuGrid');
+  const q = new URLSearchParams({
+    q: document.getElementById('stuSearch').value.trim(),
+    status: document.getElementById('stuStatus').value,
+    course: document.getElementById('stuCourse').value,
+    page: stuPage
+  });
+  return api('/api/admin/students/?' + q).then(r=>{
+    if(!r.ok){ grid.innerHTML = '<div class="sc-empty" style="grid-column:1/-1;">Could not load students. Refresh and try again.</div>'; return; }
+    const d = r.data;
+    stuData = d.students;
+    stuPage = d.page;
+    document.getElementById('stuTabCount').textContent = d.counts.all;
+    if(!stuCoursesLoaded){
+      const sel = document.getElementById('stuCourse');
+      d.courses.forEach(c => sel.add(new Option(c.label, c.code)));
+      stuCoursesLoaded = true;
+    }
+    renderStudentCards(d);
+  });
+}
+
+function renderStudentCards(d){
+  const grid = document.getElementById('stuGrid');
+  grid.innerHTML = d.students.length ? d.students.map(s=>{
+    const initials = s.name.split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase();
+    return `<div class="card stu-card">
+      <div class="stu-top">
+        <div class="avatar" style="background:var(--sky-pale); color:var(--sky-deep);">${esc(initials)}</div>
+        <div style="min-width:0;"><div class="stu-name">${esc(s.name)}</div><div class="stu-sub">@${esc(s.username)} · ${esc(s.student_number)}</div></div>
+      </div>
+      <div class="stu-meta">
+        <div><div class="k">Course</div><div class="v">${esc(s.course || 'Not set')}</div></div>
+        <div><div class="k">Year</div><div class="v">${esc(yearText(s.year))}</div></div>
+        <div><div class="k">Last login</div><div class="v">${esc(s.last_login)}</div></div>
+        <div><div class="k">Joined</div><div class="v">${esc(s.joined)}</div></div>
+      </div>
+      <div class="stu-tags">
+        <span class="badge ${STU_BADGE[s.status] || 'neutral'}"><span class="dot"></span>${esc(s.status_label)}</span>
+        ${s.locked ? '<span class="badge urgent">Locked out</span>' : ''}
+        ${s.google ? '<span class="badge neutral">Google</span>' : ''}
+        ${s.setup_pending ? '<span class="badge watch">Setup unfinished</span>' : ''}
+      </div>
+      <div class="stu-actions"><button class="pill-btn ghost sm" onclick="openStudentModal(${s.id})">Manage</button></div>
+    </div>`;
+  }).join('') : '<div class="sc-empty" style="grid-column:1/-1;">No students match these filters.</div>';
+
+  document.getElementById('stuPager').innerHTML = d.pages > 1
+    ? `<button class="pill-btn ghost sm" ${d.page <= 1 ? 'disabled' : ''} onclick="loadStudentsPage(${d.page - 1})">← Previous</button>
+       <span>Page ${d.page} of ${d.pages} · ${d.total} students</span>
+       <button class="pill-btn ghost sm" ${d.page >= d.pages ? 'disabled' : ''} onclick="loadStudentsPage(${d.page + 1})">Next →</button>`
+    : `<span>${d.total} student${d.total === 1 ? '' : 's'}</span>`;
+}
+
+function openStudentModal(id){
+  const s = stuData.find(x => x.id === id);
+  if(!s) return;
+  activeStu = s;
+  document.getElementById('stuModalName').textContent = s.name;
+  document.getElementById('stuModalSub').textContent = '@' + s.username + ' · ' + (s.email || 'no email');
+  document.getElementById('stuModalKv').innerHTML = [
+    ['Student number', s.student_number],
+    ['Course', s.course_label || 'Not set'],
+    ['Year level', yearText(s.year)],
+    ['Status', s.status_label + (s.reason ? ' · ' + s.reason : '')],
+    ['Last login', s.last_login],
+    ['Signs in with', s.google ? 'Google' : 'Email and password']
+  ].map(([k, v]) => '<div class="kv"><div class="k">' + esc(k) + '</div><div class="v">' + esc(v) + '</div></div>').join('');
+
+  document.getElementById('stuAction').innerHTML =
+    (STU_ACTIONS[s.status] || STU_ACTIONS.active).map(([v, l]) => '<option value="' + v + '">' + l + '</option>').join('');
+  document.getElementById('stuReason').selectedIndex = 0;
+  document.getElementById('stuNote').value = '';
+  document.getElementById('stuExit').checked = false;
+  document.getElementById('stuEval').checked = false;
+  document.getElementById('stuError').textContent = '';
+  syncStuAction();
+
+  document.getElementById('stuResetBtn').disabled = !s.has_password || !s.email;
+  document.getElementById('stuUnlockBtn').disabled = !s.locked;
+  document.getElementById('stuSignInNote').textContent =
+    !s.has_password ? 'This student signs in with Google, so there is no password to reset.'
+    : (s.locked ? 'This login is locked after too many wrong passwords.' : '');
+  document.getElementById('stuModalOverlay').classList.add('active');
+}
+
+function syncStuAction(){
+  const action = document.getElementById('stuAction').value;
+  const reason = document.getElementById('stuReason').value;
+  const archiving = action === 'inactive';
+  const showExit = archiving && reason === 'transferred';
+  const showEval = showExit || action === 'graduated';
+  document.getElementById('stuReasonWrap').style.display = archiving ? '' : 'none';
+  document.getElementById('stuNoteWrap').style.display = (archiving && reason === 'other') ? '' : 'none';
+  document.getElementById('stuExitWrap').style.display = showExit ? 'flex' : 'none';
+  document.getElementById('stuEvalWrap').style.display = showEval ? 'flex' : 'none';
+  document.getElementById('stuClearance').style.display = (showExit || showEval) ? '' : 'none';
+  if(!showExit) document.getElementById('stuExit').checked = false;
+  if(!showEval) document.getElementById('stuEval').checked = false;
+}
+
+function applyStudentStatus(force){
+  const s = activeStu;
+  if(!s) return;
+  const status = document.getElementById('stuAction').value;
+  const err = document.getElementById('stuError');
+  err.textContent = '';
+  api('/api/staff/students/' + s.id + '/status/', {
+    status, force,
+    reason: status === 'inactive' ? document.getElementById('stuReason').value : '',
+    note: document.getElementById('stuNote').value,
+    exit_interview_done: document.getElementById('stuExit').checked,
+    evaluation_done: document.getElementById('stuEval').checked
+  }).then(r=>{
+    if(r.ok){
+      closeModal('stuModalOverlay');
+      showToast(status === 'active' ? 'Student reactivated' : (status === 'graduated' ? 'Student marked as graduated' : 'Student archived'));
+      loadStudentsPage(stuPage);
+      return;
+    }
+    if(r.data.needs_confirm){
+      if(confirm('This student has ' + r.data.upcoming_appointments + ' upcoming appointment(s). Continuing will cancel them. Continue?')) applyStudentStatus(true);
+      return;
+    }
+    err.textContent = r.data.error || 'Could not change the status.';
+  });
+}
+
+function resetStudentPassword(){
+  const s = activeStu;
+  api('/api/admin/students/' + s.id + '/reset-password/', {}).then(r=>{
+    showToast(r.ok ? 'Reset link sent to ' + s.email : (r.data.error || 'Could not send the link'));
+  });
+}
+
+function unlockStudent(){
+  const s = activeStu;
+  api('/api/admin/students/' + s.id + '/unlock/', {}).then(r=>{
+    if(!r.ok){ showToast(r.data.error || 'Could not unlock this login'); return; }
+    showToast(r.data.was_locked ? s.name + ' can log in again' : 'Failed-login counter cleared');
+    closeModal('stuModalOverlay');
+    loadStudentsPage(stuPage);
+  });
 }
 
 /* =========================================================
@@ -1313,13 +1451,7 @@ function staffToAccount(st){
   return {id:'STF-'+st.id, uid:st.id, subclassId:st.subclass_id, name:st.name, email:st.email, role:'Counselor',
           detail:st.subclass, status:st.status, lastLogin:st.last_login, joined:st.joined};
 }
-function loadStaffAccounts(){
-  return api('/api/admin/staff/').then(r=>{
-    if(!r.ok) return;
-    accounts = accounts.filter(a=>a.uid===undefined && a.role!=='Counselor').concat((r.data.staff||[]).map(staffToAccount));
-    renderAccounts();
-  });
-}
+
 function submitCreateStaff(){
   const err = document.getElementById('createError'); err.textContent = '';
   const body = {
@@ -1329,13 +1461,11 @@ function submitCreateStaff(){
   };
   api('/api/admin/staff/create/', body).then(r=>{
     if(!r.ok){ err.textContent = r.data.error || 'Could not create the account.'; return; }
-    document.getElementById('acctRoleFilter').value='all';
-    document.getElementById('acctStatusFilter').value='all';
     closeModal('createModalOverlay');
     document.getElementById('createName').value='';
     document.getElementById('createEmail').value='';
     showToast(r.data.email_sent
-      ? 'Staff account created — set-password email sent to '+r.data.staff.email
+      ? 'Staff account created. Set-password email sent to '+r.data.staff.email
       : 'Account created, but the set-password email could not be sent. Use Reset Password.');
     loadStaffAccounts();
     loadSubclasses();
@@ -1432,6 +1562,7 @@ function loadDashboard(){
     set('dashSessionDelta', 'active in the last 15 minutes');
     set('dashAlertCount', d.security.locked_now);
     set('dashAlertDelta', 'locked out now · '+d.security.failed_24h+' username(s) with failed logins in 24h');
+    document.getElementById('acctNavCount').textContent = d.accounts.total;
     const bp = document.getElementById('bellPing');
     bp.textContent = d.security.locked_now;
     bp.style.display = d.security.locked_now ? '' : 'none';
@@ -1499,10 +1630,11 @@ function loadDashboard(){
 const chartFont = {family:"'Inter',sans-serif", size:11};
 function baseGrid(){return {color: getComputedStyle(document.body).getPropertyValue('--line'), drawTicks:false};}
 
-
 /* =========================================================
    MISC
 ========================================================= */
+function closeModal(id){ document.getElementById(id).classList.remove('active'); }
+
 function toggleSwitch(el){ el.classList.toggle('on'); }
 function showToast(msg){
   const t = document.getElementById('toast');
@@ -1512,12 +1644,6 @@ function showToast(msg){
   window._toastTimer = setTimeout(()=>t.classList.remove('show'), 2600);
 }
 function toggleTheme(){ document.body.classList.toggle('dark'); }
-function handleGlobalSearch(q){
-  q = q.trim();
-  if(!q) return;
-  const hit = accounts.find(a=> a.id.toLowerCase()===q.toLowerCase() || a.name.toLowerCase().includes(q.toLowerCase()) || a.email.toLowerCase().includes(q.toLowerCase()));
-  if(hit){ goTo('accounts'); document.getElementById('acctRoleFilter').value='all'; document.getElementById('acctStatusFilter').value='all'; renderAccounts(); showToast('Found match: '+hit.name); }
-}
 
 function initAll(){
   renderAccounts();
@@ -1526,6 +1652,7 @@ function initAll(){
   renderIntegrations();
   renderBackups();
   loadDashboard();
+  loadStudentsPage(1);
   loadSubclasses().then(loadStaffAccounts);
 }
 
