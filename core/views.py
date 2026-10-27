@@ -304,6 +304,9 @@ def about(request):
 def contact(request):
     return render(request, 'core/contact.html')
 
+def privacy(request):
+    return render(request, 'core/privacy-policy.html')
+
 
 # -- Register --
 

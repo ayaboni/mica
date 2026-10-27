@@ -1,10 +1,12 @@
 from django.urls import path
 from . import views, admin_api, reports
 from django.contrib.auth import views as auth_views
+from django.views.generic import TemplateView
 
 urlpatterns = [
     path('', views.home, name='home'),
     path('about/', views.about, name='about'),
+    path('privacy-policy/', views.privacy, name='privacy'),
     path('contact/', views.contact, name='contact'),
     path('register/', views.register, name='register'),
     path('complete-profile/', views.complete_profile, name='complete_profile'),
