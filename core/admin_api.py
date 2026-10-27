@@ -28,7 +28,7 @@ from django.views.decorators.http import require_POST
 
 from .models import (COURSES, SERVICES, STATUS_REASONS, StaffProfile, StaffSubclass, GuidanceThread, GuidanceMessage,
                      StudentFlag, StudentNote, Appointment, AccessLog, StudentStatusLog,
-                     LoginThrottle, MoodEntry, ChatConversation)
+                     LoginThrottle, MoodEntry, ChatConversation, SiteSettings, AuditEvent)
 from .permissions import BOOL_FIELDS, PERMISSION_FIELDS, SERVICE_FIELDS, SERVICE_KEYS, subclass_json
 
 logger = logging.getLogger(__name__)
@@ -118,6 +118,51 @@ def subclass_delete(request, subclass_id):
                      % (count, "" if count == 1 else "s", sub.name)}, status=409)
     sub.delete()
     return JsonResponse({"status": "ok"})
+
+
+def _site_json(s):
+    return {"platform_name": s.platform_name, "institution_name": s.institution_name,
+            "support_email": s.support_email, "timezone": settings.TIME_ZONE}
+
+
+@_admin
+def site_settings(request):
+    return JsonResponse(_site_json(SiteSettings.get()))
+
+
+@_admin
+@require_POST
+def site_settings_save(request):
+    data = _body(request)
+    if data is None:
+        return JsonResponse({"error": "Invalid request."}, status=400)
+    platform = " ".join(str(data.get("platform_name") or "").split())
+    institution = " ".join(str(data.get("institution_name") or "").split())
+    email = str(data.get("support_email") or "").strip()
+    if not 2 <= len(platform) <= 80:
+        return JsonResponse({"error": "Platform name must be 2\u201380 characters."}, status=400)
+    if len(institution) > 120:
+        return JsonResponse({"error": "Institution name is too long."}, status=400)
+    if email:
+        try:
+            validate_email(email)
+        except ValidationError:
+            return JsonResponse({"error": "That support email doesn't look right."}, status=400)
+
+    s = SiteSettings.get()
+    changed = [label for label, old, new in (
+        ("platform name", s.platform_name, platform),
+        ("institution name", s.institution_name, institution),
+        ("support email", s.support_email, email),
+    ) if old != new]
+    s.platform_name, s.institution_name, s.support_email = platform, institution, email
+    s.updated_by = request.user
+    s.save()
+    if changed:
+        AuditEvent.objects.create(actor=request.user, event="settings_changed",
+                                  detail="General: changed " + ", ".join(changed),
+                                  ip=request.META.get("REMOTE_ADDR") or None)
+    return JsonResponse(_site_json(s))
 
 
 def _staff_json(user):

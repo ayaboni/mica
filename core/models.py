@@ -397,3 +397,30 @@ class Semester(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class SiteSettings(models.Model):
+    """One row only: the things the admin can edit in System Settings."""
+    platform_name = models.CharField(max_length=80, default="MICA")
+    institution_name = models.CharField(max_length=120, blank=True)
+    support_email = models.EmailField(blank=True)
+    hotlines = models.JSONField(default=list, blank=True)   # used by the hotlines step
+    updated_at = models.DateTimeField(auto_now=True)
+    updated_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+
+    @classmethod
+    def get(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+
+class AuditEvent(models.Model):
+    """Admin-level events that aren't 'staff opened a student' (settings changed, logins...)."""
+    actor = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='audit_events')
+    event = models.CharField(max_length=40)          # e.g. "settings_changed"
+    detail = models.CharField(max_length=300, blank=True)
+    ip = models.GenericIPAddressField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']

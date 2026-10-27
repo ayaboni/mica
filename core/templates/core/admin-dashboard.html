@@ -247,6 +247,11 @@
   .switch .knob{position:absolute; top:3px; left:3px; width:19px; height:19px; border-radius:50%; background:#fff; transition:left .15s ease; box-shadow:0 1px 3px rgba(0,0,0,.3);}
   .switch.on .knob{left:22px;}
 
+  #sec-settings .subpanel > .card{margin-bottom:22px;}
+  #sec-settings .subpanel > .card:last-child{margin-bottom:0;}
+  #sec-settings .panel-head{margin-bottom:18px;}
+  #sec-settings .field-grid{row-gap:20px;}
+
   .toast{position:fixed; bottom:28px; right:28px; background:var(--ink); color:var(--cream); padding:14px 22px; border-radius:12px; font-size:13.5px; font-weight:500; box-shadow:var(--shadow); z-index:200; display:flex; align-items:center; gap:10px; transform:translateY(20px); opacity:0; pointer-events:none; transition:transform .3s ease, opacity .3s ease;}
   .toast.show{transform:translateY(0); opacity:1;}
 
@@ -399,9 +404,9 @@
 
     <div class="sidebar-bottom">
       <div class="admin-chip">
-        <div class="avatar" style="background:var(--sky);">{{ request.user.first_name|slice:":1"|upper }}{{ request.user.last_name|slice:":1"|upper }}</div>
+        <div class="avatar me-avatar" style="background:var(--sky);">{{ request.user.first_name|slice:":1"|upper }}{{ request.user.last_name|slice:":1"|upper }}</div>
           <div class="who">
-            <div class="name">{{ request.user.get_full_name|default:request.user.username }}</div>
+            <div class="name" id="meName">{{ request.user.get_full_name|default:request.user.username }}</div>
               <div class="role">System Admin</div>
           </div>
         <button class="logout-btn" onclick="doLogout()" title="Log out">
@@ -432,7 +437,7 @@
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2a6 6 0 0 0-6 6v3.4c0 .8-.3 1.6-.9 2.2L4 15h16l-1.1-1.4a3.2 3.2 0 0 1-.9-2.2V8a6 6 0 0 0-6-6z"/><path d="M9.5 19a2.5 2.5 0 0 0 5 0"/></svg>
           <span class="ping" id="bellPing">2</span>
         </button>
-        <div class="avatar" style="background:var(--sky); cursor:pointer;" onclick="goTo('settings')">{{ request.user.first_name|slice:":1"|upper }}{{ request.user.last_name|slice:":1"|upper }}</div>
+        <div class="avatar" style="background:var(--sky); cursor:pointer;" onclick="goTo('settings'); goTab('account')">{{ request.user.first_name|slice:":1"|upper }}{{ request.user.last_name|slice:":1"|upper }}</div>
       </div>
     </div>
 
@@ -610,7 +615,7 @@
         </div>
 
         <div class="card" style="overflow-x:auto;">
-          <table style="table-layout:fixed;">
+          <table style="table-layout:fixed; min-width:860px;">
             <colgroup>
               <col style="width:165px"><col style="width:15%"><col style="width:11%">
               <col style="width:15%"><col style="width:15%"><col>
@@ -710,6 +715,30 @@
           <button class="tab-btn" data-tab="notifications" onclick="goTab('notifications')">Notifications</button>
           <button class="tab-btn" data-tab="integrations" onclick="goTab('integrations')">Integrations</button>
           <button class="tab-btn" data-tab="backup" onclick="goTab('backup')">Backup &amp; Recovery</button>
+          <button class="tab-btn" data-tab="account" onclick="goTab('account')">My Account</button>
+      </div>
+
+      <div class="subpanel" id="tab-account">
+          <div class="card panel">
+            <div class="panel-head"><div><h3>My Account</h3><div class="sub">Your own admin login. Each admin should use their own account.</div></div></div>
+            <div class="field-grid">
+              <div class="field"><label>First name</label><input id="myFirst" maxlength="150" value="{{ request.user.first_name }}"></div>
+              <div class="field"><label>Last name</label><input id="myLast" maxlength="150" value="{{ request.user.last_name }}"></div>
+              <div class="field"><label>Username</label><input value="{{ request.user.username }}" readonly></div>
+              <div class="field"><label>Email</label><input value="{{ request.user.email }}" readonly></div>
+            </div>
+            {% if not request.user.email %}
+            <div class="sub" style="margin-top:12px;">This account has no email, so it can't get sign-in or password-change codes. Add one in Django admin.</div>
+            {% endif %}
+            <div style="margin-top:16px; display:flex; gap:12px; align-items:center;">
+              <button class="pill-btn solid sm" id="myAcctBtn" onclick="saveMyAccount()">Save changes</button>
+              <span id="myAcctMsg" style="font-size:12.5px;"></span>
+            </div>
+          </div>
+          <div class="card panel">
+            <div class="panel-head"><div><h3>Password</h3><div class="sub">We'll email you a code first to confirm it's you.</div></div></div>
+            <a class="pill-btn ghost sm" href="{% url 'change_password' %}">Change password</a>
+          </div>
         </div>
 
         <!-- GENERAL -->
@@ -717,13 +746,14 @@
           <div class="card panel">
             <div class="panel-head"><div><h3>Platform Details</h3><div class="sub">Basic identity used across the app and notifications</div></div></div>
             <div class="field-grid">
-              <div class="field"><label>Platform name</label><input value="MICA — Mind Care"></div>
-              <div class="field"><label>Institution name</label><input value="College of Arts and Sciences"></div>
-              <div class="field"><label>Support email</label><input value="support@mica.edu.ph"></div>
-              <div class="field">
-                <label>Timezone</label>
-                <select><option selected>Asia/Manila (GMT+8)</option><option>UTC</option></select>
-              </div>
+              <div class="field"><label>Platform name</label><input id="setPlatform" maxlength="80"></div>
+              <div class="field"><label>Institution name</label><input id="setInstitution" maxlength="120" placeholder="Your school's full name"></div>
+              <div class="field"><label>Support email</label><input id="setEmail" type="email" maxlength="254" placeholder="guidance@yourschool.edu.ph"></div>
+              <div class="field"><label>Timezone</label><input id="setTz" readonly></div>
+            </div>
+            <div style="margin-top:16px; display:flex; gap:12px; align-items:center;">
+              <button class="pill-btn solid sm" id="setSaveBtn" onclick="saveSiteSettings()">Save changes</button>
+              <span id="setMsg" style="font-size:12.5px; color:var(--ink-soft);"></span>
             </div>
           </div>
           <div class="card panel">
@@ -1676,6 +1706,52 @@ function loadDashboard(){
 const chartFont = {family:"'Inter',sans-serif", size:11};
 function baseGrid(){return {color: getComputedStyle(document.body).getPropertyValue('--line'), drawTicks:false};}
 
+function loadSiteSettings(){
+  return api('/api/admin/settings/').then(r=>{
+    const msg = document.getElementById('setMsg');
+    if(!r.ok){ msg.style.color = 'var(--alert)'; msg.textContent = 'Could not load settings.'; return; }
+    document.getElementById('setPlatform').value = r.data.platform_name;
+    document.getElementById('setInstitution').value = r.data.institution_name;
+    document.getElementById('setEmail').value = r.data.support_email;
+    document.getElementById('setTz').value = r.data.timezone;
+  });
+}
+
+function saveSiteSettings(){
+  const btn = document.getElementById('setSaveBtn');
+  const msg = document.getElementById('setMsg');
+  btn.disabled = true; msg.textContent = '';
+  api('/api/admin/settings/save/', {
+    platform_name: document.getElementById('setPlatform').value,
+    institution_name: document.getElementById('setInstitution').value,
+    support_email: document.getElementById('setEmail').value,
+  }).then(r=>{
+    btn.disabled = false;
+    if(!r.ok){ msg.style.color = 'var(--alert)'; msg.textContent = r.data.error || 'Could not save.'; return; }
+    msg.style.color = '';
+    showToast('Settings saved');
+  });
+}
+
+function saveMyAccount(){
+  const btn = document.getElementById('myAcctBtn');
+  const msg = document.getElementById('myAcctMsg');
+  btn.disabled = true; msg.textContent = '';
+  api('/api/staff/profile/', {
+    first_name: document.getElementById('myFirst').value,
+    last_name: document.getElementById('myLast').value,
+  }).then(r=>{
+    btn.disabled = false;
+    if(!r.ok){ msg.style.color = 'var(--alert)'; msg.textContent = r.data.error || 'Could not save.'; return; }
+    msg.style.color = '';
+    const f = document.getElementById('myFirst').value.trim();
+    const l = document.getElementById('myLast').value.trim();
+    document.querySelectorAll('.me-avatar').forEach(a => a.textContent = ((f[0] || '') + (l[0] || '')).toUpperCase());
+    document.getElementById('meName').textContent = r.data.full_name;
+    showToast('Name saved');  
+  });
+}
+
 /* =========================================================
    MISC
 ========================================================= */
@@ -1691,6 +1767,11 @@ function showToast(msg){
 }
 function toggleTheme(){ document.body.classList.toggle('dark'); }
 
+if (new URLSearchParams(location.search).get('pw') === 'changed'){
+  goTo('settings'); goTab('account'); showToast('Password changed');
+  history.replaceState(null, '', location.pathname);
+}
+
 function initAll(){
   renderAccounts();
   renderPrivacy();
@@ -1698,6 +1779,7 @@ function initAll(){
   renderBackups();
   loadDashboard();
   loadStudentsPage(1);
+  loadSiteSettings();
   loadSubclasses().then(loadStaffAccounts);
 }
 

@@ -1099,6 +1099,14 @@ def _password_change_verified(request):
     return bool(until) and until > timezone.now().timestamp()
 
 
+def _after_password_change(user):
+    if user.is_superuser:
+        return reverse("admin_dashboard") + "?pw=changed"
+    if user.is_staff:
+        return reverse("staff_dashboard")
+    return reverse("account_settings")
+
+
 @never_cache
 @login_required(login_url='login')
 def change_password(request):
@@ -1141,7 +1149,7 @@ def change_password(request):
             update_session_auth_hash(request, user)  # keeps them logged in after changing
             request.session.pop("pw_change_verified_until", None)   # one code, one change
             messages.success(request, "Password changed successfully.")
-            return redirect('account_settings')
+            return redirect(_after_password_change(user))
         else:
             for error in form.errors.values():
                 messages.error(request, error.as_text())
@@ -1167,6 +1175,11 @@ def change_password(request):
 
 @login_required(login_url='login')
 def account_settings(request):
+    if request.user.is_superuser:
+        return redirect('admin_dashboard')
+    if request.user.is_staff:
+        return redirect('staff_dashboard')
+    
     profile = request.user.profile
     if request.method == 'POST':
         new_username = request.POST.get('username', request.user.username).strip()
