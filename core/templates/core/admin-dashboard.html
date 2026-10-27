@@ -320,6 +320,15 @@
   #acctTbody .badge.neutral{white-space:normal; text-align:left; line-height:1.35; border-radius:14px; max-width:260px;}
   .u-cell > div:last-child{min-width:0;}
   .u-cell .name, .u-cell .email{overflow-wrap:anywhere;}
+
+  body:not(.dark) .badge.stable{background:#DDEBD9; color:#3F6B3A;}
+  .stat-card .delta.up{color:#3F6B3A;}
+  body.dark .stat-card .delta.up{color:#A9C6A2;}
+  .service-row .s-icon{background:#DDEBD9; color:#3F6B3A;}
+  .stat-card .icon-chip[style*="sage-pale"]{background:#DDEBD9 !important; color:#3F6B3A !important;}
+  body.dark .service-row .s-icon,
+  body.dark .stat-card .icon-chip[style*="sage-pale"]{background:rgba(150,184,144,.22) !important; color:#CFE5CA !important;}
+
 </style>
 </head>
 <body>
@@ -424,75 +433,65 @@
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17.5" cy="9" r="2.4"/><path d="M15.8 13a5 5 0 0 1 5.2 5"/></svg>
             </div>
             <div class="label">Total Accounts</div>
-            <div class="value">1,240</div>
-            <div class="delta up">▲ 18 new this week</div>
+            <div class="value" id="dashTotal">–</div>
+            <div class="delta up" id="dashTotalDelta"></div>
           </div>
           <div class="card stat-card">
             <div class="icon-chip" style="background:var(--sky-pale); color:var(--sky-deep);">
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
             </div>
-            <div class="label">System Uptime (30d)</div>
-            <div class="value">99.94<span style="font-size:15px; color:var(--ink-soft);">%</span></div>
-            <div class="delta up">▲ within SLA target</div>
+            <div class="label">Consent Coverage</div>
+            <div class="value"><span id="dashConsent">–</span><span style="font-size:15px; color:var(--ink-soft);">%</span></div>
+            <div class="delta up" id="dashConsentDelta"></div>
           </div>
           <div class="card stat-card">
             <div class="icon-chip" style="background:var(--peach-deep); color:var(--brown-deep);">
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M8 12h8M12 8v8"/></svg>
             </div>
-            <div class="label">Active Sessions</div>
-            <div class="value" id="dashSessionCount">312</div>
-            <div class="delta up">▲ peak 9:00–10:00 AM</div>
+            <div class="label">Active Now</div>
+            <div class="value" id="dashSessionCount">–</div>
+            <div class="delta up" id="dashSessionDelta"></div>
           </div>
           <div class="card stat-card">
             <div class="icon-chip" style="background:var(--alert-pale); color:var(--alert);">
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9L2.5 18a1.6 1.6 0 0 0 1.4 2.4h16.2a1.6 1.6 0 0 0 1.4-2.4L13.7 3.9a1.6 1.6 0 0 0-2.8 0z"/></svg>
             </div>
-            <div class="label">Open Security Alerts</div>
-            <div class="value" id="dashAlertCount">2</div>
-            <div class="delta down">▲ 1 failed-login spike</div>
+            <div class="label">Security Alerts</div>
+            <div class="value" id="dashAlertCount">–</div>
+            <div class="delta down" id="dashAlertDelta"></div>
           </div>
         </div>
 
         <div class="grid-2">
           <div class="card panel">
-            <div class="panel-head">
-              <div>
-                <h3>API Request Volume</h3>
-                <div class="sub">Requests per hour, last 24 hours</div>
-              </div>
-              <div class="legend-row"><span><span class="dot" style="background:var(--sage-deep);"></span>Requests</span></div>
-            </div>
-            <canvas id="trafficChart" height="150"></canvas>
+            <div class="panel-head"><div><h3>Platform Activity</h3><div class="sub">Mood check-ins, Mica chats started and guidance messages per day, last 14 days</div></div></div>
+            <canvas id="activityChart" height="150"></canvas>
           </div>
           <div class="card panel">
-            <div class="panel-head">
-              <div>
-                <h3>Recent System Activity</h3>
-                <div class="sub">Live event stream</div>
-              </div>
-            </div>
+            <div class="panel-head"><div><h3>Recent System Activity</h3><div class="sub">Latest events across the platform</div></div></div>
             <div class="feed-list" id="activityFeed"></div>
           </div>
         </div>
 
         <div class="grid-2">
           <div class="card panel">
-            <div class="panel-head">
-              <div>
-                <h3>Account Growth</h3>
-                <div class="sub">New registrations by role, last 6 weeks</div>
-              </div>
-            </div>
+            <div class="panel-head"><div><h3>Account Growth</h3><div class="sub">New registrations per week, last 6 weeks</div></div></div>
             <canvas id="growthChart" height="150"></canvas>
           </div>
           <div class="card panel">
-            <div class="panel-head">
-              <div>
-                <h3>Service Health</h3>
-                <div class="sub">Core infrastructure &amp; integrations</div>
-              </div>
-            </div>
+            <div class="panel-head"><div><h3>Service Health</h3><div class="sub">Quick checks on the parts MICA depends on</div></div></div>
             <div id="serviceList"></div>
+          </div>
+        </div>
+
+        <div class="grid-2" style="grid-template-columns:1fr 1.4fr;">
+          <div class="card panel">
+            <div class="panel-head"><div><h3>Needs Attention</h3><div class="sub">Things waiting on someone</div></div></div>
+            <div id="attentionList"></div>
+          </div>
+          <div class="card panel">
+            <div class="panel-head"><div><h3>Staff Activity</h3><div class="sub">Sessions delivered in the last 30 days, counted like Service Reports</div></div></div>
+            <div id="staffActivity" style="overflow-x:auto;"></div>
           </div>
         </div>
       </section>
@@ -1397,18 +1396,7 @@ function renderIntegrations(){
       <span class="badge ${s.status==='stable'?'stable':'watch'}"><span class="dot ${s.status==='watch'?'pulse':''}"></span>${s.status==='stable'?'Operational':'Degraded'}</span>
     </div>`).join('');
 }
-function renderServiceHealth(){
-  document.getElementById('serviceList').innerHTML = services.map(s=>`
-    <div class="service-row">
-      <div class="s-left">
-        <div class="s-icon" style="background:${s.status==='stable'?'var(--sage-pale)':'var(--sky-pale)'}; color:${s.status==='stable'?'var(--sage-deep)':'var(--sky-deep)'};">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/></svg>
-        </div>
-        <div><div class="s-name">${s.name}</div><div class="s-meta">${s.meta}</div></div>
-      </div>
-      <span class="badge ${s.status==='stable'?'stable':'watch'}"><span class="dot ${s.status==='watch'?'pulse':''}"></span>${s.status==='stable'?'Operational':'Degraded'}</span>
-    </div>`).join('');
-}
+
 function renderBackups(){
   document.getElementById('backupTbody').innerHTML = backups.map(b=>`
     <tr>
@@ -1426,21 +1414,83 @@ function runBackupNow(){
 }
 
 /* =========================================================
-   ACTIVITY FEED (dashboard)
+   DASHBOARD (real data)
 ========================================================= */
-function renderActivityFeed(){
-  const icons = {
-    Success:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>',
-    Failed:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01"/><circle cx="12" cy="12" r="9"/></svg>'
-  };
-  document.getElementById('activityFeed').innerHTML = logs.slice(0,5).map(l=>`
-    <div class="feed-item">
-      <div class="fi-icon" style="background:${l.status==='Success'?'var(--sage-pale)':'var(--alert-pale)'}; color:${l.status==='Success'?'var(--sage-deep)':'var(--alert)'};">${icons[l.status]}</div>
-      <div>
-        <div class="fi-text"><b>${l.actor}</b> — ${l.action}</div>
-        <div class="fi-time">${l.ts}</div>
-      </div>
-    </div>`).join('');
+const HEALTH_UI = {ok:['stable','Operational'], warn:['watch','Check needed'], down:['urgent','Down']};
+
+function loadDashboard(){
+  return api('/api/admin/dashboard/').then(r=>{
+    if(!r.ok){ showToast('Could not load the dashboard numbers'); return; }
+    const d = r.data;
+    const set = (id, v)=>{ document.getElementById(id).textContent = v; };
+
+    set('dashTotal', d.accounts.total);
+    set('dashTotalDelta', d.accounts.students+' students · '+d.accounts.staff+' staff · +'+d.accounts.new_week+' this week');
+    set('dashConsent', d.consent.rate == null ? '–' : d.consent.rate);
+    set('dashConsentDelta', d.consent.on_current+' of '+d.consent.students+' students on the current form');
+    set('dashSessionCount', d.sessions.signed_in);
+    set('dashSessionDelta', 'active in the last 15 minutes');
+    set('dashAlertCount', d.security.locked_now);
+    set('dashAlertDelta', 'locked out now · '+d.security.failed_24h+' username(s) with failed logins in 24h');
+    const bp = document.getElementById('bellPing');
+    bp.textContent = d.security.locked_now;
+    bp.style.display = d.security.locked_now ? '' : 'none';
+
+    if(charts.activity) charts.activity.destroy();
+    const a = d.activity;
+    charts.activity = new Chart(document.getElementById('activityChart'),{
+      type:'line',
+      data:{labels:a.labels, datasets:[
+        {label:'Mood check-ins', data:a.checkins, borderColor:'#5F7F68', tension:.35, pointRadius:2, borderWidth:2.5},
+        {label:'Mica chats started', data:a.chats, borderColor:'#9CC5E8', tension:.35, pointRadius:2, borderWidth:2.5},
+        {label:'Guidance messages', data:a.messages, borderColor:'#D9A46B', tension:.35, pointRadius:2, borderWidth:2.5}
+      ]},
+      options:{plugins:{legend:{position:'bottom', labels:{font:chartFont, boxWidth:10}}},
+               scales:{y:{beginAtZero:true, grid:baseGrid(), ticks:{font:chartFont, precision:0}},
+                       x:{grid:{display:false}, ticks:{font:chartFont, maxRotation:0, maxTicksLimit:7}}}}
+    });
+
+    if(charts.growth) charts.growth.destroy();
+    const g = d.growth;
+    charts.growth = new Chart(document.getElementById('growthChart'),{
+      type:'bar',
+      data:{labels:g.labels, datasets:[
+        {label:'Students', data:g.students, backgroundColor:'#9CC5E8', borderRadius:6, maxBarThickness:22},
+        {label:'Staff', data:g.staff, backgroundColor:'#87A991', borderRadius:6, maxBarThickness:22}
+      ]},
+      options:{plugins:{legend:{position:'bottom', labels:{font:chartFont, boxWidth:10}}},
+               scales:{y:{beginAtZero:true, grid:baseGrid(), ticks:{font:chartFont, precision:0}},
+                       x:{grid:{display:false}, ticks:{font:chartFont}}}}
+    });
+
+    document.getElementById('activityFeed').innerHTML = d.feed.length
+      ? d.feed.map(f=>'<div class="feed-item"><div class="fi-icon" style="background:var(--sage-pale);">'+f.icon+'</div>'+
+          '<div><div class="fi-text">'+esc(f.text)+'</div><div class="fi-time">'+esc(f.time)+'</div></div></div>').join('')
+      : '<div class="sc-empty">Nothing has happened yet.</div>';
+
+    document.getElementById('serviceList').innerHTML = d.health.map(h=>{
+      const ui = HEALTH_UI[h.status] || HEALTH_UI.warn;
+      return '<div class="service-row"><div class="s-left"><div class="s-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/></svg></div>'+
+        '<div><div class="s-name">'+esc(h.name)+'</div><div class="s-meta">'+esc(h.meta)+'</div></div></div>'+
+        '<span class="badge '+ui[0]+'"><span class="dot '+(h.status==='ok'?'':'pulse')+'"></span>'+ui[1]+'</span></div>';
+    }).join('');
+
+    const at = d.attention;
+    document.getElementById('attentionList').innerHTML = [
+      ['Risk flags nobody has taken', at.flags_unassigned],
+      ['Unclaimed chats waiting for a reply', at.threads_waiting],
+      ['Notes waiting for review', at.notes_review],
+      ['Staff who have never signed in', at.staff_pending]
+    ].map(([label, n])=>
+      '<div class="service-row"><div class="s-name">'+esc(label)+'</div>'+
+      '<span class="badge '+(n ? 'urgent' : 'stable')+'">'+n+'</span></div>').join('');
+
+    document.getElementById('staffActivity').innerHTML = d.staff_activity.length
+      ? '<table><thead><tr><th>Staff</th><th>Role</th><th>Sessions</th><th>Notes to review</th></tr></thead><tbody>'+
+        d.staff_activity.map(s=>'<tr><td>'+esc(s.name)+'</td><td><span class="badge neutral">'+esc(s.role)+'</span></td>'+
+          '<td class="mono-cell">'+s.sessions+'</td><td class="mono-cell">'+s.to_review+'</td></tr>').join('')+'</tbody></table>'
+      : '<div class="sc-empty">No active staff accounts yet.</div>';
+  });
 }
 
 /* =========================================================
@@ -1448,29 +1498,7 @@ function renderActivityFeed(){
 ========================================================= */
 const chartFont = {family:"'Inter',sans-serif", size:11};
 function baseGrid(){return {color: getComputedStyle(document.body).getPropertyValue('--line'), drawTicks:false};}
-function renderCharts(){
-  const ctx1 = document.getElementById('trafficChart');
-  if(charts.traffic) charts.traffic.destroy();
-  const hours = Array.from({length:24},(_,i)=> (i%12===0?12:i%12) + (i<12?'AM':'PM'));
-  const vals = hours.map((_,i)=> Math.round(180 + 260*Math.sin((i-6)/24*Math.PI*2) + Math.random()*40));
-  charts.traffic = new Chart(ctx1,{
-    type:'line',
-    data:{labels:hours, datasets:[{data:vals, borderColor:'#5F7F68', backgroundColor:'rgba(135,169,145,0.18)', fill:true, tension:.4, pointRadius:0, borderWidth:2.5}]},
-    options:{plugins:{legend:{display:false}}, scales:{y:{grid:baseGrid(), ticks:{font:chartFont}}, x:{grid:{display:false}, ticks:{font:chartFont, maxRotation:0, maxTicksLimit:8}}}}
-  });
 
-  const ctx2 = document.getElementById('growthChart');
-  if(charts.growth) charts.growth.destroy();
-  charts.growth = new Chart(ctx2,{
-    type:'bar',
-    data:{labels:['W1','W2','W3','W4','W5','W6'],
-      datasets:[
-        {label:'Students', data:[28,34,22,40,31,26], backgroundColor:'#9CC5E8', borderRadius:6, maxBarThickness:22},
-        {label:'Counselors', data:[1,0,2,0,1,0], backgroundColor:'#87A991', borderRadius:6, maxBarThickness:22}
-      ]},
-    options:{plugins:{legend:{position:'bottom', labels:{font:chartFont, boxWidth:10}}}, scales:{y:{grid:baseGrid(), ticks:{font:chartFont}}, x:{grid:{display:false}, ticks:{font:chartFont}}}}
-  });
-}
 
 /* =========================================================
    MISC
@@ -1496,10 +1524,8 @@ function initAll(){
   renderLogs();
   renderPrivacy();
   renderIntegrations();
-  renderServiceHealth();
   renderBackups();
-  renderCharts();
-  renderActivityFeed();
+  loadDashboard();
   loadSubclasses().then(loadStaffAccounts);
 }
 
