@@ -538,23 +538,29 @@ def _trust_browser(response, request, user):
     )
 
 
-def _send_login_code(request, user, remember_me, method, to_email=None):
-    """Create a single-use sign-in code and e-mail it. Returns (ok, error_message)."""
+# Subject and template (without extension) for each kind of code e-mail.
+CODE_EMAILS = {
+    "login": ("{code} is your MICA sign-in code", "core/email/login_code"),
+    "password_change": ("{code} is your MICA password-change code", "core/email/password_change_code"),
+}
+
+
+def _send_code(request, user, purpose, remember_me=False, method="password", to_email=None):
+    """Create a single-use code for `purpose` and e-mail it. Returns (ok, error_message)."""
     to_email = to_email or user.email
     now = timezone.now()
+    mine = LoginVerification.objects.filter(user=user, purpose=purpose)     # codes for other purposes are left alone
 
-    sent_last_hour = LoginVerification.objects.filter(
-        user=user, created_at__gt=now - timedelta(hours=1)).count()
-    if sent_last_hour >= LOGIN_CODE_MAX_PER_HOUR:
-        return False, "Too many sign-in emails requested. Please wait a while and try again."
+    if mine.filter(created_at__gt=now - timedelta(hours=1)).count() >= LOGIN_CODE_MAX_PER_HOUR:
+        return False, "Too many code emails requested. Please wait a while and try again."
 
     # A new code replaces any older, unused ones; also tidy out old rows.
-    LoginVerification.objects.filter(user=user, used_at__isnull=True).update(used_at=now)
+    mine.filter(used_at__isnull=True).update(used_at=now)
     LoginVerification.objects.filter(created_at__lt=now - timedelta(days=1)).delete()
 
     code = _new_login_code()
     record = LoginVerification.objects.create(
-        user=user, code_hash=_hash_code(user, code), expires_at=now + LOGIN_CODE_TTL,
+        user=user, purpose=purpose, code_hash=_hash_code(user, code), expires_at=now + LOGIN_CODE_TTL,
         remember_me=remember_me, method=method,
         request_ip=request.META.get("REMOTE_ADDR") or None,
     )
@@ -566,22 +572,52 @@ def _send_login_code(request, user, remember_me, method, to_email=None):
         "ttl_minutes": int(LOGIN_CODE_TTL.total_seconds() // 60),
         "ip": record.request_ip,
     }
+    subject, template = CODE_EMAILS[purpose]
     try:
         # The code is in the subject too, so it shows in the notification and is easy to copy.
         message = EmailMultiAlternatives(
-            f"{code} is your MICA sign-in code",
-            render_to_string("core/email/login_code.txt", context),
+            subject.format(code=code),
+            render_to_string(template + ".txt", context),
             None, [to_email],
         )
-        message.attach_alternative(render_to_string("core/email/login_code.html", context), "text/html")
+        message.attach_alternative(render_to_string(template + ".html", context), "text/html")
         message.send(fail_silently=False)
     except Exception:
-        logger.exception("Could not send sign-in code to user %s", user.pk)
+        logger.exception("Could not send %s code to user %s", purpose, user.pk)
         record.delete()
-        return False, "We couldn't send the sign-in email. Please try again in a moment."
+        return False, "We couldn't send the email. Please try again in a moment."
 
-    request.session["pending_login_user_id"] = user.pk
+    if purpose == "login":
+        request.session["pending_login_user_id"] = user.pk
     return True, None
+
+
+def _send_login_code(request, user, remember_me, method, to_email=None):
+    return _send_code(request, user, "login", remember_me, method, to_email)
+
+
+def _check_code(user, purpose, raw_code):
+    """Check a typed/pasted code. Returns (record, None) when it is right (the user's outstanding
+    codes for this purpose are then used up), else (None, message for the user)."""
+    code = _normalize_code(raw_code)
+    now = timezone.now()
+    with transaction.atomic():
+        record = (LoginVerification.objects.select_for_update()
+                  .filter(user=user, purpose=purpose, used_at__isnull=True, expires_at__gt=now)
+                  .order_by("-created_at").first())
+        if record is None:
+            return None, "That code has expired. Request a new one below."
+        if record.attempts >= LOGIN_CODE_MAX_ATTEMPTS:
+            return None, "Too many incorrect tries. Request a new code below."
+        if len(code) != LOGIN_CODE_LENGTH or not constant_time_compare(_hash_code(user, code), record.code_hash):
+            record.attempts += 1
+            record.save(update_fields=["attempts"])
+            left = LOGIN_CODE_MAX_ATTEMPTS - record.attempts
+            if left <= 0:
+                return None, "Too many incorrect tries. Request a new code below."
+            return None, f"That code isn't right. {left} {'try' if left == 1 else 'tries'} left."
+        LoginVerification.objects.filter(user=user, purpose=purpose, used_at__isnull=True).update(used_at=now)
+        return record, None
 
 
 def _password_login_target(user):
@@ -619,7 +655,7 @@ def login_check_email(request):
     user = _pending_login_user(request)
     if user is None:
         return redirect("login")
-    latest = LoginVerification.objects.filter(user=user).order_by("-created_at").first()
+    latest = LoginVerification.objects.filter(user=user, purpose="login").order_by("-created_at").first()
     cooldown = 0
     if latest:
         elapsed = (timezone.now() - latest.created_at).total_seconds()
@@ -632,7 +668,7 @@ def login_resend(request):
     user = _pending_login_user(request)
     if user is None:
         return redirect("login")
-    latest = LoginVerification.objects.filter(user=user).order_by("-created_at").first()
+    latest = LoginVerification.objects.filter(user=user, purpose="login").order_by("-created_at").first()
     if latest and (timezone.now() - latest.created_at).total_seconds() < LOGIN_CODE_RESEND_COOLDOWN:
         messages.error(request, "Please wait a moment before requesting another email.")
         return redirect("login_check_email")
@@ -662,30 +698,11 @@ def login_verify(request):
         messages.error(request, "Your sign-in session expired. Please sign in again.")
         return redirect("login")
 
-    code = _normalize_code(request.POST.get("code"))
-    now = timezone.now()
-    with transaction.atomic():
-        record = (LoginVerification.objects.select_for_update()
-                  .filter(user=user, used_at__isnull=True, expires_at__gt=now)
-                  .order_by("-created_at").first())
-        if record is None:
-            messages.error(request, "That code has expired. Request a new one below.")
-            return redirect("login_check_email")
-        if record.attempts >= LOGIN_CODE_MAX_ATTEMPTS:
-            messages.error(request, "Too many incorrect tries. Request a new code below.")
-            return redirect("login_check_email")
-        if len(code) != LOGIN_CODE_LENGTH or not constant_time_compare(_hash_code(user, code), record.code_hash):
-            record.attempts += 1
-            record.save(update_fields=["attempts"])
-            left = LOGIN_CODE_MAX_ATTEMPTS - record.attempts
-            if left <= 0:
-                messages.error(request, "Too many incorrect tries. Request a new code below.")
-            else:
-                messages.error(request, f"That code isn't right. {left} {'try' if left == 1 else 'tries'} left.")
-            return redirect("login_check_email")
-        # Right code: burn it and any other outstanding ones for the user.
-        LoginVerification.objects.filter(user=user, used_at__isnull=True).update(used_at=now)
-        remember_me, method = record.remember_me, record.method
+    record, error = _check_code(user, "login", request.POST.get("code"))
+    if error:
+        messages.error(request, error)
+        return redirect("login_check_email")
+    remember_me, method = record.remember_me, record.method
 
     auth_login(request, user)
     request.session.set_expiry(REMEMBER_ME_SECONDS if remember_me else 0)
@@ -1071,21 +1088,76 @@ def password_reset_firebase_complete(request):
     return JsonResponse({"ok": True, "login_url": reverse("login")})
 
 
+PASSWORD_CHANGE_VERIFIED_SECONDS = 600     # after the code is confirmed, how long the form stays unlocked
+
+
+def _password_change_verified(request):
+    until = request.session.get("pw_change_verified_until")
+    return bool(until) and until > timezone.now().timestamp()
+
+
+@never_cache
 @login_required(login_url='login')
 def change_password(request):
+    """Change password. Before the form unlocks, a 6-character code e-mailed to the account
+    confirms it's really them (accounts with no e-mail on file keep the old, code-free form)."""
+    user = request.user
+    needs_code = bool(user.email)
+    latest = LoginVerification.objects.filter(user=user, purpose="password_change").order_by("-created_at").first()
+
     if request.method == 'POST':
+        action = request.POST.get('action', 'change')
+
+        if action == 'send_code' and needs_code:
+            if latest and (timezone.now() - latest.created_at).total_seconds() < LOGIN_CODE_RESEND_COOLDOWN:
+                messages.error(request, "Please wait a moment before requesting another email.")
+            else:
+                ok, error = _send_code(request, user, "password_change")
+                if ok:
+                    messages.success(request, f"We sent a code to {_mask_email(user.email)}.")
+                else:
+                    messages.error(request, error)
+            return redirect('change_password')
+
+        if action == 'verify_code' and needs_code:
+            record, error = _check_code(user, "password_change", request.POST.get("code"))
+            if error:
+                messages.error(request, error)
+            else:
+                request.session["pw_change_verified_until"] = timezone.now().timestamp() + PASSWORD_CHANGE_VERIFIED_SECONDS
+                messages.success(request, "Code confirmed. Now choose your new password.")
+            return redirect('change_password')
+
+        # Actually changing the password: only once the e-mailed code has been confirmed.
+        if needs_code and not _password_change_verified(request):
+            messages.error(request, "Please confirm the code we emailed you first.")
+            return redirect('change_password')
         form = PasswordChangeForm(request.user, request.POST)
         if form.is_valid():
             user = form.save()
             update_session_auth_hash(request, user)  # keeps them logged in after changing
+            request.session.pop("pw_change_verified_until", None)   # one code, one change
             messages.success(request, "Password changed successfully.")
             return redirect('account_settings')
         else:
             for error in form.errors.values():
                 messages.error(request, error.as_text())
             return redirect('change_password')
-    form = PasswordChangeForm(request.user)
-    return render(request, 'core/change-password.html', {'form': form})
+
+    if not needs_code or _password_change_verified(request):
+        step = "form"
+    elif latest and latest.used_at is None and latest.expires_at > timezone.now():
+        step = "code"
+    else:
+        step = "send"
+    cooldown = 0
+    if latest:
+        cooldown = max(0, math.ceil(LOGIN_CODE_RESEND_COOLDOWN - (timezone.now() - latest.created_at).total_seconds()))
+    return render(request, 'core/change-password.html', {
+        'form': PasswordChangeForm(request.user), 'step': step, 'cooldown': cooldown,
+        'masked_email': _mask_email(user.email), 'code_length': LOGIN_CODE_LENGTH,
+        'ttl_minutes': int(LOGIN_CODE_TTL.total_seconds() // 60),
+    })
 
 
 # -- Student Side --

@@ -315,15 +315,18 @@ class AccessLog(models.Model):
 
 
 class LoginVerification(models.Model):
-    """A single-use, e-mailed sign-in code (6 characters).
+    """A single-use, e-mailed code (6 characters) for signing in or changing a password.
 
     Only a keyed hash of the code is stored, so a database leak can't be used to
     sign in. `used_at` is set when the code is used *or* replaced by a newer one.
     `attempts` counts wrong guesses; after a few the code is refused.
     """
     METHOD_CHOICES = [('password', 'Password'), ('google', 'Google')]
+    PURPOSE_CHOICES = [('login', 'Sign-in'), ('password_change', 'Password change')]
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='login_verifications')
+    # What the code is for. A sign-in code can't confirm a password change, and vice versa.
+    purpose = models.CharField(max_length=20, choices=PURPOSE_CHOICES, default='login')
     code_hash = models.CharField(max_length=64)
     created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField()
