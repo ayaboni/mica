@@ -24,7 +24,7 @@ from django.views.decorators.http import require_POST
 from .models import (COURSES, SERVICES, STATUS_REASONS, StaffProfile, StaffSubclass, GuidanceThread, GuidanceMessage,
                      StudentFlag, StudentNote, Appointment, AccessLog, StudentStatusLog, LoginThrottle,
                     MoodEntry, ChatConversation, SiteSettings, AuditEvent, Semester, EnrolledStudent,
-                    UserProfile)
+                    UserProfile, SignInFailure)
 from .permissions import BOOL_FIELDS, PERMISSION_FIELDS, SERVICE_FIELDS, SERVICE_KEYS, subclass_json
 from .hotlines import DEFAULT_HOTLINES, MAX_HOTLINES, NUMBER_RE, NOTE_RE, get_hotlines, saved_hotlines
 
@@ -983,3 +983,46 @@ def enrollment_download(request):
         w.writerow([_csv_safe(e.student_number), _csv_safe(e.last_name), _csv_safe(e.first_name),
                     _csv_safe(e.course), e.year_level])
     return response
+
+
+SIGNIN_REASON = {"password": "Wrong password", "code": "Wrong e-mail code"}
+
+
+@_admin
+def signin_failures(request):
+    now = timezone.now()
+    last_day = SignInFailure.objects.filter(created_at__gte=now - timedelta(hours=24))
+    by_ip = (last_day.exclude(ip=None).values("ip")
+             .annotate(n=Count("id"), accounts=Count("user", distinct=True)).order_by("-n"))
+    watch = [{"ip": r["ip"], "attempts": r["n"], "accounts": r["accounts"]}
+             for r in by_ip[:20] if r["n"] >= 10 or r["accounts"] >= 3][:5]
+
+    qs = SignInFailure.objects.select_related("user", "user__profile")
+    reason = request.GET.get("reason", "all")
+    if reason in SIGNIN_REASON:
+        qs = qs.filter(reason=reason)
+    page = Paginator(qs.order_by("-created_at"), 25).get_page(request.GET.get("page"))
+
+    def kind(u):
+        return "Admin" if u.is_superuser else ("Staff" if u.is_staff else "Student")
+
+    def row(f):
+        u = f.user
+        profile = getattr(u, "profile", None) if u else None
+        return {"when": _stamp(f.created_at),
+                "account": (u.get_full_name() or u.username) if u else "No such account",
+                "username": u.username if u else "",
+                "student_number": profile.student_number if profile else "",
+                "email": u.email if u else "",
+                "kind": kind(u) if u else "-",
+                "reason": SIGNIN_REASON.get(f.reason, f.reason), "ip": f.ip or "-"}
+
+    return JsonResponse({
+        "failed_24h": last_day.count(),
+        "accounts_hit": last_day.exclude(user=None).values("user").distinct().count(),
+        "ips": last_day.exclude(ip=None).values("ip").distinct().count(),
+        "locked_now": LoginThrottle.objects.filter(locked_until__gt=now).count(),
+        "watch": watch,
+        "rows": [row(f) for f in page],
+        "page": page.number, "pages": page.paginator.num_pages, "total": page.paginator.count,
+    })

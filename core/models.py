@@ -447,3 +447,15 @@ class AuditEvent(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+
+
+class SignInFailure(models.Model):
+    """One failed sign-in, kept 90 days so the admin can tell a typo from an attack."""
+    REASONS = [("password", "Wrong password"), ("code", "Wrong e-mail code")]
+    user = models.ForeignKey(User, null=True, blank=True, on_delete=models.CASCADE, related_name="sign_in_failures")
+    reason = models.CharField(max_length=10, choices=REASONS)
+    ip = models.GenericIPAddressField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ["-created_at"]

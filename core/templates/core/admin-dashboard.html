@@ -254,8 +254,8 @@
   #sec-enrollment > .card, #sec-privacy > .card{margin-bottom:22px;}
   #sec-enrollment > .card:last-child, #sec-privacy > .card:last-child{margin-bottom:0;}
 
-  .toast{position:fixed; bottom:28px; right:28px; background:var(--ink); color:var(--cream); padding:14px 22px; border-radius:12px; font-size:13.5px; font-weight:500; box-shadow:var(--shadow); z-index:200; display:flex; align-items:center; gap:10px; transform:translateY(20px); opacity:0; pointer-events:none; transition:transform .3s ease, opacity .3s ease;}
-  .toast.show{transform:translateY(0); opacity:1;}
+  .toast{position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px); background:#3A2E28; color:#fff; padding:11px 20px; border-radius:999px; font-size:13.5px; font-weight:600; opacity:0; pointer-events:none; transition:all .25s ease; z-index:300;}
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
 
   .role-perm-card{padding:20px 22px;}
   .role-perm-card .rp-head{display:flex; align-items:center; gap:12px; margin-bottom:6px;}
@@ -399,6 +399,10 @@
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 3h9l5 5v13H6z"/><path d="M15 3v5h5M9 13h6M9 17h6"/></svg>
         Audit Logs
       </button>
+      <button class="nav-item" data-section="signins" onclick="goTo('signins')">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+        Sign-in Activity
+      </button>
       <button class="nav-item" data-section="privacy" onclick="goTo('privacy')">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2l8 3.5v6c0 5-3.4 8.9-8 10.5-4.6-1.6-8-5.5-8-10.5v-6L12 2z"/></svg>
         Data Privacy
@@ -479,7 +483,7 @@
             <div class="value" id="dashSessionCount">–</div>
             <div class="delta up" id="dashSessionDelta"></div>
           </div>
-          <div class="card stat-card">
+          <div class="card stat-card" style="cursor:pointer;" onclick="goTo('signins')">
             <div class="icon-chip" style="background:var(--alert-pale); color:var(--alert);">
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9L2.5 18a1.6 1.6 0 0 0 1.4 2.4h16.2a1.6 1.6 0 0 0 1.4-2.4L13.7 3.9a1.6 1.6 0 0 0-2.8 0z"/></svg>
             </div>
@@ -639,6 +643,42 @@
         <div class="pager" id="logPager"></div>
       </section>
 
+      <!-- ============ SIGN IN ACTIVITY ============ -->
+      <section class="section" id="sec-signins">
+        <p style="color:var(--ink-soft); font-size:13.5px; margin-bottom:20px; max-width:680px;">
+          Wrong passwords and wrong e-mailed codes from the last 90 days. If someone types a username that
+          doesn't exist, only the time and address are kept, never what they typed.
+        </p>
+        <div class="stat-grid">
+          <div class="card stat-card"><div class="label">Failed Sign-ins (24h)</div><div class="value" id="siFailed">–</div></div>
+          <div class="card stat-card"><div class="label">Accounts Affected (24h)</div><div class="value" id="siAccounts">–</div></div>
+          <div class="card stat-card"><div class="label">Different Addresses (24h)</div><div class="value" id="siIps">–</div></div>
+          <div class="card stat-card"><div class="label">Locked Out Now</div><div class="value" id="siLocked">–</div></div>
+        </div>
+        <div class="card panel" id="siWatchCard" style="display:none; margin-top:22px;">
+          <div class="panel-head"><div>
+            <h3>Worth a look</h3>
+            <div class="sub">An address with 10 or more failed attempts, or that tried 3 or more different accounts, in the last 24 hours. One student mistyping looks different: a few attempts on one account. Many students on the school's Wi-Fi can share one address, so check before assuming an attack.</div>
+          </div></div>
+          <div id="siWatch" style="font-size:14px; line-height:1.8;"></div>
+        </div>
+        <div style="display:flex; gap:10px; align-items:center; margin:22px 0 14px;">
+          <select class="filter-select" id="siReason" onchange="loadSignins(1)">
+            <option value="all">All reasons</option>
+            <option value="password">Wrong password</option>
+            <option value="code">Wrong e-mail code</option>
+          </select>
+          <button class="pill-btn ghost sm" onclick="loadSignins(1)">Refresh</button>
+        </div>
+        <div class="card" style="overflow-x:auto;">
+          <table style="min-width:640px;">
+            <thead><tr><th>Timestamp</th><th>Account</th><th>Type</th><th>Reason</th><th>Address</th></tr></thead>
+            <tbody id="siTbody"></tbody>
+          </table>
+        </div>
+        <div class="pager" id="siPager"></div>
+      </section>
+
       <!-- ============ DATA PRIVACY ============ -->
       <section class="section" id="sec-enrollment">
         <div class="card panel">
@@ -742,6 +782,7 @@
             <li>MICA does not automatically delete or anonymize old accounts.</li>
             <li>MICA does not add its own encryption of stored data. Storage protection depends on the database host.</li>
             <li>Data access, correction, and erasure requests are handled by the Guidance Office directly, not inside this system.</li>
+            <li>Failed sign-in attempts (time, the account if it exists, and network address) are kept for 90 days to help spot attacks.</li>
           </ul>
         </div>
       </section>
@@ -1045,6 +1086,7 @@ const eyebrows = {
   roles:['Identity & Access','Roles & Permissions'],
   enrollment:['Identity & Access','Enrollment'],
   logs:['Security & Compliance','Audit Logs'],
+  signins:['Security & Compliace', 'Sign-in Activity'],
   privacy:['Data Privacy'],
   settings:['Operations','System Settings']
 };
@@ -1058,6 +1100,7 @@ function goTo(section){
   document.getElementById('topTitle').textContent = eyebrows[section][1];
   document.getElementById('sidebar').classList.remove('open');
   if(section === 'logs') loadAuditLogs(1);
+  if(section === 'signins') loadSignins(1);
 }
 function goTab(tab){
   document.querySelectorAll('#sec-settings .subpanel').forEach(p=>p.classList.remove('active'));
@@ -1704,6 +1747,40 @@ function loadPrivacy(){
     set('privMissingSub', d.none + ' never consented, ' + d.on_older + ' on an older version');
     set('privVersion', 'v' + d.version);
     set('privLast', d.last_consent ? 'Latest consent: ' + new Date(d.last_consent).toLocaleDateString() : 'No consents yet');
+  });
+}
+
+/* =========================================================
+   SIGN IN ACTIVITY
+========================================================= */
+function loadSignins(page){
+  const body = document.getElementById('siTbody');
+  const reason = document.getElementById('siReason').value;
+  return api('/api/admin/signins/?reason=' + encodeURIComponent(reason) + '&page=' + (page || 1)).then(r=>{
+    if(!r.ok){
+      body.innerHTML = '<tr><td colspan="5"><div class="sc-empty">Could not load sign-in activity. Refresh and try again.</div></td></tr>';
+      return;
+    }
+    const d = r.data, set = (id,v)=>{ document.getElementById(id).textContent = v; };
+    set('siFailed', d.failed_24h); set('siAccounts', d.accounts_hit); set('siIps', d.ips); set('siLocked', d.locked_now);
+    document.getElementById('siWatchCard').style.display = d.watch.length ? '' : 'none';
+    document.getElementById('siWatch').innerHTML = d.watch.map(w =>
+      '<div><b class="mono-cell">' + esc(w.ip) + '</b>: ' + w.attempts + ' failed attempts, ' + w.accounts + ' account(s)</div>').join('');
+    body.innerHTML = d.rows.length ? d.rows.map(f=>`
+      <tr>
+        <td class="mono-cell">${esc(f.when)}</td>
+        <td title="${esc(f.email)}">${esc(f.account)}
+          <div style="font-size:12px; color:var(--ink-soft);">${f.username ? '@' + esc(f.username) : ''}${f.student_number ? ' · ' + esc(f.student_number) : ''}</div></td>
+        <td><span class="badge neutral">${esc(f.kind)}</span></td>
+        <td>${esc(f.reason)}</td>
+        <td class="mono-cell">${esc(f.ip)}</td>
+      </tr>`).join('')
+      : '<tr><td colspan="5"><div class="sc-empty">No failed sign-ins recorded yet.</div></td></tr>';
+    document.getElementById('siPager').innerHTML = d.pages > 1
+      ? `<button class="pill-btn ghost sm" ${d.page <= 1 ? 'disabled' : ''} onclick="loadSignins(${d.page - 1})">← Previous</button>
+         <span>Page ${d.page} of ${d.pages} · ${d.total} entries</span>
+         <button class="pill-btn ghost sm" ${d.page >= d.pages ? 'disabled' : ''} onclick="loadSignins(${d.page + 1})">Next →</button>`
+      : `<span>${d.total} entr${d.total === 1 ? 'y' : 'ies'}</span>`;
   });
 }
 

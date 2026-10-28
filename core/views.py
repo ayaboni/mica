@@ -32,6 +32,7 @@ from .models import LoginVerification
 from .models import PasswordResetRequest
 from .models import SiteSettings
 from .models import EnrolledStudent
+from .models import SignInFailure
 from . import firebase_reset
 from urllib.parse import urlencode
 from .models import StaffProfile, StaffSubclass
@@ -472,6 +473,29 @@ def _lockout_seconds_left(key):
     return 0
 
 
+def _client_ip(request):
+    if getattr(settings, "TRUST_PROXY_IP", False):         # only when behind Render's proxy
+        forwarded = request.META.get("HTTP_X_FORWARDED_FOR", "")
+        if forwarded:
+            return forwarded.split(",")[0].strip() or None
+    return request.META.get("REMOTE_ADDR") or None
+
+
+def _log_sign_in_failure(request, reason, user=None, typed=None):
+    """Remember one failed sign-in. `typed` is only used to find the account; if nobody matches,
+    nothing the person typed is stored (it might be a password)."""
+    try:
+        if user is None and typed:
+            typed = str(typed).strip()[:150]
+            user = User.objects.filter(Q(username__iexact=typed) | Q(email__iexact=typed)).first()
+        with transaction.atomic():
+            SignInFailure.objects.create(user=user, reason=reason, ip=_client_ip(request))
+            if secrets.randbelow(100) == 0:                 # housekeeping: keep 90 days
+                SignInFailure.objects.filter(created_at__lt=timezone.now() - timedelta(days=90)).delete()
+    except Exception:
+        logger.exception("Could not record a failed sign-in.")
+
+
 def _record_failed_login(key):
     """Count a wrong password. Returns (attempts_left, lockout_seconds)."""
     now = timezone.now()
@@ -631,7 +655,7 @@ def _send_login_code(request, user, remember_me, method, to_email=None):
     return _send_code(request, user, "login", remember_me, method, to_email)
 
 
-def _check_code(user, purpose, raw_code):
+def _check_code(user, purpose, raw_code, request=None):
     """Check a typed/pasted code. Returns (record, None) when it is right (the user's outstanding
     codes for this purpose are then used up), else (None, message for the user)."""
     code = _normalize_code(raw_code)
@@ -647,6 +671,8 @@ def _check_code(user, purpose, raw_code):
         if len(code) != LOGIN_CODE_LENGTH or not constant_time_compare(_hash_code(user, code), record.code_hash):
             record.attempts += 1
             record.save(update_fields=["attempts"])
+            if request is not None and purpose == "login":
+                _log_sign_in_failure(request, "code", user=user)
             left = LOGIN_CODE_MAX_ATTEMPTS - record.attempts
             if left <= 0:
                 return None, "Too many incorrect tries. Request a new code below."
@@ -756,7 +782,7 @@ def login_verify(request):
         messages.error(request, "Your sign-in session expired. Please sign in again.")
         return redirect("login")
 
-    record, error = _check_code(user, "login", request.POST.get("code"))
+    record, error = _check_code(user, "login", request.POST.get("code"), request=request)
     if error:
         messages.error(request, error)
         return redirect("login_check_email")
@@ -861,6 +887,7 @@ def login(request):
                 messages.error(request, "Your staff account has been suspended. Please contact the System Admin.")
                 return render(request, 'core/login.html', status=403)
             attempts_left, wait = _record_failed_login(throttle_key)
+            _log_sign_in_failure(request, "password", typed=username_input)
             if wait:
                 return render(request, 'core/login.html', {
                     'lockout_seconds': wait,
