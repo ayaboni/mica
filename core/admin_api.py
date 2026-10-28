@@ -961,10 +961,21 @@ def enrollment_clear(request):
 @_admin
 def enrollment_missing(request):
     people = _missing_students()
-    return JsonResponse({"total": len(people), "students": [
-        {"id": p.user_id, "name": p.user.get_full_name() or p.user.username,
-         "student_number": p.student_number, "course": p.course, "year_level": p.year_level}
-        for p in people[:300]]})
+    all_total = len(people)
+    for token in request.GET.get("q", "").lower().split()[:5]:
+        people = [p for p in people if token in " ".join([
+            p.user.get_full_name(), p.user.username, p.student_number or "", p.course or ""]).lower()]
+    page = Paginator(people, 15).get_page(request.GET.get("page"))
+    return JsonResponse({
+        "all_total": all_total,
+        "total": len(people),
+        "matching": [{"id": p.user_id, "name": p.user.get_full_name() or p.user.username} for p in people],
+        "students": [
+            {"id": p.user_id, "name": p.user.get_full_name() or p.user.username,
+             "student_number": p.student_number, "course": p.course, "year_level": p.year_level}
+            for p in page],
+        "page": page.number, "pages": page.paginator.num_pages,
+    })
 
 
 @_admin

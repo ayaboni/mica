@@ -712,16 +712,25 @@
             <div class="sub">Active students whose student number isn't on the current list. Nothing is archived until you press the button. If this list looks far too long, check that you uploaded the right file.</div>
             <div id="missSkipped" style="display:none; margin-top:12px; padding:12px 14px; border-radius:12px; background:var(--alert-pale); font-size:13px; line-height:1.6;"></div>
           </div></div>
-          <div style="overflow-x:auto;">
-            <table>
-              <thead><tr><th><input type="checkbox" id="missAll" onchange="toggleMissingAll(this)"></th><th>Name</th><th>Student number</th><th>Course</th><th>Year</th></tr></thead>
-              <tbody id="missTbody"></tbody>
-            </table>
+          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:14px;">
+          <div class="searchbox" style="border:1.5px solid var(--line);">
+            <input id="missSearch" placeholder="Name, number, or course" oninput="missSearchChanged()">
           </div>
-          <div style="margin-top:14px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-            <button class="pill-btn solid sm" id="missBtn" onclick="archiveMissing()">Archive selected</button>
-            <span id="missMsg" style="font-size:12.5px; color:var(--ink-soft); white-space:pre-line;"></span>
-          </div>
+          <span id="missCount" style="font-size:12.5px; color:var(--ink-soft);"></span>
+          <button class="pill-btn ghost sm" id="missSelAll" style="display:none;" onclick="selectAllMissing()"></button>
+          <button class="pill-btn ghost sm" id="missClear" style="display:none;" onclick="clearMissingSel()">Clear selection</button>
+        </div>
+        <div style="overflow-x:auto;">
+          <table>
+            <thead><tr><th><input type="checkbox" id="missAll" onchange="toggleMissingAll(this)"></th><th>Name</th><th>Student number</th><th>Course</th><th>Year</th></tr></thead>
+            <tbody id="missTbody"></tbody>
+          </table>
+        </div>
+        <div class="pager" id="missPager"></div>
+        <div style="margin-top:14px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+          <button class="pill-btn solid sm" id="missBtn" onclick="archiveMissing()">Archive selected</button>
+          <span id="missMsg" style="font-size:12.5px; color:var(--ink-soft); white-space:pre-line;"></span>
+        </div>
         </div>
         <div class="card panel">
           <div class="panel-head"><div><h3>CSV format</h3></div></div>
@@ -1219,6 +1228,8 @@ function goTo(section){
   document.getElementById('sidebar').classList.remove('open');
   if(section === 'logs') loadAuditLogs(1);
   if(section === 'signins') loadSignins(1);
+  if(section === 'enrollment'){ loadEnrollment(); loadMissing(missPage); }
+  if(section === 'privacy') loadPrivacy();
 }
 function goTab(tab){
   document.querySelectorAll('#sec-settings .subpanel').forEach(p=>p.classList.remove('active'));
@@ -1330,11 +1341,12 @@ function handleGlobalSearch(q){
 /* =========================================================
    ENROLLMENT
 ========================================================= */
-let missList = [];
+let missList = [], missMatching = [], missSel = new Map(), missPage = 1, missTimer = null;
 
 function loadEnrollment(){
   return api('/api/admin/enrollment/').then(r=>{
     if(!r.ok) return;
+    missSel.clear();
     document.getElementById('enrCount').textContent = r.data.count;
     const when = r.data.uploaded_at ? new Date(r.data.uploaded_at).toLocaleString() : 'Never';
     document.getElementById('enrWhen').textContent = when + (r.data.count === 0 && r.data.uploaded_at ? ' (the list has since been cleared)' : '');
@@ -1385,28 +1397,76 @@ function clearEnrollment(){
   });
 }
 
-function loadMissing(){
-  return api('/api/admin/enrollment/missing/').then(r=>{
+function missSearchChanged(){
+  clearTimeout(missTimer);
+  missTimer = setTimeout(() => loadMissing(1), 300);
+}
+
+function loadMissing(page){
+  missPage = page || 1;
+  const q = new URLSearchParams({q: document.getElementById('missSearch').value.trim(), page: missPage});
+  return api('/api/admin/enrollment/missing/?' + q).then(r=>{
     if(!r.ok) return;
-    missList = r.data.students;
-    document.getElementById('enrMissingCard').style.display = r.data.total ? '' : 'none';
-    document.getElementById('missAll').checked = false;
-    document.getElementById('missTbody').innerHTML = missList.map(s=>`
+    const d = r.data;
+    missList = d.students; missMatching = d.matching; missPage = d.page;
+    if(!document.getElementById('missSearch').value.trim()){
+      const stillThere = new Set(d.matching.map(m => m.id));
+      [...missSel.keys()].forEach(id => { if(!stillThere.has(id)) missSel.delete(id); });
+    }
+    document.getElementById('enrMissingCard').style.display = d.all_total ? '' : 'none';
+    document.getElementById('missTbody').innerHTML = missList.length ? missList.map(s=>`
       <tr>
-        <td><input type="checkbox" class="missChk" value="${s.id}"></td>
+        <td><input type="checkbox" class="missChk" value="${s.id}" ${missSel.has(s.id) ? 'checked' : ''} onchange="toggleMissingOne(${s.id}, this.checked)"></td>
         <td>${esc(s.name)}</td><td class="mono-cell">${esc(s.student_number)}</td>
         <td>${esc(s.course)}</td><td>${esc(s.year_level)}</td>
-      </tr>`).join('');
-    if(r.data.total > missList.length){
-      document.getElementById('missMsg').textContent = 'Showing the first ' + missList.length + ' of ' + r.data.total + '. Archive these, then reload to see the rest.';
-    }
+      </tr>`).join('')
+      : '<tr><td colspan="5"><div class="sc-empty">No students match this search.</div></td></tr>';
+    document.getElementById('missPager').innerHTML = d.pages > 1
+      ? `<button class="pill-btn ghost sm" ${d.page <= 1 ? 'disabled' : ''} onclick="loadMissing(${d.page - 1})">← Previous</button>
+         <span>Page ${d.page} of ${d.pages} · ${d.total} students</span>
+         <button class="pill-btn ghost sm" ${d.page >= d.pages ? 'disabled' : ''} onclick="loadMissing(${d.page + 1})">Next →</button>`
+      : `<span>${d.total} student${d.total === 1 ? '' : 's'}</span>`;
+    document.getElementById('missCount').textContent = d.total === d.all_total
+      ? d.all_total + ' not on the list'
+      : d.total + ' of ' + d.all_total + ' match';
+    syncMissingUi();
   });
 }
-function toggleMissingAll(box){
-  document.querySelectorAll('.missChk').forEach(c=>c.checked = box.checked);
+
+function syncMissingUi(){
+  const pageIds = missList.map(s => s.id);
+  document.getElementById('missAll').checked = pageIds.length > 0 && pageIds.every(id => missSel.has(id));
+  const unselected = missMatching.filter(m => !missSel.has(m.id)).length;
+  const selAll = document.getElementById('missSelAll');
+  selAll.style.display = unselected > 0 && missMatching.length > missList.length ? '' : 'none';
+  selAll.textContent = 'Select all ' + missMatching.length + ' matching';
+  document.getElementById('missClear').style.display = missSel.size ? '' : 'none';
+  document.getElementById('missBtn').textContent = missSel.size ? 'Archive selected (' + missSel.size + ')' : 'Archive selected';
 }
+
+function toggleMissingOne(id, on){
+  const s = missList.find(x => x.id === id);
+  if(on) missSel.set(id, s ? s.name : 'Student #' + id); else missSel.delete(id);
+  syncMissingUi();
+}
+function toggleMissingAll(box){
+  missList.forEach(s => box.checked ? missSel.set(s.id, s.name) : missSel.delete(s.id));
+  document.querySelectorAll('.missChk').forEach(c => c.checked = box.checked);
+  syncMissingUi();
+}
+function selectAllMissing(){
+  missMatching.forEach(m => missSel.set(m.id, m.name));
+  document.querySelectorAll('.missChk').forEach(c => c.checked = true);
+  syncMissingUi();
+}
+function clearMissingSel(){
+  missSel.clear();
+  document.querySelectorAll('.missChk').forEach(c => c.checked = false);
+  syncMissingUi();
+}
+
 async function archiveMissing(){
-  const ids = [...document.querySelectorAll('.missChk:checked')].map(c=>+c.value);
+  const ids = [...missSel.keys()];
   if(!ids.length){ showToast('Select at least one student'); return; }
   if(!confirm('Archive ' + ids.length + ' student(s)? They will not be able to sign in. Nothing is deleted, and you can reactivate them later.')) return;
   const btn = document.getElementById('missBtn'), msg = document.getElementById('missMsg');
@@ -1416,7 +1476,7 @@ async function archiveMissing(){
     msg.style.color = 'var(--ink-soft)';
     msg.textContent = 'Archiving ' + (done + skipped.length + 1) + ' of ' + ids.length + '…';
     const r = await api('/api/staff/students/' + id + '/status/', {status:'inactive', reason:'not_enrolled'});
-    const s = missList.find(x=>x.id===id);
+    const s = { name: missSel.get(id) };
     if(r.ok) done++;
     else skipped.push((s ? s.name : id) + ': ' + (r.data.needs_confirm ? 'has upcoming appointments' : (r.data.error || 'could not archive')));
   }
@@ -1429,7 +1489,8 @@ async function archiveMissing(){
     ? '<b>Not archived (' + skipped.length + ')</b>' + skipped.map(s=>'<div>' + esc(s) + '</div>').join('')
       + '<div style="margin-top:6px; color:var(--ink-soft);">Resolve the alert or appointment first, then try again.</div>'
     : '';
-  loadMissing();
+  missSel.clear();
+  loadMissing(1);
 }
 
 function downloadEnrollment(){
@@ -1595,6 +1656,7 @@ function applyStudentStatus(force){
       closeModal('stuModalOverlay');
       showToast(status === 'active' ? 'Student reactivated' : (status === 'graduated' ? 'Student marked as graduated' : 'Student archived'));
       loadStudentsPage(stuPage);
+      loadMissing(1);
       return;
     }
     if(r.data.needs_confirm){
