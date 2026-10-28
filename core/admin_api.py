@@ -25,7 +25,7 @@ from django.views.decorators.http import require_POST
 
 from .models import (COURSES, SERVICES, STATUS_REASONS, StaffProfile, StaffSubclass, GuidanceThread, GuidanceMessage,
                      StudentFlag, StudentNote, Appointment, AccessLog, StudentStatusLog,
-                     LoginThrottle, MoodEntry, ChatConversation, SiteSettings, AuditEvent)
+                     LoginThrottle, MoodEntry, ChatConversation, SiteSettings, AuditEvent, Semester)
 from .permissions import BOOL_FIELDS, PERMISSION_FIELDS, SERVICE_FIELDS, SERVICE_KEYS, subclass_json
 from .hotlines import DEFAULT_HOTLINES, MAX_HOTLINES, NUMBER_RE, NOTE_RE, get_hotlines, saved_hotlines
 
@@ -748,3 +748,54 @@ def privacy_overview(request):
         "rate": round(100 * current / total) if total else None,
         "last_consent": last.isoformat() if last else None,
     })
+
+
+def _semester_json(s):
+    return {"id": s.id, "name": s.name, "start": s.start_date.isoformat(), "end": s.end_date.isoformat()}
+
+
+def _date(value):
+    try:
+        return parse_date(str(value or ""))
+    except ValueError:
+        return None
+
+
+@_admin
+def semesters_list(request):
+    return JsonResponse({"semesters": [_semester_json(s) for s in Semester.objects.all()]})
+
+
+@_admin
+@require_POST
+def semester_create(request):
+    data = _body(request)
+    if data is None:
+        return JsonResponse({"error": "Invalid request."}, status=400)
+    name = " ".join(str(data.get("name") or "").split())
+    start, end = _date(data.get("start_date")), _date(data.get("end_date"))
+    if not 2 <= len(name) <= 80:
+        return JsonResponse({"error": "Name must be 2\u201380 characters."}, status=400)
+    if not start or not end:
+        return JsonResponse({"error": "Pick a start date and an end date."}, status=400)
+    if end < start:
+        return JsonResponse({"error": "The end date can't be before the start date."}, status=400)
+    if Semester.objects.filter(name__iexact=name).exists():
+        return JsonResponse({"error": "A semester with that name already exists."}, status=409)
+    s = Semester.objects.create(name=name, start_date=start, end_date=end)
+    AuditEvent.objects.create(actor=request.user, event="settings_changed",
+                              detail="Semesters: added %s" % name[:200],
+                              ip=request.META.get("REMOTE_ADDR") or None)
+    return JsonResponse({"semester": _semester_json(s)}, status=201)
+
+
+@_admin
+@require_POST
+def semester_delete(request, semester_id):
+    s = get_object_or_404(Semester, id=semester_id)
+    name = s.name
+    s.delete()
+    AuditEvent.objects.create(actor=request.user, event="settings_changed",
+                              detail="Semesters: deleted %s" % name[:200],
+                              ip=request.META.get("REMOTE_ADDR") or None)
+    return JsonResponse({"status": "ok"})

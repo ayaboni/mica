@@ -100,4 +100,7 @@ urlpatterns = [
     path('api/admin/hotlines/save/', admin_api.hotlines_save, name='admin_hotlines_save'),
     path('api/admin/integrations/', admin_api.integrations, name='admin_integrations'),
     path('api/admin/privacy/', admin_api.privacy_overview, name='admin_privacy'),
+    path('api/admin/semesters/', admin_api.semesters_list, name='admin_semesters'),
+    path('api/admin/semesters/create/', admin_api.semester_create, name='admin_semester_create'),
+    path('api/admin/semesters/<int:semester_id>/delete/', admin_api.semester_delete, name='admin_semester_delete'),
 ]

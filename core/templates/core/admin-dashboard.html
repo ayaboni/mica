@@ -698,6 +698,7 @@
           <button class="tab-btn" data-tab="security" onclick="goTab('security')">Security</button>
           <button class="tab-btn" data-tab="hotlines" onclick="goTab('hotlines')">Crisis Hotlines</button>
           <button class="tab-btn" data-tab="integrations" onclick="goTab('integrations')">Integrations</button>
+          <button class="tab-btn" data-tab="semesters" onclick="goTab('semesters')">Semesters</button>
           <button class="tab-btn" data-tab="account" onclick="goTab('account')">My Account</button>
       </div>
 
@@ -792,6 +793,30 @@
               <h3>Database backups</h3>
               <div class="sub">Backups and restores are handled by Neon, the database host. Use the Neon dashboard to restore data. The history window depends on your Neon plan.</div>
             </div></div>
+          </div>
+        </div>
+
+        <!-- SEMESTERS -->
+        <div class="subpanel" id="tab-semesters">
+          <div class="card panel">
+            <div class="panel-head"><div><h3>Semesters</h3><div class="sub">Used by the staff report period dropdowns. Example: 1st Sem AY 2026-2027</div></div></div>
+            <div class="field-grid">
+              <div class="field"><label>Name</label><input id="semName" maxlength="80" placeholder="1st Sem AY 2026-2027"></div>
+              <div class="field"><label>Start date</label><input id="semStart" type="date"></div>
+              <div class="field"><label>End date</label><input id="semEnd" type="date"></div>
+            </div>
+            <div style="margin-top:16px; display:flex; gap:12px; align-items:center;">
+              <button class="pill-btn solid sm" id="semAddBtn" onclick="addSemester()">Add semester</button>
+              <span id="semMsg" style="font-size:12.5px; color:var(--ink-soft);"></span>
+            </div>
+          </div>
+          <div class="card panel">
+            <div style="overflow-x:auto;">
+              <table>
+                <thead><tr><th>Name</th><th>Start</th><th>End</th><th></th></tr></thead>
+                <tbody id="semTbody"></tbody>
+              </table>
+            </div>
           </div>
         </div>
 
@@ -1727,6 +1752,54 @@ function saveHotlines(){
 }
 
 /* =========================================================
+   SEMESTERS
+========================================================= */
+let semList = [];
+function fmtDate(iso){
+  return new Date(iso + 'T00:00:00').toLocaleDateString(undefined, {year:'numeric', month:'short', day:'numeric'});
+}
+function renderSemesters(){
+  document.getElementById('semTbody').innerHTML = semList.length ? semList.map(s=>`
+    <tr>
+      <td>${esc(s.name)}</td>
+      <td class="mono-cell">${fmtDate(s.start)}</td>
+      <td class="mono-cell">${fmtDate(s.end)}</td>
+      <td><button class="pill-btn ghost sm" onclick="deleteSemester(${s.id})">Delete</button></td>
+    </tr>`).join('')
+    : '<tr><td colspan="4" style="color:var(--ink-soft);">No semesters yet. Add one above.</td></tr>';
+}
+function loadSemesters(){
+  return api('/api/admin/semesters/').then(r=>{
+    if(r.ok){ semList = r.data.semesters; renderSemesters(); }
+  });
+}
+function addSemester(){
+  const msg = document.getElementById('semMsg'), btn = document.getElementById('semAddBtn');
+  btn.disabled = true; msg.style.color = 'var(--ink-soft)'; msg.textContent = 'Saving…';
+  api('/api/admin/semesters/create/', {
+    name: document.getElementById('semName').value,
+    start_date: document.getElementById('semStart').value,
+    end_date: document.getElementById('semEnd').value
+  }).then(r=>{
+    btn.disabled = false;
+    if(!r.ok){ msg.style.color = 'var(--alert)'; msg.textContent = r.data.error || 'Could not save.'; return; }
+    msg.textContent = '';
+    ['semName','semStart','semEnd'].forEach(id=>document.getElementById(id).value = '');
+    showToast('Semester added');
+    loadSemesters();
+  });
+}
+function deleteSemester(id){
+  const s = semList.find(x=>x.id===id);
+  if(!s || !confirm('Delete "' + s.name + '"? It will disappear from the report dropdowns.')) return;
+  api('/api/admin/semesters/' + id + '/delete/', {}).then(r=>{
+    if(!r.ok){ showToast(r.data.error || 'Could not delete.'); return; }
+    showToast('Semester deleted');
+    loadSemesters();
+  });
+}
+
+/* =========================================================
    MISC
 ========================================================= */
 function closeModal(id){ document.getElementById(id).classList.remove('active'); }
@@ -1754,6 +1827,7 @@ function initAll(){
   loadSiteSettings();
   loadHotlines();
   loadPrivacy();
+  loadSemesters();
   loadSubclasses().then(loadStaffAccounts);
 }
 
