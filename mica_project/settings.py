@@ -186,7 +186,7 @@ FIREBASE_WEB_CONFIG = {
 #   "mica":     Firebase only creates the one-time code; MICA e-mails the link using the same
 #               e-mail settings as the sign-in codes. Use this if the console won't let you
 #               change the action URL.
-PASSWORD_RESET_EMAIL_VIA = os.getenv("PASSWORD_RESET_EMAIL_VIA", "firebase").strip().lower()
+PASSWORD_RESET_EMAIL_VIA = os.getenv("PASSWORD_RESET_EMAIL_VIA", "mica").strip().lower()
 # Self-service reset is off for the system admin (superuser) account. Flip to True to allow it.
 PASSWORD_RESET_FOR_ADMINS = False
 

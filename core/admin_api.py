@@ -12,6 +12,7 @@ from django.conf import settings
 from django.contrib.sessions.models import Session
 from django.db import connection, transaction
 from django.db.models import Count, Q
+from django.db.models.functions import Lower
 from django.core.paginator import Paginator
 from django.utils import timezone
 from django.http import JsonResponse, HttpResponse
@@ -22,7 +23,8 @@ from django.views.decorators.http import require_POST
 
 from .models import (COURSES, SERVICES, STATUS_REASONS, StaffProfile, StaffSubclass, GuidanceThread, GuidanceMessage,
                      StudentFlag, StudentNote, Appointment, AccessLog, StudentStatusLog, LoginThrottle,
-                    MoodEntry, ChatConversation, SiteSettings, AuditEvent, Semester, EnrolledStudent)
+                    MoodEntry, ChatConversation, SiteSettings, AuditEvent, Semester, EnrolledStudent,
+                    UserProfile)
 from .permissions import BOOL_FIELDS, PERMISSION_FIELDS, SERVICE_FIELDS, SERVICE_KEYS, subclass_json
 from .hotlines import DEFAULT_HOTLINES, MAX_HOTLINES, NUMBER_RE, NOTE_RE, get_hotlines, saved_hotlines
 
@@ -813,6 +815,33 @@ def enrollment_info(request):
     return JsonResponse({"count": qs.count(), "uploaded_at": last.isoformat() if last else None})
 
 
+def _sync_year_levels(rows):
+    """Registered students whose year level differs from the list get the list's value."""
+    wanted = {r.student_number.lower(): r.year_level for r in rows if r.year_level}
+    changed = []
+    profiles = (UserProfile.objects.filter(user__is_staff=False, user__is_superuser=False)
+                .exclude(student_number=""))
+    for p in profiles.only("id", "student_number", "year_level"):
+        new = wanted.get((p.student_number or "").lower())
+        if new and p.year_level != new:
+            p.year_level = new
+            changed.append(p)
+    if changed:
+        UserProfile.objects.bulk_update(changed, ["year_level"], batch_size=500)
+    return len(changed)
+
+
+def _missing_students():
+    """Active students whose student number is not on the current enrollment list."""
+    if not EnrolledStudent.objects.exists():
+        return []
+    listed = set(EnrolledStudent.objects.annotate(k=Lower("student_number")).values_list("k", flat=True))
+    qs = (UserProfile.objects.filter(account_status="active", needs_profile_setup=False,
+                                     user__is_staff=False, user__is_superuser=False)
+          .select_related("user").order_by("user__last_name", "user__first_name"))
+    return [p for p in qs if (p.student_number or "").lower() not in listed]
+
+
 @_admin
 @require_POST
 def enrollment_upload(request):
@@ -867,10 +896,11 @@ def enrollment_upload(request):
     with transaction.atomic():
         EnrolledStudent.objects.all().delete()
         EnrolledStudent.objects.bulk_create(rows, batch_size=500)
+        updated = _sync_year_levels(rows)
     AuditEvent.objects.create(actor=request.user, event="settings_changed",
-                              detail="Enrollment: uploaded a list of %d students" % len(rows),
+                              detail="Enrollment: uploaded a list of %d students, updated %d year levels" % (len(rows), updated),
                               ip=request.META.get("REMOTE_ADDR") or None)
-    return JsonResponse({"count": len(rows)})
+    return JsonResponse({"count": len(rows), "year_updated": updated})
 
 
 @_admin
@@ -882,3 +912,12 @@ def enrollment_clear(request):
                               detail="Enrollment: cleared the list (%d students)" % n,
                               ip=request.META.get("REMOTE_ADDR") or None)
     return JsonResponse({"status": "ok"})
+
+
+@_admin
+def enrollment_missing(request):
+    people = _missing_students()
+    return JsonResponse({"total": len(people), "students": [
+        {"id": p.user_id, "name": p.user.get_full_name() or p.user.username,
+         "student_number": p.student_number, "course": p.course, "year_level": p.year_level}
+        for p in people[:300]]})

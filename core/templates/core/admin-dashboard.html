@@ -251,6 +251,8 @@
   #sec-settings .subpanel > .card:last-child{margin-bottom:0;}
   #sec-settings .panel-head{margin-bottom:18px;}
   #sec-settings .field-grid{row-gap:20px;}
+  #sec-enrollment > .card, #sec-privacy > .card{margin-bottom:22px;}
+  #sec-enrollment > .card:last-child, #sec-privacy > .card:last-child{margin-bottom:0;}
 
   .toast{position:fixed; bottom:28px; right:28px; background:var(--ink); color:var(--cream); padding:14px 22px; border-radius:12px; font-size:13.5px; font-weight:500; box-shadow:var(--shadow); z-index:200; display:flex; align-items:center; gap:10px; transform:translateY(20px); opacity:0; pointer-events:none; transition:transform .3s ease, opacity .3s ease;}
   .toast.show{transform:translateY(0); opacity:1;}
@@ -654,6 +656,23 @@
             <button class="pill-btn ghost sm" onclick="clearEnrollment()">Clear list</button>
           </div>
           <div id="enrMsg" style="margin-top:12px; font-size:12.5px; color:var(--ink-soft); white-space:pre-line;"></div>
+        </div>
+        <div class="card panel" id="enrMissingCard" style="display:none;">
+          <div class="panel-head"><div>
+            <h3>Not on the list</h3>
+            <div class="sub">Active students whose student number isn't on the current list. Nothing is archived until you press the button. If this list looks far too long, check that you uploaded the right file.</div>
+            <div id="missSkipped" style="display:none; margin-top:12px; padding:12px 14px; border-radius:12px; background:var(--alert-pale); font-size:13px; line-height:1.6;"></div>
+          </div></div>
+          <div style="overflow-x:auto;">
+            <table>
+              <thead><tr><th><input type="checkbox" id="missAll" onchange="toggleMissingAll(this)"></th><th>Name</th><th>Student number</th><th>Course</th><th>Year</th></tr></thead>
+              <tbody id="missTbody"></tbody>
+            </table>
+          </div>
+          <div style="margin-top:14px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <button class="pill-btn solid sm" id="missBtn" onclick="archiveMissing()">Archive selected</button>
+            <span id="missMsg" style="font-size:12.5px; color:var(--ink-soft); white-space:pre-line;"></span>
+          </div>
         </div>
         <div class="card panel">
           <div class="panel-head"><div><h3>CSV format</h3></div></div>
@@ -1148,6 +1167,8 @@ function handleGlobalSearch(q){
 /* =========================================================
    ENROLLMENT
 ========================================================= */
+let missList = [];
+
 function loadEnrollment(){
   return api('/api/admin/enrollment/').then(r=>{
     if(!r.ok) return;
@@ -1158,6 +1179,7 @@ function loadEnrollment(){
       : 'Registration check is OFF: no list is loaded.';
   });
 }
+
 function uploadEnrollment(input){
   const file = input.files[0];
   if(!file) return;
@@ -1171,17 +1193,66 @@ function uploadEnrollment(input){
       input.value = '';
       if(!r.ok){ msg.style.color = 'var(--alert)'; msg.textContent = r.data.error || 'Upload failed.'; return; }
       msg.textContent = '';
-      showToast(r.data.count + ' students loaded');
-      loadEnrollment();
+      showToast(r.data.count + ' students loaded' + (r.data.year_updated ? ', ' + r.data.year_updated + ' year levels updated' : ''));
+      loadEnrollment(); loadMissing();
     });
 }
+
 function clearEnrollment(){
   if(!confirm('Clear the enrollment list?')) return;
   api('/api/admin/enrollment/clear/', {}).then(r=>{
     if(!r.ok){ showToast(r.data.error || 'Could not clear.'); return; }
     showToast('Enrollment list cleared');
     loadEnrollment();
+    loadMissing();
   });
+}
+
+function loadMissing(){
+  return api('/api/admin/enrollment/missing/').then(r=>{
+    if(!r.ok) return;
+    missList = r.data.students;
+    document.getElementById('enrMissingCard').style.display = r.data.total ? '' : 'none';
+    document.getElementById('missAll').checked = false;
+    document.getElementById('missTbody').innerHTML = missList.map(s=>`
+      <tr>
+        <td><input type="checkbox" class="missChk" value="${s.id}"></td>
+        <td>${esc(s.name)}</td><td class="mono-cell">${esc(s.student_number)}</td>
+        <td>${esc(s.course)}</td><td>${esc(s.year_level)}</td>
+      </tr>`).join('');
+    if(r.data.total > missList.length){
+      document.getElementById('missMsg').textContent = 'Showing the first ' + missList.length + ' of ' + r.data.total + '. Archive these, then reload to see the rest.';
+    }
+  });
+}
+function toggleMissingAll(box){
+  document.querySelectorAll('.missChk').forEach(c=>c.checked = box.checked);
+}
+async function archiveMissing(){
+  const ids = [...document.querySelectorAll('.missChk:checked')].map(c=>+c.value);
+  if(!ids.length){ showToast('Select at least one student'); return; }
+  if(!confirm('Archive ' + ids.length + ' student(s)? They will not be able to sign in. Nothing is deleted, and you can reactivate them later.')) return;
+  const btn = document.getElementById('missBtn'), msg = document.getElementById('missMsg');
+  btn.disabled = true;
+  let done = 0; const skipped = [];
+  for(const id of ids){
+    msg.style.color = 'var(--ink-soft)';
+    msg.textContent = 'Archiving ' + (done + skipped.length + 1) + ' of ' + ids.length + '…';
+    const r = await api('/api/staff/students/' + id + '/status/', {status:'inactive', reason:'not_enrolled'});
+    const s = missList.find(x=>x.id===id);
+    if(r.ok) done++;
+    else skipped.push((s ? s.name : id) + ': ' + (r.data.needs_confirm ? 'has upcoming appointments' : (r.data.error || 'could not archive')));
+  }
+  btn.disabled = false;
+  msg.style.color = 'var(--ink-soft)';
+  msg.textContent = done + ' archived.' + (skipped.length ? ' ' + skipped.length + ' skipped.' : '');
+  const box = document.getElementById('missSkipped');
+  box.style.display = skipped.length ? 'block' : 'none';
+  box.innerHTML = skipped.length
+    ? '<b>Not archived (' + skipped.length + ')</b>' + skipped.map(s=>'<div>' + esc(s) + '</div>').join('')
+      + '<div style="margin-top:6px; color:var(--ink-soft);">Resolve the alert or appointment first, then try again.</div>'
+    : '';
+  loadMissing();
 }
 
 /* =========================================================
@@ -1893,6 +1964,9 @@ if (new URLSearchParams(location.search).get('pw') === 'changed'){
   history.replaceState(null, '', location.pathname);
 }
 
+document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) loadStaffAccounts(); });
+setInterval(()=>{ if(!document.hidden) loadStaffAccounts(); }, 30000);
+
 function initAll(){
   renderAccounts();
   loadIntegrations();
@@ -1904,6 +1978,7 @@ function initAll(){
   loadSemesters();
   loadSubclasses().then(loadStaffAccounts);
   loadEnrollment();
+  loadMissing();
 }
 
 /* =========================================================
