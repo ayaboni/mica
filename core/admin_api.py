@@ -50,6 +50,15 @@ def _body(request):
     return data if isinstance(data, dict) else None
 
 
+def _log_admin(request, detail):
+    AuditEvent.objects.create(actor=request.user, event="admin_action", detail=str(detail)[:300],
+                              ip=request.META.get("REMOTE_ADDR") or None)
+
+
+def _label(u):
+    return "%s (@%s)" % (u.get_full_name() or u.username, u.username)
+
+
 def _clean_subclass(data, instance=None):
     """Validate a subclass payload. Returns (values, error_message)."""
     name = " ".join(str(data.get("name") or "").split())
@@ -82,6 +91,7 @@ def subclasses(request):
         if error:
             return JsonResponse({"error": error}, status=400)
         sub = StaffSubclass.objects.create(**values)
+        _log_admin(request, "Roles: created %s" % sub.name)
         return JsonResponse({"subclass": subclass_json(sub, 0)}, status=201)
 
     return JsonResponse({
@@ -104,6 +114,7 @@ def subclass_update(request, subclass_id):
     for k, v in values.items():
         setattr(sub, k, v)
     sub.save()
+    _log_admin(request, "Roles: updated %s" % sub.name)    
     return JsonResponse({"subclass": subclass_json(sub)})
 
 
@@ -116,7 +127,9 @@ def subclass_delete(request, subclass_id):
         return JsonResponse({
             "error": "%d staff account%s still use \u201c%s\u201d. Move them to another role first."
                      % (count, "" if count == 1 else "s", sub.name)}, status=409)
+    name = sub.name
     sub.delete()
+    _log_admin(request, "Roles: deleted %s" % name)
     return JsonResponse({"status": "ok"})
 
 
@@ -258,6 +271,7 @@ def staff_create(request):
         profile.must_complete_setup = True
         profile.save()
     user = User.objects.select_related("staff_profile").get(pk=user.pk)   # reload so the new profile is read
+    _log_admin(request, "Staff: created account %s (%s)" % (_label(user), sub.name))
     return JsonResponse({"staff": _staff_json(user)}, status=201)
 
 
@@ -274,6 +288,7 @@ def staff_set_subclass(request, user_id):
     profile, _ = StaffProfile.objects.get_or_create(user=user, defaults={"role": "other"})
     profile.subclass = sub
     profile.save(update_fields=["subclass"])
+    _log_admin(request, "Staff: changed the role of %s to %s" % (_label(user), sub.name))
     return JsonResponse({"staff": _staff_json(user)})
 
 
@@ -293,6 +308,7 @@ def staff_set_active(request, user_id):
             # Don't leave chats or cases stuck with someone who can't log in.
             released = GuidanceThread.objects.filter(counselor=user).update(counselor=None)
             StudentFlag.objects.filter(assigned_to=user).exclude(status="resolved").update(assigned_to=None, status="new")
+    _log_admin(request, "Staff: %s %s" % ("reactivated" if active else "suspended", _label(user)))
     return JsonResponse({"staff": _staff_json(user), "released_threads": released})
 
 
@@ -311,6 +327,7 @@ def staff_reset_password(request, user_id):
     except Exception:
         logger.exception("Could not send a reset link to staff account %s.", user.pk)
         return JsonResponse({"error": "Could not send the e-mail. Check the e-mail settings."}, status=502)
+    _log_admin(request, "Staff: sent a password reset link to %s" % _label(user))
     return JsonResponse({"status": "ok"})
 
 
@@ -545,6 +562,7 @@ def student_unlock(request, user_id):
     key = _throttle_key(user.username)
     was_locked = LoginThrottle.objects.filter(username_key=key, locked_until__gt=timezone.now()).exists()
     LoginThrottle.objects.filter(username_key=key).delete()      # also clears the failed-attempt counter
+    _log_admin(request, "Students: unlocked %s%s" % (_label(user), " (was locked)" if was_locked else ""))
     return JsonResponse({"status": "ok", "was_locked": was_locked})
 
 
@@ -562,6 +580,7 @@ def student_reset_password(request, user_id):
     except Exception:
         logger.exception("Could not send a reset link to student account %s.", user.pk)
         return JsonResponse({"error": "Could not send the email. Check the email settings."}, status=502)
+    _log_admin(request, "Students: sent a password reset link to %s" % _label(user))
     return JsonResponse({"status": "ok"})
 
 
