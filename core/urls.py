@@ -103,4 +103,7 @@ urlpatterns = [
     path('api/admin/semesters/', admin_api.semesters_list, name='admin_semesters'),
     path('api/admin/semesters/create/', admin_api.semester_create, name='admin_semester_create'),
     path('api/admin/semesters/<int:semester_id>/delete/', admin_api.semester_delete, name='admin_semester_delete'),
+    path('api/admin/enrollment/', admin_api.enrollment_info, name='admin_enrollment'),
+    path('api/admin/enrollment/upload/', admin_api.enrollment_upload, name='admin_enrollment_upload'),
+    path('api/admin/enrollment/clear/', admin_api.enrollment_clear, name='admin_enrollment_clear'),
 ]

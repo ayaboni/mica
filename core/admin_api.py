@@ -1,10 +1,7 @@
-import re
-import time
+import re, io, time
 from datetime import datetime, timedelta
 from pathlib import Path
-import json
-import logging
-import csv
+import json, logging, csv
 import firebase_admin
 
 from django.contrib.auth.decorators import login_required, user_passes_test
@@ -24,8 +21,8 @@ from django.utils.dateparse import parse_date
 from django.views.decorators.http import require_POST
 
 from .models import (COURSES, SERVICES, STATUS_REASONS, StaffProfile, StaffSubclass, GuidanceThread, GuidanceMessage,
-                     StudentFlag, StudentNote, Appointment, AccessLog, StudentStatusLog,
-                     LoginThrottle, MoodEntry, ChatConversation, SiteSettings, AuditEvent, Semester)
+                     StudentFlag, StudentNote, Appointment, AccessLog, StudentStatusLog, LoginThrottle,
+                    MoodEntry, ChatConversation, SiteSettings, AuditEvent, Semester, EnrolledStudent)
 from .permissions import BOOL_FIELDS, PERMISSION_FIELDS, SERVICE_FIELDS, SERVICE_KEYS, subclass_json
 from .hotlines import DEFAULT_HOTLINES, MAX_HOTLINES, NUMBER_RE, NOTE_RE, get_hotlines, saved_hotlines
 
@@ -797,5 +794,91 @@ def semester_delete(request, semester_id):
     s.delete()
     AuditEvent.objects.create(actor=request.user, event="settings_changed",
                               detail="Semesters: deleted %s" % name[:200],
+                              ip=request.META.get("REMOTE_ADDR") or None)
+    return JsonResponse({"status": "ok"})
+
+
+MAX_ENROLLED = 20000
+
+
+def _year_digit(value):
+    m = re.search(r"[1-5]", str(value or ""))
+    return m.group(0) if m else ""
+
+
+@_admin
+def enrollment_info(request):
+    qs = EnrolledStudent.objects.all()
+    last = qs.order_by("-uploaded_at").values_list("uploaded_at", flat=True).first()
+    return JsonResponse({"count": qs.count(), "uploaded_at": last.isoformat() if last else None})
+
+
+@_admin
+@require_POST
+def enrollment_upload(request):
+    f = request.FILES.get("file")
+    if not f:
+        return JsonResponse({"error": "Choose a CSV file."}, status=400)
+    if f.size > 2 * 1024 * 1024:
+        return JsonResponse({"error": "That file is too large (2 MB max)."}, status=400)
+    raw = f.read()
+    try:
+        text = raw.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        text = raw.decode("cp1252", errors="replace")
+    reader = csv.DictReader(io.StringIO(text))
+    if not reader.fieldnames:
+        return JsonResponse({"error": "The file is empty."}, status=400)
+    cols = {(c or "").strip().lower().replace(" ", "_"): c for c in reader.fieldnames}
+    for need in ("student_number", "last_name"):
+        if need not in cols:
+            return JsonResponse({"error": "Missing the column \u201c%s\u201d. Required columns: student_number, last_name." % need},
+                                status=400)
+
+    def cell(row, key):
+        c = cols.get(key)
+        return " ".join(str(row.get(c) or "").split()) if c else ""
+
+    rows, seen, errors = [], set(), []
+    for i, row in enumerate(reader, start=2):
+        if not any(cell(row, k) for k in cols):
+            continue                                    # blank line
+        number, last = cell(row, "student_number"), cell(row, "last_name")
+        if not number or not last:
+            errors.append("Line %d: student number and last name are both required." % i)
+        elif len(number) > 50:
+            errors.append("Line %d: student number is too long." % i)
+        elif number.lower() in seen:
+            errors.append("Line %d: student number %s appears twice." % (i, number))
+        else:
+            seen.add(number.lower())
+            rows.append(EnrolledStudent(
+                student_number=number, last_name=last[:150], first_name=cell(row, "first_name")[:150],
+                course=cell(row, "course").upper()[:50], year_level=_year_digit(cell(row, "year_level"))))
+        if len(errors) >= 10:
+            break
+    if errors:
+        return JsonResponse({"error": "Nothing was saved. Fix these lines and upload again:\n" + "\n".join(errors)}, status=400)
+    if not rows:
+        return JsonResponse({"error": "No students were found in the file."}, status=400)
+    if len(rows) > MAX_ENROLLED:
+        return JsonResponse({"error": "Too many rows (max %d)." % MAX_ENROLLED}, status=400)
+
+    with transaction.atomic():
+        EnrolledStudent.objects.all().delete()
+        EnrolledStudent.objects.bulk_create(rows, batch_size=500)
+    AuditEvent.objects.create(actor=request.user, event="settings_changed",
+                              detail="Enrollment: uploaded a list of %d students" % len(rows),
+                              ip=request.META.get("REMOTE_ADDR") or None)
+    return JsonResponse({"count": len(rows)})
+
+
+@_admin
+@require_POST
+def enrollment_clear(request):
+    n = EnrolledStudent.objects.count()
+    EnrolledStudent.objects.all().delete()
+    AuditEvent.objects.create(actor=request.user, event="settings_changed",
+                              detail="Enrollment: cleared the list (%d students)" % n,
                               ip=request.META.get("REMOTE_ADDR") or None)
     return JsonResponse({"status": "ok"})

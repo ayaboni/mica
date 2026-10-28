@@ -383,6 +383,10 @@
         User Accounts
         <span class="count" id="acctNavCount">–</span>
       </button>
+      <button class="nav-item" data-section="enrollment" onclick="goTo('enrollment')">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>
+        Enrollment
+      </button>
       <button class="nav-item" data-section="roles" onclick="goTo('roles')">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
         Roles &amp; Permissions
@@ -632,7 +636,37 @@
         <div class="pager" id="logPager"></div>
       </section>
 
-      <!-- ============ DATA PRIVACY & COMPLIANCE ============ -->
+      <!-- ============ DATA PRIVACY ============ -->
+      <section class="section" id="sec-enrollment">
+        <div class="card panel">
+          <div class="panel-head"><div>
+            <h3>Enrollment list</h3>
+            <div class="sub">Upload the official list each semester. Uploading replaces the whole list.</div>
+          </div></div>
+          <div style="font-size:14px; line-height:1.8;">
+            <div>Students on the list: <b id="enrCount">–</b></div>
+            <div>Last uploaded: <b id="enrWhen">–</b></div>
+            <div id="enrState" style="margin-top:6px; font-size:12.5px; color:var(--ink-soft);"></div>
+          </div>
+          <div style="margin-top:16px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+            <input type="file" id="enrFile" accept=".csv" style="display:none;" onchange="uploadEnrollment(this)">
+            <button class="pill-btn solid sm" onclick="document.getElementById('enrFile').click()">Upload CSV</button>
+            <button class="pill-btn ghost sm" onclick="clearEnrollment()">Clear list</button>
+          </div>
+          <div id="enrMsg" style="margin-top:12px; font-size:12.5px; color:var(--ink-soft); white-space:pre-line;"></div>
+        </div>
+        <div class="card panel">
+          <div class="panel-head"><div><h3>CSV format</h3></div></div>
+          <div style="font-size:14px; line-height:1.7;">
+            First row is the column names. <b>Required:</b> student_number, last_name. <b>Optional:</b> first_name, course, year_level (1 to 5).
+            <pre style="background:var(--sage-pale); padding:12px; border-radius:10px; overflow-x:auto; margin-top:10px;">student_number,last_name,first_name,course,year_level
+      2022-00123,Santos,Maria,BSIT,3
+      2023-00456,Reyes,Juan,BSN,2</pre>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ DATA PRIVACY ============ -->
       <section class="section" id="sec-privacy">
         <div class="stat-grid">
           <div class="card stat-card">
@@ -988,8 +1022,9 @@ const eyebrows = {
   dashboard:['Platform Overview','System Dashboard'],
   accounts:['Identity & Access','User Accounts'],
   roles:['Identity & Access','Roles & Permissions'],
+  enrollment:['Identity & Access','Enrollment'],
   logs:['Security & Compliance','Audit Logs'],
-  privacy:['Security & Compliance','Data Privacy & Requests'],
+  privacy:['Data Privacy'],
   settings:['Operations','System Settings']
 };
 function goTo(section){
@@ -1108,6 +1143,45 @@ function handleGlobalSearch(q){
     document.getElementById('stuSearch').value = q;
     loadStudentsPage(1);
   }, 350);
+}
+
+/* =========================================================
+   ENROLLMENT
+========================================================= */
+function loadEnrollment(){
+  return api('/api/admin/enrollment/').then(r=>{
+    if(!r.ok) return;
+    document.getElementById('enrCount').textContent = r.data.count;
+    document.getElementById('enrWhen').textContent = r.data.uploaded_at ? new Date(r.data.uploaded_at).toLocaleString() : 'Never';
+    document.getElementById('enrState').textContent = r.data.count
+      ? 'Registration check is ON: new students must be on this list.'
+      : 'Registration check is OFF: no list is loaded.';
+  });
+}
+function uploadEnrollment(input){
+  const file = input.files[0];
+  if(!file) return;
+  const msg = document.getElementById('enrMsg');
+  msg.style.color = 'var(--ink-soft)'; msg.textContent = 'Uploading…';
+  const fd = new FormData(); fd.append('file', file);
+  fetch('/api/admin/enrollment/upload/', {method:'POST', credentials:'same-origin', headers:{'X-CSRFToken':getCookie('csrftoken')}, body:fd})
+    .then(res=>res.json().catch(()=>({})).then(data=>({ok:res.ok, data})))
+    .catch(()=>({ok:false, data:{error:'Could not reach the server.'}}))
+    .then(r=>{
+      input.value = '';
+      if(!r.ok){ msg.style.color = 'var(--alert)'; msg.textContent = r.data.error || 'Upload failed.'; return; }
+      msg.textContent = '';
+      showToast(r.data.count + ' students loaded');
+      loadEnrollment();
+    });
+}
+function clearEnrollment(){
+  if(!confirm('Clear the enrollment list?')) return;
+  api('/api/admin/enrollment/clear/', {}).then(r=>{
+    if(!r.ok){ showToast(r.data.error || 'Could not clear.'); return; }
+    showToast('Enrollment list cleared');
+    loadEnrollment();
+  });
 }
 
 /* =========================================================
@@ -1829,6 +1903,7 @@ function initAll(){
   loadPrivacy();
   loadSemesters();
   loadSubclasses().then(loadStaffAccounts);
+  loadEnrollment();
 }
 
 /* =========================================================

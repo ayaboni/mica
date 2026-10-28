@@ -31,23 +31,19 @@ from .models import AccessLog
 from .models import LoginVerification
 from .models import PasswordResetRequest
 from .models import SiteSettings
+from .models import EnrolledStudent
 from . import firebase_reset
 from urllib.parse import urlencode
 from .models import StaffProfile, StaffSubclass
 from .permissions import can, require_perm, staff_permissions, SERVICE_KEYS
 from .models import StudentStatusLog, ACCOUNT_STATUS, STATUS_REASONS
 from .models import AssessmentHistory
-import hashlib
-import hmac
-import re
-import logging
+import hashlib, hmac, re, logging, wave, unicodedata
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.utils.crypto import constant_time_compare
 from django.views.decorators.http import require_http_methods
 from datetime import datetime, timedelta
-import re
-import wave
 from functools import lru_cache
 from pathlib import Path
 
@@ -272,6 +268,8 @@ def complete_profile(request):
                     error = "Username is already registered."
                 elif _student_number_taken(form["student_number"], exclude_user=request.user):
                     error = "Student number is already registered."
+                else:
+                    error = _enrollment_check(form["student_number"], form["last_name"])
 
         if error is None:
             try:
@@ -350,6 +348,23 @@ def _student_number_taken(student_number, exclude_user=None):
     return qs.exists()
 
 
+def _name_key(value):
+    text = unicodedata.normalize("NFKD", str(value or ""))
+    text = "".join(ch for ch in text if not unicodedata.combining(ch))
+    return re.sub(r"[^a-z0-9]", "", text.lower())
+
+
+def _enrollment_check(student_number, last_name):
+    """None when the person may register. The check is OFF while no enrollment list is loaded."""
+    if not EnrolledStudent.objects.exists():
+        return None
+    row = EnrolledStudent.objects.filter(student_number__iexact=str(student_number).strip()).first()
+    if row and _name_key(row.last_name) and _name_key(row.last_name) == _name_key(last_name):
+        return None
+    return ("We couldn't find that student number and last name on the enrollment list. "
+            "Please check them, or contact the Guidance Office.")
+
+
 def _register_page(request):
     return render(request, "core/register.html", {"courses": COURSES})
 
@@ -385,6 +400,11 @@ def register(request):
 
         if course not in dict(COURSES) or year_level not in dict(YEAR_LEVEL_CHOICES):
             messages.error(request, "Please choose a valid course and year level.")
+            return _register_page(request)
+
+        problem = _enrollment_check(student_number, last_name)
+        if problem:
+            messages.error(request, problem)
             return _register_page(request)
 
         try:

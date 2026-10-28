@@ -419,6 +419,24 @@ class SiteSettings(models.Model):
         return obj
 
 
+class EnrolledStudent(models.Model):
+    """The official enrollment list the admin uploads each semester. Registration is checked against it."""
+    student_number = models.CharField(max_length=50)
+    last_name = models.CharField(max_length=150)
+    first_name = models.CharField(max_length=150, blank=True)
+    course = models.CharField(max_length=50, blank=True)
+    year_level = models.CharField(max_length=10, blank=True)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(Lower('student_number'), name='unique_enrolled_number_ci'),
+        ]
+
+    def __str__(self):
+        return "%s (%s)" % (self.student_number, self.last_name)
+    
+
 class AuditEvent(models.Model):
     """Admin-level events that aren't 'staff opened a student' (settings changed, logins...)."""
     actor = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='audit_events')
