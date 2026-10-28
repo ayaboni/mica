@@ -810,13 +810,14 @@ def _year_digit(value):
 
 @_admin
 def enrollment_info(request):
-    qs = EnrolledStudent.objects.all()
-    last = qs.order_by("-uploaded_at").values_list("uploaded_at", flat=True).first()
-    return JsonResponse({"count": qs.count(), "uploaded_at": last.isoformat() if last else None})
+    last = (AuditEvent.objects.filter(event="settings_changed", detail__startswith="Enrollment: uploaded")
+            .values_list("created_at", flat=True).first())
+    return JsonResponse({"count": EnrolledStudent.objects.count(),
+                         "uploaded_at": last.isoformat() if last else None})
 
 
-def _sync_year_levels(rows):
-    """Registered students whose year level differs from the list get the list's value."""
+def _year_changes(rows):
+    """Registered students whose year level differs from the list. Does not save anything."""
     wanted = {r.student_number.lower(): r.year_level for r in rows if r.year_level}
     changed = []
     profiles = (UserProfile.objects.filter(user__is_staff=False, user__is_superuser=False)
@@ -826,16 +827,22 @@ def _sync_year_levels(rows):
         if new and p.year_level != new:
             p.year_level = new
             changed.append(p)
+    return changed
+
+
+def _sync_year_levels(rows):
+    changed = _year_changes(rows)
     if changed:
         UserProfile.objects.bulk_update(changed, ["year_level"], batch_size=500)
     return len(changed)
 
 
-def _missing_students():
-    """Active students whose student number is not on the current enrollment list."""
-    if not EnrolledStudent.objects.exists():
-        return []
-    listed = set(EnrolledStudent.objects.annotate(k=Lower("student_number")).values_list("k", flat=True))
+def _missing_students(listed=None):
+    """Active students whose student number is not on the list (the saved one, or `listed` if given)."""
+    if listed is None:
+        if not EnrolledStudent.objects.exists():
+            return []
+        listed = set(EnrolledStudent.objects.annotate(k=Lower("student_number")).values_list("k", flat=True))
     qs = (UserProfile.objects.filter(account_status="active", needs_profile_setup=False,
                                      user__is_staff=False, user__is_superuser=False)
           .select_related("user").order_by("user__last_name", "user__first_name"))
@@ -893,6 +900,14 @@ def enrollment_upload(request):
     if len(rows) > MAX_ENROLLED:
         return JsonResponse({"error": "Too many rows (max %d)." % MAX_ENROLLED}, status=400)
 
+    if request.POST.get("preview") == "1":
+        return JsonResponse({
+            "preview": True, "new_count": len(rows),
+            "current_count": EnrolledStudent.objects.count(),
+            "year_changes": len(_year_changes(rows)),
+            "missing": len(_missing_students({r.student_number.lower() for r in rows})),
+        })
+
     with transaction.atomic():
         EnrolledStudent.objects.all().delete()
         EnrolledStudent.objects.bulk_create(rows, batch_size=500)
@@ -921,3 +936,21 @@ def enrollment_missing(request):
         {"id": p.user_id, "name": p.user.get_full_name() or p.user.username,
          "student_number": p.student_number, "course": p.course, "year_level": p.year_level}
         for p in people[:300]]})
+
+
+def _csv_safe(value):
+    value = str(value or "")
+    return "'" + value if value[:1] in ("=", "+", "-", "@") else value    # stops Excel formulas
+
+
+@_admin
+def enrollment_download(request):
+    response = HttpResponse(content_type="text/csv; charset=utf-8")
+    response["Content-Disposition"] = 'attachment; filename="mica-enrollment-list.csv"'
+    response.write("\ufeff")                       # lets Excel show accents correctly
+    w = csv.writer(response)
+    w.writerow(["student_number", "last_name", "first_name", "course", "year_level"])
+    for e in EnrolledStudent.objects.order_by("student_number"):
+        w.writerow([_csv_safe(e.student_number), _csv_safe(e.last_name), _csv_safe(e.first_name),
+                    _csv_safe(e.course), e.year_level])
+    return response

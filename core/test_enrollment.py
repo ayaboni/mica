@@ -2,7 +2,7 @@ from django.test import TestCase
 from django.contrib.auth.models import User
 from .models import EnrolledStudent, UserProfile
 from .views import _enrollment_check
-from .admin_api import _missing_students, _sync_year_levels
+from .admin_api import _missing_students, _sync_year_levels, _year_changes
 
 
 class EnrollmentCheckTests(TestCase):
@@ -42,3 +42,15 @@ class EnrollmentSyncTests(TestCase):
         self.assertEqual(_missing_students(), [])          # no list loaded: no suggestions
         EnrolledStudent.objects.create(student_number="2022-00001", last_name="A")
         self.assertEqual([p.student_number for p in _missing_students()], ["2022-00002"])
+
+    def test_year_changes_only_reports_and_does_not_save(self):
+        a = make_student("a", "2022-00001", "1")
+        rows = [EnrolledStudent(student_number="2022-00001", last_name="A", year_level="3")]
+        self.assertEqual(len(_year_changes(rows)), 1)
+        a.refresh_from_db()
+        self.assertEqual(a.year_level, "1")
+
+    def test_missing_students_can_be_checked_against_a_new_list(self):
+        make_student("a", "2022-00001")
+        make_student("b", "2022-00002")
+        self.assertEqual([p.student_number for p in _missing_students({"2022-00001"})], ["2022-00002"])

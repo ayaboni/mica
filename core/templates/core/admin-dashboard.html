@@ -653,6 +653,7 @@
           <div style="margin-top:16px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
             <input type="file" id="enrFile" accept=".csv" style="display:none;" onchange="uploadEnrollment(this)">
             <button class="pill-btn solid sm" onclick="document.getElementById('enrFile').click()">Upload CSV</button>
+            <button class="pill-btn ghost sm" onclick="downloadEnrollment()">Download current list</button>
             <button class="pill-btn ghost sm" onclick="clearEnrollment()">Clear list</button>
           </div>
           <div id="enrMsg" style="margin-top:12px; font-size:12.5px; color:var(--ink-soft); white-space:pre-line;"></div>
@@ -1173,29 +1174,43 @@ function loadEnrollment(){
   return api('/api/admin/enrollment/').then(r=>{
     if(!r.ok) return;
     document.getElementById('enrCount').textContent = r.data.count;
-    document.getElementById('enrWhen').textContent = r.data.uploaded_at ? new Date(r.data.uploaded_at).toLocaleString() : 'Never';
+    const when = r.data.uploaded_at ? new Date(r.data.uploaded_at).toLocaleString() : 'Never';
+    document.getElementById('enrWhen').textContent = when + (r.data.count === 0 && r.data.uploaded_at ? ' (the list has since been cleared)' : '');
     document.getElementById('enrState').textContent = r.data.count
       ? 'Registration check is ON: new students must be on this list.'
       : 'Registration check is OFF: no list is loaded.';
   });
 }
 
+function postEnrollment(file, preview){
+  const fd = new FormData();
+  fd.append('file', file);
+  if(preview) fd.append('preview', '1');
+  return fetch('/api/admin/enrollment/upload/', {method:'POST', credentials:'same-origin', headers:{'X-CSRFToken':getCookie('csrftoken')}, body:fd})
+    .then(res=>res.json().catch(()=>({})).then(data=>({ok:res.ok, data})))
+    .catch(()=>({ok:false, data:{error:'Could not reach the server.'}}));
+}
 function uploadEnrollment(input){
   const file = input.files[0];
   if(!file) return;
   const msg = document.getElementById('enrMsg');
-  msg.style.color = 'var(--ink-soft)'; msg.textContent = 'Uploading…';
-  const fd = new FormData(); fd.append('file', file);
-  fetch('/api/admin/enrollment/upload/', {method:'POST', credentials:'same-origin', headers:{'X-CSRFToken':getCookie('csrftoken')}, body:fd})
-    .then(res=>res.json().catch(()=>({})).then(data=>({ok:res.ok, data})))
-    .catch(()=>({ok:false, data:{error:'Could not reach the server.'}}))
-    .then(r=>{
+  msg.style.color = 'var(--ink-soft)'; msg.textContent = 'Checking the file…';
+  postEnrollment(file, true).then(r=>{
+    if(!r.ok){ input.value = ''; msg.style.color = 'var(--alert)'; msg.textContent = r.data.error || 'Upload failed.'; return; }
+    const d = r.data;
+    const text = 'This file has ' + d.new_count + ' students (the current list has ' + d.current_count + ').\n'
+      + d.year_changes + ' registered student(s) will get a new year level.\n'
+      + d.missing + ' active student(s) are not on it.\n\nReplace the current list with this file?';
+    if(!confirm(text)){ input.value = ''; msg.textContent = 'Cancelled. Nothing was changed.'; return; }
+    msg.textContent = 'Uploading…';
+    postEnrollment(file, false).then(r2=>{
       input.value = '';
-      if(!r.ok){ msg.style.color = 'var(--alert)'; msg.textContent = r.data.error || 'Upload failed.'; return; }
+      if(!r2.ok){ msg.style.color = 'var(--alert)'; msg.textContent = r2.data.error || 'Upload failed.'; return; }
       msg.textContent = '';
-      showToast(r.data.count + ' students loaded' + (r.data.year_updated ? ', ' + r.data.year_updated + ' year levels updated' : ''));
+      showToast(r2.data.count + ' students loaded' + (r2.data.year_updated ? ', ' + r2.data.year_updated + ' year levels updated' : ''));
       loadEnrollment(); loadMissing();
     });
+  });
 }
 
 function clearEnrollment(){
@@ -1253,6 +1268,20 @@ async function archiveMissing(){
       + '<div style="margin-top:6px; color:var(--ink-soft);">Resolve the alert or appointment first, then try again.</div>'
     : '';
   loadMissing();
+}
+
+function downloadEnrollment(){
+  fetch('/api/admin/enrollment/download/', {credentials:'same-origin'})
+    .then(res=>{ if(!res.ok) throw new Error(); return res.blob(); })
+    .then(blob=>{
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'mica-enrollment-list.csv';
+      a.addEventListener('click', e=>e.stopPropagation());
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url), 1000);
+    })
+    .catch(()=>showToast('Could not download the list.'));
 }
 
 /* =========================================================
