@@ -408,6 +408,7 @@ class SiteSettings(models.Model):
     platform_name = models.CharField(max_length=80, default="MICA")
     institution_name = models.CharField(max_length=120, blank=True)
     support_email = models.EmailField(blank=True)
+    registration_open = models.BooleanField(default=True)   # admin switch: can new students register?
     hotlines = models.JSONField(default=list, blank=True)   # used by the hotlines step
     updated_at = models.DateTimeField(auto_now=True)
     updated_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')

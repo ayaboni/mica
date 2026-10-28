@@ -91,6 +91,7 @@ urlpatterns = [
     path('api/admin/dashboard/', admin_api.dashboard_stats, name='admin_dashboard_stats'),
     path('api/admin/settings/', admin_api.site_settings, name='admin_settings'),
     path('api/admin/settings/save/', admin_api.site_settings_save, name='admin_settings_save'),    path('api/admin/students/', admin_api.students_list, name='admin_students'),
+    path('api/admin/settings/registration/', admin_api.registration_set, name='admin_registration_set'),
     path('api/admin/students/<int:user_id>/unlock/', admin_api.student_unlock, name='admin_student_unlock'),
     path('api/admin/students/<int:user_id>/reset-password/', admin_api.student_reset_password, name='admin_student_reset_password'),
     path('api/admin/audit/', admin_api.audit_logs, name='admin_audit'),

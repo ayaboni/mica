@@ -30,6 +30,7 @@ from .models import LoginThrottle
 from .models import AccessLog
 from .models import LoginVerification
 from .models import PasswordResetRequest
+from .models import SiteSettings
 from . import firebase_reset
 from urllib.parse import urlencode
 from .models import StaffProfile, StaffSubclass
@@ -176,6 +177,8 @@ def google_register(request):
                         user.set_unusable_password()
                         user.save(update_fields=["password"])
                 else:
+                    if not SiteSettings.get().registration_open:
+                        return JsonResponse({"error": "Registration is closed right now. Please contact the Guidance Office."}, status=403)
                     user = User.objects.create_user(
                         username=_google_username(uid),
                         email=email,
@@ -353,6 +356,10 @@ def _register_page(request):
 @never_cache
 @ensure_csrf_cookie
 def register(request):
+    if not SiteSettings.get().registration_open:
+        messages.error(request, "Registration is closed right now. Please contact the Guidance Office.")
+        return _register_page(request)
+
     if request.method == "POST":
         first_name = request.POST.get("first_name", "").strip()
         last_name = request.POST.get("last_name", "").strip()

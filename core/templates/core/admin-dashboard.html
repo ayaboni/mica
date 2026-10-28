@@ -696,7 +696,7 @@
         <div class="tab-row">
           <button class="tab-btn active" data-tab="general" onclick="goTab('general')">General</button>
           <button class="tab-btn" data-tab="security" onclick="goTab('security')">Security</button>
-          <button class="tab-btn" data-tab="notifications" onclick="goTab('notifications')">Notifications</button>
+          <button class="tab-btn" data-tab="hotlines" onclick="goTab('hotlines')">Crisis Hotlines</button>
           <button class="tab-btn" data-tab="integrations" onclick="goTab('integrations')">Integrations</button>
           <button class="tab-btn" data-tab="account" onclick="goTab('account')">My Account</button>
       </div>
@@ -741,12 +741,9 @@
           </div>
           <div class="card panel">
             <div class="toggle-row">
-              <div><div class="t-label">Maintenance mode</div><div class="t-desc">Temporarily blocks student &amp; counselor logins while showing a maintenance notice. Admins retain access.</div></div>
-              <button class="switch" onclick="toggleSwitch(this)"><span class="knob"></span></button>
-            </div>
-            <div class="toggle-row">
-              <div><div class="t-label">New account self-registration</div><div class="t-desc">Allow students with a verified institutional email to self-register without admin approval.</div></div>
-              <button class="switch on" onclick="toggleSwitch(this)"><span class="knob"></span></button>
+              <div><div class="t-label">Student registration</div>
+              <div class="t-desc">When off, new students can't create accounts (register page and Google sign-up). Existing students can still sign in.</div></div>
+              <button class="switch" id="regSwitch" onclick="toggleRegistration(this)"><span class="knob"></span></button>
             </div>
           </div>
         </div>
@@ -754,30 +751,20 @@
         <!-- SECURITY -->
         <div class="subpanel" id="tab-security">
           <div class="card panel">
-            <div class="toggle-row">
-              <div><div class="t-label">Require MFA for staff accounts</div><div class="t-desc">Counselors and admins must verify with a 6-digit code at every sign-in.</div></div>
-              <button class="switch on" onclick="toggleSwitch(this)"><span class="knob"></span></button>
-            </div>
-            <div class="toggle-row">
-              <div><div class="t-label">Enforce strong password policy</div><div class="t-desc">Minimum 12 characters, mixed case, number, and symbol; rotation every 90 days for staff.</div></div>
-              <button class="switch on" onclick="toggleSwitch(this)"><span class="knob"></span></button>
-            </div>
-            <div class="toggle-row">
-              <div><div class="t-label">Lock account after repeated failed logins</div><div class="t-desc">Locks an account for 15 minutes after 5 consecutive failed attempts and flags it in the audit log.</div></div>
-              <button class="switch on" onclick="toggleSwitch(this)"><span class="knob"></span></button>
-            </div>
-          </div>
-          <div class="card panel">
-            <div class="panel-head"><div><h3>Session Policy</h3></div></div>
-            <div class="field-grid">
-              <div class="field"><label>Idle session timeout</label><select><option>15 minutes</option><option selected>30 minutes</option><option>60 minutes</option></select></div>
-              <div class="field"><label>Max failed attempts before lockout</label><select><option>3</option><option selected>5</option><option>10</option></select></div>
-            </div>
+            <div class="panel-head"><div><h3>Sign-in and session rules</h3><div class="sub">Set in the code, so they are shown here but not editable.</div></div></div>
+            <ul style="margin:0; padding-left:18px; line-height:1.8; font-size:14px;">
+              <li>Passwords need 8+ characters, 1 uppercase letter, and 1 number or symbol.</li>
+              <li>5 wrong passwords lock the account for 60 seconds.</li>
+              <li>E-mailed sign-in code: 6 characters, valid 10 minutes, 5 tries.</li>
+              <li>Idle sign-out: 15 minutes for staff and admin, 30 minutes for students.</li>
+              <li>New staff accounts have no password. They sign in with their username and an e-mailed code, then set one.</li>
+              <li>Archived and graduated students cannot sign in.</li>
+            </ul>
           </div>
         </div>
 
-        <!-- NOTIFICATIONS -->
-        <div class="subpanel" id="tab-notifications">
+        <!-- CRISIS HOTLINES -->
+        <div class="subpanel" id="tab-hotlines">
           <div class="card panel">
             <div class="panel-head"><div>
               <h3>Crisis hotlines</h3>
@@ -789,20 +776,6 @@
               <button class="pill-btn ghost sm" onclick="restoreHotlineDefaults()">Restore defaults</button>
               <button class="pill-btn solid sm" id="hlSave" onclick="saveHotlines()">Save hotlines</button>
               <span id="hlMsg" style="font-size:12.5px; color:var(--ink-soft);"></span>
-            </div>
-          </div>
-          <div class="card panel">
-            <div class="toggle-row">
-              <div><div class="t-label">SMS gateway alerts</div><div class="t-desc">Sends SMS to on-duty counselors when a student is flagged high-risk.</div></div>
-              <button class="switch on" onclick="toggleSwitch(this)"><span class="knob"></span></button>
-            </div>
-            <div class="toggle-row">
-              <div><div class="t-label">Email digest for admins</div><div class="t-desc">Daily summary of new accounts, security events, and pending privacy requests.</div></div>
-              <button class="switch on" onclick="toggleSwitch(this)"><span class="knob"></span></button>
-            </div>
-            <div class="toggle-row">
-              <div><div class="t-label">Escalate unacknowledged risk alerts</div><div class="t-desc">Automatically escalates to a supervising counselor if a risk alert is unacknowledged after 20 minutes.</div></div>
-              <button class="switch on" onclick="toggleSwitch(this)"><span class="knob"></span></button>
             </div>
           </div>
         </div>
@@ -1642,6 +1615,17 @@ function loadDashboard(){
 const chartFont = {family:"'Inter',sans-serif", size:11};
 function baseGrid(){return {color: getComputedStyle(document.body).getPropertyValue('--line'), drawTicks:false};}
 
+function toggleRegistration(btn){
+  const want = !btn.classList.contains('on');
+  btn.disabled = true;
+  api('/api/admin/settings/registration/', {open: want}).then(r=>{
+    btn.disabled = false;
+    if(!r.ok){ showToast(r.data.error || 'Could not save.'); return; }
+    btn.classList.toggle('on', !!r.data.registration_open);
+    showToast(r.data.registration_open ? 'Registration is open' : 'Registration is closed');
+  });
+}
+
 function loadSiteSettings(){
   return api('/api/admin/settings/').then(r=>{
     const msg = document.getElementById('setMsg');
@@ -1650,6 +1634,7 @@ function loadSiteSettings(){
     document.getElementById('setInstitution').value = r.data.institution_name;
     document.getElementById('setEmail').value = r.data.support_email;
     document.getElementById('setTz').value = r.data.timezone;
+    document.getElementById('regSwitch').classList.toggle('on', !!r.data.registration_open);
   });
 }
 

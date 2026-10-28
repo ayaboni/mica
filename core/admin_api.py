@@ -120,7 +120,8 @@ def subclass_delete(request, subclass_id):
 
 def _site_json(s):
     return {"platform_name": s.platform_name, "institution_name": s.institution_name,
-            "support_email": s.support_email, "timezone": settings.TIME_ZONE}
+            "support_email": s.support_email, "timezone": settings.TIME_ZONE,
+            "registration_open": s.registration_open}
 
 
 @_admin
@@ -159,6 +160,23 @@ def site_settings_save(request):
     if changed:
         AuditEvent.objects.create(actor=request.user, event="settings_changed",
                                   detail="General: changed " + ", ".join(changed),
+                                  ip=request.META.get("REMOTE_ADDR") or None)
+    return JsonResponse(_site_json(s))
+
+
+@_admin
+@require_POST
+def registration_set(request):
+    data = _body(request)
+    if data is None or not isinstance(data.get("open"), bool):
+        return JsonResponse({"error": "Invalid request."}, status=400)
+    s = SiteSettings.get()
+    if s.registration_open != data["open"]:
+        s.registration_open = data["open"]
+        s.updated_by = request.user
+        s.save()
+        AuditEvent.objects.create(actor=request.user, event="settings_changed",
+                                  detail="General: student registration " + ("opened" if data["open"] else "closed"),
                                   ip=request.META.get("REMOTE_ADDR") or None)
     return JsonResponse(_site_json(s))
 
