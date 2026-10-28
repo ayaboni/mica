@@ -97,4 +97,5 @@ urlpatterns = [
     path('api/admin/audit/export/', admin_api.audit_logs_csv, name='admin_audit_csv'),
     path('api/admin/hotlines/', admin_api.hotlines_list, name='admin_hotlines'),
     path('api/admin/hotlines/save/', admin_api.hotlines_save, name='admin_hotlines_save'),
+    path('api/admin/integrations/', admin_api.integrations, name='admin_integrations'),
 ]

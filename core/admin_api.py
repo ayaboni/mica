@@ -5,6 +5,7 @@ from pathlib import Path
 import json
 import logging
 import csv
+import firebase_admin
 
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.models import User
@@ -293,6 +294,31 @@ def staff_reset_password(request, user_id):
     return JsonResponse({"status": "ok"})
 
 
+def _service_health():
+    """Quick local checks only, no calls to outside services."""
+    health = []
+    t = time.perf_counter()
+    try:
+        with connection.cursor() as c:
+            c.execute("SELECT 1")
+        health.append({"name": "Database (PostgreSQL)", "status": "ok",
+                       "meta": "Answered in %d ms" % round((time.perf_counter() - t) * 1000)})
+    except Exception:
+        health.append({"name": "Database (PostgreSQL)", "status": "down", "meta": "Not responding"})
+    health.append({"name": "Mica chat (Gemini)", "status": "ok" if settings.GEMINI_API_KEY else "down",
+                   "meta": "API key set" if settings.GEMINI_API_KEY else "No API key set"})
+    smtp = settings.EMAIL_BACKEND.endswith("smtp.EmailBackend")
+    health.append({"name": "Email (sign-in and reset links)", "status": "ok" if smtp else "warn",
+                   "meta": "SMTP configured" if smtp else "Console only: emails are printed, not sent"})
+    health.append({"name": "Firebase (Google sign-in and reset codes)",
+                   "status": "ok" if firebase_admin._apps else "down",
+                   "meta": "Initialized" if firebase_admin._apps else "Not initialized"})
+    vosk = (Path(settings.VOSK_MODEL_PATH) / "am" / "final.mdl").is_file()
+    health.append({"name": "Voice input (Vosk)", "status": "ok" if vosk else "warn",
+                   "meta": "Speech model installed" if vosk else "Speech model not found"})
+    return health
+
+
 @_admin
 def dashboard_stats(request):
     """Real numbers for the admin dashboard. Counts and names only, nothing a student wrote."""
@@ -366,26 +392,7 @@ def dashboard_stats(request):
     feed.sort(key=lambda x: x[0], reverse=True)
 
     # ---- service health: quick local checks only, no calls to outside services
-    health = []
-    t = time.perf_counter()
-    try:
-        with connection.cursor() as c:
-            c.execute("SELECT 1")
-        health.append({"name": "Database (PostgreSQL)", "status": "ok",
-                       "meta": "Answered in %d ms" % round((time.perf_counter() - t) * 1000)})
-    except Exception:
-        health.append({"name": "Database (PostgreSQL)", "status": "down", "meta": "Not responding"})
-    health.append({"name": "Mica chat (Gemini)", "status": "ok" if settings.GEMINI_API_KEY else "down",
-                   "meta": "API key set" if settings.GEMINI_API_KEY else "No API key set"})
-    smtp = settings.EMAIL_BACKEND.endswith("smtp.EmailBackend")
-    health.append({"name": "Email (sign-in and reset links)", "status": "ok" if smtp else "warn",
-                   "meta": "SMTP configured" if smtp else "Console only: emails are printed, not sent"})
-    health.append({"name": "Firebase (Google sign-in and reset codes)",
-                   "status": "ok" if firebase_admin._apps else "down",
-                   "meta": "Initialized" if firebase_admin._apps else "Not initialized"})
-    vosk = (Path(settings.VOSK_MODEL_PATH) / "am" / "final.mdl").is_file()
-    health.append({"name": "Voice input (Vosk)", "status": "ok" if vosk else "warn",
-                   "meta": "Speech model installed" if vosk else "Speech model not found"})
+    health = _service_health()
 
     # ---- needs attention
     waiting = 0
@@ -693,3 +700,13 @@ def hotlines_save(request):
                               detail="Crisis hotlines updated (%d listed)" % len(clean),
                               ip=request.META.get("REMOTE_ADDR") or None)
     return JsonResponse({"hotlines": clean})
+
+
+@_admin
+def integrations(request):
+    items = _service_health()
+    has_backup = bool(getattr(settings, "OPENROUTER_API_KEY", ""))
+    items.insert(2, {"name": "Mica backup chat (OpenRouter)",
+                     "status": "ok" if has_backup else "warn",
+                     "meta": "API key set" if has_backup else "Not set up yet"})
+    return JsonResponse({"services": items})

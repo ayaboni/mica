@@ -830,8 +830,15 @@
         <!-- INTEGRATIONS -->
         <div class="subpanel" id="tab-integrations">
           <div class="card panel">
-            <div class="panel-head"><div><h3>Connected Services</h3><div class="sub">Third-party services powering AI coaching, messaging, and analytics</div></div></div>
+            <div class="panel-head"><div><h3>Connected Services</h3>
+              <div class="sub">Services MICA depends on, checked live</div></div></div>
             <div id="integrationList"></div>
+          </div>
+          <div class="card panel">
+            <div class="panel-head"><div>
+              <h3>Database backups</h3>
+              <div class="sub">Backups and restores are handled by Neon, the database host. Use the Neon dashboard to restore data. The history window depends on your Neon plan.</div>
+            </div></div>
           </div>
         </div>
 
@@ -974,14 +981,6 @@ let privacyRequests = [
   {id:'DSR-118', who:'Student #908 (anonymized)', type:'Data Access', submitted:'2026-08-30', status:'In Progress'},
   {id:'DSR-117', who:'Student #874 (anonymized)', type:'Right to Erasure', submitted:'2026-08-27', status:'Pending Review'},
   {id:'DSR-116', who:'Student #841 (anonymized)', type:'Data Correction', submitted:'2026-08-21', status:'Resolved'},
-];
-
-const services = [
-  {name:'Authentication Service', meta:'Response time 112ms', status:'stable'},
-  {name:'Primary Database (PostgreSQL)', meta:'Replication lag 0.4s', status:'stable'},
-  {name:'AI Coaching / Mood Engine', meta:'Queue depth 3', status:'stable'},
-  {name:'SMS / Email Gateway', meta:'Degraded — retrying', status:'watch'},
-  {name:'Automated Backup Job', meta:'Last run: Today 03:00 AM', status:'stable'},
 ];
 
 let activeAcctId = null;
@@ -1572,15 +1571,22 @@ function resolvePrivacyRequest(id){
 /* =========================================================
    SETTINGS: INTEGRATIONS & BACKUP
 ========================================================= */
-function renderIntegrations(){
-  document.getElementById('integrationList').innerHTML = services.map(s=>`
-    <div class="service-row">
-      <div class="s-left">
-        <div class="s-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/></svg></div>
-        <div><div class="s-name">${s.name}</div><div class="s-meta">${s.meta}</div></div>
-      </div>
-      <span class="badge ${s.status==='stable'?'stable':'watch'}"><span class="dot ${s.status==='watch'?'pulse':''}"></span>${s.status==='stable'?'Operational':'Degraded'}</span>
-    </div>`).join('');
+function loadIntegrations(){
+  return api('/api/admin/integrations/').then(r=>{
+    const box = document.getElementById('integrationList');
+    if(!r.ok){ box.innerHTML = '<div class="sub">Could not load the service status.</div>'; return; }
+    box.innerHTML = r.data.services.map(s=>{
+      const ui = HEALTH_UI[s.status] || HEALTH_UI.warn;
+      return `
+      <div class="service-row">
+        <div class="s-left">
+          <div class="s-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/></svg></div>
+          <div><div class="s-name">${esc(s.name)}</div><div class="s-meta">${esc(s.meta)}</div></div>
+        </div>
+        <span class="badge ${ui[0]}"><span class="dot ${ui[0]==='watch'?'pulse':''}"></span>${ui[1]}</span>
+      </div>`;
+    }).join('');
+  });
 }
 
 /* =========================================================
@@ -1792,7 +1798,7 @@ if (new URLSearchParams(location.search).get('pw') === 'changed'){
 function initAll(){
   renderAccounts();
   renderPrivacy();
-  renderIntegrations();
+  loadIntegrations();
   loadDashboard();
   loadStudentsPage(1);
   loadSiteSettings();
