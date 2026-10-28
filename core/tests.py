@@ -19,7 +19,8 @@ from unittest.mock import patch
 from django.core.files.uploadedfile import SimpleUploadedFile
 
 from .models import LoginThrottle, UserProfile, AccessLog, StudentStatusLog
-from .views import _load_speech_model, speech_to_text, firebase_auth
+from .views import _load_speech_model, speech_to_text, firebase_auth, _safety_reply
+from .hotlines import get_hotlines, DEFAULT_HOTLINES
 
 
 def make_wav(sample_rate=16000, channels=1, sample_width=2, frame_count=1600):
@@ -489,3 +490,32 @@ class AuditLogApiTests(TestCase):
     def test_non_admin_blocked(self):
         self.client.force_login(self.staff)
         self.assertEqual(self.client.get("/api/admin/audit/").status_code, 302)
+
+
+class HotlineTests(TestCase):
+    def setUp(self):
+        self.admin = User.objects.create_superuser("boss2", "b2@x.com", "Pass1234!")
+        self.staff = User.objects.create_user("c2", "c2@x.com", "Pass1234!", is_staff=True)
+
+    def save(self, rows):
+        self.client.force_login(self.admin)
+        return self.client.post("/api/admin/hotlines/save/", data=json.dumps({"hotlines": rows}),
+                                content_type="application/json")
+
+    def test_defaults_when_nothing_saved(self):
+        self.assertEqual(get_hotlines(), DEFAULT_HOTLINES)
+
+    def test_saved_hotline_shows_in_crisis_reply(self):
+        r = self.save([{"name": "Campus Line", "number": "0917-000-0000", "note": "24/7"}])
+        self.assertEqual(r.status_code, 200)
+        reply = _safety_reply("i want to die")
+        self.assertIn("Campus Line", reply)
+        self.assertIn("911", reply)
+
+    def test_rejects_bad_number_and_empty_list(self):
+        self.assertEqual(self.save([{"name": "Bad", "number": "<script>", "note": ""}]).status_code, 400)
+        self.assertEqual(self.save([]).status_code, 400)
+
+    def test_non_admin_blocked(self):
+        self.client.force_login(self.staff)
+        self.assertEqual(self.client.get("/api/admin/hotlines/").status_code, 302)

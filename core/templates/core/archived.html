@@ -20,8 +20,9 @@
   <p>Your records are kept safe. To use MICA again, please visit the Guidance Office so they can reactivate your account.</p>
   <div class="help">
     <b>Need to talk to someone right now?</b>
-    NCMH Crisis Hotline: 1553 (toll-free landline), 0917-899-8727, 0966-351-4518<br>
-    Hopeline PH: 0917-558-4673 or (02) 8804-4673<br>
+    <ul style="margin:0 0 6px; padding-left:18px;">
+      {% for h in hotlines %}<li>{{ h.name }}{% if h.note %} ({{ h.note }}){% endif %}: {{ h.number }}</li>{% endfor %}
+    </ul>
     Emergency: 911
   </div>
   <p>Guidance Office: <!-- add your school's office location, hours and contact --></p>

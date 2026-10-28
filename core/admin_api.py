@@ -1,8 +1,3 @@
-"""System-admin endpoints for staff subclasses and staff accounts.
-
-Used by the "Roles & Permissions" and "User Accounts" tabs of the admin dashboard.
-"""
-
 import re
 import time
 from datetime import datetime, timedelta
@@ -31,6 +26,7 @@ from .models import (COURSES, SERVICES, STATUS_REASONS, StaffProfile, StaffSubcl
                      StudentFlag, StudentNote, Appointment, AccessLog, StudentStatusLog,
                      LoginThrottle, MoodEntry, ChatConversation, SiteSettings, AuditEvent)
 from .permissions import BOOL_FIELDS, PERMISSION_FIELDS, SERVICE_FIELDS, SERVICE_KEYS, subclass_json
+from .hotlines import DEFAULT_HOTLINES, MAX_HOTLINES, NUMBER_RE, NOTE_RE, get_hotlines, saved_hotlines
 
 logger = logging.getLogger(__name__)
 
@@ -240,6 +236,7 @@ def staff_create(request):
         profile.license_number = str(data.get("license_number") or "").strip()[:50]
         profile.must_complete_setup = True
         profile.save()
+    user = User.objects.select_related("staff_profile").get(pk=user.pk)   # reload so the new profile is read
     return JsonResponse({"staff": _staff_json(user)}, status=201)
 
 
@@ -657,3 +654,42 @@ def audit_logs_csv(request):
         w.writerow([_stamp(r["when"]), _csv_safe(r["staff"]), _csv_safe(r["role"]),
                     r["action"], _csv_safe(r["student"]), _csv_safe(r["detail"])])
     return response
+
+
+# ---------------------------------------------------------------- crisis hotlines
+@_admin
+def hotlines_list(request):
+    return JsonResponse({"hotlines": get_hotlines(), "defaults": DEFAULT_HOTLINES,
+                         "using_defaults": not saved_hotlines(), "max": MAX_HOTLINES})
+
+
+@_admin
+@require_POST
+def hotlines_save(request):
+    data = _body(request)
+    rows = data.get("hotlines") if data else None
+    if not isinstance(rows, list) or not 1 <= len(rows) <= MAX_HOTLINES:
+        return JsonResponse({"error": "Keep between 1 and %d hotlines." % MAX_HOTLINES}, status=400)
+    clean = []
+    for i, r in enumerate(rows, 1):
+        r = r if isinstance(r, dict) else {}
+        name = " ".join(str(r.get("name") or "").split())
+        number = " ".join(str(r.get("number") or "").split())
+        note = " ".join(str(r.get("note") or "").split())
+        if not 2 <= len(name) <= 60:
+            return JsonResponse({"error": "Hotline %d: give it a name (2\u201360 characters)." % i}, status=400)
+        if not NUMBER_RE.match(number) or not any(c.isdigit() for c in number):
+            return JsonResponse({"error": "Hotline %d: enter a phone number. Digits, spaces and + ( ) - . , / "
+                                          "are fine, plus short words like \u201cor\u201d." % i}, status=400)
+        if not NOTE_RE.match(note):
+            return JsonResponse({"error": "Hotline %d: the note is too long or has unusual characters." % i}, status=400)
+        clean.append({"name": name, "number": number, "note": note})
+
+    s = SiteSettings.get()
+    s.hotlines = clean
+    s.updated_by = request.user
+    s.save()
+    AuditEvent.objects.create(actor=request.user, event="settings_changed",
+                              detail="Crisis hotlines updated (%d listed)" % len(clean),
+                              ip=request.META.get("REMOTE_ADDR") or None)
+    return JsonResponse({"hotlines": clean})

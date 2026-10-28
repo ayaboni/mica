@@ -866,9 +866,12 @@ input::-ms-reveal, input::-ms-clear { display: none; }
         {% endfor %}
       {% endif %}
       {% if archived_blocked %}
-        <p style="font-size:13px; line-height:1.5; text-align:center; margin-bottom:12px;">
-          Need to talk to someone right now? NCMH Crisis Hotline: 1553 (toll-free landline) or 0917-899-8727. Hopeline PH: 0917-558-4673. Emergency: 911.
-        </p>
+        <div style="font-size:13px; line-height:1.5; margin-bottom:12px;">
+          <ul style="margin:0 0 6px; padding-left:18px;">
+            {% for h in hotlines %}<li>{{ h.name }}{% if h.note %} ({{ h.note }}){% endif %}: {{ h.number }}</li>{% endfor %}
+          </ul>
+          Emergency: 911.
+        </div>
       {% endif %}
 
       {% if lockout_seconds %}

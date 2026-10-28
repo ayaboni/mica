@@ -347,6 +347,10 @@
   .stu-actions{margin-top:auto;}
   .pager{display:flex; justify-content:center; align-items:center; gap:14px; margin-top:22px; font-size:13px; color:var(--ink-soft);}
 
+  .hl-row{display:grid; grid-template-columns:1.2fr 1.6fr .8fr auto; gap:10px; align-items:end; margin-bottom:12px;}
+  .hl-row .field{margin-bottom:0;}
+  @media (max-width:760px){ .hl-row{grid-template-columns:1fr;} }
+
 </style>
 </head>
 <body>
@@ -714,7 +718,6 @@
           <button class="tab-btn" data-tab="security" onclick="goTab('security')">Security</button>
           <button class="tab-btn" data-tab="notifications" onclick="goTab('notifications')">Notifications</button>
           <button class="tab-btn" data-tab="integrations" onclick="goTab('integrations')">Integrations</button>
-          <button class="tab-btn" data-tab="backup" onclick="goTab('backup')">Backup &amp; Recovery</button>
           <button class="tab-btn" data-tab="account" onclick="goTab('account')">My Account</button>
       </div>
 
@@ -796,10 +799,16 @@
         <!-- NOTIFICATIONS -->
         <div class="subpanel" id="tab-notifications">
           <div class="card panel">
-            <div class="panel-head"><div><h3>Crisis &amp; Emergency Routing</h3><div class="sub">Numbers shown to students in-app during a crisis flow</div></div></div>
-            <div class="field-grid">
-              <div class="field"><label>Campus emergency hotline</label><input value="(02) 8888-1234"></div>
-              <div class="field"><label>National mental health crisis line</label><input value="1553 (NCMH Crisis Hotline)"></div>
+            <div class="panel-head"><div>
+              <h3>Crisis hotlines</h3>
+              <div class="sub">Shown to students when Mica detects a crisis. Mica always adds “call 911” and “message the Guidance Office” after these.</div>
+            </div></div>
+            <div id="hotlineRows"></div>
+            <div style="margin-top:14px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+              <button class="pill-btn ghost sm" id="hlAdd" onclick="addHotlineRow()">+ Add hotline</button>
+              <button class="pill-btn ghost sm" onclick="restoreHotlineDefaults()">Restore defaults</button>
+              <button class="pill-btn solid sm" id="hlSave" onclick="saveHotlines()">Save hotlines</button>
+              <span id="hlMsg" style="font-size:12.5px; color:var(--ink-soft);"></span>
             </div>
           </div>
           <div class="card panel">
@@ -824,37 +833,8 @@
             <div class="panel-head"><div><h3>Connected Services</h3><div class="sub">Third-party services powering AI coaching, messaging, and analytics</div></div></div>
             <div id="integrationList"></div>
           </div>
-          <div class="card panel">
-            <div class="panel-head"><div><h3>AI Coaching Model</h3><div class="sub">Credentials used for automated mood analysis &amp; chat coaching</div></div></div>
-            <div class="field-grid">
-              <div class="field"><label>API key</label><input class="mono" value="sk-••••••••••••7f2a" readonly></div>
-              <div class="field" style="display:flex; align-items:flex-end;"><button class="pill-btn ghost sm" onclick="showToast('New API key generated — update your deployment secrets')">Regenerate Key</button></div>
-            </div>
-          </div>
         </div>
 
-        <!-- BACKUP -->
-        <div class="subpanel" id="tab-backup">
-          <div class="card panel">
-            <div class="panel-head">
-              <div><h3>Automated Backups</h3><div class="sub">Last successful backup: Today, 03:00 AM · Next run in 19h 12m</div></div>
-              <button class="pill-btn solid sm" onclick="runBackupNow()">Run Backup Now</button>
-            </div>
-            <div class="field-grid">
-              <div class="field"><label>Backup frequency</label><select><option>Every 6 hours</option><option selected>Daily</option><option>Weekly</option></select></div>
-              <div class="field"><label>Retention period</label><select><option>30 days</option><option selected>90 days</option><option>1 year</option></select></div>
-            </div>
-          </div>
-          <div class="card panel">
-            <div class="panel-head"><div><h3>Recent Backups</h3></div></div>
-            <div style="overflow-x:auto;">
-              <table>
-                <thead><tr><th>Snapshot</th><th>Date</th><th>Size</th><th>Status</th><th>Action</th></tr></thead>
-                <tbody id="backupTbody"></tbody>
-              </table>
-            </div>
-          </div>
-        </div>
       </section>
 
     </div>
@@ -994,12 +974,6 @@ let privacyRequests = [
   {id:'DSR-118', who:'Student #908 (anonymized)', type:'Data Access', submitted:'2026-08-30', status:'In Progress'},
   {id:'DSR-117', who:'Student #874 (anonymized)', type:'Right to Erasure', submitted:'2026-08-27', status:'Pending Review'},
   {id:'DSR-116', who:'Student #841 (anonymized)', type:'Data Correction', submitted:'2026-08-21', status:'Resolved'},
-];
-
-const backups = [
-  {name:'Full DB Snapshot', date:'2026-09-03 03:00 AM', size:'4.2 GB', status:'Success'},
-  {name:'Full DB Snapshot', date:'2026-09-02 03:00 AM', size:'4.1 GB', status:'Success'},
-  {name:'Full DB Snapshot', date:'2026-09-01 03:00 AM', size:'4.1 GB', status:'Success'},
 ];
 
 const services = [
@@ -1609,22 +1583,6 @@ function renderIntegrations(){
     </div>`).join('');
 }
 
-function renderBackups(){
-  document.getElementById('backupTbody').innerHTML = backups.map(b=>`
-    <tr>
-      <td>${b.name}</td>
-      <td class="mono-cell">${b.date}</td>
-      <td class="mono-cell">${b.size}</td>
-      <td><span class="badge stable"><span class="dot"></span>${b.status}</span></td>
-      <td><button class="pill-btn ghost sm" onclick="showToast('Restore initiated from ${b.date}')">Restore</button></td>
-    </tr>`).join('');
-}
-function runBackupNow(){
-  backups.unshift({name:'Manual Snapshot', date:new Date().toLocaleString(), size:'4.2 GB', status:'Success'});
-  renderBackups();
-  showToast('Manual backup started');
-}
-
 /* =========================================================
    DASHBOARD (real data)
 ========================================================= */
@@ -1759,6 +1717,59 @@ function saveMyAccount(){
 }
 
 /* =========================================================
+   CRISIS HOTLINES
+========================================================= */
+let hlRows = [], hlDefaults = [], hlMax = 8;
+const hlCopy = list => list.map(h => ({name:h.name, number:h.number, note:h.note || ''}));
+
+function renderHotlineRows(){
+  document.getElementById('hotlineRows').innerHTML = hlRows.map((h, i) => `
+    <div class="hl-row">
+      <div class="field"><label>Name</label><input maxlength="60" value="${esc(h.name)}" oninput="hlRows[${i}].name=this.value"></div>
+      <div class="field"><label>Number</label><input maxlength="80" value="${esc(h.number)}" oninput="hlRows[${i}].number=this.value"></div>
+      <div class="field"><label>Note (optional)</label><input maxlength="60" value="${esc(h.note)}" oninput="hlRows[${i}].note=this.value"></div>
+      <button class="pill-btn danger sm" onclick="removeHotlineRow(${i})">Remove</button>
+    </div>`).join('');
+  document.getElementById('hlAdd').disabled = hlRows.length >= hlMax;
+}
+
+function loadHotlines(){
+  return api('/api/admin/hotlines/').then(r=>{
+    const msg = document.getElementById('hlMsg');
+    if(!r.ok){ msg.style.color = 'var(--alert)'; msg.textContent = 'Could not load hotlines.'; return; }
+    hlRows = hlCopy(r.data.hotlines);
+    hlDefaults = hlCopy(r.data.defaults);
+    hlMax = r.data.max;
+    msg.style.color = 'var(--ink-soft)';
+    msg.textContent = r.data.using_defaults ? 'Showing the built-in numbers. Save to make them yours.' : '';
+    renderHotlineRows();
+  });
+}
+
+function addHotlineRow(){ hlRows.push({name:'', number:'', note:''}); renderHotlineRows(); }
+function removeHotlineRow(i){ hlRows.splice(i, 1); renderHotlineRows(); }
+function restoreHotlineDefaults(){
+  hlRows = hlCopy(hlDefaults);
+  renderHotlineRows();
+  const msg = document.getElementById('hlMsg');
+  msg.style.color = 'var(--ink-soft)';
+  msg.textContent = 'Defaults loaded. Save to apply.';
+}
+
+function saveHotlines(){
+  const btn = document.getElementById('hlSave'), msg = document.getElementById('hlMsg');
+  btn.disabled = true; msg.textContent = '';
+  api('/api/admin/hotlines/save/', {hotlines: hlRows}).then(r=>{
+    btn.disabled = false;
+    if(!r.ok){ msg.style.color = 'var(--alert)'; msg.textContent = r.data.error || 'Could not save.'; return; }
+    hlRows = hlCopy(r.data.hotlines);
+    renderHotlineRows();
+    msg.style.color = 'var(--ink-soft)';
+    showToast('Hotlines saved. Students see them now.');
+  });
+}
+
+/* =========================================================
    MISC
 ========================================================= */
 function closeModal(id){ document.getElementById(id).classList.remove('active'); }
@@ -1782,10 +1793,10 @@ function initAll(){
   renderAccounts();
   renderPrivacy();
   renderIntegrations();
-  renderBackups();
   loadDashboard();
   loadStudentsPage(1);
   loadSiteSettings();
+  loadHotlines();
   loadSubclasses().then(loadStaffAccounts);
 }
 

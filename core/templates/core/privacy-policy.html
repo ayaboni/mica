@@ -955,8 +955,7 @@ img { max-width: 100%; display: block; }
       <h3>8. If you are in crisis</h3>
       <p>MICA is not an emergency service. If you are thinking about hurting yourself or someone else, please contact someone right now:</p>
       <ul>
-        <li>NCMH Crisis Hotline (24/7): 1553, 0917-899-8727 or 0919-057-1553</li>
-        <li>Hopeline PH (24/7): 2919 (Globe/TM, toll-free) or 0917-558-4673</li>
+        {% for h in hotlines %}<li>{{ h.name }}{% if h.note %} ({{ h.note }}){% endif %}: {{ h.number }}</li>{% endfor %}
         <li>In immediate danger: call 911 or go to the nearest hospital</li>
       </ul>
 

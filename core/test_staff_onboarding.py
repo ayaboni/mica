@@ -17,7 +17,7 @@ class FreshStaffAccountTests(TestCase):
 
     def setUp(self):
         self.admin = User.objects.create_superuser('boss', 'boss@example.com', 'Admin-pass-123!')
-        self.sub = StaffSubclass.objects.first()           # the three default roles are created by a migration
+        self.sub, _ = StaffSubclass.objects.get_or_create(name='Guidance Counselor')
         self.client.force_login(self.admin)
 
     # -- helpers --

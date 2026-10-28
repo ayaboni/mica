@@ -95,4 +95,6 @@ urlpatterns = [
     path('api/admin/students/<int:user_id>/reset-password/', admin_api.student_reset_password, name='admin_student_reset_password'),
     path('api/admin/audit/', admin_api.audit_logs, name='admin_audit'),
     path('api/admin/audit/export/', admin_api.audit_logs_csv, name='admin_audit_csv'),
+    path('api/admin/hotlines/', admin_api.hotlines_list, name='admin_hotlines'),
+    path('api/admin/hotlines/save/', admin_api.hotlines_save, name='admin_hotlines_save'),
 ]
