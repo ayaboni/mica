@@ -110,4 +110,7 @@ urlpatterns = [
     path('api/admin/enrollment/download/', admin_api.enrollment_download, name='admin_enrollment_download'),
     path('api/admin/signins/', admin_api.signin_failures, name='admin_signins'),
     path('api/admin/settings/maintenance/', admin_api.maintenance_set, name='admin_maintenance'),
+path("api/admin/data-requests/", admin_api.data_requests, name="admin_data_requests"),
+path("api/admin/data-requests/create/", admin_api.data_request_create, name="admin_data_request_create"),
+path("api/admin/data-requests/<int:pk>/close/", admin_api.data_request_close, name="admin_data_request_close"),
 ]

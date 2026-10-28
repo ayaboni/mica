@@ -4,6 +4,7 @@ from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils import timezone
+from django.conf import settings
 from django.core.exceptions import ValidationError
 
 ACCOUNT_STATUS = [
@@ -461,3 +462,32 @@ class SignInFailure(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+
+
+class DataRequest(models.Model):
+    TYPES = [
+        ("access", "Access to their data"),
+        ("correction", "Correction"),
+        ("erasure", "Erasure"),
+        ("other", "Other"),
+    ]
+    STATUSES = [("open", "Open"), ("done", "Done"), ("declined", "Declined")]
+
+    student_name = models.CharField(max_length=150)
+    student_number = models.CharField(max_length=30, blank=True)
+    student = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True,
+                                on_delete=models.SET_NULL, related_name="+")
+    student_username = models.CharField(max_length=150, blank=True)
+    request_type = models.CharField(max_length=12, choices=TYPES)
+    request_detail = models.CharField(max_length=120, blank=True)
+    status = models.CharField(max_length=10, choices=STATUSES, default="open")
+    received_on = models.DateField()
+    note = models.CharField(max_length=300, blank=True)
+    outcome = models.CharField(max_length=300, blank=True)
+    logged_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True,
+                                  on_delete=models.SET_NULL, related_name="+")
+    handled_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-received_on", "-id"]

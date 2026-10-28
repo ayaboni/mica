@@ -1,5 +1,5 @@
 import re, io, time
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 import json, logging, csv
 import firebase_admin
@@ -24,7 +24,7 @@ from django.views.decorators.http import require_POST
 from .models import (COURSES, SERVICES, STATUS_REASONS, StaffProfile, StaffSubclass, GuidanceThread, GuidanceMessage,
                      StudentFlag, StudentNote, Appointment, AccessLog, StudentStatusLog, LoginThrottle,
                     MoodEntry, ChatConversation, SiteSettings, AuditEvent, Semester, EnrolledStudent,
-                    UserProfile, SignInFailure)
+                    UserProfile, SignInFailure, DataRequest)
 from .permissions import BOOL_FIELDS, PERMISSION_FIELDS, SERVICE_FIELDS, SERVICE_KEYS, subclass_json
 from .hotlines import DEFAULT_HOTLINES, MAX_HOTLINES, NUMBER_RE, NOTE_RE, get_hotlines, saved_hotlines
 
@@ -48,11 +48,6 @@ def _body(request):
     except json.JSONDecodeError:
         return None
     return data if isinstance(data, dict) else None
-
-
-def _log_admin(request, detail):
-    AuditEvent.objects.create(actor=request.user, event="admin_action", detail=str(detail)[:300],
-                              ip=request.META.get("REMOTE_ADDR") or None)
 
 
 def _label(u):
@@ -1041,3 +1036,110 @@ def maintenance_set(request):
     s.save()
     _log_admin(request, "Maintenance mode turned %s" % ("ON" if s.maintenance_on else "OFF"))
     return JsonResponse(_site_json(s))
+
+
+def _dr_row(r):
+    return {
+        "id": r.id,
+        "student_name": r.student_name,
+        "student_number": r.student_number,
+        "student_username": r.student_username,
+        "type": r.request_type,
+        "type_label": r.get_request_type_display(),
+        "request_detail": r.request_detail,
+        "status": r.status,
+        "status_label": r.get_status_display(),
+        "received_on": r.received_on.isoformat(),
+        "note": r.note,
+        "outcome": r.outcome,
+        "handled_at": timezone.localtime(r.handled_at).strftime("%b %d, %Y") if r.handled_at else "",
+    }
+
+
+@_admin
+def data_requests(request):
+    status = request.GET.get("status", "all")
+    qs = DataRequest.objects.all()
+    if status in ("open", "done", "declined"):
+        qs = qs.filter(status=status)
+    try:
+        page = int(request.GET.get("page", 1))
+    except ValueError:
+        page = 1
+    pg = Paginator(qs,10).get_page(page)
+    return JsonResponse({
+        "rows": [_dr_row(r) for r in pg.object_list],
+        "page": pg.number,
+        "pages": pg.paginator.num_pages,
+        "total": pg.paginator.count,
+        "open_count": DataRequest.objects.filter(status="open").count(),
+    })
+
+
+@_admin
+@require_POST
+def data_request_create(request):
+    try:
+        body = json.loads(request.body or "{}")
+    except ValueError:
+        return JsonResponse({"error": "Bad request."}, status=400)
+
+    try:
+        sid = int(body.get("student_id"))
+    except (TypeError, ValueError):
+        sid = None
+    student = (User.objects.filter(pk=sid, is_staff=False, is_superuser=False)
+               .select_related("profile").first()) if sid else None
+    if student is None:
+        return JsonResponse({"error": "Pick a student from the search results."}, status=400)
+    profile = getattr(student, "profile", None)
+
+    rtype = body.get("request_type")
+    note = " ".join(str(body.get("note") or "").split())[:200]
+    detail = " ".join(str(body.get("request_detail") or "").split())[:120]
+    if rtype not in dict(DataRequest.TYPES):
+        return JsonResponse({"error": "Pick a request type."}, status=400)
+    if rtype == "other" and not detail:
+        return JsonResponse({"error": "Say what the request is."}, status=400)
+    try:
+        received = date.fromisoformat(body.get("received_on") or "")
+    except ValueError:
+        return JsonResponse({"error": "Pick the date you received it."}, status=400)
+    if received > timezone.localdate():
+        return JsonResponse({"error": "The date can't be in the future."}, status=400)
+
+    r = DataRequest.objects.create(
+        student=student,
+        student_name=student.get_full_name() or student.username,
+        student_username=student.username,
+        student_number=(profile.student_number if profile and profile.student_number else ""),
+        request_type=rtype, received_on=received, note=note, logged_by=request.user,
+        request_detail=detail if rtype == "other" else "",
+    )
+    _log_admin(request, f"Logged data request #{r.id} ({r.get_request_type_display()}) for {r.student_name}")
+    return JsonResponse({"request": _dr_row(r)})
+
+
+@_admin
+@require_POST
+def data_request_close(request, pk):
+    try:
+        body = json.loads(request.body or "{}")
+    except ValueError:
+        return JsonResponse({"error": "Bad request."}, status=400)
+    try:
+        r = DataRequest.objects.get(pk=pk)
+    except DataRequest.DoesNotExist:
+        return JsonResponse({"error": "Request not found."}, status=404)
+    if r.status != "open":
+        return JsonResponse({"error": "This request is already closed."}, status=400)
+    status = body.get("status")
+    if status not in ("done", "declined"):
+        return JsonResponse({"error": "Pick done or declined."}, status=400)
+
+    r.status = status
+    r.outcome = (body.get("outcome") or "").strip()[:300]
+    r.handled_at = timezone.now()
+    r.save(update_fields=["status", "outcome", "handled_at"])
+    _log_admin(request, f"Marked data request #{r.id} as {r.get_status_display().lower()}")
+    return JsonResponse({"request": _dr_row(r)})

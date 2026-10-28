@@ -353,6 +353,12 @@
   .hl-row .field{margin-bottom:0;}
   @media (max-width:760px){ .hl-row{grid-template-columns:1fr;} }
 
+.dr-table{table-layout:fixed; min-width:860px;}
+.dr-clamp{display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; overflow-wrap:anywhere; font-size:12.5px; color:var(--ink-soft);}
+.dr-pick{display:flex; justify-content:space-between; align-items:center; gap:10px; width:100%; text-align:left; padding:10px 12px; margin-top:6px; border:1.5px solid var(--line); border-radius:12px; background:var(--cream); color:var(--ink); font-size:13px; font-family:inherit;}
+.dr-pick:hover{border-color:var(--sage-deep);}
+.dr-pick small{color:var(--ink-soft); font-size:12px;}
+.dr-picked{display:flex; justify-content:space-between; align-items:center; gap:10px; padding:10px 12px; border:1.5px solid var(--sage-deep); border-radius:12px; background:var(--cream); font-size:13px;}
 </style>
 </head>
 <body>
@@ -782,9 +788,39 @@
             <li>Mica chat messages are processed by Google Gemini. Firebase is used for Google sign-in and password-reset codes.</li>
             <li>MICA does not automatically delete or anonymize old accounts.</li>
             <li>MICA does not add its own encryption of stored data. Storage protection depends on the database host.</li>
-            <li>Data access, correction, and erasure requests are handled by the Guidance Office directly, not inside this system.</li>
+            <li>Data access, correction, and erasure requests are handled by the Guidance Office. The admin only logs them here, and nothing is changed or erased automatically.</li>
             <li>Failed sign-in attempts (time, the account if it exists, and network address) are kept for 90 days to help spot attacks.</li>
           </ul>
+        </div>
+
+        <div class="card panel" style="margin-top:22px;">
+          <div class="panel-head">
+            <div>
+              <h3>Data requests</h3>
+              <div class="sub">When a student asks to see, fix or erase their data. The Guidance Office still handles it. This is only the record. Don't type private details in the note.</div>
+            </div>
+            <button class="pill-btn solid sm" onclick="openDataReqModal()">+ Log request</button>
+          </div>
+          <div style="display:flex; gap:10px; align-items:center; margin-bottom:14px;">
+            <select class="filter-select" id="drStatus" onchange="loadDataRequests(1)">
+              <option value="all">All requests</option>
+              <option value="open">Open</option>
+              <option value="done">Done</option>
+              <option value="declined">Declined</option>
+            </select>
+            <span id="drOpenNote" style="font-size:12.5px; color:var(--ink-soft);"></span>
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="dr-table">
+              <colgroup>
+                <col style="width:110px"><col style="width:20%"><col style="width:15%">
+                <col style="width:120px"><col><col style="width:210px">
+              </colgroup>
+              <thead><tr><th>Received</th><th>Student</th><th>Type</th><th>Status</th><th>Details</th><th></th></tr></thead>
+              <tbody id="drTbody"></tbody>
+            </table>
+          </div>
+          <div class="pager" id="drPager"></div>
         </div>
       </section>
 
@@ -1054,6 +1090,73 @@
     <div class="modal-foot">
       <button class="pill-btn solid" id="scSaveBtn" onclick="saveSubclass()">Create role</button>
       <button class="pill-btn ghost" onclick="closeModal('subclassModalOverlay')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= DATA REQUEST MODAL ================= -->
+<div class="modal-overlay" id="drModalOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <div><h2>Log a data request</h2><div class="sub">Record who asked, what they asked for and when</div></div>
+      <button class="modal-close" onclick="closeModal('drModalOverlay')">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label>Student</label>
+        <div id="drPicked" class="dr-picked" style="display:none;"></div>
+        <div id="drSearchWrap">
+          <input id="drSearch" placeholder="Search name, username or student number" autocomplete="off" oninput="drSearchChanged()">
+          <div id="drResults"></div>
+        </div>
+      </div>
+      <div class="field-grid">
+        <div>
+          <div class="field"><label>Request type</label>
+            <select id="drType" onchange="syncDrType()">
+              <option value="access">Access to their data</option>
+              <option value="correction">Correction</option>
+              <option value="erasure">Erasure</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div class="field" id="drDetailWrap" style="display:none;">
+            <label>What is the request?</label>
+            <input id="drDetail" maxlength="120" placeholder="Describe it in a few words">
+          </div>
+        </div>
+        <div>
+          <div class="field"><label>Date received</label><input id="drDate" type="date"></div>
+          <div class="field">
+            <label>Note (optional)</label>
+            <input id="drNote" maxlength="200" placeholder="Short and general" oninput="document.getElementById('drNoteCount').textContent = this.value.length + '/200'">
+            <div id="drNoteCount" style="font-size:11.5px; color:var(--ink-soft); margin-top:5px; text-align:right;">0/200</div>
+          </div>
+        </div>
+      </div>
+      <div class="form-error" id="drError"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="pill-btn solid" id="drSaveBtn" onclick="saveDataRequest()">Save request</button>
+      <button class="pill-btn ghost" onclick="closeModal('drModalOverlay')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= DATA REQUEST VIEW MODAL ================= -->
+<div class="modal-overlay" id="drViewOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <div><h2>Data request</h2><div class="sub" id="drViewSub"></div></div>
+      <button class="modal-close" onclick="closeModal('drViewOverlay')">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="kv-grid" id="drViewKv"></div>
+      <div id="drViewText" style="font-size:13.5px; line-height:1.6; overflow-wrap:anywhere; white-space:pre-wrap;"></div>
     </div>
   </div>
 </div>
@@ -2092,6 +2195,164 @@ function deleteSemester(id){
 }
 
 /* =========================================================
+   DATA REQUESTS
+========================================================= */
+const DR_BADGE = {open:'watch', done:'stable', declined:'neutral'};
+let drStudent = null, drResults = [], drTimer = null;
+let drRows = [];
+
+function loadDataRequests(page){
+  const body = document.getElementById('drTbody');
+  const status = document.getElementById('drStatus').value;
+  return api('/api/admin/data-requests/?status=' + encodeURIComponent(status) + '&page=' + (page || 1)).then(r=>{
+    if(!r.ok){
+      body.innerHTML = '<tr><td colspan="6"><div class="sc-empty">Could not load data requests. Refresh and try again.</div></td></tr>';
+      return;
+    }
+    const d = r.data;
+    drRows = d.rows;
+    document.getElementById('drOpenNote').textContent = d.open_count ? d.open_count + ' open' : 'Nothing open';
+    body.innerHTML = d.rows.length ? d.rows.map(q=>`
+      <tr>
+        <td class="mono-cell">${esc(fmtDate(q.received_on))}</td>
+        <td>
+          <div style="font-weight:600; overflow-wrap:anywhere;">${esc(q.student_name)}</div>
+          <div style="font-size:12px; color:var(--ink-soft); overflow-wrap:anywhere;">${q.student_username ? '@' + esc(q.student_username) : ''}${q.student_number ? ' · ' + esc(q.student_number) : ''}</div>
+        </td>
+        <td>${esc(q.type_label)}${q.request_detail ? '<div class="dr-clamp" title="' + esc(q.request_detail) + '">' + esc(q.request_detail) + '</div>' : ''}</td>
+        <td><span class="badge ${DR_BADGE[q.status] || 'neutral'}"><span class="dot"></span>${esc(q.status_label)}</span>
+          ${q.handled_at ? '<div style="font-size:12px; color:var(--ink-soft); margin-top:4px;">' + esc(q.handled_at) + '</div>' : ''}</td>
+        <td>
+          ${q.note ? '<div class="dr-clamp" title="' + esc(q.note) + '">' + esc(q.note) + '</div>' : ''}
+          ${q.outcome ? '<div class="dr-clamp" style="margin-top:4px;" title="' + esc(q.outcome) + '"><b>Outcome:</b> ' + esc(q.outcome) + '</div>' : ''}
+        </td>
+        <td><div style="display:flex; flex-direction:column; gap:6px; align-items:flex-start;">
+          <button class="pill-btn ghost sm" onclick="openDrView(${q.id})">View</button>
+          ${q.status === 'open'
+            ? '<div class="row-actions"><button class="pill-btn ghost sm" onclick="closeDataRequest(' + q.id + ',\'done\')">Done</button>'
+              + '<button class="pill-btn ghost sm" onclick="closeDataRequest(' + q.id + ',\'declined\')">Decline</button></div>'
+            : ''}
+        </div></td>
+      </tr>`).join('')
+      : '<tr><td colspan="6"><div class="sc-empty">No data requests logged yet.</div></td></tr>';    document.getElementById('drPager').innerHTML = d.pages > 1
+      ? `<button class="pill-btn ghost sm" ${d.page <= 1 ? 'disabled' : ''} onclick="loadDataRequests(${d.page - 1})">← Previous</button>
+         <span>Page ${d.page} of ${d.pages} · ${d.total} requests</span>
+         <button class="pill-btn ghost sm" ${d.page >= d.pages ? 'disabled' : ''} onclick="loadDataRequests(${d.page + 1})">Next →</button>`
+      : `<span>${d.total} request${d.total === 1 ? '' : 's'}</span>`;
+  });
+}
+
+function openDataReqModal(){
+  drStudent = null; drResults = [];
+  ['drSearch','drNote','drDetail'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('drNoteCount').textContent = '0/200';  document.getElementById('drResults').innerHTML = '';
+  document.getElementById('drType').selectedIndex = 0;
+  const now = new Date();
+  document.getElementById('drDate').value = new Date(now - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  document.getElementById('drError').textContent = '';
+  renderDrPicked();
+  syncDrType();
+  document.getElementById('drModalOverlay').classList.add('active');
+}
+
+function syncDrType(){
+  document.getElementById('drDetailWrap').style.display = document.getElementById('drType').value === 'other' ? '' : 'none';
+}
+
+function renderDrPicked(){
+  const box = document.getElementById('drPicked');
+  document.getElementById('drSearchWrap').style.display = drStudent ? 'none' : '';
+  box.style.display = drStudent ? 'flex' : 'none';
+  if(!drStudent) return;
+  box.innerHTML = '<div><b>' + esc(drStudent.name) + '</b><br><small style="color:var(--ink-soft);">@' + esc(drStudent.username)
+    + ' · ' + esc(drStudent.student_number) + ' · ' + esc(drStudent.status_label) + '</small></div>'
+    + '<button type="button" class="pill-btn ghost sm" onclick="clearDrStudent()">Change</button>';
+}
+
+function clearDrStudent(){
+  drStudent = null;
+  renderDrPicked();
+  document.getElementById('drSearch').focus();
+}
+
+function drSearchChanged(){
+  clearTimeout(drTimer);
+  const box = document.getElementById('drResults');
+  const q = document.getElementById('drSearch').value.trim();
+  if(q.length < 2){ box.innerHTML = ''; return; }
+  drTimer = setTimeout(()=>{
+    api('/api/admin/students/?status=all&q=' + encodeURIComponent(q)).then(r=>{
+      if(!r.ok){ box.innerHTML = '<div class="sc-empty">Could not search. Try again.</div>'; return; }
+      drResults = r.data.students.slice(0, 6);
+      box.innerHTML = drResults.length
+        ? drResults.map(s => '<button type="button" class="dr-pick" onclick="pickDrStudent(' + s.id + ')"><span><b>'
+            + esc(s.name) + '</b><br><small>@' + esc(s.username) + ' · ' + esc(s.student_number) + '</small></span>'
+            + '<span class="badge ' + (STU_BADGE[s.status] || 'neutral') + '">' + esc(s.status_label) + '</span></button>').join('')
+        : '<div class="sc-empty">No student found. Requests can only be logged for students who have a MICA account.</div>';
+    });
+  }, 300);
+}
+
+function pickDrStudent(id){
+  drStudent = drResults.find(s => s.id === id) || null;
+  document.getElementById('drResults').innerHTML = '';
+  document.getElementById('drSearch').value = '';
+  document.getElementById('drError').textContent = '';
+  renderDrPicked();
+}
+
+function openDrView(id){
+  const q = drRows.find(x => x.id === id);
+  if(!q) return;
+  document.getElementById('drViewSub').textContent = q.student_name + (q.student_username ? ' · @' + q.student_username : '');
+  document.getElementById('drViewKv').innerHTML = [
+    ['Student number', q.student_number || '-'],
+    ['Received', fmtDate(q.received_on)],
+    ['Type', q.type_label],
+    ['Status', q.status_label + (q.handled_at ? ' · ' + q.handled_at : '')]
+  ].map(([k, v]) => '<div class="kv"><div class="k">' + esc(k) + '</div><div class="v">' + esc(v) + '</div></div>').join('');
+  const parts = [];
+  if(q.request_detail) parts.push('<b>Request</b>\n' + esc(q.request_detail));
+  if(q.note) parts.push('<b>Note</b>\n' + esc(q.note));
+  if(q.outcome) parts.push('<b>Outcome</b>\n' + esc(q.outcome));
+  document.getElementById('drViewText').innerHTML = parts.length ? parts.join('\n\n') : '<span style="color:var(--ink-soft);">No details were added.</span>';
+  document.getElementById('drViewOverlay').classList.add('active');
+}
+
+function saveDataRequest(){
+  const btn = document.getElementById('drSaveBtn'), err = document.getElementById('drError');
+  err.textContent = '';
+  if(!drStudent){ err.textContent = 'Pick a student from the search results.'; return; }
+  if(document.getElementById('drType').value === 'other' && !document.getElementById('drDetail').value.trim()){
+    err.textContent = 'Say what the request is.'; return;
+  }
+  btn.disabled = true;
+  api('/api/admin/data-requests/create/', {
+    student_id: drStudent.id,
+    request_type: document.getElementById('drType').value,
+    request_detail: document.getElementById('drDetail').value,
+    received_on: document.getElementById('drDate').value,
+    note: document.getElementById('drNote').value
+  }).then(r=>{
+    btn.disabled = false;
+    if(!r.ok){ err.textContent = r.data.error || 'Could not save the request.'; return; }
+    closeModal('drModalOverlay');
+    showToast('Request logged');
+    loadDataRequests(1);
+  });
+}
+
+function closeDataRequest(id, status){
+  const outcome = prompt(status === 'done' ? 'What was done? (optional)' : 'Why was it declined? (optional)');
+  if(outcome === null) return;
+  api('/api/admin/data-requests/' + id + '/close/', {status, outcome}).then(r=>{
+    if(!r.ok){ showToast(r.data.error || 'Could not update the request'); return; }
+    showToast(status === 'done' ? 'Marked as done' : 'Marked as declined');
+    loadDataRequests(1);
+  });
+}
+
+/* =========================================================
    MISC
 ========================================================= */
 function closeModal(id){ document.getElementById(id).classList.remove('active'); }
@@ -2126,6 +2387,7 @@ function initAll(){
   loadSubclasses().then(loadStaffAccounts);
   loadEnrollment();
   loadMissing();
+  loadDataRequests(1);
 }
 
 /* =========================================================
