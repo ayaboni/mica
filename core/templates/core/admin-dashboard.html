@@ -396,7 +396,6 @@
       <button class="nav-item" data-section="privacy" onclick="goTo('privacy')">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2l8 3.5v6c0 5-3.4 8.9-8 10.5-4.6-1.6-8-5.5-8-10.5v-6L12 2z"/></svg>
         Data Privacy
-        <span class="count" id="privNavCount">0</span>
       </button>
 
       <div class="nav-label">Operations</div>
@@ -640,74 +639,55 @@
             <div class="icon-chip" style="background:var(--sage-pale); color:var(--sage-deep);">
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>
             </div>
-            <div class="label">Consent Forms on File</div>
-            <div class="value">1,203</div>
-            <div class="delta up">97.0% of active students</div>
+            <div class="label">Consent on Current Form</div>
+            <div class="value"><span id="privRate">–</span><span style="font-size:15px; color:var(--ink-soft);">%</span></div>
+            <div class="delta up" id="privRateSub"></div>
           </div>
           <div class="card stat-card">
             <div class="icon-chip" style="background:var(--alert-pale); color:var(--alert);">
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l2.5 2.5"/></svg>
             </div>
-            <div class="label">Pending Data Requests</div>
-            <div class="value" id="privNavCount2">3</div>
-            <div class="delta down">Avg. resolution 4.2 days</div>
+            <div class="label">Not Yet on Current Form</div>
+            <div class="value" id="privMissing">–</div>
+            <div class="delta down" id="privMissingSub"></div>
           </div>
           <div class="card stat-card">
             <div class="icon-chip" style="background:var(--sky-pale); color:var(--sky-deep);">
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
-            </div>
-            <div class="label">Encrypted Records</div>
-            <div class="value">100<span style="font-size:15px; color:var(--ink-soft);">%</span></div>
-            <div class="delta up">AES-256 at rest, TLS 1.3 in transit</div>
-          </div>
-          <div class="card stat-card">
-            <div class="icon-chip" style="background:var(--peach-deep); color:var(--brown-deep);">
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/></svg>
             </div>
-            <div class="label">Retention Window</div>
-            <div class="value">24<span style="font-size:15px; color:var(--ink-soft);"> mo</span></div>
-            <div class="delta up">Auto-anonymize after inactivity</div>
+            <div class="label">Consent Form Version</div>
+            <div class="value" id="privVersion">–</div>
+            <div class="delta up" id="privLast"></div>
           </div>
         </div>
 
         <div class="card panel" style="margin-bottom:22px;">
-          <div class="panel-head">
-            <div>
-              <h3>Data Subject Requests</h3>
-              <div class="sub">Access, correction &amp; erasure requests under the Data Privacy Act of 2012 (RA 10173)</div>
-            </div>
-          </div>
-          <div style="overflow-x:auto;">
-            <table>
-              <thead><tr><th>Request ID</th><th>Requestor</th><th>Type</th><th>Submitted</th><th>Status</th><th>Action</th></tr></thead>
-              <tbody id="privacyTbody"></tbody>
-            </table>
-          </div>
+          <div class="panel-head"><div>
+            <h3>How MICA protects student data</h3>
+            <div class="sub">What the system actually does today</div>
+          </div></div>
+          <ul style="margin:0; padding-left:18px; line-height:1.8; font-size:14px;">
+            <li>Students must accept the consent form before using MICA.</li>
+            <li>Staff only see what their role allows (Roles &amp; Permissions).</li>
+            <li>Every time staff open a student's record, it is logged in Audit Logs.</li>
+            <li>Sign-in: 5 wrong passwords lock the account for 60 seconds, and an e-mailed 6-character code (valid 10 minutes, 5 tries) is required.</li>
+            <li>Passwords need 8+ characters, 1 uppercase letter, and 1 number or symbol.</li>
+            <li>Idle sign-out: 15 minutes for staff and admin, 30 minutes for students.</li>
+            <li>Archived and graduated students cannot sign in, and nothing is deleted.</li>
+          </ul>
         </div>
 
         <div class="card panel">
-          <div class="panel-head">
-            <div>
-              <h3>Privacy Controls</h3>
-              <div class="sub">Platform-wide safeguards for sensitive mental health data</div>
-            </div>
-          </div>
-          <div class="toggle-row">
-            <div><div class="t-label">Auto-anonymize inactive student identities</div><div class="t-desc">Strips directly identifying fields from accounts inactive for 24 months, retaining de-identified analytics only.</div></div>
-            <button class="switch on" onclick="toggleSwitch(this)"><span class="knob"></span></button>
-          </div>
-          <div class="toggle-row">
-            <div><div class="t-label">End-to-end encryption for journal &amp; chat entries</div><div class="t-desc">Encrypts free-text mood journal and AI coaching chat content so only the student and assigned counselor can decrypt it.</div></div>
-            <button class="switch on" onclick="toggleSwitch(this)"><span class="knob"></span></button>
-          </div>
-          <div class="toggle-row">
-            <div><div class="t-label">Explicit consent required before AI analysis</div><div class="t-desc">Blocks AI mood/risk scoring for a student until they have accepted the current consent form version.</div></div>
-            <button class="switch on" onclick="toggleSwitch(this)"><span class="knob"></span></button>
-          </div>
-          <div class="toggle-row">
-            <div><div class="t-label">Counselor access requires documented case reason</div><div class="t-desc">Counselors must log a reason before opening a student's full record; logged to the audit trail.</div></div>
-            <button class="switch" onclick="toggleSwitch(this)"><span class="knob"></span></button>
-          </div>
+          <div class="panel-head"><div>
+            <h3>Good to know</h3>
+            <div class="sub">Things the admin should be able to answer honestly</div>
+          </div></div>
+          <ul style="margin:0; padding-left:18px; line-height:1.8; font-size:14px;">
+            <li>Mica chat messages are processed by Google Gemini. Firebase is used for Google sign-in and password-reset codes.</li>
+            <li>MICA does not automatically delete or anonymize old accounts.</li>
+            <li>MICA does not add its own encryption of stored data. Storage protection depends on the database host.</li>
+            <li>Data access, correction, and erasure requests are handled by the Guidance Office directly, not inside this system.</li>
+          </ul>
         </div>
       </section>
 
@@ -976,13 +956,6 @@
    DATA
 ========================================================= */
 let accounts = [];
-
-let privacyRequests = [
-  {id:'DSR-118', who:'Student #908 (anonymized)', type:'Data Access', submitted:'2026-08-30', status:'In Progress'},
-  {id:'DSR-117', who:'Student #874 (anonymized)', type:'Right to Erasure', submitted:'2026-08-27', status:'Pending Review'},
-  {id:'DSR-116', who:'Student #841 (anonymized)', type:'Data Correction', submitted:'2026-08-21', status:'Resolved'},
-];
-
 let activeAcctId = null;
 let charts = {};
 
@@ -1548,24 +1521,17 @@ function exportAuditLogs(){
 /* =========================================================
    DATA PRIVACY
 ========================================================= */
-function renderPrivacy(){
-  document.getElementById('privacyTbody').innerHTML = privacyRequests.map(r=>`
-    <tr>
-      <td class="mono-cell">${r.id}</td>
-      <td>${r.who}</td>
-      <td>${r.type}</td>
-      <td class="mono-cell">${r.submitted}</td>
-      <td><span class="badge ${r.status==='Resolved'?'stable':(r.status==='Pending Review'?'watch':'watch')}"><span class="dot"></span>${r.status}</span></td>
-      <td><button class="pill-btn ghost sm" onclick="resolvePrivacyRequest('${r.id}')">${r.status==='Resolved'?'View':'Process'}</button></td>
-    </tr>`).join('');
-  const pending = privacyRequests.filter(r=>r.status!=='Resolved').length;
-  document.getElementById('privNavCount').textContent = pending;
-  document.getElementById('privNavCount2').textContent = pending;
-}
-function resolvePrivacyRequest(id){
-  const r = privacyRequests.find(x=>x.id===id);
-  if(r.status!=='Resolved'){ r.status='Resolved'; renderPrivacy(); showToast('Request '+id+' marked resolved'); }
-  else{ showToast('Request '+id+' — no further action needed'); }
+function loadPrivacy(){
+  return api('/api/admin/privacy/').then(r=>{
+    if(!r.ok) return;
+    const d = r.data, set = (id,v)=>{ document.getElementById(id).textContent = v; };
+    set('privRate', d.rate == null ? '–' : d.rate);
+    set('privRateSub', d.on_current + ' of ' + d.active_students + ' active students');
+    set('privMissing', d.on_older + d.none);
+    set('privMissingSub', d.none + ' never consented, ' + d.on_older + ' on an older version');
+    set('privVersion', 'v' + d.version);
+    set('privLast', d.last_consent ? 'Latest consent: ' + new Date(d.last_consent).toLocaleDateString() : 'No consents yet');
+  });
 }
 
 /* =========================================================
@@ -1797,12 +1763,12 @@ if (new URLSearchParams(location.search).get('pw') === 'changed'){
 
 function initAll(){
   renderAccounts();
-  renderPrivacy();
   loadIntegrations();
   loadDashboard();
   loadStudentsPage(1);
   loadSiteSettings();
   loadHotlines();
+  loadPrivacy();
   loadSubclasses().then(loadStaffAccounts);
 }
 

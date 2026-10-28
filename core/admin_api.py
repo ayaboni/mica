@@ -710,3 +710,23 @@ def integrations(request):
                      "status": "ok" if has_backup else "warn",
                      "meta": "API key set" if has_backup else "Not set up yet"})
     return JsonResponse({"services": items})
+
+
+@_admin
+def privacy_overview(request):
+    from .views import CONSENT_VERSION     # imported late: views imports a lot
+    students = User.objects.filter(is_staff=False, is_superuser=False, profile__account_status="active")
+    total = students.count()
+    current = students.filter(profile__consent_version=CONSENT_VERSION).count()
+    older = (students.exclude(profile__consent_version=CONSENT_VERSION)
+                     .exclude(profile__consent_version="").count())
+    never = total - current - older
+    last = (students.exclude(profile__consent_given_at=None)
+                    .order_by("-profile__consent_given_at")
+                    .values_list("profile__consent_given_at", flat=True).first())
+    return JsonResponse({
+        "version": CONSENT_VERSION, "active_students": total,
+        "on_current": current, "on_older": older, "none": never,
+        "rate": round(100 * current / total) if total else None,
+        "last_consent": last.isoformat() if last else None,
+    })

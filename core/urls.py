@@ -98,4 +98,5 @@ urlpatterns = [
     path('api/admin/hotlines/', admin_api.hotlines_list, name='admin_hotlines'),
     path('api/admin/hotlines/save/', admin_api.hotlines_save, name='admin_hotlines_save'),
     path('api/admin/integrations/', admin_api.integrations, name='admin_integrations'),
+    path('api/admin/privacy/', admin_api.privacy_overview, name='admin_privacy'),
 ]
