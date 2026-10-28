@@ -38,6 +38,9 @@ def _admin(view):
         view = deco(view)
     return view
 
+def _log_admin(request, detail):
+    AuditEvent.objects.create(actor=request.user, event="admin_action", detail=str(detail)[:300],
+                              ip=request.META.get("REMOTE_ADDR") or None)
 
 def _body(request):
     try:
@@ -596,7 +599,7 @@ def _audit_role(u):
 
 
 def _audit_rows(request, limit):
-    """AccessLog and StudentStatusLog merged into one list, newest first."""
+    """AccessLog, StudentStatusLog and admin changes merged into one list, newest first."""
     g = request.GET
     action = g.get("action", "all")
     d_from = parse_date(g.get("date_from") or "")
@@ -641,6 +644,18 @@ def _audit_rows(request, limit):
             rows.append({"when": l.created_at, "staff": _audit_name(l.changed_by), "role": _audit_role(l.changed_by),
                          "action": AUDIT_LABEL["status_change"], "student": _audit_name(l.student),
                          "detail": " · ".join(bits)})
+
+    if action in ("all", "admin_change") and not g.get("student", "").strip():
+        qs = AuditEvent.objects.select_related("actor", "actor__staff_profile__subclass")
+        if d_from:
+            qs = qs.filter(created_at__date__gte=d_from)
+        if d_to:
+            qs = qs.filter(created_at__date__lte=d_to)
+        if g.get("staff", "").strip():
+            qs = _person_filter(qs, "actor", g.get("staff"))
+        for e in qs.order_by("-created_at")[:limit]:
+            rows.append({"when": e.created_at, "staff": _audit_name(e.actor), "role": _audit_role(e.actor),
+                         "action": "Admin change", "student": "-", "detail": e.detail})
 
     rows.sort(key=lambda r: r["when"], reverse=True)
     return rows[:limit]
@@ -936,11 +951,6 @@ def enrollment_missing(request):
         {"id": p.user_id, "name": p.user.get_full_name() or p.user.username,
          "student_number": p.student_number, "course": p.course, "year_level": p.year_level}
         for p in people[:300]]})
-
-
-def _csv_safe(value):
-    value = str(value or "")
-    return "'" + value if value[:1] in ("=", "+", "-", "@") else value    # stops Excel formulas
 
 
 @_admin
