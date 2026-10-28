@@ -109,4 +109,5 @@ urlpatterns = [
     path('api/admin/enrollment/missing/', admin_api.enrollment_missing, name='admin_enrollment_missing'),
     path('api/admin/enrollment/download/', admin_api.enrollment_download, name='admin_enrollment_download'),
     path('api/admin/signins/', admin_api.signin_failures, name='admin_signins'),
+    path('api/admin/settings/maintenance/', admin_api.maintenance_set, name='admin_maintenance'),
 ]

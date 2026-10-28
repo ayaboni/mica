@@ -60,6 +60,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'core.middleware.MaintenanceModeMiddleware',
     'core.middleware.SuspendedAccountMiddleware',
     'core.middleware.ArchivedStudentMiddleware',
     'core.middleware.StaffSetupMiddleware',

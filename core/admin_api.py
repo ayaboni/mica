@@ -136,8 +136,8 @@ def subclass_delete(request, subclass_id):
 def _site_json(s):
     return {"platform_name": s.platform_name, "institution_name": s.institution_name,
             "support_email": s.support_email, "timezone": settings.TIME_ZONE,
-            "registration_open": s.registration_open}
-
+            "registration_open": s.registration_open,
+            "maintenance_on": s.maintenance_on, "maintenance_message": s.maintenance_message}
 
 @_admin
 def site_settings(request):
@@ -1026,3 +1026,18 @@ def signin_failures(request):
         "rows": [row(f) for f in page],
         "page": page.number, "pages": page.paginator.num_pages, "total": page.paginator.count,
     })
+
+
+@_admin
+@require_POST
+def maintenance_set(request):
+    data = _body(request)
+    if data is None or not isinstance(data.get("on"), bool):
+        return JsonResponse({"error": "Invalid request."}, status=400)
+    s = SiteSettings.get()
+    s.maintenance_on = data["on"]
+    s.maintenance_message = " ".join(str(data.get("message") or "").split())[:300]
+    s.updated_by = request.user
+    s.save()
+    _log_admin(request, "Maintenance mode turned %s" % ("ON" if s.maintenance_on else "OFF"))
+    return JsonResponse(_site_json(s))

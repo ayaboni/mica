@@ -412,6 +412,8 @@ class SiteSettings(models.Model):
     hotlines = models.JSONField(default=list, blank=True)   # used by the hotlines step
     updated_at = models.DateTimeField(auto_now=True)
     updated_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    maintenance_on = models.BooleanField(default=False)
+    maintenance_message = models.CharField(max_length=300, blank=True, default="")
 
     @classmethod
     def get(cls):

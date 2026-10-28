@@ -1,8 +1,12 @@
 import time
 from django.contrib.auth import logout
 from django.http import JsonResponse
-from django.shortcuts import redirect
+from django.shortcuts import redirect, render
 from django.urls import reverse
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 ALLOWED = ("/logout/", "/archived/", "/static/", "/media/")
 
@@ -79,4 +83,27 @@ class StaffSetupMiddleware:
                 if request.path.startswith("/api/"):
                     return JsonResponse({"error": "Finish setting up your account first.", "setup_required": True}, status=403)
                 return redirect("staff_setup")
+        return self.get_response(request)
+
+MAINTENANCE_ALLOWED = ("/login/", "/logout/", "/static/", "/media/", "/admin/")
+
+class MaintenanceModeMiddleware:
+    """While the admin has maintenance mode on, only the admin can use the site. Everyone else sees
+    a friendly page (with the crisis hotlines) instead of an error."""
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        if request.path.startswith(MAINTENANCE_ALLOWED) or request.user.is_superuser:
+            return self.get_response(request)
+        try:
+            from .models import SiteSettings
+            row = SiteSettings.objects.filter(pk=1).only("maintenance_on", "maintenance_message").first()
+        except Exception:
+            logger.exception("Maintenance check failed; letting the request through.")
+            return self.get_response(request)
+        if row and row.maintenance_on:
+            if request.path.startswith("/api/"):
+                return JsonResponse({"error": "maintenance", "maintenance": True}, status=503)
+            return render(request, "core/maintenance.html", {"message": row.maintenance_message}, status=503)
         return self.get_response(request)
