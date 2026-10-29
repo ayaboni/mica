@@ -1,3 +1,5 @@
+{% load static %}
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5,16 +7,41 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Back soon | MICA</title>
 <style>
-  body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#F6F2E8;font-family:'Nunito',sans-serif;color:#3E3226;padding:20px;}
-  .box{max-width:520px;background:#fff;border-radius:20px;padding:32px;box-shadow:0 10px 30px rgba(0,0,0,.08);}
-  h1{font-size:22px;margin:0 0 10px;}
-  p{line-height:1.55;margin:0 0 14px;}
-  .help{background:#F6F2E8;border-radius:14px;padding:14px 16px;margin:18px 0 0;font-size:14px;line-height:1.6;}
-  .help b{display:block;margin-bottom:6px;}
-  .help ul{margin:0 0 6px;padding-left:18px;}
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #F6F2E8;
+    background-image: url("{% static 'core/images/chat-doodles.png' %}");
+    background-repeat: repeat; /* Tiles the doodles across the screen */
+    background-size: 300px; /* Adjust size of doodles as needed */
+    font-family: 'Nunito', sans-serif;
+    color: #3E3226;
+    padding: 20px;
+  }
+  
+  .box {
+    max-width: 520px;
+    width: 100%;
+    background: #fff;
+    border-radius: 20px;
+    padding: 32px;
+    box-shadow: 0 10px 30px rgba(0,0,0,.08);
+    position: relative; /* Keeps box neatly layered on top */
+    z-index: 1;
+  }
+  
+  h1 { font-size: 22px; margin: 0 0 10px; }
+  p { line-height: 1.55; margin: 0 0 14px; }
+  .help { background: #F6F2E8; border-radius: 14px; padding: 14px 16px; margin: 18px 0 0; font-size: 14px; line-height: 1.6; }
+  .help b { display: block; margin-bottom: 6px; }
+  .help ul { margin: 0 0 6px; padding-left: 18px; }
 </style>
 </head>
 <body>
+
 <div class="box">
   <h1>MICA is taking a short break</h1>
   <p>{% if message %}{{ message }}{% else %}We're making some updates. Please check back soon.{% endif %}</p>
@@ -26,5 +53,6 @@
     Emergency: 911
   </div>
 </div>
+
 </body>
 </html>
