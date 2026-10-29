@@ -1302,9 +1302,9 @@
 </div>
 
 <div class="modal-overlay" id="referralModal" style="z-index:110;">
-  <div class="modal" style="max-width:460px;">
+  <div class="modal" style="max-width:520px;">
     <div class="modal-head">
-      <div><h2>Referred to you</h2><div class="sub">Notes other staff wrote for you.</div></div>
+      <div><h2>Referrals</h2><div class="sub">Accept or decline students referred to you.</div></div>
       <button class="modal-close" onclick="closeReferrals()">✕</button>
     </div>
     <div class="modal-body" id="referralList"></div>
@@ -1607,8 +1607,10 @@ let scheduleSubmitting = false;
 let seenLastMsg = {};
 let threadsById = {};
 let referralsList = [];
+let responsesList = [];
 let referralsInit = false;
 let lastReferralCount = 0;
+let lastResponseCount = 0;
 
 function initials(name){
   return name.split(' ').filter(Boolean).map(w=>w[0]).join('').slice(0,2).toUpperCase();
@@ -1617,28 +1619,94 @@ function initials(name){
 function pollReferrals(){
   fetch("{% url 'staff_referral_inbox' %}").then(r => r.json()).then(d => {
     referralsList = d.referrals || [];
-    const n = referralsList.length;
-    if(referralsInit && n > lastReferralCount){ playReferralSound(); showToast('A note was referred to you'); }
-    referralsInit = true; lastReferralCount = n;
-    document.getElementById('referralBtn').style.display = n ? '' : 'none';
-    document.getElementById('referralPing').textContent = n;
+    responsesList = d.responses || [];
+    const n = referralsList.length, m = responsesList.length;
+    if(referralsInit && n > lastReferralCount){ playReferralSound(); showToast('A student was referred to you. Accept or decline?'); }
+    else if(referralsInit && m > lastResponseCount){ playReferralSound(); showToast('A referral you made was answered'); }
+    referralsInit = true; lastReferralCount = n; lastResponseCount = m;
+    document.getElementById('referralBtn').style.display = (n + m) ? '' : 'none';
+    document.getElementById('referralPing').textContent = n + m;
+    if(document.getElementById('referralModal').classList.contains('active')) renderReferrals();
   }).catch(() => {});
 }
 setInterval(pollReferrals, 10000);
 pollReferrals();
 
-function openReferrals(){
-  document.getElementById('referralList').innerHTML = referralsList.map(r => `
-    <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; padding:10px 4px; border-bottom:1px solid var(--line);">
+function renderReferrals(){
+  const row = 'padding:12px 4px; border-bottom:1px solid var(--line);';
+  const waiting = referralsList.map(r => `
+    <div style="${row}">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
+        <div>
+          <div style="font-weight:700;">${escapeHtmlStaff(r.student_name)}</div>
+          <div style="font-size:12.5px; color:var(--ink-soft);">From ${escapeHtmlStaff(r.from_name)} · ${escapeHtmlStaff(r.date)}</div>
+          ${r.preview ? `<div style="font-size:13px; margin-top:6px;">${escapeHtmlStaff(r.preview)}</div>` : ''}
+        </div>
+        <button class="pill-btn ghost sm" onclick="openReferral('${r.student_code}')">View</button>
+      </div>
+      <div style="display:flex; gap:8px; margin-top:10px;" id="refActions${r.note_id}">
+        <button class="pill-btn solid sm" onclick="respondReferral(${r.note_id}, 'accept')">Accept</button>
+        <button class="pill-btn ghost sm" onclick="showDeclineBox(${r.note_id})">Decline</button>
+      </div>
+      <div style="display:none; margin-top:10px;" id="refDecline${r.note_id}">
+        <input type="text" id="refReason${r.note_id}" maxlength="200" placeholder="Reason (optional), so they can find someone else"
+               style="width:100%; padding:8px 10px; border:1.5px solid var(--line); border-radius:10px; font-family:inherit; font-size:13px; box-sizing:border-box;">
+        <div style="display:flex; gap:8px; margin-top:8px;">
+          <button class="pill-btn solid sm" onclick="respondReferral(${r.note_id}, 'decline')">Confirm decline</button>
+          <button class="pill-btn ghost sm" onclick="hideDeclineBox(${r.note_id})">Cancel</button>
+        </div>
+      </div>
+    </div>`).join('');
+  const answered = responsesList.map(r => `
+    <div style="${row} display:flex; justify-content:space-between; align-items:center; gap:12px;">
       <div>
         <div style="font-weight:700;">${escapeHtmlStaff(r.student_name)}</div>
-        <div style="font-size:12.5px; color:var(--ink-soft);">From ${escapeHtmlStaff(r.from_name)} · ${escapeHtmlStaff(r.date)}</div>
+        <div style="font-size:12.5px; color:var(--ink-soft);">${escapeHtmlStaff(r.by_name)} ${r.status === 'accepted' ? 'accepted' : 'declined'} your referral · ${escapeHtmlStaff(r.date)}</div>
+        ${r.status === 'declined' && r.reason ? `<div style="font-size:13px; margin-top:6px;">“${escapeHtmlStaff(r.reason)}”</div>` : ''}
       </div>
-      <button class="pill-btn solid" onclick="openReferral('${r.student_code}')">Open</button>
-    </div>`).join('') || '<div style="padding:12px; color:var(--ink-soft);">Nothing new.</div>';
+      <button class="pill-btn solid sm" onclick="openReferral('${r.student_code}')">Open</button>
+    </div>`).join('');
+  const head = t => `<div style="font-size:12px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--ink-soft); margin:6px 0 2px;">${t}</div>`;
+  document.getElementById('referralList').innerHTML =
+    (waiting ? head('Waiting for your answer') + waiting : '') +
+    (answered ? head('Answers to your referrals') + answered : '') ||
+    '<div style="padding:12px; color:var(--ink-soft);">Nothing new.</div>';
+}
+
+function openReferrals(){
+  renderReferrals();
   document.getElementById('referralModal').classList.add('active');
 }
 function closeReferrals(){ document.getElementById('referralModal').classList.remove('active'); }
+function showDeclineBox(id){
+  document.getElementById('refActions'+id).style.display = 'none';
+  document.getElementById('refDecline'+id).style.display = 'block';
+  document.getElementById('refReason'+id).focus();
+}
+function hideDeclineBox(id){
+  document.getElementById('refDecline'+id).style.display = 'none';
+  document.getElementById('refActions'+id).style.display = 'flex';
+}
+function respondReferral(id, action){
+  const reasonEl = document.getElementById('refReason'+id);
+  const body = {action, reason: action === 'decline' && reasonEl ? reasonEl.value : ''};
+  fetch(`/api/staff/notes/${id}/referral/`, {method:'POST',
+        headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')}, body: JSON.stringify(body)})
+    .then(r => r.json().then(d => ({ok:r.ok, d})))
+    .then(({ok, d}) => {
+      if(!ok){ showToast(d.error || 'Could not send your answer'); pollReferrals(); return; }
+      showToast(action === 'accept' ? 'Referral accepted' : 'Referral declined');
+      referralsList = referralsList.filter(r => r.note_id !== id);
+      lastReferralCount = referralsList.length;
+      renderReferrals();
+      pollReferrals();
+      const notesOpen = document.getElementById('notesModal').classList.contains('active');
+      const i = notesCache.findIndex(x => x.id === id);
+      if(i >= 0 && action === 'accept'){ notesCache[i] = d.note; if(notesOpen) viewNote(id); }
+      else if(i >= 0 && notesOpen){ showNotesView('list'); loadNotes(); }   // a declined note leaves your list
+    })
+    .catch(() => showToast('Could not send your answer'));
+}
 function openReferral(code){
   if(!studentsReal.find(x => x.code === code)) return showToast("Your staff role can't open student records.");
   closeReferrals();
@@ -2011,6 +2079,13 @@ function loadNotes(){
 }
 
 function noteBadge(n){
+  if(n.service === 'referral' && n.referred_to_id){
+    if(n.can_respond) return '<span class="note-badge">Awaiting your answer</span>';
+    if(n.for_me) return '<span class="note-badge ok">Referred to you</span>';
+    if(n.referral_status === 'accepted') return '<span class="note-badge ok">Referral accepted</span>';
+    if(n.referral_status === 'declined') return '<span class="note-badge" style="background:#F6D6D2; color:#9B3B33;">Referral declined</span>';
+    return '<span class="note-badge">Referral pending</span>';
+  }
   if(n.for_me) return '<span class="note-badge">Referred to you</span>';
   if(n.needs_review) return '<span class="note-badge">Needs review</span>';
   if(n.reviewed) return '<span class="note-badge ok">Reviewed</span>';
@@ -2038,6 +2113,8 @@ function viewNote(id){
       ${n.is_private ? '<div class="lbl">🔒 Private: only you can see this</div>' : ''}
       ${n.service_delivered ? '' : '<div class="lbl">Not counted in reports</div>'}
       ${n.referred_to ? `<div class="lbl">Referred to</div><div class="txt">${escapeHtmlStaff(n.referred_to)}</div>` : ''}
+      ${n.referred_to && n.referral_status ? `<div class="lbl">Referral status</div><div class="txt">${n.referral_status === 'accepted' ? 'Accepted' : n.referral_status === 'declined' ? 'Declined' : 'Waiting for ' + escapeHtmlStaff(n.referred_to) + ' to answer'}${n.referral_status === 'declined' && n.referral_decline_reason ? ': ' + escapeHtmlStaff(n.referral_decline_reason) : ''}</div>` : ''}
+      ${n.can_respond ? `<div class="note-actions"><button class="pill-btn solid sm" onclick="respondReferral(${n.id}, 'accept')">Accept referral</button><button class="pill-btn ghost sm" onclick="openReferrals()">Decline…</button></div>` : ''}
       ${n.referred_to_external ? `<div class="lbl">Referred to (outside)</div><div class="txt">${escapeHtmlStaff(n.referred_to_external)}</div>` : ''}
       ${n.service === 'referral' ? `<div class="lbl">Student informed</div><div class="txt">${n.student_informed ? 'Yes' : 'Not recorded'}</div>` : ''}
       ${n.topic ? `<div class="lbl">Topic discussed</div><div class="txt">${escapeHtmlStaff(n.topic)}</div>` : ''}

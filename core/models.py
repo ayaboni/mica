@@ -312,6 +312,12 @@ class StudentNote(models.Model):
                                     related_name='referral_notes_received')
     referred_to_external = models.CharField(max_length=120, blank=True)
     referral_seen = models.BooleanField(default=False)
+    # The staff member a referral is addressed to accepts or declines it. Only meaningful when referred_to is set.
+    REFERRAL_STATUSES = [('pending', 'Pending'), ('accepted', 'Accepted'), ('declined', 'Declined')]
+    referral_status = models.CharField(max_length=10, choices=REFERRAL_STATUSES, default='pending')
+    referral_responded_at = models.DateTimeField(null=True, blank=True)
+    referral_decline_reason = models.CharField(max_length=200, blank=True)
+    referral_response_seen = models.BooleanField(default=True)   # False until the referring staff member has seen the answer
     student_informed = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

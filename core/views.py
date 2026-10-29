@@ -2258,6 +2258,9 @@ def _note_json(n, me):
         "referred_to_external": n.referred_to_external,
         "student_informed": n.student_informed,
         "for_me": n.referred_to_id == me.id,
+        "referral_status": n.referral_status if n.referred_to_id else "",
+        "referral_decline_reason": n.referral_decline_reason if n.referred_to_id else "",
+        "can_respond": bool(n.referred_to_id == me.id and n.referral_status == "pending"),
     }
 
 
@@ -2322,9 +2325,10 @@ def staff_student_notes(request, student_id):
         return JsonResponse({"note": _note_json(note, request.user)})
     readable = staff_permissions(request.user)['read_note_services']
     student.staff_notes.filter(referred_to=request.user, referral_seen=False).update(referral_seen=True)
+    student.staff_notes.filter(author=request.user, referral_response_seen=False).update(referral_response_seen=True)
     notes = (student.staff_notes.select_related('author', 'reviewed_by', 'referred_to')
              .filter(Q(author=request.user)
-                     | Q(referred_to=request.user)
+                     | (Q(referred_to=request.user) & ~Q(referral_status='declined'))
                      | (Q(service__in=readable) & Q(is_private=False))))
     return JsonResponse({"notes": [_note_json(n, request.user) for n in notes],
                          "writable": staff_permissions(request.user)['write_note_services']})
@@ -2342,6 +2346,11 @@ def staff_note_update(request, note_id):
         return error
     if not can(request.user, 'write_note_services', payload["service"]):
         return JsonResponse({"error": "Your staff role can't write %s notes." % payload["service"]}, status=403)
+    new_target = payload["referred_to"].id if payload["referred_to"] else None
+    if new_target != note.referred_to_id:        # a different person has to answer the referral
+        note.referral_status, note.referral_responded_at = "pending", None
+        note.referral_decline_reason, note.referral_seen = "", False
+        note.referral_response_seen = True
     for k, v in payload.items():
         setattr(note, k, v)
     if can_flag_needs_review(request.user):      # an edited note goes back for review
@@ -2382,16 +2391,61 @@ def staff_note_review(request, note_id):
 @login_required(login_url='login')
 @user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
 def staff_referral_inbox(request):
-    """Referral notes addressed to this staff member that they haven't opened yet."""
-    notes = (StudentNote.objects.filter(referred_to=request.user, referral_seen=False)
-             .select_related('student', 'author').order_by('-created_at'))
-    return JsonResponse({"referrals": [{
-        "note_id": n.id,
-        "student_code": f"MC-{1000 + n.student_id}",
-        "student_name": n.student.get_full_name() or n.student.username,
-        "from_name": (n.author.get_full_name() or n.author.username) if n.author else "Former staff",
-        "date": timezone.localtime(n.created_at).strftime("%b %d, %I:%M %p"),
-    } for n in notes]})
+    """Referrals waiting for this staff member's answer, plus answers to the referrals they made."""
+    def who(u):
+        return (u.get_full_name() or u.username) if u else "Former staff"
+
+    waiting = (StudentNote.objects.filter(referred_to=request.user, service='referral', referral_status='pending')
+               .select_related('student', 'author').order_by('-created_at'))
+    answered = (StudentNote.objects.filter(author=request.user, service='referral', referred_to__isnull=False,
+                                           referral_response_seen=False)
+                .exclude(referral_status='pending')
+                .select_related('student', 'referred_to').order_by('-referral_responded_at'))
+    return JsonResponse({
+        "referrals": [{
+            "note_id": n.id,
+            "student_code": f"MC-{1000 + n.student_id}",
+            "student_name": n.student.get_full_name() or n.student.username,
+            "from_name": who(n.author),
+            "date": timezone.localtime(n.created_at).strftime("%b %d, %I:%M %p"),
+            "preview": (n.topic or n.realizations)[:140],
+        } for n in waiting],
+        "responses": [{
+            "note_id": n.id,
+            "student_code": f"MC-{1000 + n.student_id}",
+            "student_name": n.student.get_full_name() or n.student.username,
+            "by_name": who(n.referred_to),
+            "status": n.referral_status,
+            "reason": n.referral_decline_reason,
+            "date": timezone.localtime(n.referral_responded_at).strftime("%b %d, %I:%M %p") if n.referral_responded_at else "",
+        } for n in answered],
+    })
+
+
+@login_required(login_url='login')
+@user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
+@require_POST
+def staff_referral_respond(request, note_id):
+    """The staff member a referral is addressed to accepts or declines it."""
+    note = get_object_or_404(StudentNote, id=note_id, service='referral')
+    if note.referred_to_id != request.user.id:
+        return JsonResponse({"error": "This referral isn't addressed to you."}, status=403)
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid request."}, status=400)
+    action = data.get("action")
+    if action not in ("accept", "decline"):
+        return JsonResponse({"error": "Choose accept or decline."}, status=400)
+    if note.referral_status != 'pending':
+        return JsonResponse({"error": "You've already answered this referral."}, status=409)
+    note.referral_status = 'accepted' if action == "accept" else 'declined'
+    note.referral_decline_reason = (data.get("reason") or "").strip()[:200] if action == "decline" else ""
+    note.referral_responded_at = timezone.now()
+    note.referral_response_seen = False
+    note.save(update_fields=['referral_status', 'referral_decline_reason', 'referral_responded_at',
+                             'referral_response_seen'])
+    return JsonResponse({"note": _note_json(note, request.user)})
 
 
 @login_required(login_url='login')
