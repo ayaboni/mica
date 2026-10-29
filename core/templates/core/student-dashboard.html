@@ -927,6 +927,118 @@ body.dark-mode{ --composer-accent:#9CC893; }
 .ex-desc{ font-size:13px; color:var(--text-mute); line-height:1.5; }
 .ex-meta{ font-size:11.5px; font-weight:700; color:var(--brown); letter-spacing:.3px; margin-top:auto; }
 
+/* ---------- Mica Pop (game) ---------- */
+.pop-inner{ flex:1; min-height:0; display:flex; flex-direction:column; align-items:center; padding:74px 24px 24px; overflow-y:auto; }
+.pop-inner [hidden]{ display:none !important; }
+.pop-setup, .pop-result{ width:100%; max-width:480px; display:flex; flex-direction:column; align-items:center; gap:16px; margin:auto 0; text-align:center; }
+.pop-setup h1, .pop-result h1{ margin:0; font-size:26px; letter-spacing:1px; color:var(--brown-dark); }
+.pop-sub{ margin:0; font-size:14px; color:var(--text-mute); line-height:1.5; }
+.pop-hero{ width:150px; height:auto; animation:popBob 2.4s ease-in-out infinite; filter:drop-shadow(0 6px 0 rgba(60,45,20,.12)); }
+@keyframes popBob{ 0%,100%{ transform:translateY(0) rotate(-3deg);} 50%{ transform:translateY(-8px) rotate(3deg);} }
+.pop-card{ width:100%; background:var(--card-bg); border-radius:var(--radius-lg); box-shadow:var(--shadow); padding:18px 20px; display:flex; flex-direction:column; gap:14px; text-align:left; }
+.pop-field{ display:flex; flex-direction:column; gap:8px; }
+.pop-field > label{ font-family:'Quicksand',sans-serif; font-weight:700; font-size:13px; color:var(--brown); letter-spacing:.4px; display:flex; justify-content:space-between; }
+.pop-field > label b{ color:var(--text-dark); }
+.pop-diffs{ display:flex; gap:8px; }
+.pop-diffs .aff-tab{ flex:1; padding:10px 8px; }
+.pop-hint{ font-size:12px; color:var(--text-mute); min-height:16px; }
+.pop-field input[type=range]{ width:100%; accent-color:var(--btn-active); height:28px; }
+.pop-ticks{ display:flex; justify-content:space-between; font-size:11px; color:var(--text-mute); margin-top:-6px; }
+.pop-legend{ display:flex; gap:8px; justify-content:center; flex-wrap:wrap; }
+.pop-chip{ display:flex; align-items:center; gap:6px; background:var(--card-bg); border-radius:999px; padding:5px 12px 5px 6px; font-size:11.5px; font-weight:700; color:var(--text-dark); box-shadow:var(--shadow); }
+.pop-chip img{ width:34px; height:auto; }
+.pop-chip.r2 img{ filter:drop-shadow(0 0 5px #6FA8DC); }
+.pop-chip.r3 img{ filter:drop-shadow(0 0 5px #F0C13F); }
+.pop-best{ font-size:12.5px; font-weight:700; color:var(--brown); min-height:18px; }
+.pop-go{ padding:14px 46px; font-size:15px; }
+
+.pop-game{ width:100%; max-width:880px; flex:1; min-height:0; display:flex; flex-direction:column; gap:12px; }
+.pop-hud{ display:flex; align-items:center; gap:14px; }
+.pop-stat{ background:var(--card-bg); border-radius:var(--radius-md); box-shadow:var(--shadow); padding:6px 16px; min-width:84px; text-align:center; line-height:1.1; }
+.pop-stat span{ display:block; font-size:10.5px; font-weight:800; letter-spacing:.8px; color:var(--text-mute); text-transform:uppercase; }
+.pop-stat b{ display:inline-block; font-family:'Quicksand',sans-serif; font-size:24px; color:var(--brown-dark); }
+.pop-stat b.bump{ animation:popBump .28s ease-out; }
+@keyframes popBump{ 0%{ transform:scale(1);} 40%{ transform:scale(1.4); color:#d89a12;} 100%{ transform:scale(1);} }
+.pop-timer{ flex:1; position:relative; height:26px; border-radius:999px; background:var(--btn-bg); overflow:hidden; box-shadow:inset 0 1px 3px rgba(60,45,20,.15); }
+.pop-timer-bar{ position:absolute; inset:0; background:linear-gradient(90deg,#8EAE88,#A9C6A2); transform-origin:left center; border-radius:999px; }
+.pop-timer.low .pop-timer-bar{ background:linear-gradient(90deg,#e58a7e,#F3C6CE); animation:popLow .5s ease-in-out infinite alternate; }
+@keyframes popLow{ to{ filter:brightness(1.12);} }
+.pop-timer span{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:13px; color:var(--text-dark); }
+.pop-mute{ background:var(--card-bg); box-shadow:var(--shadow); width:40px; height:40px; border-radius:50%; font-size:17px; flex-shrink:0; }
+
+.pop-arena{
+  flex:1; min-height:260px; position:relative; overflow:hidden; border-radius:var(--radius-lg);
+  background:
+    radial-gradient(circle at 20% 25%, rgba(169,198,162,.35) 0 60px, transparent 61px),
+    radial-gradient(circle at 80% 70%, rgba(243,198,206,.35) 0 80px, transparent 81px),
+    radial-gradient(circle at 60% 15%, rgba(247,211,104,.25) 0 50px, transparent 51px),
+    var(--bubble-bg);
+  box-shadow:inset 0 2px 10px rgba(60,45,20,.12), var(--shadow);
+  border:3px solid var(--sidebar-bg);
+  touch-action:manipulation; user-select:none; -webkit-user-select:none; cursor:crosshair;
+}
+.pop-arena.shake{ animation:popShake .32s ease-out; }
+@keyframes popShake{ 0%,100%{ transform:translate(0);} 20%{ transform:translate(-6px,3px);} 40%{ transform:translate(5px,-4px);} 60%{ transform:translate(-4px,-2px);} 80%{ transform:translate(3px,2px);} }
+.pop-count{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family:'Quicksand',sans-serif; font-weight:800; font-size:92px; color:var(--brown-dark); pointer-events:none; z-index:6; }
+.pop-count.tick{ animation:popTick .7s ease-out; }
+@keyframes popTick{ 0%{ transform:scale(.3); opacity:0;} 30%{ transform:scale(1.2); opacity:1;} 100%{ transform:scale(1); opacity:.15;} }
+
+.pop-head{ position:absolute; border:0; background:none; padding:8px; margin:0; transform-origin:50% 90%; animation:popIn .3s cubic-bezier(.3,1.9,.5,1) both; -webkit-tap-highlight-color:transparent; touch-action:manipulation; cursor:pointer; z-index:2; }
+.pop-head img{ display:block; width:100%; height:auto; pointer-events:none; user-select:none; -webkit-user-drag:none; filter:drop-shadow(0 4px 0 rgba(60,45,20,.14)); }
+.pop-head::after{ content:""; position:absolute; left:10%; right:10%; bottom:2px; height:12px; border-radius:50%; background:rgba(60,45,20,.18); filter:blur(3px); z-index:-1; }
+@keyframes popIn{ 0%{ transform:scale(0) translateY(26px) rotate(-10deg); opacity:0;} 100%{ transform:scale(1) translateY(0) rotate(0); opacity:1;} }
+.pop-head.fading img{ animation:popBlink .26s steps(2,jump-none) infinite; }
+@keyframes popBlink{ 50%{ opacity:.45;} }
+.pop-head.leave{ animation:popOut .24s ease-in forwards; pointer-events:none; }
+@keyframes popOut{ to{ transform:scale(.1) translateY(24px) rotate(10deg); opacity:0;} }
+.pop-head.hit{ animation:popHit .42s cubic-bezier(.2,.8,.3,1) forwards; pointer-events:none; }
+@keyframes popHit{
+  0%{ transform:scale(1); filter:brightness(1);}
+  22%{ transform:scale(1.35,.6); filter:brightness(1.7);}
+  55%{ transform:scale(.9,1.2) translateY(-30px) rotate(-8deg); opacity:1;}
+  100%{ transform:scale(.1) translateY(-70px) rotate(24deg); opacity:0;}
+}
+.pop-head.r2 img{ animation:popGlowB .7s ease-in-out infinite alternate; }
+.pop-head.r3 img{ animation:popGlowG .55s ease-in-out infinite alternate; }
+@keyframes popGlowB{ from{ filter:drop-shadow(0 0 6px #6FA8DC) drop-shadow(0 0 14px rgba(111,168,220,.7)); transform:rotate(-3deg);} to{ filter:drop-shadow(0 0 12px #6FA8DC) drop-shadow(0 0 26px rgba(111,168,220,.9)); transform:rotate(3deg);} }
+@keyframes popGlowG{ from{ filter:drop-shadow(0 0 8px #F0C13F) drop-shadow(0 0 18px rgba(240,193,63,.8)) saturate(1.2); transform:rotate(-5deg) scale(1);} to{ filter:drop-shadow(0 0 14px #ffd54a) drop-shadow(0 0 32px rgba(255,213,74,1)) saturate(1.5); transform:rotate(5deg) scale(1.06);} }
+.pop-head .pop-badge{ position:absolute; top:-6px; right:-4px; padding:2px 8px; border-radius:999px; font-family:'Quicksand',sans-serif; font-weight:800; font-size:12px; color:#fff; box-shadow:0 2px 6px rgba(0,0,0,.25); pointer-events:none; }
+.pop-head.r2 .pop-badge{ background:#4E86BE; }
+.pop-head.r3 .pop-badge{ background:linear-gradient(135deg,#F0C13F,#e58a2b); }
+
+.pop-part{ position:absolute; z-index:5; pointer-events:none; font-size:var(--sz,16px); line-height:1; animation:popFly .75s cubic-bezier(.15,.7,.3,1) forwards; }
+@keyframes popFly{
+  0%{ transform:translate(-50%,-50%) scale(.3) rotate(0); opacity:1;}
+  15%{ transform:translate(-50%,-50%) scale(1.15) rotate(0); opacity:1;}
+  65%{ transform:translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1) rotate(var(--rot)); opacity:1;}
+  100%{ transform:translate(calc(-50% + var(--dx)), calc(-50% + var(--dy) + 44px)) scale(.4) rotate(calc(var(--rot) * 1.6)); opacity:0;}
+}
+.pop-ring{ position:absolute; z-index:4; pointer-events:none; width:24px; height:24px; border-radius:50%; border:4px solid var(--c,#F0C13F); transform:translate(-50%,-50%); animation:popRing .5s ease-out forwards; }
+@keyframes popRing{ to{ transform:translate(-50%,-50%) scale(var(--s,5)); opacity:0; border-width:1px;} }
+.pop-float{ position:absolute; z-index:7; pointer-events:none; font-family:'Quicksand',sans-serif; font-weight:800; font-size:var(--fs,24px); color:var(--c,#7B5B3F); text-shadow:0 2px 0 #fff, 0 0 8px rgba(255,255,255,.9); white-space:nowrap; animation:popFloat .9s cubic-bezier(.2,.8,.3,1) forwards; }
+@keyframes popFloat{ 0%{ transform:translate(-50%,-30%) scale(.4); opacity:0;} 20%{ transform:translate(-50%,-90%) scale(1.25); opacity:1;} 100%{ transform:translate(-50%,-260%) scale(1); opacity:0;} }
+.pop-flash{ position:absolute; inset:0; z-index:3; pointer-events:none; background:radial-gradient(circle at var(--x) var(--y), var(--c) 0%, transparent 60%); animation:popFlash .55s ease-out forwards; }
+@keyframes popFlash{ 0%{ opacity:.85;} 100%{ opacity:0;} }
+
+.pop-big{ font-family:'Quicksand',sans-serif; font-weight:800; font-size:64px; line-height:1; color:var(--brown-dark); }
+.pop-newbest{ background:var(--btn-active); color:var(--brown-dark); font-weight:800; font-size:12px; padding:5px 14px; border-radius:999px; animation:popBob 1.6s ease-in-out infinite; }
+.pop-stats{ display:grid; grid-template-columns:repeat(2,1fr); gap:10px; width:100%; }
+.pop-stats div{ background:var(--card-bg); border-radius:var(--radius-md); box-shadow:var(--shadow); padding:10px 8px; }
+.pop-stats b{ display:block; font-family:'Quicksand',sans-serif; font-size:22px; color:var(--brown-dark); }
+.pop-stats span{ font-size:11px; font-weight:700; color:var(--text-mute); letter-spacing:.4px; text-transform:uppercase; }
+.pop-actions{ display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
+.pop-result .pop-hero{ width:120px; }
+@media (max-width:600px){
+  .pop-inner{ padding:70px 14px 14px; }
+  .pop-hud{ gap:8px; }
+  .pop-stat{ min-width:68px; padding:5px 10px; }
+  .pop-stat b{ font-size:20px; }
+}
+@media (prefers-reduced-motion:reduce){
+  .pop-hero, .pop-newbest{ animation:none; }
+  .pop-head.r2 img, .pop-head.r3 img, .pop-head.fading img{ animation:none; }
+}
+
 /* Affirmations */
 .aff-tabs{ display:flex; gap:8px; }
 .aff-tab{
@@ -1508,7 +1620,78 @@ function toggleDyslexia(){
         <div class="ex-desc">Use your senses to come back to the present when things feel too much.</div>
         <div class="ex-meta">2 TO 3 MIN</div>
       </button>
+      <button class="ex-card" data-go="pop">
+        <div class="ex-icon"><img src="{% static 'core/images/mica-heads/happy.png' %}" alt="" style="width:36px;height:auto;"></div>
+        <div class="ex-title">Mica Pop</div>
+        <div class="ex-desc">A little game: tap the Mica heads before they hide. Watch out for the rare ones!</div>
+        <div class="ex-meta">30 TO 60 SEC</div>
+      </button>
     </div>
+  </div>
+</section>
+
+<!-- ---------- MICA POP (game) ---------- -->
+<section class="view" id="view-pop">
+  <button class="btn-pill btn-back ex-back" data-go="exercises">← Exercises</button>
+  <div class="pop-inner">
+
+    <div class="pop-setup" id="pop-setup">
+      <img class="pop-hero" src="{% static 'core/images/mica-heads/happy.png' %}" alt="">
+      <h1>MICA POP</h1>
+      <p class="pop-sub">Micas will pop up all over the screen. Tap them before they hide. No pressure, just a fun little break.</p>
+      <div class="pop-card">
+        <div class="pop-field">
+          <label>Difficulty</label>
+          <div class="pop-diffs" id="pop-diffs">
+            <button class="aff-tab" data-d="easy">Easy</button>
+            <button class="aff-tab" data-d="medium">Medium</button>
+            <button class="aff-tab" data-d="hard">Hard</button>
+          </div>
+          <div class="pop-hint" id="pop-diff-desc"></div>
+        </div>
+        <div class="pop-field">
+          <label>Time <b id="pop-dur-val">45 sec</b></label>
+          <input type="range" id="pop-dur" min="30" max="60" step="5" value="45">
+          <div class="pop-ticks"><span>30s</span><span>45s</span><span>60s</span></div>
+        </div>
+      </div>
+      <div class="pop-legend">
+        <div class="pop-chip"><img src="{% static 'core/images/mica-heads/good.png' %}" alt="">Mica</div>
+        <div class="pop-chip r2"><img src="{% static 'core/images/mica-heads/mask.png' %}" alt="">Rare ×2</div>
+        <div class="pop-chip r3"><img src="{% static 'core/images/mica-heads/happy.png' %}" alt="">Golden ×3</div>
+      </div>
+      <div class="pop-best" id="pop-best"></div>
+      <button class="btn-pill btn-enter pop-go" id="pop-start">Start</button>
+    </div>
+
+    <div class="pop-game" id="pop-game" hidden>
+      <div class="pop-hud">
+        <div class="pop-stat"><span>Score</span><b id="pop-score">0</b></div>
+        <div class="pop-timer" id="pop-timer"><div class="pop-timer-bar" id="pop-bar"></div><span id="pop-time">45</span></div>
+        <div class="pop-stat"><span>Combo</span><b id="pop-combo">0</b></div>
+        <button class="pop-mute" id="pop-mute" aria-label="Toggle sound" title="Sound on/off">🔊</button>
+      </div>
+      <div class="pop-arena" id="pop-arena"></div>
+    </div>
+
+    <div class="pop-result" id="pop-result" hidden>
+      <img class="pop-hero" id="pop-res-img" src="{% static 'core/images/mica-heads/happy.png' %}" alt="">
+      <h1 id="pop-res-title">NICE ONE!</h1>
+      <div class="pop-big" id="pop-res-score">0</div>
+      <div class="pop-newbest" id="pop-res-best" hidden>★ NEW BEST ★</div>
+      <p class="pop-sub" id="pop-res-msg"></p>
+      <div class="pop-stats">
+        <div><b id="pop-res-hits">0</b><span>Micas popped</span></div>
+        <div><b id="pop-res-acc">0%</b><span>Accuracy</span></div>
+        <div><b id="pop-res-combo">0</b><span>Best combo</span></div>
+        <div><b id="pop-res-rare">0</b><span>Rare ones</span></div>
+      </div>
+      <div class="pop-actions">
+        <button class="btn-pill btn-enter" id="pop-again">Play again</button>
+        <button class="btn-pill btn-back" id="pop-settings">Change settings</button>
+      </div>
+    </div>
+
   </div>
 </section>
 
@@ -1710,7 +1893,7 @@ function updateLiveClock() {
 ============================================================ */
 const views = document.querySelectorAll('.view');
 const viewTitle = document.getElementById('view-title');
-const EXERCISE_VIEWS = ['view-exercises','view-breathe','view-affirmations','view-grounding'];
+const EXERCISE_VIEWS = ['view-exercises','view-breathe','view-affirmations','view-grounding','view-pop'];
 const navButtons = {
   'view-chat': document.getElementById('btn-chat'),
   'view-guidance': document.getElementById('btn-guidance'),
@@ -1722,6 +1905,7 @@ function switchView(id, title){
   if(id !== 'view-breathe' && typeof resetBreathe === 'function') resetBreathe();
   if(id !== 'view-affirmations' && typeof affLeave === 'function') affLeave();
   if(id !== 'view-grounding' && typeof grLeave === 'function') grLeave();
+  if(id !== 'view-pop' && typeof popLeave === 'function') popLeave();
   views.forEach(v=>v.classList.toggle('active', v.id===id));
   viewTitle.textContent = title;
   Object.entries(navButtons).forEach(([vid, btn])=>{
@@ -2643,7 +2827,8 @@ const EX_TARGETS = {
   exercises:['view-exercises','Exercises'],
   breathe:['view-breathe','Breathing Exercise'],
   affirmations:['view-affirmations','Affirmations'],
-  grounding:['view-grounding','5-4-3-2-1 Grounding']
+  grounding:['view-grounding','5-4-3-2-1 Grounding'],
+  pop:['view-pop','Mica Pop']
 };
 document.querySelectorAll('[data-go]').forEach(el=>{
   el.addEventListener('click', ()=>{
@@ -2651,9 +2836,374 @@ document.querySelectorAll('[data-go]').forEach(el=>{
     switchView(vid, title);
     if(vid === 'view-breathe') resetBreathe();
     if(vid === 'view-grounding') grReset();
+    if(vid === 'view-pop') popShowSetup();
     if(vid === 'view-affirmations') loadAff();
   });
 });
+
+/* ---------- Mica Pop (nothing typed; only a count and time are logged) ---------- */
+const POP_IMG = {
+  good:    "{% static 'core/images/mica-heads/good.png' %}",
+  neutral: "{% static 'core/images/mica-heads/neutral.png' %}",
+  sad:     "{% static 'core/images/mica-heads/sad.png' %}",
+  bad:     "{% static 'core/images/mica-heads/bad.png' %}",
+  happy:   "{% static 'core/images/mica-heads/happy.png' %}",
+  mask:    "{% static 'core/images/mica-heads/mask.png' %}"
+};
+const POP_NORMAL = ['good','neutral','sad','bad'];
+const POP_DIFF = {
+  easy:   {desc:'Big Micas that stay a while. Nice and relaxed.',   base:10, size:150, life:2100, gap:1150, max:2},
+  medium: {desc:'Medium Micas, a steadier pace.',                   base:15, size:120, life:1500, gap:800,  max:3},
+  hard:   {desc:'Small, speedy Micas. Good luck!',                  base:25, size:96,  life:1050, gap:560,  max:4}
+};
+const POP_P_X3 = 0.02, POP_P_X2 = 0.06;   // chance per spawn
+const popReduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+let popPrefs = {diff:'easy', dur:45, mute:false};
+try{ Object.assign(popPrefs, JSON.parse(localStorage.getItem('micapop.prefs')||'{}')); }catch(e){}
+function popSavePrefs(){ try{ localStorage.setItem('micapop.prefs', JSON.stringify(popPrefs)); }catch(e){} }
+function popBestGet(){ try{ return JSON.parse(localStorage.getItem('micapop.best')||'{}'); }catch(e){ return {}; } }
+function popBestKey(){ return popPrefs.diff + '-' + popPrefs.dur; }
+
+const popEl = {
+  setup:byId('pop-setup'), game:byId('pop-game'), result:byId('pop-result'),
+  arena:byId('pop-arena'), score:byId('pop-score'), combo:byId('pop-combo'),
+  bar:byId('pop-bar'), time:byId('pop-time'), timer:byId('pop-timer'),
+  dur:byId('pop-dur'), durVal:byId('pop-dur-val'), best:byId('pop-best'),
+  desc:byId('pop-diff-desc'), mute:byId('pop-mute')
+};
+
+let popState = 'idle';          // idle | countdown | playing | done
+let popG = null;                // current game
+let popRaf = 0, popTimers = [];
+let popLogged = true;
+
+/* ----- setup screen ----- */
+function popRenderSetup(){
+  document.querySelectorAll('#pop-diffs .aff-tab').forEach(b => b.classList.toggle('active', b.dataset.d === popPrefs.diff));
+  popEl.desc.textContent = POP_DIFF[popPrefs.diff].desc;
+  popEl.dur.value = popPrefs.dur;
+  popEl.durVal.textContent = popPrefs.dur + ' sec';
+  const b = popBestGet()[popBestKey()];
+  popEl.best.textContent = b ? ('Your best on this setting: ' + b) : 'Pick a setting and give it a go!';
+  popEl.mute.textContent = popPrefs.mute ? '🔇' : '🔊';
+}
+function popShowSetup(){
+  popStopAll();
+  popState = 'idle';
+  popEl.setup.hidden = false; popEl.game.hidden = true; popEl.result.hidden = true;
+  popRenderSetup();
+}
+document.querySelectorAll('#pop-diffs .aff-tab').forEach(b => b.addEventListener('click', () => {
+  popPrefs.diff = b.dataset.d; popSavePrefs(); popRenderSetup();
+}));
+popEl.dur.addEventListener('input', () => {
+  popPrefs.dur = +popEl.dur.value; popSavePrefs(); popRenderSetup();
+});
+popEl.mute.addEventListener('click', () => {
+  popPrefs.mute = !popPrefs.mute; popSavePrefs(); popRenderSetup();
+});
+
+/* ----- sound (synthesised, no files) ----- */
+let popAC = null;
+function popAudio(){
+  if(!popAC){ try{ popAC = new (window.AudioContext || window.webkitAudioContext)(); }catch(e){} }
+  if(popAC && popAC.state === 'suspended') popAC.resume();
+  return popAC;
+}
+function popTone(freq, dur, type, vol, slideTo, delay){
+  const ac = popAC; if(!ac) return;
+  const t0 = ac.currentTime + (delay || 0);
+  const o = ac.createOscillator(), g = ac.createGain();
+  o.type = type; o.frequency.setValueAtTime(freq, t0);
+  if(slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t0 + dur * .8);
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(vol, t0 + 0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  o.connect(g); g.connect(ac.destination);
+  o.start(t0); o.stop(t0 + dur + 0.02);
+}
+function popSfx(mult, combo){
+  if(popPrefs.mute || !popAudio()) return;
+  if(mult === 3){ [784, 988, 1175, 1568, 2093].forEach((f,i) => popTone(f, .28, 'triangle', .16, null, i*.055)); popTone(392, .5, 'sine', .14, 784); }
+  else if(mult === 2){ [660, 880, 1100].forEach((f,i) => popTone(f, .22, 'triangle', .16, null, i*.06)); }
+  else {
+    const f = 440 + Math.min(combo, 14) * 38;
+    popTone(f, .11, 'sine', .22, f * 1.7);
+    popTone(f * 2, .07, 'triangle', .07, f * 2.6, .01);
+  }
+}
+
+/* ----- helpers ----- */
+function popLater(fn, ms){ const id = setTimeout(fn, ms); popTimers.push(id); return id; }
+function popStopAll(){
+  cancelAnimationFrame(popRaf); popRaf = 0;
+  popTimers.forEach(clearTimeout); popTimers = [];
+  popEl.arena.innerHTML = '';
+  popEl.arena.classList.remove('shake');
+}
+function popRand(a, b){ return a + Math.random() * (b - a); }
+
+/* ----- starting ----- */
+function popStart(){
+  popAudio();
+  const cfg = POP_DIFF[popPrefs.diff];
+  popG = {
+    cfg, dur: popPrefs.dur * 1000, t: 0, last: 0, nextSpawn: 0,
+    score: 0, hits: 0, missed: 0, combo: 0, bestCombo: 0, rares: 0,
+    active: [], realStart: 0
+  };
+  popEl.setup.hidden = true; popEl.result.hidden = true; popEl.game.hidden = false;
+  popEl.score.textContent = '0'; popEl.combo.textContent = '0';
+  popEl.bar.style.transform = 'scaleX(1)';
+  popEl.time.textContent = popPrefs.dur;
+  popEl.timer.classList.remove('low');
+  popEl.arena.innerHTML = '';
+  popLogged = false;
+  popState = 'countdown';
+
+  const steps = ['3','2','1','Go!'];
+  const c = document.createElement('div'); c.className = 'pop-count';
+  popEl.arena.appendChild(c);
+  steps.forEach((s, i) => popLater(() => {
+    c.textContent = s; c.classList.remove('tick'); void c.offsetWidth; c.classList.add('tick');
+    if(!popPrefs.mute && popAC) popTone(s === 'Go!' ? 880 : 520, .12, 'sine', .14);
+  }, i * 650));
+  popLater(() => { c.remove(); popBegin(); }, steps.length * 650 - 150);
+}
+function popBegin(){
+  popState = 'playing';
+  popG.realStart = Date.now();
+  popG.last = performance.now();
+  popRaf = requestAnimationFrame(popLoop);
+}
+byId('pop-start').addEventListener('click', popStart);
+byId('pop-again').addEventListener('click', popStart);
+byId('pop-settings').addEventListener('click', popShowSetup);
+
+/* ----- main loop (game clock pauses when the tab is hidden) ----- */
+function popLoop(now){
+  if(popState !== 'playing') return;
+  let dt = now - popG.last; popG.last = now;
+  if(dt > 250 || dt < 0) dt = 16;
+  const g = popG;
+  g.t += dt;
+  const prog = Math.min(1, g.t / g.dur);
+
+  // timer UI
+  const left = Math.max(0, g.dur - g.t);
+  popEl.bar.style.transform = 'scaleX(' + (left / g.dur).toFixed(4) + ')';
+  popEl.time.textContent = Math.ceil(left / 1000);
+  popEl.timer.classList.toggle('low', left <= 5000);
+
+  // expire heads
+  for(let i = g.active.length - 1; i >= 0; i--){
+    const h = g.active[i];
+    const age = g.t - h.born;
+    if(age >= h.life){ popMiss(h); g.active.splice(i, 1); }
+    else if(age > h.life * .7 && !h.fading){ h.fading = true; h.el.classList.add('fading'); }
+  }
+
+  // spawn
+  if(g.t >= g.nextSpawn && g.active.length < g.cfg.max && left > 250){
+    popSpawn(prog);
+    g.nextSpawn = g.t + g.cfg.gap * (1 - .3 * prog) * popRand(.7, 1.3);
+  }
+
+  if(g.t >= g.dur){ popFinish(); return; }
+  popRaf = requestAnimationFrame(popLoop);
+}
+
+/* ----- spawning ----- */
+function popSpawn(prog){
+  const g = popG, arena = popEl.arena;
+  const W = arena.clientWidth, H = arena.clientHeight;
+  const scale = Math.max(.7, Math.min(1, W / 700));
+  const w = Math.round(g.cfg.size * scale);
+  const hgt = Math.round(w * 0.535) + 16;
+  const pad = 10;
+
+  const r = Math.random();
+  const mult = r < POP_P_X3 ? 3 : (r < POP_P_X3 + POP_P_X2 ? 2 : 1);
+  const kind = mult === 3 ? 'happy' : mult === 2 ? 'mask' : POP_NORMAL[Math.floor(Math.random() * POP_NORMAL.length)];
+
+  let x = 0, y = 0, ok = false;
+  for(let k = 0; k < 14 && !ok; k++){
+    x = popRand(pad, Math.max(pad, W - w - 16 - pad));
+    y = popRand(pad, Math.max(pad, H - hgt - pad));
+    ok = g.active.every(o => Math.abs(o.x - x) > w * .95 || Math.abs(o.y - y) > hgt * 1.1);
+  }
+  if(!ok) return;
+
+  const life = g.cfg.life * (1 - .2 * prog) * (mult > 1 ? .9 : 1);
+  const el = document.createElement('button');
+  el.className = 'pop-head' + (mult === 2 ? ' r2' : mult === 3 ? ' r3' : '');
+  el.setAttribute('aria-label', 'Mica');
+  el.style.cssText = 'left:' + x + 'px;top:' + y + 'px;width:' + (w + 16) + 'px;';
+  const img = document.createElement('img'); img.src = POP_IMG[kind]; img.alt = ''; img.draggable = false;
+  el.appendChild(img);
+  if(mult > 1){ const b = document.createElement('span'); b.className = 'pop-badge'; b.textContent = '×' + mult; el.appendChild(b); }
+  arena.appendChild(el);
+  const h = {el, x, y, w: w + 16, hgt, born: g.t, life, mult, fading: false};
+  el._h = h;
+  g.active.push(h);
+}
+
+/* ----- hit / miss ----- */
+popEl.arena.addEventListener('pointerdown', e => {
+  if(popState !== 'playing') return;
+  const el = e.target.closest('.pop-head');
+  if(!el || !el._h) return;
+  e.preventDefault();
+  const idx = popG.active.indexOf(el._h);
+  if(idx < 0) return;
+  popG.active.splice(idx, 1);
+  popHit(el._h);
+});
+
+function popHit(h){
+  const g = popG;
+  g.combo++; g.hits++;
+  if(g.combo > g.bestCombo) g.bestCombo = g.combo;
+  if(h.mult > 1) g.rares++;
+  const frac = (g.t - h.born) / h.life;
+  const speed = frac < .35 ? 5 : frac < .65 ? 2 : 0;
+  const pts = Math.round((g.cfg.base + speed + Math.min(g.combo, 10)) * h.mult);
+  g.score += pts;
+
+  popEl.score.textContent = g.score;
+  popEl.combo.textContent = g.combo;
+  [popEl.score, popEl.combo].forEach(n => { n.classList.remove('bump'); void n.offsetWidth; n.classList.add('bump'); });
+
+  h.el.classList.remove('fading'); h.el.classList.add('hit');
+  setTimeout(() => h.el.remove(), 430);
+
+  const cx = h.x + h.w / 2, cy = h.y + h.hgt / 2;
+  popBurst(cx, cy, h.mult, g.combo);
+  popFloat(cx, cy - 10, pts, h.mult, speed, g.combo);
+  popSfx(h.mult, g.combo);
+  if(navigator.vibrate) navigator.vibrate(h.mult > 1 ? [12, 30, 18] : 10);
+  if(h.mult > 1){
+    popFlash(cx, cy, h.mult === 3 ? 'rgba(255,213,74,.9)' : 'rgba(111,168,220,.8)');
+    if(!popReduce){ popEl.arena.classList.remove('shake'); void popEl.arena.offsetWidth; popEl.arena.classList.add('shake'); }
+  }
+}
+
+function popMiss(h){
+  popG.missed++;
+  popG.combo = 0; popEl.combo.textContent = '0';
+  h.el.classList.remove('fading'); h.el.classList.add('leave');
+  setTimeout(() => h.el.remove(), 250);
+}
+
+/* ----- juice ----- */
+function popBurst(x, y, mult, combo){
+  const arena = popEl.arena;
+  const ring = document.createElement('div');
+  ring.className = 'pop-ring';
+  ring.style.cssText = 'left:' + x + 'px;top:' + y + 'px;--c:' + (mult === 3 ? '#F0C13F' : mult === 2 ? '#6FA8DC' : '#F3A6B4') + ';--s:' + (mult > 1 ? 8 : 5);
+  arena.appendChild(ring); setTimeout(() => ring.remove(), 520);
+
+  const glyphs = mult === 3 ? ['✦','★','✨','💛','✦'] : mult === 2 ? ['✦','💙','✧','❄','✦'] : ['❤','✦','♥','●','✿'];
+  const colors = mult === 3 ? ['#F0C13F','#ffd54a','#e58a2b','#fff2a8'] :
+                 mult === 2 ? ['#6FA8DC','#4E86BE','#bfe0ff','#ffffff'] :
+                              ['#F3A6B4','#F7D368','#8EAE88','#E58A9A','#A9C6A2'];
+  let n = mult === 3 ? 26 : mult === 2 ? 18 : 10 + Math.min(combo, 8);
+  if(popReduce) n = Math.ceil(n / 3);
+  for(let i = 0; i < n; i++){
+    const p = document.createElement('span');
+    p.className = 'pop-part';
+    const ang = (i / n) * Math.PI * 2 + popRand(-.3, .3);
+    const dist = popRand(40, mult > 1 ? 130 : 90);
+    p.textContent = glyphs[Math.floor(Math.random() * glyphs.length)];
+    p.style.cssText = 'left:' + x + 'px;top:' + y + 'px;color:' + colors[i % colors.length] +
+      ';--sz:' + Math.round(popRand(12, mult > 1 ? 26 : 20)) + 'px;--dx:' + Math.cos(ang) * dist + 'px;--dy:' + (Math.sin(ang) * dist - 20) +
+      'px;--rot:' + Math.round(popRand(-90, 90)) + 'deg;animation-duration:' + popRand(.6, .95).toFixed(2) + 's';
+    arena.appendChild(p); setTimeout(() => p.remove(), 1000);
+  }
+}
+function popFloat(x, y, pts, mult, speed, combo){
+  const t = document.createElement('div');
+  t.className = 'pop-float';
+  const color = mult === 3 ? '#d98a00' : mult === 2 ? '#2f74b5' : (combo >= 5 ? '#c4586c' : '#7B5B3F');
+  t.style.cssText = 'left:' + x + 'px;top:' + y + 'px;--c:' + color + ';--fs:' + (mult > 1 ? 34 : 22 + Math.min(combo, 8)) + 'px';
+  t.textContent = '+' + pts + (mult > 1 ? '  ×' + mult + '!' : (speed === 5 ? ' ⚡' : ''));
+  popEl.arena.appendChild(t); setTimeout(() => t.remove(), 950);
+
+  if(!mult || mult === 1){
+    if(combo === 5 || combo === 10 || (combo > 10 && combo % 10 === 0)){
+      const c = document.createElement('div');
+      c.className = 'pop-float';
+      c.style.cssText = 'left:50%;top:38%;--c:#c4586c;--fs:30px';
+      c.textContent = combo + ' combo!';
+      popEl.arena.appendChild(c); setTimeout(() => c.remove(), 950);
+    }
+  }
+}
+function popFlash(x, y, color){
+  const f = document.createElement('div');
+  f.className = 'pop-flash';
+  f.style.cssText = '--x:' + x + 'px;--y:' + y + 'px;--c:' + color;
+  popEl.arena.appendChild(f); setTimeout(() => f.remove(), 600);
+}
+
+/* ----- finishing ----- */
+function popLog(){
+  if(popLogged || !popG || !popG.realStart) return;
+  popLogged = true;
+  const secs = Math.round((Date.now() - popG.realStart) / 1000);
+  if(secs < 3) return;
+  fetch("{% url 'api_exercise_log' %}", {
+    method:'POST', keepalive:true,
+    headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},
+    body: JSON.stringify({exercise:'micapop', duration_seconds:secs, count:popG.hits})
+  });
+}
+function popFinish(){
+  popState = 'done';
+  const g = popG;
+  g.active.forEach(h => { h.el.classList.remove('fading'); h.el.classList.add('leave'); });
+  g.active = [];
+  popEl.bar.style.transform = 'scaleX(0)'; popEl.time.textContent = '0';
+  popLog();
+
+  const best = popBestGet(), key = popBestKey();
+  const isBest = g.score > 0 && g.score > (best[key] || 0);
+  if(isBest){ best[key] = g.score; try{ localStorage.setItem('micapop.best', JSON.stringify(best)); }catch(e){} }
+
+  const total = g.hits + g.missed;
+  const acc = total ? Math.round(100 * g.hits / total) : 0;
+  const hot = g.hits > 0 && g.score >= g.cfg.base * (g.dur / 1000) * .9;
+  const msgs = g.hits === 0
+    ? ['That is okay. Take a breath and try again whenever you like.']
+    : hot
+      ? ['Wow, you were on fire! Hope that felt good.', 'So quick! Mica is doing a happy dance.']
+      : ['Nice popping! Hope that gave your mind a little breather.', 'Good job! Every pop counts.', 'Thanks for playing with Mica 💛'];
+
+  byId('pop-res-img').src = (hot || g.rares > 0) ? POP_IMG.happy : POP_IMG.good;
+  byId('pop-res-title').textContent = g.hits === 0 ? 'TIME\u2019S UP' : hot ? 'AMAZING!' : 'NICE ONE!';
+  byId('pop-res-score').textContent = g.score;
+  byId('pop-res-best').hidden = !isBest;
+  byId('pop-res-msg').textContent = msgs[Math.floor(Math.random() * msgs.length)];
+  byId('pop-res-hits').textContent = g.hits;
+  byId('pop-res-acc').textContent = acc + '%';
+  byId('pop-res-combo').textContent = g.bestCombo;
+  byId('pop-res-rare').textContent = g.rares;
+
+  popLater(() => {
+    popEl.arena.innerHTML = '';
+    popEl.game.hidden = true; popEl.result.hidden = false;
+    if(isBest && !popPrefs.mute && popAudio()) [523, 659, 784, 1047].forEach((f,i) => popTone(f, .25, 'triangle', .15, null, i*.09));
+  }, 600);
+}
+
+/* leaving the game (back button, other tab, closing the page) */
+function popLeave(){
+  if(popState === 'playing' || popState === 'countdown'){ popLog(); }
+  if(popState !== 'idle' && popState !== 'done'){ popStopAll(); popState = 'idle'; }
+}
+window.addEventListener('pagehide', popLeave);
+popRenderSetup();
 
 /* ---------- 5-4-3-2-1 Grounding (nothing typed, nothing saved) ---------- */
 const GR_STEPS = [
