@@ -29,7 +29,7 @@
   }
   *{margin:0;padding:0;box-sizing:border-box;}
   body{font-family:'Inter',sans-serif;background:var(--cream);color:var(--ink);transition:background .25s ease,color .25s ease;}
-  h1,h2,h3,.display{font-family:'Baloo 2',sans-serif;}
+  h2,h3,.display{font-family:'Baloo 2',sans-serif;}
   .mono{font-family:'IBM Plex Mono',monospace;}
   ::selection{background:var(--sage-pale);}
   a{color:inherit;}
@@ -38,6 +38,16 @@
   .logo-mark{display:flex;align-items:center;gap:10px;}
   .logo-mark svg{flex-shrink:0;}
   .logo-mark span{font-family:'Baloo 2',sans-serif;font-weight:700;font-size:22px;letter-spacing:0.2px;}
+
+  .badge{display:inline-flex; align-items:center; gap:6px; padding:4px 12px; border-radius:999px; font-size:12px; font-weight:600;}
+  .badge .dot{width:7px; height:7px; border-radius:50%; background:currentColor;}
+  .badge.stable{background:var(--sage-pale); color:var(--sage-deep);}
+  .badge.watch{background:var(--sky-pale); color:var(--sky-deep);}
+  .badge.urgent{background:var(--alert-pale); color:var(--alert);}
+  .badge.neutral{background:var(--line); color:var(--ink-soft);}
+  .badge .dot.pulse{animation:pulseDot 1.8s ease-in-out infinite;}
+  @keyframes pulseDot{0%,100%{transform:scale(1); opacity:1;} 50%{transform:scale(1.7); opacity:.35;}}
+  @media (prefers-reduced-motion: reduce){ .badge .dot.pulse{animation:none;} }
 
   .pill-btn{
     font-family:'Baloo 2',sans-serif;
@@ -56,47 +66,25 @@
   .pill-btn.sm{padding:7px 14px; font-size:13px;}
   .pill-btn:disabled{opacity:.4; cursor:not-allowed; pointer-events:none;}
 
-  .badge{display:inline-flex; align-items:center; gap:6px; padding:4px 12px; border-radius:999px; font-size:12px; font-weight:600;}
-  .badge .dot{width:7px; height:7px; border-radius:50%; background:currentColor;}
-  .badge.stable{background:var(--sage-pale); color:var(--sage-deep);}
-  .badge.watch{background:var(--sky-pale); color:var(--sky-deep);}
-  .badge.urgent{background:var(--alert-pale); color:var(--alert);}
-  .badge.neutral{background:var(--line); color:var(--ink-soft);}
-  .badge .dot.pulse{animation:pulseDot 1.8s ease-in-out infinite;}
-  @keyframes pulseDot{0%,100%{transform:scale(1); opacity:1;} 50%{transform:scale(1.7); opacity:.35;}}
-  @media (prefers-reduced-motion: reduce){ .badge .dot.pulse{animation:none;} }
-
   .card{background:var(--paper); border-radius:var(--radius); box-shadow:var(--shadow-sm); border:1px solid var(--line);}
 
-  /* ---------- Login ---------- */
-  #loginScreen{min-height:100vh; display:flex; flex-direction:column;}
-  .login-nav{background:var(--sage); border-bottom:3px solid var(--sky); padding:18px 40px; display:flex; justify-content:space-between; align-items:center;}
-  .login-nav .logo-mark span{color:#0f130f;}
-  .login-wrap{flex:1; display:flex; align-items:center; justify-content:center; padding:40px 20px;}
-  .login-card{width:100%; max-width:420px; background:var(--paper); border-radius:24px; box-shadow:var(--shadow); padding:44px 40px; border:1px solid var(--line);}
-  .login-card h1{font-size:26px; font-weight:800; margin-bottom:6px;}
-  .login-card p.sub{color:var(--ink-soft); font-size:14.5px; margin-bottom:30px;}
   .field{margin-bottom:18px;}
   .field label{display:block; font-size:12.5px; font-weight:600; color:var(--ink-soft); margin-bottom:7px; text-transform:uppercase; letter-spacing:.04em;}
   .field input, .field select{width:100%; padding:12px 14px; border:1.5px solid var(--line); border-radius:12px; font-size:14.5px; background:var(--cream); color:var(--ink); font-family:'Inter',sans-serif;}
   .field input:focus, .field select:focus{outline:none; border-color:var(--sage-deep);}
-  .login-card .pill-btn{width:100%; justify-content:center; padding:13px; font-size:15px; margin-top:8px;}
-  .login-foot{margin-top:22px; font-size:12.5px; color:var(--ink-soft); text-align:center;}
-  .demo-note{margin-top:18px; padding:12px 14px; background:var(--peach); border-radius:14px; font-size:12.5px; color:var(--peach-text); line-height:1.5;}
-  .mfa-note{margin-top:14px; display:flex; align-items:center; gap:8px; font-size:12px; color:var(--sage-deep); font-weight:600;}
 
   /* ---------- Shell ---------- */
   #adminShell{display:flex; min-height:100vh; overflow:hidden;}
   .sidebar{
-    width:264px; flex-shrink:0; background:var(--sage); color:var(--brown-deep);
-    display:flex; flex-direction:column; height:100vh; overflow-y:auto;
-  }.sidebar{transition:width .25s ease, opacity .25s ease; overflow-x:hidden;}
+  width:264px; flex-shrink:0; background:var(--sage); color:var(--brown-deep);
+  display:flex; flex-direction:column; height:100vh; overflow-y:auto; overflow-x:hidden;
+  transition:width .25s ease, opacity .25s ease;
+  }
   body.dark .sidebar{background:#233024;}
   .sidebar.is-collapsed{width:0; opacity:0; overflow:hidden; pointer-events:none;}
-  .sidebar-top{display:flex; align-items:center; justify-content:space-between;}
   .sidebar-top{padding:24px 20px 18px; display:flex; align-items:center; justify-content:space-between;}
   .sidebar-top .logo-mark span{color:var(--brown-deep);}
-  .sidebar-top .tagline{font-size:11.5px; color:rgba(90,74,61,.75); margin-top:6px; letter-spacing:.03em;}
+  .sidebar-tagline{padding:0 24px 14px; font-size:11.5px; color:rgba(90,74,61,.75); letter-spacing:.03em; font-weight:600;}.sidebar-top .logo-mark span{color:var(--brown-deep);}
   .collapse-btn{width:32px; height:32px; border-radius:8px; border:none; background:transparent; color:var(--brown-deep); display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0;}
   .collapse-btn:hover{background:rgba(255,255,255,.35);}
   .collapse-btn svg{width:18px; height:18px;}
@@ -174,8 +162,6 @@
   .panel-head{display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:16px; gap:10px;}
   .panel-head h3{font-size:16px; font-weight:700;}
   .panel-head .sub{font-size:12px; color:var(--ink-soft); margin-top:2px;}
-  .legend-row{display:flex; gap:16px; font-size:12px; color:var(--ink-soft);}
-  .legend-row .dot{width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:5px;}
 
   .feed-list{display:flex; flex-direction:column; gap:2px;}
   .feed-item{display:flex; gap:12px; padding:12px 0; border-bottom:1px solid var(--line);}
@@ -226,12 +212,6 @@
   .kv .k{font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-soft); font-weight:600; margin-bottom:4px;}
   .kv .v{font-size:14.5px; font-weight:600;}
 
-  .alert-card{display:flex; gap:16px; padding:16px 18px; margin-bottom:10px; align-items:flex-start;}
-  .alert-card .sev-strip{width:4px; align-self:stretch; border-radius:4px; flex-shrink:0;}
-  .alert-card .body{flex:1;}
-  .alert-card .top-row{display:flex; justify-content:space-between; gap:10px; margin-bottom:4px;}
-  .alert-card .reason{font-size:13px; line-height:1.5; color:var(--ink-soft);}
-
   .tab-row{display:flex; gap:8px; margin-bottom:22px; border-bottom:1px solid var(--line); flex-wrap:wrap;}
   .tab-btn{padding:11px 4px; margin-right:22px; background:none; border:none; border-bottom:2.5px solid transparent; font-size:14px; font-weight:600; color:var(--ink-soft);}
   .tab-btn.active{color:var(--ink); border-color:var(--sage-deep);}
@@ -256,13 +236,6 @@
 
   .toast{position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px); background:#3A2E28; color:#fff; padding:11px 20px; border-radius:999px; font-size:13.5px; font-weight:600; opacity:0; pointer-events:none; transition:all .25s ease; z-index:300;}
   .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
-
-  .role-perm-card{padding:20px 22px;}
-  .role-perm-card .rp-head{display:flex; align-items:center; gap:12px; margin-bottom:6px;}
-  .role-perm-card .rp-head .avatar{width:38px; height:38px;}
-  .role-perm-card .rp-title{font-size:15.5px; font-weight:700;}
-  .role-perm-card .rp-sub{font-size:12px; color:var(--ink-soft);}
-  .role-perm-card .rp-count{font-size:11px; color:var(--ink-soft); margin:14px 0 4px; text-transform:uppercase; letter-spacing:.04em; font-weight:700;}
 
   .field-grid{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
 
@@ -377,7 +350,7 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="9" y1="4" x2="9" y2="20"/></svg>
     </button>
     </div>
-    <div class="sidebar-tagline" style="padding:0 24px 14px; font-size:11.5px; color:rgba(90,74,61,.75); letter-spacing:.03em; font-weight:600;">System Admin Console</div>
+    <div class="sidebar-tagline">System Admin Console</div>
 
     <div class="nav-group" style="flex:1; overflow-y:auto;">
       <div class="nav-label">Monitor</div>
@@ -686,7 +659,7 @@
         <div class="pager" id="siPager"></div>
       </section>
 
-      <!-- ============ DATA PRIVACY ============ -->
+      <!-- ============ ENROLLMENT ============ -->
       <section class="section" id="sec-enrollment">
         <div class="card panel">
           <div class="panel-head"><div>
@@ -1140,7 +1113,7 @@
           <div class="field"><label>Date received</label><input id="drDate" type="date"></div>
           <div class="field">
             <label>Note (optional)</label>
-            <input id="drNote" maxlength="200" placeholder="Short and general" oninput="document.getElementById('drNoteCount').textContent = this.value.length + '/200'">
+            <input id="drNote" maxlength="300" placeholder="Short and general" oninput="document.getElementById('drNoteCount').textContent = this.value.length + '/200'">
             <div id="drNoteCount" style="font-size:11.5px; color:var(--ink-soft); margin-top:5px; text-align:right;">0/200</div>
           </div>
         </div>
@@ -1166,6 +1139,31 @@
     <div class="modal-body">
       <div class="kv-grid" id="drViewKv"></div>
       <div id="drViewText" style="font-size:13.5px; line-height:1.6; overflow-wrap:anywhere; white-space:pre-wrap;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= DATA REQUEST CLOSE MODAL ================= -->
+<div class="modal-overlay" id="drCloseOverlay">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-head">
+      <div><h2 id="drCloseTitle">Mark as done</h2><div class="sub" id="drCloseSub"></div></div>
+      <button class="modal-close" onclick="closeModal('drCloseOverlay')">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="field" style="margin-bottom:0;">
+        <label id="drCloseLabel">What was done? (optional)</label>
+        <input id="drCloseOutcome" maxlength="300" placeholder="Short and general, no private details"
+               oninput="document.getElementById('drCloseCount').textContent = this.value.length + '/200'">
+        <div id="drCloseCount" style="font-size:11.5px; color:var(--ink-soft); margin-top:5px; text-align:right;">0/200</div>
+      </div>
+      <div class="form-error" id="drCloseError"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="pill-btn solid" id="drCloseBtn" onclick="submitCloseDataRequest()">Mark as done</button>
+      <button class="pill-btn ghost" onclick="closeModal('drCloseOverlay')">Cancel</button>
     </div>
   </div>
 </div>
@@ -1225,7 +1223,6 @@ function goTo(section){
   if(btn) btn.classList.add('active');
   document.getElementById('topEyebrow').textContent = eyebrows[section][0];
   document.getElementById('topTitle').textContent = eyebrows[section][1];
-  document.getElementById('sidebar').classList.remove('open');
   if(section === 'logs') loadAuditLogs(1);
   if(section === 'signins') loadSignins(1);
   if(section === 'enrollment'){ loadEnrollment(); loadMissing(missPage); }
@@ -1291,7 +1288,11 @@ function saveAccountChanges(){
 
 function resetAccountPassword(){
   const a = accounts.find(x => x.id === activeAcctId);
+  const btn = document.getElementById('acctResetBtn');
+  btn.disabled = true; btn.textContent = 'Sending…';
   api('/api/admin/staff/'+a.uid+'/reset-password/', {}).then(r=>{
+    btn.textContent = 'Reset Password';
+    btn.disabled = !a.email || a.fresh;
     showToast(r.ok ? 'Password reset link sent to ' + a.email : (r.data.error || 'Could not send the link'));
   });
 }
@@ -2307,7 +2308,7 @@ function loadDataRequests(page){
 function openDataReqModal(){
   drStudent = null; drResults = [];
   ['drSearch','drNote','drDetail'].forEach(id => document.getElementById(id).value = '');
-  document.getElementById('drNoteCount').textContent = '0/200';  document.getElementById('drResults').innerHTML = '';
+  document.getElementById('drNoteCount').textContent = '0/300';  document.getElementById('drResults').innerHTML = '';
   document.getElementById('drType').selectedIndex = 0;
   const now = new Date();
   document.getElementById('drDate').value = new Date(now - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
@@ -2404,12 +2405,43 @@ function saveDataRequest(){
   });
 }
 
+let drCloseId = null, drCloseStatus = null;
+
 function closeDataRequest(id, status){
-  const outcome = prompt(status === 'done' ? 'What was done? (optional)' : 'Why was it declined? (optional)');
-  if(outcome === null) return;
-  api('/api/admin/data-requests/' + id + '/close/', {status, outcome}).then(r=>{
-    if(!r.ok){ showToast(r.data.error || 'Could not update the request'); return; }
-    showToast(status === 'done' ? 'Marked as done' : 'Marked as declined');
+  const q = drRows.find(x => x.id === id);
+  if(!q) return;
+  drCloseId = id; drCloseStatus = status;
+  const done = status === 'done';
+  document.getElementById('drCloseTitle').textContent = done ? 'Mark as done' : 'Decline request';
+  document.getElementById('drCloseSub').textContent = q.student_name + ' · ' + q.type_label;
+  document.getElementById('drCloseLabel').textContent = done ? 'What was done? (optional)' : 'Why was it declined? (optional)';
+  const btn = document.getElementById('drCloseBtn');
+  btn.textContent = done ? 'Mark as done' : 'Decline request';
+  btn.className = 'pill-btn ' + (done ? 'solid' : 'danger');
+  btn.disabled = false;
+  document.getElementById('drCloseOutcome').value = '';
+  document.getElementById('drCloseCount').textContent = '0/300';
+  document.getElementById('drCloseError').textContent = '';
+  document.getElementById('drCloseOverlay').classList.add('active');
+  document.getElementById('drCloseOutcome').focus();
+}
+
+function submitCloseDataRequest(){
+  const btn = document.getElementById('drCloseBtn'), err = document.getElementById('drCloseError');
+  err.textContent = '';
+  btn.disabled = true;
+  api('/api/admin/data-requests/' + drCloseId + '/close/', {
+    status: drCloseStatus,
+    outcome: document.getElementById('drCloseOutcome').value
+  }).then(r=>{
+    btn.disabled = false;
+    if(!r.ok){
+      err.textContent = r.data.error || 'Could not update the request.';
+      loadDataRequests(1); // if it was already closed elsewhere, refresh the table
+      return;
+    }
+    closeModal('drCloseOverlay');
+    showToast(drCloseStatus === 'done' ? 'Marked as done' : 'Marked as declined');
     loadDataRequests(1);
   });
 }
@@ -2419,14 +2451,6 @@ function closeDataRequest(id, status){
 ========================================================= */
 function closeModal(id){ document.getElementById(id).classList.remove('active'); }
 
-function toggleSwitch(el){ el.classList.toggle('on'); }
-function showToast(msg){
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  clearTimeout(window._toastTimer);
-  window._toastTimer = setTimeout(()=>t.classList.remove('show'), 2600);
-}
 function toggleTheme(){ document.body.classList.toggle('dark'); }
 
 if (new URLSearchParams(location.search).get('pw') === 'changed'){
