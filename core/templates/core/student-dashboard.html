@@ -378,6 +378,8 @@ html.dyslexia body{line-height:1.7;}
     height:auto;
     object-fit:contain;
     display:block;
+    /* soft round backdrop so the mascot stands out from the wallpaper */
+    background:radial-gradient(closest-side circle at 50% 52%, var(--card-bg) 55%, transparent 100%);
   }
 
   /* ---------- Chat / Guidance ---------- */
@@ -389,6 +391,37 @@ html.dyslexia body{line-height:1.7;}
     flex-direction:column;
     min-height:0;
   }
+
+  /* ---------- Doodle wallpaper ----------
+     Soft hand-drawn doodles (journal, flower, heart, moon, affirmations...) behind every screen of the
+     student dashboard: Home, both chats, the mood diary and the breathing exercise. The picture is only a
+     stencil: CSS paints it in --doodle-color, so the same file works in light and dark mode. It sits behind
+     everything and doesn't scroll with the content. Make it fainter/stronger with --doodle-opacity (or per
+     screen with --doodle-scale); the tile is made by scripts/chat_doodles/make_chat_doodles.py. */
+  :root{ --doodle-color:#7F9F79; --doodle-opacity:.34; }
+  body.dark-mode{ --doodle-color:#7FD1BE; --doodle-opacity:.27; }
+  .view{ position:relative; isolation:isolate; }
+  .view::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    z-index:-1;
+    pointer-events:none;
+    background-color:var(--doodle-color);
+    opacity:calc(var(--doodle-opacity) * var(--doodle-scale, 1));
+    -webkit-mask-image:url("{% static 'core/images/chat-doodles.png' %}");
+            mask-image:url("{% static 'core/images/chat-doodles.png' %}");
+    -webkit-mask-size:600px 600px;
+            mask-size:600px 600px;
+    -webkit-mask-repeat:repeat;
+            mask-repeat:repeat;
+  }
+  #view-breathe{ --doodle-scale:.6; }               /* calmer behind the breathing exercise */
+  .guidance-who{ background:var(--content-bg); }    /* keep the counselor's name clear of the pattern */
+  @media (max-width:640px){
+    .view::before{ -webkit-mask-size:460px 460px; mask-size:460px 460px; }
+  }
+
   .messages{
     flex:1;
     overflow-y:auto;
