@@ -21,7 +21,7 @@ from .models import UserProfile
 from .models import CounselorNote
 from .models import StudentNote
 from .models import MoodEntry
-from .models import BreatheSession
+from .models import BreatheSession, Affirmation, ExerciseSession
 from .models import Appointment
 from .models import Notification
 from .models import StudentFlag
@@ -1829,14 +1829,114 @@ def api_breathe_save(request):
 @login_required(login_url='login')
 def api_breathe_stats(request):
     today = timezone.localdate()
-    this_month = BreatheSession.objects.filter(user=request.user, created_at__year=today)
-    this_year = BreatheSession.objects.filter(user=request.user, created_at__year=today)
+    base = ExerciseSession.objects.filter(user=request.user, exercise='breathing')
+    this_month = base.filter(created_at__year=today.year, created_at__month=today.month)
+    this_year = base.filter(created_at__year=today.year)
+
+    def minutes(qs):
+        return round((qs.aggregate(t=models.Sum('duration_seconds'))['t'] or 0) / 60, 1)
+
     return JsonResponse({
         "session_this_month": this_month.count(),
-        "minutes_this_month": round((this_month.aggregate(total=models.Sum('duration_seconds'))['total'] or 0) / 60, 1),
+        "minutes_this_month": minutes(this_month),
         "sessions_this_year": this_year.count(),
-        "minutes_this_year": round((this_month.aggregate(total=models.Sum('duration_seconds'))['total'] or 0) / 60, 1),
+        "minutes_this_year": minutes(this_year),
     })
+
+
+AFFIRMATION_STARTERS = [
+    "I am allowed to take things one step at a time.",
+    "I can feel this and still keep going.",
+    "My worth is not measured by my grades.",
+    "I am learning, and learning takes time.",
+    "It is okay to ask for help.",
+    "I have gotten through hard days before.",
+    "I am doing the best I can with what I have today.",
+    "Rest is part of the process, not a reward for finishing it.",
+]
+EXERCISE_KEYS = {'breathing', 'affirmations', 'grounding', 'pomodoro'}
+
+
+def _json_body(request):
+    try:
+        return json.loads(request.body or b'{}')
+    except json.JSONDecodeError:
+        return None
+
+
+@login_required(login_url='login')
+def api_affirmations(request):
+    profile = get_profile(request.user)
+    if not profile.affirmations_seeded:
+        Affirmation.objects.bulk_create(
+            [Affirmation(user=request.user, text=t) for t in AFFIRMATION_STARTERS]
+        )
+        profile.affirmations_seeded = True
+        profile.save(update_fields=['affirmations_seeded'])
+    said_today = ExerciseSession.objects.filter(
+        user=request.user, exercise='affirmations',
+        created_at__date=timezone.localdate(),
+    ).aggregate(t=models.Sum('count'))['t'] or 0
+    return JsonResponse({
+        "affirmations": list(request.user.affirmations.values('id', 'text', 'is_favorite')),
+        "said_today": said_today,
+    })
+
+
+@login_required(login_url='login')
+@require_POST
+def api_affirmation_add(request):
+    data = _json_body(request)
+    if data is None:
+        return JsonResponse({"error": "Invalid JSON."}, status=400)
+    text = (data.get("text") or "").strip()
+    if not text or len(text) > 140:
+        return JsonResponse({"error": "Write 1 to 140 characters."}, status=400)
+    if request.user.affirmations.count() >= 100:
+        return JsonResponse({"error": "You have reached 100 affirmations. Delete one first."}, status=400)
+    a = Affirmation.objects.create(user=request.user, text=text, is_custom=True)
+    return JsonResponse({"id": a.id, "text": a.text, "is_favorite": False})
+
+
+@login_required(login_url='login')
+@require_POST
+def api_affirmation_favorite(request, affirmation_id):
+    a = request.user.affirmations.filter(id=affirmation_id).first()
+    if not a:
+        return JsonResponse({"error": "Not found."}, status=404)
+    a.is_favorite = not a.is_favorite
+    a.save(update_fields=['is_favorite'])
+    return JsonResponse({"is_favorite": a.is_favorite})
+
+
+@login_required(login_url='login')
+@require_POST
+def api_affirmation_delete(request, affirmation_id):
+    deleted, _ = request.user.affirmations.filter(id=affirmation_id).delete()
+    if not deleted:
+        return JsonResponse({"error": "Not found."}, status=404)
+    return JsonResponse({"status": "ok"})
+
+
+@login_required(login_url='login')
+@require_POST
+def api_exercise_log(request):
+    data = _json_body(request)
+    if data is None:
+        return JsonResponse({"error": "Invalid JSON."}, status=400)
+    exercise = data.get("exercise")
+    if exercise not in EXERCISE_KEYS:
+        return JsonResponse({"error": "Unknown exercise."}, status=400)
+    try:
+        seconds = max(0, min(int(data.get("duration_seconds", 0)), 3600))
+        count = max(0, min(int(data.get("count", 0)), 500))
+    except (TypeError, ValueError):
+        return JsonResponse({"error": "Bad numbers."}, status=400)
+    if seconds < 3 and count == 0:
+        return JsonResponse({"status": "skipped"})
+    ExerciseSession.objects.create(
+        user=request.user, exercise=exercise, duration_seconds=seconds, count=count)
+    return JsonResponse({"status": "ok"})
 
 
 def get_profile(user):

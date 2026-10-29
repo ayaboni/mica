@@ -967,6 +967,8 @@ body.dark-mode{ --composer-accent:#9CC893; }
 .aff-act svg{ width:20px; height:20px; }
 .aff-act:hover{ background:var(--btn-hover); }
 .aff-act:disabled{ opacity:.4; cursor:default; }
+.aff-act.confirming{ background:#d9534f; color:#fff; }
+.aff-act.confirming:hover{ background:#c9302c; }
 .aff-act.on{ color:#d9534f; }
 .aff-act.on svg{ fill:currentColor; }
 .aff-count{ font-size:12px; font-weight:700; color:var(--text-mute); }
@@ -1020,6 +1022,19 @@ body.dark-mode{ --composer-accent:#9CC893; }
 .gr-dot{ width:14px; height:14px; border-radius:50%; border:2px solid var(--blue); background:var(--card-bg); transition:background .2s ease; }
 .gr-dot.on{ background:var(--blue); }
 .gr-progress{ font-size:12px; font-weight:700; color:var(--text-mute); min-height:16px; }
+.gr-form{ width:100%; max-width:340px; }
+.gr-form input{
+  width:100%; border:none; outline:none; border-radius:999px;
+  padding:12px 20px; font-size:13.5px; text-align:center;
+  background:var(--card-bg); color:var(--text-dark); box-shadow:var(--shadow);
+}
+.gr-form input::placeholder{ color:#a89f8c; }
+.gr-note{ font-size:11.5px; color:var(--text-mute); }
+.gr-chips{ display:flex; flex-wrap:wrap; gap:6px; justify-content:center; max-width:380px; min-height:8px; }
+.gr-chip{
+  background:var(--card-bg); box-shadow:var(--shadow);
+  border-radius:999px; padding:5px 12px; font-size:12.5px; color:var(--text-dark);
+}
 
   /* ---------- Settings modal ---------- */
   .overlay{
@@ -1502,14 +1517,15 @@ function toggleDyslexia(){
   <button class="btn-pill btn-back ex-back" data-go="exercises">← Exercises</button>
   <div class="ex-inner">
     <div class="aff-tabs">
-      <button class="aff-tab active" id="aff-tab-all">All</button>
+      <button class="aff-tab active" id="aff-tab-all">Practice</button>
+      <button class="aff-tab" id="aff-tab-list">List</button>
       <button class="aff-tab" id="aff-tab-fav">Favorites <span id="aff-fav-count"></span></button>
     </div>
 
     <div class="aff-pane" id="aff-pane-all">
       <div class="aff-card" id="aff-card" tabindex="0" role="button" aria-label="Tap when you have said this affirmation">
         <div class="aff-text" id="aff-text"></div>
-        <div class="aff-hint" id="aff-hint">Say it out loud, then tap the card ✓</div>
+        <div class="aff-hint" id="aff-hint">Say it out loud, then tap the card</div>
       </div>
 
       <div class="aff-actions">
@@ -1539,6 +1555,10 @@ function toggleDyslexia(){
       </details>
     </div>
 
+    <div class="aff-pane hidden" id="aff-pane-list">
+      <div class="aff-fav-list" id="aff-list"></div>
+    </div>
+
     <div class="aff-pane hidden" id="aff-pane-fav">
       <div class="aff-fav-list" id="aff-fav-list"></div>
     </div>
@@ -1553,6 +1573,11 @@ function toggleDyslexia(){
     <div class="gr-big" id="gr-big"></div>
     <div class="gr-prompt" id="gr-prompt"></div>
     <div class="gr-dots" id="gr-dots"></div>
+    <form class="gr-form" id="gr-form" autocomplete="off">
+      <input id="gr-input" maxlength="60" autocomplete="off" autocapitalize="off" spellcheck="false">
+    </form>
+    <div class="gr-note" id="gr-note">Optional. Not saved. It only stays on this screen.</div>
+    <div class="gr-chips" id="gr-chips"></div>
     <button class="btn-pill btn-enter" id="gr-btn">I found one</button>
     <button class="btn-pill btn-back hidden" id="gr-again">Do it again</button>
     <div class="gr-progress" id="gr-progress"></div>
@@ -1695,6 +1720,8 @@ const navButtons = {
 
 function switchView(id, title){
   if(id !== 'view-breathe' && typeof resetBreathe === 'function') resetBreathe();
+  if(id !== 'view-affirmations' && typeof affLeave === 'function') affLeave();
+  if(id !== 'view-grounding' && typeof grLeave === 'function') grLeave();
   views.forEach(v=>v.classList.toggle('active', v.id===id));
   viewTitle.textContent = title;
   Object.entries(navButtons).forEach(([vid, btn])=>{
@@ -2572,10 +2599,10 @@ function resetBreathe(){
 }
 
 function saveBreatheSession(durationSeconds){
-  fetch("{% url 'api_breathe_save' %}", {
-    method: "POST",
+  fetch("{% url 'api_exercise_log' %}", {
+    method: "POST", keepalive: true,
     headers: {"Content-Type": "application/json", "X-CSRFToken": getCookie("csrftoken")},
-    body: JSON.stringify({duration_seconds: durationSeconds}),
+    body: JSON.stringify({exercise: 'breathing', duration_seconds: durationSeconds}),
   });
 }
 
@@ -2593,17 +2620,19 @@ function schedulePhases(){
 }
 
 breatheBtn.addEventListener('click', ()=>{
-  breathing = !breathing;
-  if(breathing){
+  if(!breathing){
+    breathing = true;
     breatheStartTime = Date.now();
     breatheCircle.classList.add('breathing');
     breatheRing.classList.add('breathing');
     breatheIcon.innerHTML = stopIcon;
     schedulePhases();
   } else {
-    resetBreathe();
+    resetBreathe();   // saves the session, then resets
   }
 });
+
+window.addEventListener('pagehide', ()=>{ if(breathing) resetBreathe(); });
 
 /* ============================================================
    EXERCISES: hub navigation, grounding, affirmations
@@ -2622,38 +2651,61 @@ document.querySelectorAll('[data-go]').forEach(el=>{
     switchView(vid, title);
     if(vid === 'view-breathe') resetBreathe();
     if(vid === 'view-grounding') grReset();
-    if(vid === 'view-affirmations') renderAff();
+    if(vid === 'view-affirmations') loadAff();
   });
 });
 
 /* ---------- 5-4-3-2-1 Grounding (nothing typed, nothing saved) ---------- */
 const GR_STEPS = [
-  {n:5, label:'SEE',   prompt:'Look around you. Find 5 things you can see. Take your time with each one.'},
-  {n:4, label:'TOUCH', prompt:'Find 4 things you can feel. Maybe your feet on the floor, your clothes, the chair under you.'},
-  {n:3, label:'HEAR',  prompt:'Listen closely. Find 3 sounds, near or far.'},
-  {n:2, label:'SMELL', prompt:'Find 2 things you can smell. If nothing is nearby, think of 2 smells you like.'},
-  {n:1, label:'TASTE', prompt:'Notice 1 thing you can taste, or think of a taste you enjoy.'}
+  {n:5, label:'SEE',   q:'What do you see?',        prompt:'Look around you. Find 5 things you can see. Take your time with each one.'},
+  {n:4, label:'TOUCH', q:'What do you feel?',       prompt:'Find 4 things you can feel. Maybe your feet on the floor, your clothes, the chair under you.'},
+  {n:3, label:'HEAR',  q:'What do you hear?',       prompt:'Listen closely. Find 3 sounds, near or far.'},
+  {n:2, label:'SMELL', q:'What do you smell?',      prompt:'Find 2 things you can smell. If nothing is nearby, think of 2 smells you like.'},
+  {n:1, label:'TASTE', q:'What do you taste?',      prompt:'Notice 1 thing you can taste, or think of a taste you enjoy.'}
 ];
-let grStep = 0, grCount = 0, grDone = false;
+let grStep = 0, grCount = 0, grDone = false, grChips = [], grStart = null;
 
-function grReset(){ grStep = 0; grCount = 0; grDone = false; grRender(); }
+function grReset(){
+  grStep = 0; grCount = 0; grDone = false; grChips = [];
+  grStart = Date.now();
+  byId('gr-input').value = '';
+  grRender();
+}
+
+function grLog(completed){
+  if(grStart === null) return;
+  const secs = Math.round((Date.now() - grStart) / 1000);
+  grStart = null;
+  if(secs < 3) return;
+  fetch("{% url 'api_exercise_log' %}", {
+    method:'POST', keepalive:true,
+    headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},
+    body: JSON.stringify({exercise:'grounding', duration_seconds:secs, count: completed ? 1 : 0})
+  });
+}
+function grLeave(){ grLog(false); }
+window.addEventListener('pagehide', grLeave);
 
 function grRender(){
   const big = byId('gr-big'), dots = byId('gr-dots'), btn = byId('gr-btn'), again = byId('gr-again');
+  const form = byId('gr-form'), note = byId('gr-note'), chips = byId('gr-chips');
+  chips.innerHTML = '';
   if(grDone){
     byId('gr-sense').textContent = 'WELL DONE';
     big.textContent = '✓';
     byId('gr-prompt').textContent = 'You noticed 15 things around you. Take one slow breath. You are here, right now.';
     dots.innerHTML = '';
     byId('gr-progress').textContent = '';
+    form.classList.add('hidden'); note.classList.add('hidden');
     btn.textContent = 'Back to Exercises';
     again.classList.remove('hidden');
     return;
   }
   const s = GR_STEPS[grStep];
+  const full = grCount >= s.n;
   again.classList.add('hidden');
   byId('gr-sense').textContent = `${s.n} ${s.n === 1 ? 'THING' : 'THINGS'} YOU CAN ${s.label}`;
-  big.textContent = grCount >= s.n ? '✓' : (s.n - grCount);
+  big.textContent = full ? '✓' : (s.n - grCount);
   byId('gr-prompt').textContent = s.prompt;
   dots.innerHTML = '';
   for(let i = 0; i < s.n; i++){
@@ -2661,34 +2713,85 @@ function grRender(){
     d.className = 'gr-dot' + (i < grCount ? ' on' : '');
     dots.appendChild(d);
   }
-  btn.textContent = grCount < s.n ? 'I found one' : (grStep < GR_STEPS.length - 1 ? 'Next →' : 'Finish');
+  form.classList.toggle('hidden', full);
+  note.classList.toggle('hidden', full);
+  byId('gr-input').placeholder = s.q + ' (optional)';
+  grChips.forEach(t => {
+    const c = document.createElement('span');
+    c.className = 'gr-chip';
+    c.textContent = t;
+    chips.appendChild(c);
+  });
+  btn.textContent = !full ? 'I found one' : (grStep < GR_STEPS.length - 1 ? 'Next →' : 'Finish');
   byId('gr-progress').textContent = `Step ${grStep + 1} of ${GR_STEPS.length}`;
   big.classList.remove('pop'); void big.offsetWidth; big.classList.add('pop');
 }
 
-byId('gr-btn').addEventListener('click', ()=>{
+function grAdd(fromEnter){
+  const s = GR_STEPS[grStep];
+  const inp = byId('gr-input');
+  const text = inp.value.trim();
+  if(grCount < s.n){ grCount++; if(text) grChips.push(text); }
+  inp.value = '';
+  grRender();
+  if(fromEnter && grCount < s.n) inp.focus();
+}
+
+byId('gr-btn').addEventListener('click', () => {
   if(grDone){ switchView('view-exercises','Exercises'); return; }
   const s = GR_STEPS[grStep];
-  if(grCount < s.n) grCount++;
-  else if(grStep < GR_STEPS.length - 1){ grStep++; grCount = 0; }
-  else grDone = true;
-  grRender();
+  if(grCount < s.n) grAdd(false);
+  else if(grStep < GR_STEPS.length - 1){ grStep++; grCount = 0; grChips = []; grRender(); }
+  else { grDone = true; grChips = []; grLog(true); grRender(); }
 });
+byId('gr-form').addEventListener('submit', e => { e.preventDefault(); grAdd(true); });
 byId('gr-again').addEventListener('click', grReset);
 
 /* ---------- Affirmations (in-memory for now, saving comes with the feature step) ---------- */
-const AFF_STARTERS = [
-  "I am allowed to take things one step at a time.",
-  "I can feel this and still keep going.",
-  "My worth is not measured by my grades.",
-  "I am learning, and learning takes time.",
-  "It is okay to ask for help.",
-  "I have gotten through hard days before.",
-  "I am doing the best I can with what I have today.",
-  "Rest is part of the process, not a reward for finishing it."
-];
-let affList = AFF_STARTERS.map((t, i) => ({id:i + 1, text:t, fav:false}));
-let affIndex = 0, affSaid = 0, affBusy = false, affNextId = 1000;
+const AFF_URL = "{% url 'api_affirmations' %}";
+let affList = [];
+let affIndex = 0, affSaid = 0, affBusy = false;
+let affStart = null, affSaidSession = 0;
+
+function affPost(url, body){
+  return fetch(url, {
+    method:'POST',
+    headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},
+    body: JSON.stringify(body || {})
+  });
+}
+
+async function loadAff(){
+  affStart = Date.now(); affSaidSession = 0;
+  try{
+    const r = await fetch(AFF_URL);
+    const d = await r.json();
+    affList = d.affirmations.map(a => ({id:a.id, text:a.text, fav:a.is_favorite}));
+    affSaid = d.said_today;
+    affIndex = 0;
+  }catch(e){ showToast('Could not load affirmations'); }
+  renderAff();
+}
+
+async function affToggleFav(a){
+  a.fav = !a.fav; renderAff();
+  try{ const r = await affPost(AFF_URL + a.id + '/favorite/'); if(!r.ok) throw 0; }
+  catch(e){ a.fav = !a.fav; renderAff(); showToast('Could not save. Try again.'); }
+}
+
+function affLeave(){
+  if(affStart === null) return;
+  const secs = Math.round((Date.now() - affStart) / 1000);
+  const said = affSaidSession;
+  affStart = null; affSaidSession = 0;
+  if(secs < 3 && !said) return;
+  fetch("{% url 'api_exercise_log' %}", {
+    method:'POST', keepalive:true,
+    headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},
+    body: JSON.stringify({exercise:'affirmations', duration_seconds:secs, count:said})
+  });
+}
+window.addEventListener('pagehide', affLeave);
 
 const HEART_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21.2l7.8-7.7 1-1.1a5.5 5.5 0 0 0 0-7.8z"/></svg>';
 const TRASH_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>';
@@ -2703,38 +2806,59 @@ function renderAff(){
   ['aff-fav-btn','aff-shuffle-btn','aff-next-btn','aff-del-btn'].forEach(id => byId(id).disabled = !has);
   const favs = affList.filter(a => a.fav);
   byId('aff-fav-count').textContent = favs.length ? `(${favs.length})` : '';
-  renderAffFavs(favs);
+  renderAffLists(favs);
 }
 
-function renderAffFavs(favs){
-  const box = byId('aff-fav-list');
+function fillAffList(box, items, emptyMsg){
   box.innerHTML = '';
-  if(!favs.length){
+  if(!items.length){
     const p = document.createElement('div');
     p.className = 'aff-empty';
-    p.textContent = 'No favorites yet. Tap the heart on an affirmation to keep it here 💛';
+    p.textContent = emptyMsg;
     box.appendChild(p);
     return;
   }
-  favs.forEach(a => {
+  items.forEach(a => {
     const row = document.createElement('div');
     row.className = 'aff-fav-row';
     const t = document.createElement('div');
     t.className = 'aff-fav-text';
     t.textContent = a.text;
-    const un = document.createElement('button');
-    un.className = 'icon-btn aff-act on';
-    un.title = 'Remove from favorites';
-    un.innerHTML = HEART_SVG;
-    un.addEventListener('click', () => { a.fav = false; renderAff(); });
+    const heart = document.createElement('button');
+    heart.className = 'icon-btn aff-act' + (a.fav ? ' on' : '');
+    heart.title = a.fav ? 'Remove from favorites' : 'Favorite';
+    heart.innerHTML = HEART_SVG;
+    heart.addEventListener('click', () => affToggleFav(a));
     const del = document.createElement('button');
     del.className = 'icon-btn aff-act';
     del.title = 'Delete';
     del.innerHTML = TRASH_SVG;
-    del.addEventListener('click', () => affDelete(a.id));
-    row.append(t, un, del);
+    del.addEventListener('click', () => affAskDelete(a.id, del));
+    row.append(t, heart, del);
     box.appendChild(row);
   });
+}
+
+function renderAffLists(favs){
+  fillAffList(byId('aff-list'), affList, 'No affirmations yet. Add your own on the Practice tab 🌱');
+  fillAffList(byId('aff-fav-list'), favs, 'No favorites yet. Tap the heart on an affirmation to keep it here 💛');
+}
+
+let affDelPending = null, affDelTimer = null;
+
+function affAskDelete(id, btn){
+  if(affDelPending === id){
+    clearTimeout(affDelTimer); affDelPending = null;
+    affDelete(id);
+    return;
+  }
+  affDelPending = id;
+  document.querySelectorAll('.aff-act.confirming').forEach(b => { b.classList.remove('confirming'); b.title = 'Delete'; });
+  btn.classList.add('confirming');
+  btn.title = 'Tap again to delete';
+  showToast('Tap again to delete');
+  clearTimeout(affDelTimer);
+  affDelTimer = setTimeout(() => { affDelPending = null; btn.classList.remove('confirming'); btn.title = 'Delete'; }, 3000);
 }
 
 function affNext(){ if(affList.length){ affIndex = (affIndex + 1) % affList.length; renderAff(); } }
@@ -2748,10 +2872,11 @@ function affShuffle(){
   renderAff();
 }
 
-function affDelete(id){
-  if(!confirm('Delete this affirmation?')) return;
+async function affDelete(id){
   const i = affList.findIndex(a => a.id === id);
   if(i < 0) return;
+  try{ const r = await affPost(AFF_URL + id + '/delete/'); if(!r.ok) throw 0; }
+  catch(e){ showToast('Could not delete. Try again.'); return; }
   affList.splice(i, 1);
   if(i < affIndex) affIndex--;
   if(affIndex >= affList.length) affIndex = 0;
@@ -2763,47 +2888,53 @@ function affDone(){
   affBusy = true;
   const card = byId('aff-card');
   card.classList.add('done');
-  byId('aff-hint').textContent = '✓ Nice one';
-  affSaid++;
+  byId('aff-hint').textContent = 'Nice one';
+  affSaid++; affSaidSession++;
   setTimeout(() => {
     card.classList.remove('done');
-    byId('aff-hint').textContent = 'Say it out loud, then tap the card ✓';
+    byId('aff-hint').textContent = 'Say it out loud, then tap the card';
     affBusy = false;
     affNext();
   }, 900);
 }
 
 function setAffTab(tab){
-  byId('aff-pane-all').classList.toggle('hidden', tab !== 'all');
-  byId('aff-pane-fav').classList.toggle('hidden', tab !== 'fav');
-  byId('aff-tab-all').classList.toggle('active', tab === 'all');
-  byId('aff-tab-fav').classList.toggle('active', tab === 'fav');
+  ['all','list','fav'].forEach(t => {
+    byId('aff-pane-' + t).classList.toggle('hidden', tab !== t);
+    byId('aff-tab-' + t).classList.toggle('active', tab === t);
+  });
 }
+byId('aff-tab-list').addEventListener('click', () => setAffTab('list'));
 
 byId('aff-card').addEventListener('click', affDone);
 byId('aff-card').addEventListener('keydown', e => {
   if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); affDone(); }
 });
 byId('aff-fav-btn').addEventListener('click', () => {
-  if(!affList.length) return;
-  affList[affIndex].fav = !affList[affIndex].fav;
-  renderAff();
+  if(affList.length) affToggleFav(affList[affIndex]);
 });
 byId('aff-shuffle-btn').addEventListener('click', affShuffle);
 byId('aff-next-btn').addEventListener('click', affNext);
-byId('aff-del-btn').addEventListener('click', () => { if(affList.length) affDelete(affList[affIndex].id); });
+byId('aff-del-btn').addEventListener('click', () => {
+  if(affList.length) affAskDelete(affList[affIndex].id, byId('aff-del-btn'));
+});
 byId('aff-tab-all').addEventListener('click', () => setAffTab('all'));
 byId('aff-tab-fav').addEventListener('click', () => setAffTab('fav'));
-byId('aff-add-form').addEventListener('submit', e => {
+byId('aff-add-form').addEventListener('submit', async e => {
   e.preventDefault();
   const inp = byId('aff-add-input');
   const text = inp.value.trim();
   if(!text) return;
-  affList.push({id:affNextId++, text, fav:false});
-  affIndex = affList.length - 1;
-  inp.value = '';
-  renderAff();
-  showToast('Affirmation added 🌱');
+  try{
+    const r = await affPost(AFF_URL + 'add/', {text});
+    const d = await r.json();
+    if(!r.ok){ showToast(d.error || 'Could not add.'); return; }
+    affList.push({id:d.id, text:d.text, fav:false});
+    affIndex = affList.length - 1;
+    inp.value = '';
+    renderAff();
+    showToast('Affirmation added 🌱');
+  }catch(err){ showToast('Could not add. Try again.'); }
 });
 
 grRender();

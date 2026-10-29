@@ -79,8 +79,8 @@ class DataRequestTests(TestCase):
         self.assertEqual(DataRequest.objects.get().request_detail, "")
 
     def test_over_long_note_is_trimmed_to_200_characters(self):
-    self.create(note="x" * 500)
-    self.assertEqual(len(DataRequest.objects.get().note), 200)
+        self.create(note="x" * 500)
+        self.assertEqual(len(DataRequest.objects.get().note), 200)
 
     def test_a_future_date_is_refused(self):
         tomorrow = (timezone.localdate() + timedelta(days=1)).isoformat()

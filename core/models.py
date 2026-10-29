@@ -103,6 +103,7 @@ class UserProfile(models.Model):
     account_status = models.CharField(max_length=10, choices=ACCOUNT_STATUS, default='active', db_index=True)
     status_reason = models.CharField(max_length=20, choices=STATUS_REASONS, blank=True)
     status_changed_at = models.DateTimeField(null=True, blank=True)
+    affirmations_seeded = models.BooleanField(default=False)
 
     class Meta:
         constraints = [
@@ -135,6 +136,28 @@ class BreatheSession(models.Model):
 
     class Meta:
         ordering = ['created_at']
+
+class Affirmation(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='affirmations')
+    text = models.CharField(max_length=140)
+    is_favorite = models.BooleanField(default=False)
+    is_custom = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at', 'id']
+
+
+class ExerciseSession(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='exercise_sessions')
+    exercise = models.CharField(max_length=30)  # 'affirmations', 'grounding', 'pomodoro'...
+    duration_seconds = models.PositiveIntegerField(default=0)
+    count = models.PositiveIntegerField(default=0)  # e.g. affirmations said
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [models.Index(fields=['exercise', 'created_at'])]
 
 class ChatConversation(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='conversations')
