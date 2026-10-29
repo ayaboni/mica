@@ -1,5 +1,5 @@
 from django.urls import path
-from . import views, admin_api, reports
+from . import views, admin_api, reports, registration_codes
 from django.contrib.auth import views as auth_views
 from django.views.generic import TemplateView
 
@@ -73,6 +73,8 @@ urlpatterns = [
     path('api/staff/students/<int:student_id>/status/', views.staff_student_status, name='staff_student_status'),
     path('api/staff/care-team/', views.staff_care_team, name='staff_care_team'),
     path('api/staff/profile/', views.staff_profile_update, name='staff_profile_update'),
+    path('api/staff/registration-codes/', registration_codes.codes_list, name='staff_registration_codes'),
+    path('api/staff/registration-codes/generate/', registration_codes.code_generate, name='staff_registration_code_generate'),
     path('api/staff/notes/<int:note_id>/review/', views.staff_note_review, name='staff_note_review'),
     path('api/staff/reports/services/', reports.service_report, name='staff_service_report'),
     path('api/staff/activities/', reports.activities, name='staff_activities'),

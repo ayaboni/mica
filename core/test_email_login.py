@@ -11,6 +11,7 @@ from django.utils import timezone
 
 from .models import LoginVerification, UserProfile
 from .views import firebase_auth
+from .regcode_testing import grant_registration_code
 
 
 @override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend', SITE_URL='https://mica.test')
@@ -315,6 +316,7 @@ class GoogleEmailCodeTests(TestCase):
         body = {'id_token': 'tok'}
         if remember:
             body['remember_me'] = True
+        grant_registration_code(self.client)   # new accounts need a registration code
         with patch.object(firebase_auth, 'verify_id_token', return_value=claims):
             return self.client.post(reverse('google_register'), data=json.dumps(body),
                                     content_type='application/json')

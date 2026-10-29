@@ -402,6 +402,7 @@
   body.no-students .nav-item[data-section="summary"],
   body.no-students .nav-item[data-section="alerts"],
   body.no-assess .nav-item[data-section="assessments"],
+  body.no-codes .nav-item[data-section="regcodes"],
   body.no-chat .thread-composer,
   body.no-flag [onclick*="flagCurrentStudent"],
   body.no-flag [onclick*="openFlagModal"],
@@ -483,6 +484,10 @@
       <button class="nav-item" data-section="appointments" onclick="goTo('appointments')">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="5" width="17" height="16" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>
         Appointments
+      </button>
+      <button class="nav-item" data-section="regcodes" onclick="goTo('regcodes')">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M16 7l3 3M14 9l2 2"/></svg>
+        Registration Codes
       </button>
       <button class="nav-item" data-section="reports" onclick="goTo('reports')">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 3h9l5 5v13H6z"/><path d="M15 3v5h5M9 13h6M9 17h6"/></svg>
@@ -816,6 +821,42 @@
               </tr>
             </thead>
             <tbody id="appointmentsTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ============ REGISTRATION CODES ============ -->
+      <section class="section" id="sec-regcodes">
+        <div class="card" style="padding:26px; max-width:640px; margin-bottom:18px;">
+          <div style="font-weight:700; font-size:16px; margin-bottom:6px;">Student registration code</div>
+          <p style="font-size:13.5px; color:var(--ink-soft); line-height:1.55; margin-bottom:18px;">
+            New students need a code before they can register. Generate one, then give it to the student.
+            Each code works once and expires after <span id="regCodeTtl">24</span> hours.
+            You can generate one new code per minute.
+          </p>
+
+          <div id="regCodeBox" style="display:none; text-align:center; padding:18px; border:1.5px dashed var(--line); border-radius:14px; margin-bottom:18px;">
+            <div style="font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-soft); font-weight:700; margin-bottom:8px;">New code</div>
+            <div id="regCodeValue" style="font-family:'IBM Plex Mono',monospace; font-size:38px; font-weight:700; letter-spacing:.3em; padding-left:.3em; user-select:all;"></div>
+            <button class="pill-btn ghost sm" style="margin-top:12px;" onclick="copyRegCode()">Copy code</button>
+          </div>
+
+          <button class="pill-btn solid" id="regCodeBtn" onclick="generateRegCode()">Generate code</button>
+          <span id="regCodeWait" style="margin-left:12px; font-size:13px; color:var(--ink-soft);"></span>
+        </div>
+
+        <div class="card" style="overflow-x:auto;">
+          <table>
+            <thead>
+              <tr>
+                <th><br>Code</th>
+                <th><br>Status</th>
+                <th><br>Generated</th>
+                <th><br>Expires</th>
+                <th><br>Used by</th>
+              </tr>
+            </thead>
+            <tbody id="regCodeRows"></tbody>
           </table>
         </div>
       </section>
@@ -1283,6 +1324,7 @@ function applyPermissions(){
     'no-resolve':    !PERMS.resolve_flags,
     'no-archive':    !PERMS.archive_students,
     'no-export':     !PERMS.export_records,
+    'no-codes':      !PERMS.generate_codes,
     'no-schedule':   !(PERMS.schedule_services || []).length,
     'no-writenotes': !(PERMS.write_note_services || []).length,
   };
@@ -1291,6 +1333,7 @@ function applyPermissions(){
 function denied(msg){ showToast(msg || "Your staff role doesn't allow this."); }
 
 let alerts = [];
+let regCodeTimer = null;   // Registration Codes cooldown ticker
 let suggested = [];
 
 let admins = [];
@@ -1349,6 +1392,7 @@ const titles = {
   assessments:["Monitor","Assessment Records"],
   alerts:["Monitor","Risk Alerts"],
   appointments:["Operations","Appointments"],
+  regcodes:["Operations","Registration Codes"],
   reports:["Operations","Reports & Analytics"],
   settings:["Operations","Settings"],
 };
@@ -1362,6 +1406,7 @@ function goTo(section){
   document.getElementById('sidebar').classList.remove('open');
   if(section==='dashboard') setTimeout(renderCharts,10);
   if(section === 'appointments'){ loadAppointments(); }
+  if(section === 'regcodes'){ loadRegCodes(); } else { clearInterval(regCodeTimer); }
   if(section==='messages'){
     setTimeout(loadGuidanceInbox,10);
     if(activeThreadId){
@@ -3346,6 +3391,91 @@ async function exportPeriodPdf(){
 /* =========================================================
    MISC
 ========================================================= */
+/* =========================================================
+   REGISTRATION CODES
+========================================================= */
+let regCodeWaitLeft = 0;
+
+function regDateText(iso){
+  if(!iso) return '';
+  return new Date(iso).toLocaleString([], {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'});
+}
+
+function renderRegCodes(data){
+  if(data.ttl_hours) document.getElementById('regCodeTtl').textContent = data.ttl_hours;
+  const badgeCls = {active:'stable', used:'neutral', expired:'urgent'};
+  const label = {active:'Active', used:'Used', expired:'Expired'};
+  const rows = data.codes || [];
+  document.getElementById('regCodeRows').innerHTML = rows.length ? rows.map(c => `
+    <tr style="cursor:default;">
+      <td style="font-family:'IBM Plex Mono',monospace; font-weight:700; letter-spacing:.12em;">${escapeHtmlStaff(c.code)}</td>
+      <td><span class="badge ${badgeCls[c.status] || 'neutral'}">${label[c.status] || c.status}</span></td>
+      <td>${regDateText(c.created_at)}</td>
+      <td>${regDateText(c.expires_at)}</td>
+      <td>${c.used_by ? escapeHtmlStaff(c.used_by) : '<span style="color:var(--ink-soft);">\u2014</span>'}</td>
+    </tr>`).join('')
+    : '<tr style="cursor:default;"><td colspan="5" style="text-align:center; color:var(--ink-soft); padding:28px;">No codes generated yet.</td></tr>';
+  startRegCodeCountdown(data.cooldown_seconds || 0);
+}
+
+function startRegCodeCountdown(seconds){
+  clearInterval(regCodeTimer);
+  regCodeWaitLeft = seconds;
+  const btn = document.getElementById('regCodeBtn');
+  const note = document.getElementById('regCodeWait');
+  const paint = () => {
+    btn.disabled = regCodeWaitLeft > 0;
+    note.textContent = regCodeWaitLeft > 0 ? `Next code in ${regCodeWaitLeft}s` : '';
+  };
+  paint();
+  if(regCodeWaitLeft <= 0) return;
+  regCodeTimer = setInterval(() => {
+    regCodeWaitLeft -= 1;
+    paint();
+    if(regCodeWaitLeft <= 0) clearInterval(regCodeTimer);
+  }, 1000);
+}
+
+function loadRegCodes(){
+  if(!PERMS.generate_codes) return denied();
+  fetch("{% url 'staff_registration_codes' %}")
+    .then(r => r.json())
+    .then(renderRegCodes)
+    .catch(() => showToast("Couldn't load registration codes."));
+}
+
+function generateRegCode(){
+  if(!PERMS.generate_codes) return denied();
+  const btn = document.getElementById('regCodeBtn');
+  btn.disabled = true;
+  fetch("{% url 'staff_registration_code_generate' %}", {
+    method:'POST',
+    headers:{'X-CSRFToken':getCookie('csrftoken')}
+  })
+    .then(r => r.json().then(data => ({ok:r.ok, data})))
+    .then(({ok, data}) => {
+      if(ok && data.new_code){
+        document.getElementById('regCodeValue').textContent = data.new_code;
+        document.getElementById('regCodeBox').style.display = 'block';
+      } else {
+        showToast(data.error || "Couldn't generate a code.");
+      }
+      if(data.codes) renderRegCodes(data); else btn.disabled = false;
+    })
+    .catch(() => { btn.disabled = false; showToast("Couldn't generate a code."); });
+}
+
+function copyRegCode(){
+  const code = document.getElementById('regCodeValue').textContent;
+  if(!code) return;
+  const done = () => showToast("Code copied");
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(code).then(done, () => showToast("Press and hold the code to copy it."));
+  } else {
+    showToast("Press and hold the code to copy it.");
+  }
+}
+
 function showToast(msg){
   const t = document.getElementById('toast');
   t.textContent = msg;

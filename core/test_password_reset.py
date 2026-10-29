@@ -15,6 +15,7 @@ from . import firebase_reset
 from .firebase_reset import FirebaseResetError
 from .models import LoginThrottle, PasswordResetRequest, UserProfile
 from .views import firebase_auth
+from .regcode_testing import grant_registration_code
 
 OLD_PW = 'Old-pass1'
 NEW_PW = 'New-pass12'
@@ -409,6 +410,7 @@ class PasswordRuleLengthTests(TestCase):
     }
 
     def register(self, password):
+        grant_registration_code(self.client)
         return self.client.post(reverse('register'), {**self.FORM, 'password': password, 'confirm_password': password})
 
     def test_seven_characters_is_now_too_short(self):
@@ -419,6 +421,7 @@ class PasswordRuleLengthTests(TestCase):
         self.assertRedirects(self.register('Abcdef1!'), reverse('login'), fetch_redirect_response=False)
 
     def test_register_page_states_the_new_minimum(self):
+        grant_registration_code(self.client)
         self.assertContains(self.client.get(reverse('register')), 'At least 8 characters')
 
 

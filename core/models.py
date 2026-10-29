@@ -192,6 +192,7 @@ class StaffSubclass(models.Model):
     view_assessments = models.BooleanField(default=False)
     archive_students = models.BooleanField(default=False)     # archive / reactivate
     export_records = models.BooleanField(default=False)
+    generate_codes = models.BooleanField(default=False)       # make student registration codes
 
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -439,6 +440,25 @@ class EnrolledStudent(models.Model):
     def __str__(self):
         return "%s (%s)" % (self.student_number, self.last_name)
     
+
+class RegistrationCode(models.Model):
+    """A short code (6 characters) a staff member hands to a student so they can register.
+
+    Single-use, and it stops working `expires_at`. Staff may generate one code a minute.
+    """
+    code = models.CharField(max_length=6, unique=True)
+    created_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='registration_codes')
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    used_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    used_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.code
+
 
 class AuditEvent(models.Model):
     """Admin-level events that aren't 'staff opened a student' (settings changed, logins...)."""

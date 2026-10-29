@@ -32,6 +32,7 @@ from .models import LoginVerification
 from .models import PasswordResetRequest
 from .models import SiteSettings
 from .models import EnrolledStudent
+from . import registration_codes as regcodes
 from .models import SignInFailure
 from . import firebase_reset
 from urllib.parse import urlencode
@@ -176,6 +177,14 @@ def google_register(request):
                 else:
                     if not SiteSettings.get().registration_open:
                         return JsonResponse({"error": "Registration is closed right now. Please contact the Guidance Office."}, status=403)
+                    # A brand-new account needs the code a staff member gave the student.
+                    reg_code = regcodes.session_code(request, lock=True)
+                    if reg_code is None:
+                        return JsonResponse({
+                            "error": "We couldn't find a MICA account for this Google account. New students need a "
+                                     "registration code from the Guidance Office: choose Register and enter it first.",
+                            "needs_code": True,
+                        }, status=403)
                     user = User.objects.create_user(
                         username=_google_username(uid),
                         email=email,
@@ -185,6 +194,7 @@ def google_register(request):
                     profile = UserProfile.objects.create(
                         user=user, firebase_uid=uid, needs_profile_setup=True,
                     )
+                    regcodes.use_code(request, reg_code, user)
     except IntegrityError:
         # Usually a concurrent first sign-in for the same uid (the client can just
         # retry). If it keeps happening, the log line below names the constraint.
@@ -366,8 +376,32 @@ def _enrollment_check(student_number, last_name):
             "Please check them, or contact the Guidance Office.")
 
 
-def _register_page(request):
-    return render(request, "core/register.html", {"courses": COURSES})
+class _CodeGone(Exception):
+    pass
+
+
+def _register_page(request, **extra):
+    ctx = {"courses": COURSES,
+           "code_ok": regcodes.session_code(request) is not None,
+           "closed": not SiteSettings.get().registration_open}
+    ctx.update(extra)
+    return render(request, "core/register.html", ctx)
+
+
+def _register_code_step(request):
+    """Step 1: the student types the code staff gave them; a good one is remembered in the session."""
+    if regcodes.entry_locked(request):
+        messages.error(request, "Too many wrong codes. Please wait a few minutes, or ask the Guidance Office for help.")
+        return _register_page(request)
+    code = regcodes.find_usable_code(request.POST.get("registration_code"))
+    if code is None:
+        regcodes.record_entry_failure(request)
+        messages.error(request, "That code isn't valid or has expired. Please check it, or ask the Guidance Office for a new one.")
+        return _register_page(request)
+    regcodes.clear_entry_failures(request)
+    request.session[regcodes.SESSION_KEY] = code.pk
+    return redirect("register")
+
 
 @never_cache
 @ensure_csrf_cookie
@@ -376,7 +410,14 @@ def register(request):
         messages.error(request, "Registration is closed right now. Please contact the Guidance Office.")
         return _register_page(request)
 
+    if request.method == "POST" and request.POST.get("step") == "code":
+        return _register_code_step(request)
+
     if request.method == "POST":
+        if regcodes.session_code(request) is None:
+            messages.error(request, "Please enter your registration code first.")
+            return _register_page(request)
+
         first_name = request.POST.get("first_name", "").strip()
         last_name = request.POST.get("last_name", "").strip()
         student_number = request.POST.get("student_number", "").strip()
@@ -428,6 +469,9 @@ def register(request):
 
         try:
             with transaction.atomic():
+                reg_code = regcodes.session_code(request, lock=True)   # re-check, and lock, as the account is made
+                if reg_code is None:
+                    raise _CodeGone()
                 user = User.objects.create_user(
                     username=username,
                     email=email,
@@ -441,6 +485,10 @@ def register(request):
                     course=course,
                     year_level=year_level
                 )
+                regcodes.use_code(request, reg_code, user)
+        except _CodeGone:
+            messages.error(request, "Your registration code is no longer valid. Please ask the Guidance Office for a new one.")
+            return _register_page(request)
         except IntegrityError as e:
             print("REGISTER IntegrityError:", repr(e))
             messages.error(request, "Username or student number is already registered.")

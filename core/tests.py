@@ -21,6 +21,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from .models import LoginThrottle, UserProfile, AccessLog, StudentStatusLog
 from .views import _load_speech_model, speech_to_text, firebase_auth, _safety_reply
 from .hotlines import get_hotlines, DEFAULT_HOTLINES
+from .regcode_testing import grant_registration_code
 
 
 def make_wav(sample_rate=16000, channels=1, sample_width=2, frame_count=1600):
@@ -97,6 +98,7 @@ class GoogleRegisterTests(TestCase):
                   'firebase': {'sign_in_provider': 'google.com'}, **extra}
         if email_verified is not None:
             claims['email_verified'] = email_verified
+        grant_registration_code(self.client)   # new accounts need a registration code
         with patch.object(firebase_auth, 'verify_id_token', return_value=claims):
             return self.client.post(
                 reverse('google_register'),
@@ -293,6 +295,7 @@ class RegisterUniquenessTests(TestCase):
     }
 
     def register(self, **overrides):
+        grant_registration_code(self.client)
         return self.client.post(reverse('register'), {**self.FORM, **overrides})
 
     def assert_rejected(self, response, message):
@@ -349,6 +352,7 @@ class PasswordRuleTests(TestCase):
     FORM = RegisterUniquenessTests.FORM
 
     def register(self, password):
+        grant_registration_code(self.client)
         return self.client.post(
             reverse('register'), {**self.FORM, 'password': password, 'confirm_password': password},
         )
@@ -363,6 +367,7 @@ class PasswordRuleTests(TestCase):
 
     def test_valid_passwords_are_accepted(self):
         for i, good in enumerate(('Abcdef1!', 'Abcdefg!', 'abcdefE_', 'Longer pass 9', 'Abcdef12')):
+            grant_registration_code(self.client)
             response = self.client.post(reverse('register'), {
                 **self.FORM, 'password': good, 'confirm_password': good,
                 'username': f'user{i}', 'student_number': f'S-{i}', 'email': f'u{i}@example.com',

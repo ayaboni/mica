@@ -837,22 +837,47 @@ input::-ms-reveal, input::-ms-clear { display: none; }
   <div class="auth-card" style="max-width:420px;">
     <h2>Create an Account</h2>
 
+    {% if messages %}
+      {% for message in messages %}
+        {% if message.tags == 'success' %}
+          <p style="color: #5f7f58; font-weight: bold; margin-bottom: 12px; text-align: center;">
+            {{ message }}
+          </p>
+        {% else %}
+          <p style="color: #d9534f; font-weight: bold; margin-bottom: 12px; text-align: center;">
+            {{ message }}
+          </p>
+        {% endif %}
+      {% endfor %}
+    {% endif %}
+
+    {% if closed %}
+      <p style="text-align:center; color:#7a6a5c; margin-bottom:18px;">Registration is closed right now.</p>
+      <p class="auth-foot">Already have an account? <a href="{% url 'login' %}">Log In</a></p>
+
+    {% elif not code_ok %}
+    <form method="POST" action="{% url 'register' %}" autocomplete="off">
+      {% csrf_token %}
+      <input type="hidden" name="step" value="code">
+
+      <p style="font-size:0.9rem; color:#7a6a5c; margin:0 4px 16px; line-height:1.5; text-align:center;">
+        Enter the 6-character registration code from the Guidance Office to continue.
+      </p>
+
+      <div class="auth-field" style="margin-bottom: 26px;">
+        <input type="text" id="registrationCode" name="registration_code" placeholder="Registration code"
+               maxlength="12" required autofocus autocapitalize="characters" spellcheck="false"
+               style="text-align:center; letter-spacing:.35em; font-weight:700; font-size:1.2rem; text-transform:uppercase;">
+      </div>
+
+      <button type="submit" class="btn btn-brown btn-block">Continue</button>
+
+      <p class="auth-foot">Already have an account? <a href="{% url 'login' %}">Log In</a></p>
+    </form>
+
+    {% else %}
     <form method="POST" action="{% url 'register' %}">
       {% csrf_token %}
-
-      {% if messages %}
-        {% for message in messages %}
-          {% if message.tags == 'success' %}
-            <p style="color: #5f7f58; font-weight: bold; margin-bottom: 12px; text-align: center;">
-              {{ message }}
-            </p>
-          {% else %}
-            <p style="color: #d9534f; font-weight: bold; margin-bottom: 12px; text-align: center;">
-              {{ message }}
-            </p>
-          {% endif %}
-        {% endfor %}
-      {% endif %}
 
   <div class="two-col">
     <div class="auth-field">
@@ -920,6 +945,7 @@ input::-ms-reveal, input::-ms-clear { display: none; }
 
   <p class="auth-foot">Already have an account? <a href="{% url 'login' %}">Log In</a></p>
 </form>
+    {% endif %}
   </div>
 </div>
 
@@ -1120,7 +1146,8 @@ function initContactForm() {
   }
 
   let signingIn = false;
-  document.querySelector("#googleSignIn").addEventListener("click", async () => {
+  const googleBtn = document.querySelector("#googleSignIn");   // only on the form step, not the code step
+  if (googleBtn) googleBtn.addEventListener("click", async () => {
     if (signingIn) return;
     signingIn = true;
     const btn = document.querySelector("#googleSignIn");
