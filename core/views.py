@@ -32,6 +32,7 @@ from .models import LoginVerification
 from .models import PasswordResetRequest
 from .models import SiteSettings
 from .models import EnrolledStudent
+from .reports import EXERCISE_LABELS
 from . import registration_codes as regcodes
 from .models import SignInFailure
 from . import firebase_reset
@@ -1854,7 +1855,7 @@ AFFIRMATION_STARTERS = [
     "I am doing the best I can with what I have today.",
     "Rest is part of the process, not a reward for finishing it.",
 ]
-EXERCISE_KEYS = {'breathing', 'affirmations', 'grounding', 'pomodoro'}
+EXERCISE_KEYS = set(EXERCISE_LABELS)
 
 
 def _json_body(request):

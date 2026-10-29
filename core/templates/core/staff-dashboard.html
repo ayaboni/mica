@@ -323,6 +323,9 @@
   .rtab-btn{padding:11px 4px; margin-right:22px; background:none; border:none; border-bottom:2.5px solid transparent; font-size:14px; font-weight:600; color:var(--ink-soft); cursor:pointer;}
   .rtab-btn.active{color:var(--ink); border-color:var(--sage-deep);}
   .rpanel[hidden]{display:none;}
+  .mtab-btn{padding:11px 4px; margin-right:22px; background:none; border:none; border-bottom:2.5px solid transparent; font-size:14px; font-weight:600; color:var(--ink-soft); cursor:pointer;}
+  .mtab-btn.active{color:var(--ink); border-color:var(--sage-deep);}
+  .mpanel[hidden]{display:none;}
   .rep-table{width:100%; border-collapse:collapse; font-size:13.5px;}
   .rep-table th{text-align:left; padding:8px 10px; font-size:12px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.03em; border-bottom:1px solid var(--line);}
   .rep-table td{padding:9px 10px; border-bottom:1px solid var(--line);}
@@ -459,7 +462,7 @@
       </button>
       <button class="nav-item" data-section="mood" onclick="goTo('mood')">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12h4l2-7 4 14 2-9 2 2h4"/></svg>
-        Mood Monitoring
+        Monitoring
       </button>
       <button class="nav-item" data-section="summary" onclick="goTo('summary')">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 11.5a8.4 8.4 0 0 1-8.9 8.4 8.7 8.7 0 0 1-3.1-.6L3 21l1.8-5.4A8.4 8.4 0 0 1 3.6 11.5 8.4 8.4 0 0 1 12 3a8.6 8.6 0 0 1 9 8.5z"/></svg>
@@ -675,6 +678,12 @@
 
       <!-- ============ MOOD MONITORING ============ -->
       <section class="section" id="sec-mood">
+        <div class="tab-row">
+          <button class="mtab-btn active" onclick="showMonitorTab('mood', this)">Mood</button>
+          <button class="mtab-btn" onclick="showMonitorTab('exercises', this)">Exercises</button>
+        </div>
+
+        <div class="mpanel" id="mon-mood">
         <div class="grid-2">
           <div class="card panel">
             <div class="panel-head">
@@ -694,6 +703,51 @@
             <div><h3>30-Day Campus Mood &amp; Check-ins</h3><div class="sub">Average mood and number of check-ins per day</div></div>
           </div>
           <canvas id="moodJournalChart" height="90"></canvas>
+        </div>
+        </div>
+
+        <div class="mpanel" id="mon-exercises" hidden>
+          <div class="card panel" style="margin-bottom:18px;">
+            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+              <select class="filter-select" id="moPeriod" onchange="loadExerciseStats()">
+                <option value="7">Last 7 days</option>
+                <option value="30" selected>Last 30 days</option>
+                <option value="90">Last 90 days</option>
+              </select>
+              <select class="filter-select" id="moCourse" onchange="loadExerciseStats()"><option value="">All courses</option></select>
+              <select class="filter-select" id="moYear" onchange="loadExerciseStats()">
+                <option value="">All year levels</option>
+                <option value="1">Year 1</option><option value="2">Year 2</option>
+                <option value="3">Year 3</option><option value="4">Year 4</option>
+              </select>
+              <input class="filter-select" id="moStudent" list="moStudentList" placeholder="Search a student…" autocomplete="off" onchange="moStudentChanged()">
+              <datalist id="moStudentList"></datalist>
+            </div>
+            <div style="margin-top:10px; font-size:12.5px; color:var(--ink-soft);">Counts and time only. What students write or type in the exercises is never saved or shown.</div>
+          </div>
+
+          <div id="moCards" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:16px; margin-bottom:18px;"></div>
+
+          <div class="card panel" style="margin-bottom:18px;">
+            <div class="panel-head"><div><h3>Sessions per day</h3><div class="sub">By exercise</div></div></div>
+            <canvas id="moDailyChart" height="90"></canvas>
+          </div>
+
+          <div class="grid-2" style="grid-template-columns:1fr 1fr; margin-bottom:18px;">
+            <div class="card panel">
+              <div class="panel-head"><div><h3>How often students use them</h3><div class="sub">Number of different days used</div></div></div>
+              <canvas id="moFreqChart" height="170"></canvas>
+            </div>
+            <div class="card panel">
+              <div class="panel-head"><div><h3>Time of day</h3><div class="sub">When sessions start</div></div></div>
+              <canvas id="moHourChart" height="170"></canvas>
+            </div>
+          </div>
+
+          <div class="card panel">
+            <div class="panel-head"><div><h3>By exercise</h3></div></div>
+            <div id="moTable" style="overflow-x:auto;"></div>
+          </div>
         </div>
       </section>
 
@@ -1387,7 +1441,7 @@ const titles = {
   dashboard:["Overview","Dashboard"],
   students:["Monitor","Students"],
   messages:["Monitor","Student Messages"],
-  mood:["Monitor","Mood Monitoring"],
+  mood:["Monitor","Monitoring"],
   summary:["Monitor","Chat & Mood Summary"],
   assessments:["Monitor","Assessment Records"],
   alerts:["Monitor","Risk Alerts"],
@@ -1417,7 +1471,7 @@ function goTo(section){
   } else {
     clearInterval(threadPollTimer);
   }
-  if(section==='mood') setTimeout(renderMoodCharts,10);
+  if(section==='mood') setTimeout(refreshMonitoring,10);
   if(section==='summary') loadSummary();
   if(section==='assessments') loadAssessments();
   if(section==='reports') refreshReports();
@@ -2917,6 +2971,110 @@ function renderMoodCharts(){
   });
 }
 
+/* ---------- Monitoring tabs + Exercises ---------- */
+function showMonitorTab(tab, el){
+  document.querySelectorAll('.mtab-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.mpanel').forEach(p => p.hidden = true);
+  document.getElementById('mon-' + tab).hidden = false;
+  refreshMonitoring();
+}
+function refreshMonitoring(){
+  if(document.getElementById('mon-exercises').hidden) renderMoodCharts();
+  else loadExerciseStats();
+}
+
+let moStudentId = '';
+const moLabel = s => `${s.name} (${s.student_number})`;
+
+function fillMoFilters(){
+  const course = document.getElementById('moCourse');
+  if(course.options.length <= 1 && courseOptions.length){
+    courseOptions.forEach(c => course.add(new Option(c.label, c.code)));
+  }
+  const list = document.getElementById('moStudentList');
+  if(!list.options.length && studentsReal.length){
+    studentsReal.forEach(s => { const o = document.createElement('option'); o.value = moLabel(s); list.appendChild(o); });
+  }
+}
+function moStudentChanged(){
+  const v = document.getElementById('moStudent').value.trim();
+  const s = studentsReal.find(x => moLabel(x) === v);
+  if(v && !s) return;               // still typing, wait for a match
+  moStudentId = s ? s.id : '';
+  loadExerciseStats();
+}
+
+function loadExerciseStats(){
+  if(!PERMS.view_students) return;
+  fillMoFilters();
+  const r = periodRange('moPeriod');
+  const q = new URLSearchParams({from: r.from, to: r.to,
+    course: document.getElementById('moCourse').value,
+    year: document.getElementById('moYear').value,
+    student: moStudentId});
+  fetch("{% url 'staff_exercise_stats' %}?" + q)
+    .then(x => x.json()).then(renderExerciseStats)
+    .catch(() => showToast('Could not load exercise stats'));
+}
+
+function fmtDur(sec){ return sec < 60 ? sec + ' s' : (sec / 60).toFixed(1) + ' min'; }
+
+function renderExerciseStats(d){
+  const t = d.totals;
+  const card = (label, value, sub) => `
+    <div class="card panel">
+      <div style="font-size:12.5px; font-weight:700; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.03em;">${label}</div>
+      <div style="font-size:34px; font-weight:700; margin:6px 0 2px;">${value}</div>
+      <div style="font-size:12.5px; color:var(--ink-soft);">${sub}</div>
+    </div>`;
+  document.getElementById('moCards').innerHTML =
+    card('Sessions', t.sessions, 'in this period') +
+    card('Time spent', t.minutes + ' min', 'avg ' + fmtDur(t.avg_seconds) + ' per session') +
+    card('Students who used them', t.adoption == null ? '–' : t.adoption + '%', t.active_students + ' of ' + t.total_students + ' students') ;
+
+  const colors = ['#5F7F68','#9CC5E8','#D9A46B','#B5533C','#786251','#87A991'];
+  if(charts.moDaily) charts.moDaily.destroy();
+  charts.moDaily = new Chart(document.getElementById('moDailyChart'), {
+    type:'bar',
+    data:{labels:d.daily.labels.map(x => x.slice(5)),
+          datasets:d.daily.series.map((s, i) => ({label:s.label, data:s.data,
+            backgroundColor:colors[i % colors.length], borderRadius:4, maxBarThickness:18}))},
+    options:{plugins:{legend:{position:'bottom', labels:{font:chartFont, boxWidth:10}}},
+             scales:{x:{stacked:true, grid:{display:false}, ticks:{font:chartFont, maxTicksLimit:12}},
+                     y:{stacked:true, beginAtZero:true, grid:baseGrid(), ticks:{precision:0, font:chartFont}}}}
+  });
+
+  if(charts.moFreq) charts.moFreq.destroy();
+  charts.moFreq = new Chart(document.getElementById('moFreqChart'), {
+    type:'bar',
+    data:{labels:d.frequency.map(f => f.label),
+          datasets:[{data:d.frequency.map(f => f.students), backgroundColor:'#87A991', borderRadius:8, maxBarThickness:46}]},
+    options:{plugins:{legend:{display:false}},
+             scales:{y:{beginAtZero:true, grid:baseGrid(), ticks:{precision:0, font:chartFont}},
+                     x:{grid:{display:false}, ticks:{font:chartFont}}}}
+  });
+
+  if(charts.moHour) charts.moHour.destroy();
+  charts.moHour = new Chart(document.getElementById('moHourChart'), {
+    type:'bar',
+    data:{labels:d.by_hour.map((_, h) => h + ':00'),
+          datasets:[{data:d.by_hour, backgroundColor:'#9CC5E8', borderRadius:4, maxBarThickness:14}]},
+    options:{plugins:{legend:{display:false}},
+             scales:{y:{beginAtZero:true, grid:baseGrid(), ticks:{precision:0, font:chartFont}},
+                     x:{grid:{display:false}, ticks:{font:chartFont, maxTicksLimit:8}}}}
+  });
+
+  document.getElementById('moTable').innerHTML = `<table class="rep-table">
+    <tr><th>Exercise</th><th class="num">Sessions</th><th class="num">Students</th><th class="num">Total time</th><th class="num">Avg per session</th><th class="num">Extra</th><th class="num">Last used</th></tr>
+    ${d.exercises.map(e => `<tr>
+      <td>${e.label}</td><td class="num">${e.sessions}</td><td class="num">${e.students}</td>
+      <td class="num">${e.minutes} min</td><td class="num">${e.sessions ? fmtDur(e.avg_seconds) : '–'}</td>
+      <td class="num">${e.count_label ? e.count + ' ' + e.count_label : '–'}</td>
+      <td class="num">${e.last_used || '–'}</td></tr>`).join('')}
+  </table>`;
+}
+
 /* ---------- Service Reports ---------- */
 const SERVICE_ICON = {information:'📢', counseling:'💬', testing:'📝', referral:'🤝'};
 const SERVICE_KEYS_UI = ['information','counseling','testing','referral'];
@@ -2988,7 +3146,7 @@ let semesters = [];
 function loadSemesters(){
   return fetch("{% url 'staff_semesters' %}").then(r => r.json()).then(d => {
     semesters = d.semesters || [];
-    ['repPeriod', 'anPeriod', 'exPeriod'].forEach(id => {
+    ['repPeriod', 'anPeriod', 'exPeriod', 'moPeriod'].forEach(id => {
       const sel = document.getElementById(id);
       [...sel.options].filter(o => o.value.startsWith('sem:')).forEach(o => o.remove());
       const beforeCustom = [...sel.options].find(o => o.value === 'custom') || null;
@@ -3652,7 +3810,7 @@ let staffNotifInitialized = false;
         body: "Cards like these show how many students are being monitored, today's check-ins, active risk flags and more, so you can see how things are going the moment you sign in." },
       { target: '.nav-item[data-section="students"]', sidebar: true, title: "Students",
         body: "See every student with their mood trend, streak and risk level. Filter by risk or program, then open a student to see their mood history, flag them for a counselor, send a check-in, schedule an appointment or keep notes." },
-      { target: '.nav-item[data-section="mood"]', sidebar: true, title: "Mood Monitoring",
+      { target: '.nav-item[data-section="mood"]', sidebar: true, title: "Monitoring",
         body: "Charts of how students' moods are trending over time, so you can spot dips early." },
       { target: '.nav-item[data-section="summary"]', sidebar: true, title: "Chat & Mood Summary",
         body: "One table per student with their recent mood, check-ins, Mica chat topics, guidance chat status, who is handling them and their next appointment." },

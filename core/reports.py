@@ -18,13 +18,21 @@ from django.utils import timezone
 from django.utils.dateparse import parse_date
 from django.views.decorators.http import require_POST
 
-from .models import Activity, Appointment, StudentFlag, StudentNote, Semester, MoodEntry, COURSES, SERVICES
+from .models import Activity, Appointment, StudentFlag, StudentNote, Semester, MoodEntry, ExerciseSession, COURSES, SERVICES
 from .permissions import can, require_perm, staff_permissions
 
 staff_only = user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
 SERVICE_KEYS = [k for k, _ in SERVICES]
 COURSE_LABELS = dict(COURSES)
 MAX_DAYS = 366
+
+EXERCISE_LABELS = {
+    "breathing": "Breathing",
+    "affirmations": "Affirmations",
+    "grounding": "5-4-3-2-1 Grounding",
+    "pomodoro": "Pomodoro",
+}
+EXERCISE_COUNT_LABELS = {"affirmations": "said", "grounding": "finished"}
 
 
 def aggregate_sessions(notes, appts):
@@ -261,6 +269,96 @@ def analytics(request):
         "checkin_by_course": checkin_by_course,
     })
 
+
+@login_required(login_url='login')
+@staff_only
+@require_perm('view_students')
+def exercise_stats(request):
+    """How students use the exercises. Counts and time only, never anything a student wrote."""
+    start, end = _period(request)
+    t0, t1 = _day_bounds(start, end)
+    course = (request.GET.get("course") or "").strip()
+    year = (request.GET.get("year") or "").strip()
+    student = (request.GET.get("student") or "").strip()
+
+    students = User.objects.filter(is_staff=False, is_superuser=False).filter(
+        Q(profile__account_status="active") | Q(profile__isnull=True))
+    if course:
+        students = students.filter(profile__course=course)
+    if year:
+        students = students.filter(profile__year_level=year)
+    if student.isdigit():
+        students = students.filter(id=int(student))
+    total_students = students.count()
+
+    rows = ExerciseSession.objects.filter(
+        user__in=students, created_at__range=(t0, t1),
+    ).values_list("user_id", "exercise", "duration_seconds", "count", "created_at")
+
+    def blank():
+        return {"sessions": 0, "seconds": 0, "count": 0, "users": set(), "last": None}
+
+    by_ex = {k: blank() for k in EXERCISE_LABELS}
+    days_by_user = defaultdict(set)
+    daily = defaultdict(lambda: defaultdict(int))
+    by_hour = [0] * 24
+
+    for uid, ex, secs, cnt, when in rows:
+        local = timezone.localtime(when)
+        day = local.date()
+        e = by_ex.setdefault(ex, blank())
+        e["sessions"] += 1
+        e["seconds"] += secs
+        e["count"] += cnt
+        e["users"].add(uid)
+        if e["last"] is None or day > e["last"]:
+            e["last"] = day
+        days_by_user[uid].add(day)
+        daily[ex][day] += 1
+        by_hour[local.hour] += 1
+
+    days = []
+    d = start
+    while d <= end:
+        days.append(d)
+        d += timedelta(days=1)
+
+    all_sessions = sum(e["sessions"] for e in by_ex.values())
+    all_seconds = sum(e["seconds"] for e in by_ex.values())
+    active = len(days_by_user)
+    n_days = [len(v) for v in days_by_user.values()]
+
+    return JsonResponse({
+        "period": {"from": start.isoformat(), "to": end.isoformat()},
+        "totals": {
+            "sessions": all_sessions,
+            "minutes": round(all_seconds / 60, 1),
+            "avg_seconds": round(all_seconds / all_sessions) if all_sessions else 0,
+            "active_students": active,
+            "total_students": total_students,
+            "adoption": round(100 * active / total_students) if total_students else None,
+        },
+        "exercises": [{
+            "key": k, "label": EXERCISE_LABELS.get(k, k),
+            "sessions": e["sessions"], "students": len(e["users"]),
+            "minutes": round(e["seconds"] / 60, 1),
+            "avg_seconds": round(e["seconds"] / e["sessions"]) if e["sessions"] else 0,
+            "count": e["count"], "count_label": EXERCISE_COUNT_LABELS.get(k, ""),
+            "last_used": e["last"].isoformat() if e["last"] else None,
+        } for k, e in by_ex.items()],
+        "daily": {
+            "labels": [x.isoformat() for x in days],
+            "series": [{"key": k, "label": EXERCISE_LABELS.get(k, k),
+                        "data": [daily[k].get(x, 0) for x in days]} for k in by_ex],
+        },
+        "frequency": [
+            {"label": "Not used", "students": total_students - active},
+            {"label": "1 day", "students": sum(1 for n in n_days if n == 1)},
+            {"label": "2–3 days", "students": sum(1 for n in n_days if 2 <= n <= 3)},
+            {"label": "4+ days", "students": sum(1 for n in n_days if n >= 4)},
+        ],
+        "by_hour": by_hour,
+    })
 
 # ---------------------------------------------------------------- period report (export)
 @login_required(login_url='login')
