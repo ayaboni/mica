@@ -84,7 +84,7 @@ body.dark-mode .msg-avatar {
 }
 
 body.dark-mode .search-wrap input::placeholder,
-body.dark-mode .composer input::placeholder,
+body.dark-mode .composer textarea::placeholder,
 body.dark-mode .diary-box textarea::placeholder {
   color: #798a78;
 }
@@ -105,12 +105,12 @@ html.dyslexia body{line-height:1.7;}
 
   /* ---------- Sidebar ---------- */
   .sidebar{
-    width:260px;
-    min-width:260px;
+    width:264px;
+    min-width:264px;
     background:var(--sidebar-bg);
     display:flex;
     flex-direction:column;
-    padding:20px 16px;
+    padding:24px 16px 14px;
     gap:16px;
     transition:all .25s ease;
     flex-shrink:0;
@@ -307,14 +307,16 @@ html.dyslexia body{line-height:1.7;}
   }
   .content-header{
     background:var(--header-bg);
-    padding:24px 32px;
+    height:84px;
+    flex-shrink:0;
+    padding:0 34px;
     display:flex;
     align-items:center;
     justify-content:space-between;
   }
   .content-header h1{
     margin:0;
-    font-size:20px;
+    font-size:21px;
     font-weight:700;
     color:#fff;
     letter-spacing:.2px;
@@ -474,38 +476,61 @@ html.dyslexia body{line-height:1.7;}
   .typing-dots span:nth-child(3){animation-delay:.4s;}
   @keyframes blink{0%,80%,100%{opacity:.25;}40%{opacity:1;}}
 
-  .composer{
-    display:flex;
-    width:100%;
-    padding:16px 24px;
-    box-sizing:border-box;
-    align-items:center;
-    gap:12px;
-    background:var(--header-bg);
-  }
+/* ---------- Composer (floating) ---------- */
+:root{ --composer-accent:#8EAE88; }
+body.dark-mode{ --composer-accent:#9CC893; }
 
-  .composer input{
-    flex:1;
-    border:none;
-    outline:none;
-    border-radius:999px;
-    padding:14px 22px;
-    font-size:14px;
-    background:var(--card-bg);
-    color:var(--text-dark);
-    box-shadow:0 2px 6px rgba(0, 0, 0, 0.05);
-  }
-  .composer input::placeholder{color:#a89f8c;}
-  .composer .icon-btn{
-    background:var(--card-bg);
-    width:42px;
-    height:42px;
-    border-radius:50%;
-    flex-shrink:0;
-  }
-  .composer .icon-btn.send{color:#3f7d4a;}
-  .composer .icon-btn:hover{background:var(--btn-hover);}
-
+.composer{
+  display:flex;
+  justify-content:center;
+  width:100%;
+  padding:12px 24px 22px;
+  background:transparent;
+  flex-shrink:0;
+}
+.composer-box{
+  display:flex;
+  align-items:flex-end;
+  gap:4px;
+  width:100%;
+  max-width:640px;
+  background:var(--card-bg);
+  border:1.5px solid rgba(142,174,136,.5);
+  border-radius:26px;
+  padding:5px 7px 5px 20px;
+  box-shadow:0 4px 18px rgba(60,45,20,.12);
+  transition:border-color .15s ease;
+}
+.composer-box:focus-within{ border-color:var(--composer-accent); }
+.composer-box textarea{
+  flex:1;
+  border:none;
+  outline:none;
+  resize:none;
+  background:transparent;
+  font-family:inherit;
+  font-size:14px;
+  line-height:1.45;
+  color:var(--text-dark);
+  padding:10px 0;
+  max-height:160px;
+  overflow-y:auto;
+}
+.composer-box textarea::placeholder{ color:#a89f8c; }
+.composer .icon-btn{
+  background:transparent;
+  color:var(--composer-accent);
+  width:40px;
+  height:40px;
+  border-radius:50%;
+  flex-shrink:0;
+}
+.composer .icon-btn svg{ width:20px; height:20px; }
+.composer .icon-btn:hover{ background:rgba(142,174,136,.18); }
+.composer .icon-btn.mic-listening{ color:var(--danger); background:rgba(217,83,79,.12); }
+@media(max-width:760px){
+  .composer{ padding:10px 12px 14px; }
+}
   /* ---------- Mood Diary: calendar ---------- */
   .mood-inner{
     flex:1;
@@ -858,6 +883,144 @@ html.dyslexia body{line-height:1.7;}
   }
   .breathe-msg-row .msg-bubble{max-width:340px;}
 
+  /* ---------- Exercises ---------- */
+.ex-back{ position:absolute; top:18px; left:24px; z-index:2; }
+.ex-inner{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:20px;
+  padding:74px 24px 34px;
+  overflow-y:auto;
+}
+.ex-inner.hub{ padding-top:40px; }
+.ex-intro{ font-weight:700; font-size:15px; color:var(--text-dark); text-align:center; }
+
+.ex-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:18px;
+  width:100%;
+  max-width:820px;
+}
+.ex-card{
+  background:var(--card-bg);
+  color:var(--text-dark);
+  border-radius:var(--radius-lg);
+  box-shadow:var(--shadow);
+  padding:26px 22px;
+  text-align:left;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  transition:transform .15s ease, box-shadow .15s ease;
+}
+.ex-card:hover{ transform:translateY(-3px); box-shadow:0 8px 20px rgba(60,45,20,.14); }
+.ex-icon{
+  width:48px; height:48px; border-radius:14px;
+  background:var(--btn-bg);
+  display:flex; align-items:center; justify-content:center;
+  font-size:24px;
+}
+.ex-title{ font-family:'Quicksand',sans-serif; font-weight:700; font-size:16px; }
+.ex-desc{ font-size:13px; color:var(--text-mute); line-height:1.5; }
+.ex-meta{ font-size:11.5px; font-weight:700; color:var(--brown); letter-spacing:.3px; margin-top:auto; }
+
+/* Affirmations */
+.aff-tabs{ display:flex; gap:8px; }
+.aff-tab{
+  background:var(--btn-bg); color:var(--text-dark);
+  padding:9px 20px; border-radius:999px;
+  font-weight:700; font-size:13px;
+  transition:background .15s ease;
+}
+.aff-tab:hover{ background:var(--btn-hover); }
+.aff-tab.active{ background:var(--btn-active); }
+.aff-pane{ width:100%; max-width:520px; display:flex; flex-direction:column; align-items:center; gap:18px; }
+
+.aff-card{
+  width:100%;
+  min-height:210px;
+  background:var(--bubble-bg);
+  border:2px solid transparent;
+  border-radius:var(--radius-lg);
+  box-shadow:var(--shadow);
+  padding:34px 30px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:16px;
+  text-align:center;
+  cursor:pointer;
+  transition:transform .15s ease, background .2s ease, border-color .2s ease;
+}
+.aff-card:hover{ transform:translateY(-2px); }
+.aff-card.done{ background:var(--btn-hover); border-color:var(--btn-active); transform:scale(.98); }
+.aff-text{ font-family:'Quicksand',sans-serif; font-size:21px; font-weight:700; line-height:1.4; color:var(--brown-dark); }
+.aff-hint{ font-size:12px; color:var(--text-mute); }
+.aff-actions{ display:flex; gap:12px; }
+.aff-act{
+  background:var(--card-bg);
+  color:var(--brown);
+  width:44px; height:44px; border-radius:50%;
+  box-shadow:var(--shadow);
+}
+.aff-act svg{ width:20px; height:20px; }
+.aff-act:hover{ background:var(--btn-hover); }
+.aff-act:disabled{ opacity:.4; cursor:default; }
+.aff-act.on{ color:#d9534f; }
+.aff-act.on svg{ fill:currentColor; }
+.aff-count{ font-size:12px; font-weight:700; color:var(--text-mute); }
+
+.aff-add{ display:flex; gap:10px; width:100%; }
+.aff-add input{
+  flex:1; border:none; outline:none;
+  border-radius:999px; padding:12px 20px;
+  font-size:13.5px; background:var(--card-bg); color:var(--text-dark);
+  box-shadow:var(--shadow);
+}
+.aff-add input::placeholder{ color:#a89f8c; }
+
+.aff-why{
+  width:100%;
+  background:var(--card-bg);
+  border-radius:var(--radius-md);
+  padding:12px 16px;
+  font-size:13px; color:var(--text-dark);
+  box-shadow:var(--shadow);
+}
+.aff-why summary{ cursor:pointer; font-weight:700; }
+.aff-why p{ margin:10px 0 0; line-height:1.6; color:var(--text-mute); }
+
+.aff-fav-list{ width:100%; display:flex; flex-direction:column; gap:10px; }
+.aff-fav-row{
+  display:flex; align-items:center; gap:10px;
+  background:var(--bubble-bg);
+  border-radius:var(--radius-md);
+  padding:12px 14px;
+  box-shadow:var(--shadow);
+}
+.aff-fav-text{ flex:1; font-size:14px; line-height:1.45; color:var(--brown-dark); font-weight:600; }
+.aff-empty{ text-align:center; color:var(--text-mute); font-size:13.5px; padding:30px 10px; }
+
+/* 5-4-3-2-1 Grounding */
+.gr-inner{ justify-content:center; text-align:center; padding-top:60px; }
+.gr-sense{ font-family:'Quicksand',sans-serif; font-weight:700; font-size:16px; letter-spacing:.5px; color:var(--text-dark); }
+.gr-big{
+  width:130px; height:130px; border-radius:50%;
+  background:linear-gradient(160deg,var(--blue),var(--blue-dark));
+  color:#fff;
+  display:flex; align-items:center; justify-content:center;
+  font-family:'Quicksand',sans-serif; font-weight:700; font-size:56px;
+  box-shadow:0 4px 18px rgba(78,134,190,.45);
+}
+.gr-big.pop{ animation:grPop .25s ease; }
+@keyframes grPop{ 0%{transform:scale(.92);} 60%{transform:scale(1.06);} 100%{transform:scale(1);} }
+.gr-prompt{ max-width:380px; font-size:14px; line-height:1.6; color:var(--text-mute); min-height:68px; }
+.gr-dots{ display:flex; gap:10px; min-height:14px; }
+.gr-dot{ width:14px; height:14px; border-radius:50%; border:2px solid var(--blue); background:var(--card-bg); transition:background .2s ease; }
+.gr-dot.on{ background:var(--blue); }
+.gr-progress{ font-size:12px; font-weight:700; color:var(--text-mute); min-height:16px; }
+
   /* ---------- Settings modal ---------- */
   .overlay{
     position:fixed;
@@ -1069,7 +1232,7 @@ input:checked + .toggle-slider::before {
 
   /* ---------- Responsive ---------- */
   @media(max-width:760px){
-    .content-header{padding:14px 16px;}
+    .content-header{padding:0px 18px;}
     .messages{padding:18px 16px;}
   }
   @media(max-width:860px){
@@ -1127,7 +1290,7 @@ function toggleDyslexia(){
     <div class="nav-row">
       <button class="nav-btn active" id="btn-chat">Chat</button>
       <button class="nav-btn" id="btn-mood">Mood<br>Diary</button>
-      <button class="nav-btn" id="btn-breathe">Breathe</button>
+      <button class="nav-btn" id="btn-exercises">Exercises</button>
     </div>
 
     <div class="search-wrap">
@@ -1189,13 +1352,15 @@ function toggleDyslexia(){
         <img class="mascot-hero" src="{% static 'core/images/mascot_body.png' %}" alt="Mascot">
       </div>
       <div class="composer">
-        <input type="text" id="home-input" placeholder="Message...">
-        <button class="icon-btn" title="Voice message">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
-        </button>
-        <button class="icon-btn send" id="home-send" title="Send">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
-        </button>
+        <div class="composer-box">
+          <textarea id="home-input" rows="1" placeholder="Message..."></textarea>
+          <button class="icon-btn" title="Voice message">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+          </button>
+          <button class="icon-btn send" id="home-send" title="Send">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
+          </button>
+        </div>
       </div>
     </section>
 
@@ -1204,13 +1369,15 @@ function toggleDyslexia(){
       <div class="chat-view-inner">
         <div class="messages" id="chat-messages"></div>
         <div class="composer">
-          <input type="text" id="chat-input" placeholder="Message...">
-          <button class="icon-btn" id="chat-mic" type="button" title="Speak in English" aria-label="Start English voice input" aria-pressed="false">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
-          </button>
-          <button class="icon-btn send" id="chat-send" title="Send">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
-          </button>
+          <div class="composer-box">
+            <textarea id="chat-input" rows="1" placeholder="Message..."></textarea>
+            <button class="icon-btn" id="chat-mic" type="button" title="Speak in English" aria-label="Start English voice input" aria-pressed="false">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+            </button>
+            <button class="icon-btn send" id="chat-send" title="Send">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
+            </button>
+          </div>
         </div>
       </div>
     </section>
@@ -1221,13 +1388,15 @@ function toggleDyslexia(){
         <div class="guidance-who" id="guidance-who">Guidance Office</div>
         <div class="messages" id="guidance-messages"></div>
         <div class="composer">
-          <input type="text" id="guidance-input" placeholder="Message...">
-          <button class="icon-btn" title="Voice message">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
-          </button>
-          <button class="icon-btn send" id="guidance-send" title="Send">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
-          </button>
+          <div class="composer-box">
+            <textarea id="guidance-input" rows="1" placeholder="Message..."></textarea>
+            <button class="icon-btn" id="chat-mic" type="button" title="Speak in English" aria-label="Start English voice input" aria-pressed="false">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+            </button>
+            <button class="icon-btn send" id="guidance-send" title="Send">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
+            </button>
+          </div>
         </div>
       </div>
     </section>
@@ -1282,6 +1451,7 @@ function toggleDyslexia(){
 
     <!-- ---------- BREATHE ---------- -->
     <section class="view" id="view-breathe">
+      <button class="btn-pill btn-back ex-back" data-go="exercises">← Exercises</button>
       <div class="breathe-inner">
         <h1>1 MINUTE BREATHING EXERCISE</h1>
         <div class="breathe-phase" id="breathe-phase">Press to Start</div>
@@ -1299,6 +1469,95 @@ function toggleDyslexia(){
         </div>
       </div>
     </section>
+
+    <!-- ---------- EXERCISES HUB ---------- -->
+<section class="view" id="view-exercises">
+  <div class="ex-inner hub">
+    <div class="ex-intro">Pick something that feels doable right now 🌿</div>
+    <div class="ex-grid">
+      <button class="ex-card" data-go="breathe">
+        <div class="ex-icon">🌬️</div>
+        <div class="ex-title">1 Minute Breathing Exercise</div>
+        <div class="ex-desc">Slow, steady box breathing to settle your body.</div>
+        <div class="ex-meta">1 MIN</div>
+      </button>
+      <button class="ex-card" data-go="affirmations">
+        <div class="ex-icon">💛</div>
+        <div class="ex-title">Affirmations</div>
+        <div class="ex-desc">Kind words to say to yourself. Save your favorites or write your own.</div>
+        <div class="ex-meta">ANYTIME</div>
+      </button>
+      <button class="ex-card" data-go="grounding">
+        <div class="ex-icon">🌿</div>
+        <div class="ex-title">5-4-3-2-1 Grounding</div>
+        <div class="ex-desc">Use your senses to come back to the present when things feel too much.</div>
+        <div class="ex-meta">2 TO 3 MIN</div>
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- ---------- AFFIRMATIONS ---------- -->
+<section class="view" id="view-affirmations">
+  <button class="btn-pill btn-back ex-back" data-go="exercises">← Exercises</button>
+  <div class="ex-inner">
+    <div class="aff-tabs">
+      <button class="aff-tab active" id="aff-tab-all">All</button>
+      <button class="aff-tab" id="aff-tab-fav">Favorites <span id="aff-fav-count"></span></button>
+    </div>
+
+    <div class="aff-pane" id="aff-pane-all">
+      <div class="aff-card" id="aff-card" tabindex="0" role="button" aria-label="Tap when you have said this affirmation">
+        <div class="aff-text" id="aff-text"></div>
+        <div class="aff-hint" id="aff-hint">Say it out loud, then tap the card ✓</div>
+      </div>
+
+      <div class="aff-actions">
+        <button class="icon-btn aff-act" id="aff-fav-btn" title="Favorite">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21.2l7.8-7.7 1-1.1a5.5 5.5 0 0 0 0-7.8z"/></svg>
+        </button>
+        <button class="icon-btn aff-act" id="aff-shuffle-btn" title="Shuffle">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+        </button>
+        <button class="icon-btn aff-act" id="aff-next-btn" title="Next">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </button>
+        <button class="icon-btn aff-act" id="aff-del-btn" title="Delete">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+        </button>
+      </div>
+      <div class="aff-count" id="aff-count"></div>
+
+      <form class="aff-add" id="aff-add-form">
+        <input id="aff-add-input" maxlength="140" placeholder="Write your own affirmation..." autocomplete="off">
+        <button type="submit" class="btn-pill btn-enter">Add</button>
+      </form>
+
+      <details class="aff-why">
+        <summary>Why does this help?</summary>
+        <p>Saying kind, believable things to yourself can help you feel steadier. Research on self-affirmation suggests it can soften stress reactions and make hard feedback easier to take in. It works best when the words feel true to you, so pick lines you can believe, even a little. It is a small tool, not a replacement for talking to someone. If things feel heavy, the Guidance Office is here for you.</p>
+      </details>
+    </div>
+
+    <div class="aff-pane hidden" id="aff-pane-fav">
+      <div class="aff-fav-list" id="aff-fav-list"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ---------- 5-4-3-2-1 GROUNDING ---------- -->
+<section class="view" id="view-grounding">
+  <button class="btn-pill btn-back ex-back" data-go="exercises">← Exercises</button>
+  <div class="ex-inner gr-inner">
+    <div class="gr-sense" id="gr-sense"></div>
+    <div class="gr-big" id="gr-big"></div>
+    <div class="gr-prompt" id="gr-prompt"></div>
+    <div class="gr-dots" id="gr-dots"></div>
+    <button class="btn-pill btn-enter" id="gr-btn">I found one</button>
+    <button class="btn-pill btn-back hidden" id="gr-again">Do it again</button>
+    <div class="gr-progress" id="gr-progress"></div>
+  </div>
+</section>
 
   </main>
 </div>
@@ -1426,11 +1685,12 @@ function updateLiveClock() {
 ============================================================ */
 const views = document.querySelectorAll('.view');
 const viewTitle = document.getElementById('view-title');
+const EXERCISE_VIEWS = ['view-exercises','view-breathe','view-affirmations','view-grounding'];
 const navButtons = {
   'view-chat': document.getElementById('btn-chat'),
   'view-guidance': document.getElementById('btn-guidance'),
   'view-mood-calendar': document.getElementById('btn-mood'),
-  'view-breathe': document.getElementById('btn-breathe'),
+  'view-exercises': document.getElementById('btn-exercises'),
 };
 
 function switchView(id, title){
@@ -1439,7 +1699,8 @@ function switchView(id, title){
   viewTitle.textContent = title;
   Object.entries(navButtons).forEach(([vid, btn])=>{
     if(!btn) return;
-    btn.classList.toggle('active', vid===id);
+    const on = (vid === 'view-exercises') ? EXERCISE_VIEWS.includes(id) : vid === id;
+    btn.classList.toggle('active', on);
   });
   settingsPopover.hidden = true;
   if(isMobile()) setSidebarOpen(false);
@@ -1448,7 +1709,7 @@ function switchView(id, title){
 document.getElementById('btn-chat').addEventListener('click', ()=>switchView('view-chat','Chat'));
 document.getElementById('btn-guidance').addEventListener('click', () =>{ switchView('view-guidance', 'Talk to Guidance') });
 document.getElementById('btn-mood').addEventListener('click', ()=>{ switchView('view-mood-calendar','Mood Diary'); loadCalendarData(); });
-document.getElementById('btn-breathe').addEventListener('click', ()=>{ switchView('view-breathe','Breathe'); resetBreathe(); });
+document.getElementById('btn-exercises').addEventListener('click', ()=>switchView('view-exercises','Exercises'));
 
 /* ============================================================
    CHAT HISTORY (new chat + search + select)
@@ -1592,6 +1853,7 @@ function sendChat(containerId, inputEl, replies, avatarLabel){
   if(!text) return;
   addMessage(containerId, escapeHtml(text), 'user');
   inputEl.value = '';
+  autoGrow(inputEl);
   const typingRow = addTyping(containerId, avatarLabel);
 
   if(avatarLabel === 'MASCOT'){
@@ -1617,10 +1879,24 @@ function escapeHtml(str){
   return d.innerHTML;
 }
 
+function autoGrow(el){
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 160) + 'px';
+}
+function bindComposer(el, sendFn){
+  el.addEventListener('input', () => autoGrow(el));
+  el.addEventListener('keydown', e => {
+    if(e.key === 'Enter' && !e.shiftKey && !e.isComposing){
+      e.preventDefault();
+      sendFn();
+    }
+  });
+}
+
 // Chat view wiring
 const chatInput = document.getElementById('chat-input');
 document.getElementById('chat-send').addEventListener('click', ()=>sendChat('chat-messages', chatInput, chatReplies, 'MASCOT'));
-chatInput.addEventListener('keydown', e=>{ if(e.key==='Enter') sendChat('chat-messages', chatInput, chatReplies, 'MASCOT'); });
+bindComposer(chatInput, () => sendChat('chat-messages', chatInput, chatReplies, 'MASCOT'));
 
 const chatMicButton = document.getElementById('chat-mic');
 let mediaRecorder = null;
@@ -1714,6 +1990,7 @@ async function transcribeVoiceRecording(blob) {
      return;
    }
    chatInput.value = `${voiceInputBase}${voiceInputBase ? ' ' : ''}${transcript}`;
+   autoGrow(inputEl);
    chatInput.focus();
  } catch (error) {
    showToast(error.name === 'NotAllowedError'
@@ -1823,6 +2100,7 @@ function sendGuidanceMessage(){
   if(!text) return;
   addMessage('guidance-messages', escapeHtml(text), 'user');
   guidanceInput.value = '';
+  autoGrow(inputEl);
 
   fetch("{% url 'guidance_send' %}", {
     method: "POST",
@@ -1869,7 +2147,7 @@ setInterval(() => {
 
 const guidanceInput = document.getElementById('guidance-input');
 document.getElementById('guidance-send').addEventListener('click', sendGuidanceMessage);
-guidanceInput.addEventListener('keydown', e=>{ if(e.key==='Enter') sendGuidanceMessage(); });
+bindComposer(guidanceInput, sendGuidanceMessage);
 
 // Home composer routes into Chat
 const homeInput = document.getElementById('home-input');
@@ -1880,6 +2158,7 @@ function sendFromHome(){
   switchView('view-chat','Chat');
   addMessage('chat-messages', escapeHtml(text), 'user');
   homeInput.value = '';
+  autoGrow(inputEl);
   const typingRow = addTyping('chat-messages', 'MASCOT');
   getAIReply(text).then(reply => {
     typingRow.remove();
@@ -1891,7 +2170,7 @@ function sendFromHome(){
 }
 
 document.getElementById('home-send').addEventListener('click', sendFromHome);
-homeInput.addEventListener('keydown', e=>{ if(e.key==='Enter') sendFromHome(); });
+bindComposer(homeInput, sendFromHome);
 
 function confirmAppointment(appointmentId){
   fetch(`/api/appointments/${appointmentId}/confirm/`, {
@@ -2326,6 +2605,209 @@ breatheBtn.addEventListener('click', ()=>{
   }
 });
 
+/* ============================================================
+   EXERCISES: hub navigation, grounding, affirmations
+============================================================ */
+const byId = id => document.getElementById(id);
+
+const EX_TARGETS = {
+  exercises:['view-exercises','Exercises'],
+  breathe:['view-breathe','Breathing Exercise'],
+  affirmations:['view-affirmations','Affirmations'],
+  grounding:['view-grounding','5-4-3-2-1 Grounding']
+};
+document.querySelectorAll('[data-go]').forEach(el=>{
+  el.addEventListener('click', ()=>{
+    const [vid, title] = EX_TARGETS[el.dataset.go];
+    switchView(vid, title);
+    if(vid === 'view-breathe') resetBreathe();
+    if(vid === 'view-grounding') grReset();
+    if(vid === 'view-affirmations') renderAff();
+  });
+});
+
+/* ---------- 5-4-3-2-1 Grounding (nothing typed, nothing saved) ---------- */
+const GR_STEPS = [
+  {n:5, label:'SEE',   prompt:'Look around you. Find 5 things you can see. Take your time with each one.'},
+  {n:4, label:'TOUCH', prompt:'Find 4 things you can feel. Maybe your feet on the floor, your clothes, the chair under you.'},
+  {n:3, label:'HEAR',  prompt:'Listen closely. Find 3 sounds, near or far.'},
+  {n:2, label:'SMELL', prompt:'Find 2 things you can smell. If nothing is nearby, think of 2 smells you like.'},
+  {n:1, label:'TASTE', prompt:'Notice 1 thing you can taste, or think of a taste you enjoy.'}
+];
+let grStep = 0, grCount = 0, grDone = false;
+
+function grReset(){ grStep = 0; grCount = 0; grDone = false; grRender(); }
+
+function grRender(){
+  const big = byId('gr-big'), dots = byId('gr-dots'), btn = byId('gr-btn'), again = byId('gr-again');
+  if(grDone){
+    byId('gr-sense').textContent = 'WELL DONE';
+    big.textContent = '✓';
+    byId('gr-prompt').textContent = 'You noticed 15 things around you. Take one slow breath. You are here, right now.';
+    dots.innerHTML = '';
+    byId('gr-progress').textContent = '';
+    btn.textContent = 'Back to Exercises';
+    again.classList.remove('hidden');
+    return;
+  }
+  const s = GR_STEPS[grStep];
+  again.classList.add('hidden');
+  byId('gr-sense').textContent = `${s.n} ${s.n === 1 ? 'THING' : 'THINGS'} YOU CAN ${s.label}`;
+  big.textContent = grCount >= s.n ? '✓' : (s.n - grCount);
+  byId('gr-prompt').textContent = s.prompt;
+  dots.innerHTML = '';
+  for(let i = 0; i < s.n; i++){
+    const d = document.createElement('span');
+    d.className = 'gr-dot' + (i < grCount ? ' on' : '');
+    dots.appendChild(d);
+  }
+  btn.textContent = grCount < s.n ? 'I found one' : (grStep < GR_STEPS.length - 1 ? 'Next →' : 'Finish');
+  byId('gr-progress').textContent = `Step ${grStep + 1} of ${GR_STEPS.length}`;
+  big.classList.remove('pop'); void big.offsetWidth; big.classList.add('pop');
+}
+
+byId('gr-btn').addEventListener('click', ()=>{
+  if(grDone){ switchView('view-exercises','Exercises'); return; }
+  const s = GR_STEPS[grStep];
+  if(grCount < s.n) grCount++;
+  else if(grStep < GR_STEPS.length - 1){ grStep++; grCount = 0; }
+  else grDone = true;
+  grRender();
+});
+byId('gr-again').addEventListener('click', grReset);
+
+/* ---------- Affirmations (in-memory for now, saving comes with the feature step) ---------- */
+const AFF_STARTERS = [
+  "I am allowed to take things one step at a time.",
+  "I can feel this and still keep going.",
+  "My worth is not measured by my grades.",
+  "I am learning, and learning takes time.",
+  "It is okay to ask for help.",
+  "I have gotten through hard days before.",
+  "I am doing the best I can with what I have today.",
+  "Rest is part of the process, not a reward for finishing it."
+];
+let affList = AFF_STARTERS.map((t, i) => ({id:i + 1, text:t, fav:false}));
+let affIndex = 0, affSaid = 0, affBusy = false, affNextId = 1000;
+
+const HEART_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21.2l7.8-7.7 1-1.1a5.5 5.5 0 0 0 0-7.8z"/></svg>';
+const TRASH_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>';
+
+function renderAff(){
+  const has = affList.length > 0;
+  const cur = affList[affIndex];
+  byId('aff-text').textContent = has ? cur.text : 'No affirmations left. Add your own below 🌱';
+  byId('aff-hint').style.visibility = has ? 'visible' : 'hidden';
+  byId('aff-count').textContent = has ? `${affIndex + 1} of ${affList.length} · said today: ${affSaid}` : '';
+  byId('aff-fav-btn').classList.toggle('on', has && cur.fav);
+  ['aff-fav-btn','aff-shuffle-btn','aff-next-btn','aff-del-btn'].forEach(id => byId(id).disabled = !has);
+  const favs = affList.filter(a => a.fav);
+  byId('aff-fav-count').textContent = favs.length ? `(${favs.length})` : '';
+  renderAffFavs(favs);
+}
+
+function renderAffFavs(favs){
+  const box = byId('aff-fav-list');
+  box.innerHTML = '';
+  if(!favs.length){
+    const p = document.createElement('div');
+    p.className = 'aff-empty';
+    p.textContent = 'No favorites yet. Tap the heart on an affirmation to keep it here 💛';
+    box.appendChild(p);
+    return;
+  }
+  favs.forEach(a => {
+    const row = document.createElement('div');
+    row.className = 'aff-fav-row';
+    const t = document.createElement('div');
+    t.className = 'aff-fav-text';
+    t.textContent = a.text;
+    const un = document.createElement('button');
+    un.className = 'icon-btn aff-act on';
+    un.title = 'Remove from favorites';
+    un.innerHTML = HEART_SVG;
+    un.addEventListener('click', () => { a.fav = false; renderAff(); });
+    const del = document.createElement('button');
+    del.className = 'icon-btn aff-act';
+    del.title = 'Delete';
+    del.innerHTML = TRASH_SVG;
+    del.addEventListener('click', () => affDelete(a.id));
+    row.append(t, un, del);
+    box.appendChild(row);
+  });
+}
+
+function affNext(){ if(affList.length){ affIndex = (affIndex + 1) % affList.length; renderAff(); } }
+
+function affShuffle(){
+  for(let i = affList.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [affList[i], affList[j]] = [affList[j], affList[i]];
+  }
+  affIndex = 0;
+  renderAff();
+}
+
+function affDelete(id){
+  if(!confirm('Delete this affirmation?')) return;
+  const i = affList.findIndex(a => a.id === id);
+  if(i < 0) return;
+  affList.splice(i, 1);
+  if(i < affIndex) affIndex--;
+  if(affIndex >= affList.length) affIndex = 0;
+  renderAff();
+}
+
+function affDone(){
+  if(!affList.length || affBusy) return;
+  affBusy = true;
+  const card = byId('aff-card');
+  card.classList.add('done');
+  byId('aff-hint').textContent = '✓ Nice one';
+  affSaid++;
+  setTimeout(() => {
+    card.classList.remove('done');
+    byId('aff-hint').textContent = 'Say it out loud, then tap the card ✓';
+    affBusy = false;
+    affNext();
+  }, 900);
+}
+
+function setAffTab(tab){
+  byId('aff-pane-all').classList.toggle('hidden', tab !== 'all');
+  byId('aff-pane-fav').classList.toggle('hidden', tab !== 'fav');
+  byId('aff-tab-all').classList.toggle('active', tab === 'all');
+  byId('aff-tab-fav').classList.toggle('active', tab === 'fav');
+}
+
+byId('aff-card').addEventListener('click', affDone);
+byId('aff-card').addEventListener('keydown', e => {
+  if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); affDone(); }
+});
+byId('aff-fav-btn').addEventListener('click', () => {
+  if(!affList.length) return;
+  affList[affIndex].fav = !affList[affIndex].fav;
+  renderAff();
+});
+byId('aff-shuffle-btn').addEventListener('click', affShuffle);
+byId('aff-next-btn').addEventListener('click', affNext);
+byId('aff-del-btn').addEventListener('click', () => { if(affList.length) affDelete(affList[affIndex].id); });
+byId('aff-tab-all').addEventListener('click', () => setAffTab('all'));
+byId('aff-tab-fav').addEventListener('click', () => setAffTab('fav'));
+byId('aff-add-form').addEventListener('submit', e => {
+  e.preventDefault();
+  const inp = byId('aff-add-input');
+  const text = inp.value.trim();
+  if(!text) return;
+  affList.push({id:affNextId++, text, fav:false});
+  affIndex = affList.length - 1;
+  inp.value = '';
+  renderAff();
+  showToast('Affirmation added 🌱');
+});
+
+grRender();
+renderAff();
 
 /* ============================================================
    SIDEBAR COLLAPSE / MOBILE DRAWER
@@ -2717,8 +3199,8 @@ resetIdle();
         body: "Your full conversation with Mica lives here. Jump back in any time." },
       { target: '#btn-mood', sidebar: true, title: "Mood Diary",
         body: "Log how you feel each day and add a short note. Over time, the calendar helps you spot patterns." },
-      { target: '#btn-breathe', sidebar: true, title: "Breathe",
-        body: "Feeling tense? Follow a guided breathing exercise to slow down and reset." },
+      { target: '#btn-exercises', sidebar: true, title: "Exercises",
+        body: "Feeling tense or overwhelmed? Try a 1-minute breathing exercise, read and save affirmations, or do the 5-4-3-2-1 grounding exercise to come back to the present." },
       { target: '.search-wrap', sidebar: true, title: "Your chats",
         body: "Search past conversations here, start a fresh one with New Chat, and find your older chats listed underneath." },
       { target: '#settings-btn', sidebar: true, title: "Settings",
