@@ -504,7 +504,7 @@
 
     <div class="sidebar-bottom">
       <div class="admin-chip">
-        <div class="avatar" style="background:var(--sky);">{{ request.user.first_name|slice:":1"|upper }}{{ request.user.last_name|slice:":1"|upper }}</div>
+        <div class="avatar" style="background:var(--sky);">{% include 'core/_initials.html' with u=request.user %}</div>
         <div class="who">
           <div class="name" id="sidebarUserName">{{ request.user.get_full_name|default:request.user.username }}</div>
           <div class="role" id="sidebarUserRole">{{ staff_role }}</div>
@@ -540,7 +540,7 @@
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2a6 6 0 0 0-6 6v3.4c0 .8-.3 1.6-.9 2.2L4 15h16l-1.1-1.4a3.2 3.2 0 0 1-.9-2.2V8a6 6 0 0 0-6-6z"/><path d="M9.5 19a2.5 2.5 0 0 0 5 0"/></svg>
           <span class="ping" id="bellPing" style="display:none;">0</span>
         </button>
-        <div class="avatar" style="background:var(--sky); cursor:pointer;" onclick="goTo('settings')">{{ request.user.first_name|slice:":1"|upper }}{{ request.user.last_name|slice:":1"|upper }}</div>
+        <div class="avatar" style="background:var(--sky); cursor:pointer;" onclick="goTo('settings')">{% include 'core/_initials.html' with u=request.user %}</div>
       </div>
     </div>
 
@@ -1613,7 +1613,7 @@ let lastReferralCount = 0;
 let lastResponseCount = 0;
 
 function initials(name){
-  return name.split(' ').filter(Boolean).map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  return name.split(' ').filter(Boolean).map(w=>w[0]).join('').slice(0,2).toUpperCase() || '?';
 }
 
 function pollReferrals(){

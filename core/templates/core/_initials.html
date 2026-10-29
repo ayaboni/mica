@@ -1,0 +1,2 @@
+{# Initials for a user with no profile picture. Usage: {% include 'core/_initials.html' with u=request.user %} #}
+{% with f=u.first_name|slice:":1"|upper l=u.last_name|slice:":1"|upper %}{% if f or l %}{{ f }}{{ l }}{% else %}{{ u.username|slice:":2"|upper|default:"?" }}{% endif %}{% endwith %}

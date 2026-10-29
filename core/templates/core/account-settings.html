@@ -14,6 +14,7 @@
   h1{font-family:'Fredoka',sans-serif; margin-top:0;}
   .avatar-row{display:flex; align-items:center; gap:16px; margin-bottom:24px;}
   .avatar-preview{width:72px; height:72px; border-radius:50%; object-fit:cover; background:#ddd;}
+  .avatar-initials{display:flex; align-items:center; justify-content:center; flex-shrink:0; background:linear-gradient(135deg,#A9C6A2,#8EAE88); color:#fff; font-family:'Fredoka','Nunito',sans-serif; font-weight:700; font-size:26px; letter-spacing:.5px; text-transform:uppercase; user-select:none; box-shadow:inset 0 0 0 3px rgba(255,255,255,.55);}
   .field{margin-bottom:16px;}
   .field label{display:block; font-weight:700; margin-bottom:6px; font-size:14px;}
   .field input{width:100%; padding:12px 14px; border-radius:12px; border:1px solid #ddd; box-sizing:border-box; font-family:inherit; font-size:14px;}
@@ -62,10 +63,10 @@
 
         <div class="avatar-row">
           {% if profile.avatar %}
-            <img class="avatar-preview" id="avatarPreview" src="{{ profile.avatar.url }}" alt="Avatar">
+            <img class="avatar-preview" id="avatarPreview" src="{{ profile.avatar.url }}" alt="Avatar" data-initials="{% include 'core/_initials.html' with u=request.user %}">
           {% else %}
             <img class="avatar-preview" id="avatarPreview" alt="Avatar" style="display:none;">
-            <div class="avatar-preview" id="avatarPlaceholder"></div>
+            <div class="avatar-preview avatar-initials" id="avatarPlaceholder" aria-hidden="true">{% include 'core/_initials.html' with u=request.user %}</div>
           {% endif %}
           <div>
             <label style="font-weight:700; font-size:14px;">Change avatar</label><br>
@@ -189,6 +190,21 @@
       <form id="tutorialResetForm" method="post" action="{% url 'tutorial_reset' %}">{% csrf_token %}</form>
 
 <script>
+  /* Saved picture missing or broken? Fall back to the initials circle */
+  (function(){
+    const img = document.getElementById('avatarPreview');
+    if(!img || !img.dataset.initials) return;
+    img.addEventListener('error', () => {
+      const ph = document.createElement('div');
+      ph.className = 'avatar-preview avatar-initials';
+      ph.id = 'avatarPlaceholder';
+      ph.textContent = img.dataset.initials.trim();
+      img.style.display = 'none';
+      img.removeAttribute('data-initials');
+      img.removeAttribute('src');
+      img.parentNode.insertBefore(ph, img.nextSibling);
+    });
+  })();
   document.getElementById('avatarInput').addEventListener('change', function(e){
     const file = e.target.files[0];
     if(!file) return;
