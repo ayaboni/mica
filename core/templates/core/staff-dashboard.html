@@ -443,6 +443,7 @@
 </style>
 </head>
 <body>
+<script>(function(){ try{ if(localStorage.getItem('mica_dark')==='1') document.body.classList.add('dark'); }catch(e){} })();</script>
 {% include 'core/_loader.html' %}
 
 <!-- ================= ADMIN SHELL ================= -->
@@ -1443,7 +1444,7 @@ const MASCOT_SVG = `<svg width="52" height="52" viewBox="0 0 100 100" fill="none
    AUTH
 ========================================================= */
 function doLogout(){
-  window.location.href = "{% url 'logout' %}";
+  (window.MicaLoader ? window.MicaLoader.goTo("{% url 'logout' %}") : (window.location.href = "{% url 'logout' %}"));
 }
 
 document.addEventListener('DOMContentLoaded', initAll);
@@ -4022,11 +4023,13 @@ function showToast(msg){
 }
 function toggleTheme(){
   document.body.classList.toggle('dark');
+  try{ localStorage.setItem('mica_dark', document.body.classList.contains('dark') ? '1' : '0'); }catch(e){}
   const sw = document.getElementById('darkSwitch');
   if(sw) sw.classList.toggle('on', document.body.classList.contains('dark'));
 }
 
 function initAll(){
+  { const sw0 = document.getElementById('darkSwitch'); if(sw0) sw0.classList.toggle('on', document.body.classList.contains('dark')); }
   applyPermissions();
   if(PERMS.view_students){
     loadStudents();
@@ -4049,7 +4052,7 @@ let lastKeepalive = 0;
 function resetIdle(){
   clearTimeout(idleTimer);
   idleTimer = setTimeout(() => {
-    window.location.href = "{% url 'logout' %}?expired=1";
+    (window.MicaLoader ? window.MicaLoader.goTo("{% url 'logout' %}?expired=1") : (window.location.href = "{% url 'logout' %}?expired=1"));
   }, IDLE_MS);
   const now = Date.now();
   if (now - lastKeepalive > 60000){

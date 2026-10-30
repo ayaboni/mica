@@ -4,6 +4,10 @@
      Shown on every full-page navigation (incoming + outgoing).
      Include once, right after <body>, on every routed template:
      ========================================================= -->
+<!-- The loader brings its own fonts so it looks identical on every page (login, home, dashboards...) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <div id="micaLoader" class="mica-loader" role="status" aria-live="polite">
   <div class="mica-loader-inner">
     <div class="mica-loader-brand">MICA</div>
@@ -20,52 +24,132 @@
   </div>
 </div>
 
+<script>
+/* The loader mirrors the app's own theme (NOT the device/system theme):
+   dark interface (body.dark / body.dark-mode) -> dark loader, otherwise light loader.
+
+   Cross-page transition: every page records the theme it is showing (sessionStorage 'mica_last_theme').
+   On the next page, the loader first appears in the theme of the page you LEFT, then animates to the
+   theme of the page you ARRIVED at, and only then reveals the page. This works however you navigate
+   (links, form posts, redirects, JS redirects) - e.g. login (light) -> student dashboard (dark),
+   and student dashboard (dark) -> login (light) after logging out. */
+(function(){
+  var KEY = 'mica_last_theme';
+  var el = document.getElementById('micaLoader');
+  if (!el) return;
+
+  function isDark(){
+    var b = document.body;
+    return !!(b && (b.classList.contains('dark') || b.classList.contains('dark-mode')));
+  }
+  function actual(){ return isDark() ? 'dark' : 'light'; }
+  function remember(t){ try { sessionStorage.setItem(KEY, t); } catch (e) {} }
+
+  // Theme of the page we came from
+  var from = null;
+  try {
+    var v = sessionStorage.getItem(KEY);
+    if (v === 'dark' || v === 'light') from = v;
+  } catch (e) {}
+
+  var target = actual();
+  remember(target);                                    // this page is now the "previous page" for the next one
+
+  if (from && from !== target) {
+    el.setAttribute('data-theme', from);              // start in the old page's theme
+    window.__micaLoaderMinMs = 1200;                  // keep the loader up long enough to show the change
+    setTimeout(function(){ el.setAttribute('data-theme', actual()); }, 350);  // then animate to the new theme
+  } else {
+    el.setAttribute('data-theme', target);
+  }
+
+  // Live sync if the user toggles the theme while a page is open
+  try {
+    new MutationObserver(function(){
+      var t = actual();
+      remember(t);
+      el.setAttribute('data-theme', t);
+    }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+  } catch (e) {}
+})();
+</script>
+
 <style>
+  /* ---- Loader theme tokens (light default) ---- */
+  .mica-loader{
+    --ml-bg:        var(--cream-bg, #F9F6EC);
+    --ml-brand:     var(--green-deep, #5F7F58);
+    --ml-track-bg:  var(--cream-card, #FCF0DA);
+    --ml-track-line:var(--line, #8C6F52);
+    --ml-track-shadow: rgba(76,61,41,0.15);
+    --ml-fill-a:    var(--green, #93AF8C);
+    --ml-fill-b:    var(--green-dark, #7C9C74);
+    --ml-label:     var(--brown-dark, #745A41);
+    --ml-pct:       var(--ink-soft, #55524B);
+    --ml-walker-shadow: rgba(76,61,41,0.28);
+  }
+  /* ---- Dark palette: used only when the app interface itself is in dark mode ---- */
+  .mica-loader[data-theme="dark"]{
+    color-scheme: dark;
+    --ml-bg:        #1a1e1a;
+    --ml-brand:     #a8bc9f;
+    --ml-track-bg:  #283227;
+    --ml-track-line:#3d4f3b;
+    --ml-track-shadow: rgba(0,0,0,0.45);
+    --ml-fill-a:    #7C9C74;
+    --ml-fill-b:    #93AF8C;
+    --ml-label:     #e6ede5;
+    --ml-pct:       #a3b0a2;
+    --ml-walker-shadow: rgba(0,0,0,0.55);
+  }
   .mica-loader{
     position: fixed;
     inset: 0;
     z-index: 99999;
-    background: var(--cream-bg, #F9F6EC);
+    background: var(--ml-bg);
     display: flex;
     align-items: center;
     justify-content: center;
     opacity: 1;
     visibility: visible;
-    transition: opacity .4s ease, visibility .4s ease;
+    transition: opacity .4s ease, visibility .4s ease, background-color .6s ease;
   }
   .mica-loader.is-hidden{
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
   }
+  .mica-loader, .mica-loader *{ text-transform: none; font-style: normal; }
   .mica-loader-inner{
     width: min(380px, 82vw);
     text-align: center;
   }
   .mica-loader-brand{
-    font-family: var(--font-display, 'Fredoka', sans-serif);
+    font-family: 'Fredoka', 'Quicksand', 'Nunito', system-ui, sans-serif;
     font-weight: 700;
     font-size: 1.5rem;
     letter-spacing: 0.08em;
-    color: var(--green-deep, #5F7F58);
+    color: var(--ml-brand);
     margin-bottom: 34px;
+    transition: color .6s ease;
   }
   .mica-loader-track{
     position: relative;
     width: 100%;
     height: 12px;
     border-radius: 999px;
-    background: var(--cream-card, #FCF0DA);
-    border: 1.5px solid var(--line, #8C6F52);
-    box-shadow: inset 0 1px 3px rgba(76,61,41,0.15);
+    background: var(--ml-track-bg);
+    border: 1.5px solid var(--ml-track-line);
+    box-shadow: inset 0 1px 3px var(--ml-track-shadow);
     margin-bottom: 56px;
+    transition: background-color .6s ease, border-color .6s ease, box-shadow .6s ease;
   }
   .mica-loader-fill{
     position: absolute;
     left: 0; top: 0; bottom: 0;
     width: 4%;
     border-radius: 999px;
-    background: linear-gradient(90deg, var(--green, #93AF8C) 0%, var(--green-dark, #7C9C74) 100%);
+    background: linear-gradient(90deg, var(--ml-fill-a) 0%, var(--ml-fill-b) 100%);
     transition: width .25s ease-out;
   }
   .mica-loader-walker{
@@ -74,8 +158,8 @@
     left: 4%;
     width: 64px;
     transform: translate(-46%, -86%);
-    transition: left .25s ease-out;
-    filter: drop-shadow(0 6px 10px rgba(76,61,41,0.28));
+    transition: left .25s ease-out, filter .6s ease;
+    filter: drop-shadow(0 6px 10px var(--ml-walker-shadow));
   }
   .mica-loader-walker img{
     width: 100%;
@@ -86,18 +170,20 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    font-family: var(--font-body, 'Inter', sans-serif);
+    font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   }
   .mica-loader-label{
     font-size: 0.85rem;
     font-weight: 600;
-    color: var(--brown-dark, #745A41);
+    color: var(--ml-label);
+    transition: color .6s ease;
   }
   .mica-loader-pct{
     font-size: 0.8rem;
     font-weight: 600;
-    color: var(--ink-soft, #55524B);
+    color: var(--ml-pct);
     font-variant-numeric: tabular-nums;
+    transition: color .6s ease;
   }
   @media (prefers-reduced-motion: reduce){
     .mica-loader, .mica-loader-fill, .mica-loader-walker{ transition: none !important; }
@@ -115,7 +201,7 @@
   var current = 4;     // current displayed percent
   var trickleTimer = null;
   var shownAt = Date.now();
-  var MIN_VISIBLE_MS = 450; // avoid an instant flash on very fast/cached loads
+  var MIN_VISIBLE_MS = window.__micaLoaderMinMs || 450; // avoid an instant flash; longer when the theme is changing
 
   function setPercent(p){
     current = Math.max(0, Math.min(100, p));
@@ -162,7 +248,7 @@
   }
 
   function goTo(url){
-    show('Taking you there…');
+    show(/\/logout\//.test(url) ? 'Signing you out…' : 'Taking you there…');
     // give the bar/mascot a quick, visible head start before the slower trickle takes over
     setTimeout(function(){ setPercent(60); }, 20);
     // let the motion read clearly before the browser actually navigates away
