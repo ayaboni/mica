@@ -211,10 +211,10 @@ html.dyslexia body{line-height:1.7;}
   .history-label{
     font-size:12px;
     font-weight:700;
-    color:#f3f0e4;
+    color:var(--text-dark);
     text-transform:uppercase;
     letter-spacing:.5px;
-    opacity:.85;
+    opacity:.8;
     margin:2px 2px;
   }
   .history-item{
@@ -225,6 +225,7 @@ html.dyslexia body{line-height:1.7;}
     transition:background .15s ease, transform .1s ease;
   }
   .history-item:hover{background:#fffdf6;transform:translateX(2px);}
+  body.dark-mode .history-item:hover{background:var(--btn-hover);}
   .history-item.active{background:var(--btn-active);}
   .history-title{font-size:13px;font-weight:700;color:var(--text-dark);}
   .history-time{font-size:11px;color:var(--text-mute);margin-top:1px;}
