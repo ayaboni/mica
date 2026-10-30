@@ -1940,6 +1940,24 @@ def api_exercise_log(request):
     return JsonResponse({"status": "ok"})
 
 
+@login_required(login_url='login')
+def api_exercise_history(request):
+    exercise = request.GET.get("exercise")
+    if exercise not in EXERCISE_KEYS:
+        return JsonResponse({"error": "Unknown exercise."}, status=400)
+    qs = ExerciseSession.objects.filter(user=request.user, exercise=exercise)
+    week = qs.filter(created_at__gte=timezone.now() - timedelta(days=7))
+    week_secs = week.aggregate(t=models.Sum('duration_seconds'))['t'] or 0
+    return JsonResponse({
+        "sessions": [{
+            "when": timezone.localtime(s.created_at).isoformat(),
+            "minutes": round(s.duration_seconds / 60, 1),
+            "rounds": s.count,
+        } for s in qs[:30]],
+        "week": {"sessions": week.count(), "minutes": round(week_secs / 60, 1)},
+    })
+
+
 def get_profile(user):
     profile, _ = UserProfile.objects.get_or_create(user=user)
     return profile

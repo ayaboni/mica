@@ -33,7 +33,7 @@ EXERCISE_LABELS = {
     "pomodoro": "Pomodoro",
     "micapop": "Mica Pop",
 }
-EXERCISE_COUNT_LABELS = {"affirmations": "said", "grounding": "finished", "micapop": "popped"}
+EXERCISE_COUNT_LABELS = {"affirmations": "said", "grounding": "finished", "micapop": "popped", "pomodoro": "focus rounds"}
 
 
 def aggregate_sessions(notes, appts):

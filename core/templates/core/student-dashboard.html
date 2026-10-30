@@ -927,6 +927,28 @@ body.dark-mode{ --composer-accent:#9CC893; }
 .ex-desc{ font-size:13px; color:var(--text-mute); line-height:1.5; }
 .ex-meta{ font-size:11.5px; font-weight:700; color:var(--brown); letter-spacing:.3px; margin-top:auto; }
 
+#view-breathe .breathe-inner,
+#view-grounding .gr-inner,
+#view-affirmations .ex-inner,
+#view-pomodoro .ex-inner{
+  flex:0 1 auto;
+  align-self:center;
+  margin:auto;
+  width:min(640px, calc(100% - 32px));
+  max-height:calc(100% - 90px);
+  background:var(--card-bg);
+  border-radius:var(--radius-lg);
+  box-shadow:var(--shadow);
+  padding:32px 28px;
+}
+.pop-setup, .pop-result{
+  background:var(--card-bg);
+  border-radius:var(--radius-lg);
+  box-shadow:var(--shadow);
+  padding:28px 24px;
+}
+.pop-setup .pop-card{ background:var(--content-bg); box-shadow:none; }
+
 /* ---------- Mica Pop (game) ---------- */
 .pop-inner{ flex:1; min-height:0; display:flex; flex-direction:column; align-items:center; padding:74px 24px 24px; overflow-y:auto; }
 .pop-inner [hidden]{ display:none !important; }
@@ -1147,6 +1169,22 @@ body.dark-mode{ --composer-accent:#9CC893; }
   background:var(--card-bg); box-shadow:var(--shadow);
   border-radius:999px; padding:5px 12px; font-size:12.5px; color:var(--text-dark);
 }
+
+/* pomodoro */
+.pomo-pane{ width:100%; display:flex; flex-direction:column; align-items:center; gap:14px; text-align:center; }
+.pomo-pane[hidden]{ display:none; }
+.pomo-mode{ font-family:'Quicksand',sans-serif; font-weight:700; letter-spacing:1px; color:var(--text-mute); }
+.pomo-time{ font-family:'Quicksand',sans-serif; font-weight:700; font-size:72px; line-height:1; color:var(--text-dark); }
+.pomo-barwrap{ width:100%; max-width:360px; height:10px; border-radius:999px; background:#E8E1CB; overflow:hidden; }
+.pomo-barwrap i{ display:block; height:100%; background:#87A991; transform-origin:left; transition:transform .25s linear; }
+.pomo-rounds{ font-size:13.5px; color:var(--text-mute); }
+.pomo-btns{ display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
+.pomo-set{ width:100%; max-width:360px; background:var(--content-bg); border-radius:var(--radius-md); padding:14px 16px; display:flex; flex-direction:column; gap:10px; }
+.pomo-row{ display:flex; align-items:center; justify-content:space-between; gap:12px; font-size:14px; }
+.pomo-row b{ min-width:64px; text-align:center; }
+.pomo-row button:disabled{ opacity:.4; cursor:not-allowed; }
+.pomo-note{ font-size:12px; color:var(--text-mute); }
+.pomo-week{ font-weight:700; font-size:14px; }
 
   /* ---------- Settings modal ---------- */
   .overlay{
@@ -1626,6 +1664,12 @@ function toggleDyslexia(){
         <div class="ex-desc">A little game: tap the Mica heads before they hide. Watch out for the rare ones!</div>
         <div class="ex-meta">30 TO 60 SEC</div>
       </button>
+      <button class="ex-card" data-go="pomodoro">
+        <div class="ex-icon">⏱️</div>
+        <div class="ex-title">Pomodoro</div>
+        <div class="ex-desc">Focus in short rounds with breaks in between. Set your own times.</div>
+        <div class="ex-meta">25 MIN FOCUS</div>
+      </button>
     </div>
   </div>
 </section>
@@ -1692,6 +1736,45 @@ function toggleDyslexia(){
       </div>
     </div>
 
+  </div>
+</section>
+
+<!-- ---------- POMODORO ---------- -->
+<section class="view" id="view-pomodoro">
+  <button class="btn-pill btn-back ex-back" data-go="exercises">← Exercises</button>
+  <div class="ex-inner">
+    <div class="aff-tabs">
+      <button class="aff-tab active" id="pomo-tab-timer">Timer</button>
+      <button class="aff-tab" id="pomo-tab-hist">History</button>
+    </div>
+
+    <div class="pomo-pane" id="pomo-pane-timer">
+      <div class="pomo-mode" id="pomo-mode">FOCUS</div>
+      <div class="pomo-time" id="pomo-time">25:00</div>
+      <div class="pomo-barwrap"><i id="pomo-bar"></i></div>
+      <div class="pomo-rounds">Rounds done: <b id="pomo-rounds">0</b></div>
+      <div class="pomo-btns">
+        <button class="btn-pill" id="pomo-go">Start</button>
+        <button class="btn-pill btn-back" id="pomo-skip">Skip</button>
+        <button class="btn-pill btn-back" id="pomo-reset">Reset</button>
+      </div>
+      <div class="pomo-set">
+        <div class="pomo-row"><span>Focus</span>
+          <button class="icon-btn" id="pomo-focus-minus">−</button>
+          <b id="pomo-focus-val">25 min</b>
+          <button class="icon-btn" id="pomo-focus-plus">+</button></div>
+        <div class="pomo-row"><span>Break</span>
+          <button class="icon-btn" id="pomo-brk-minus">−</button>
+          <b id="pomo-brk-val">5 min</b>
+          <button class="icon-btn" id="pomo-brk-plus">+</button></div>
+        <div class="pomo-note" id="pomo-note">You can change the times before you start.</div>
+      </div>
+    </div>
+
+    <div class="pomo-pane" id="pomo-pane-hist" hidden>
+      <div class="pomo-week" id="pomo-week"></div>
+      <div class="aff-fav-list" id="pomo-hist"></div>
+    </div>
   </div>
 </section>
 
@@ -1893,7 +1976,7 @@ function updateLiveClock() {
 ============================================================ */
 const views = document.querySelectorAll('.view');
 const viewTitle = document.getElementById('view-title');
-const EXERCISE_VIEWS = ['view-exercises','view-breathe','view-affirmations','view-grounding','view-pop'];
+const EXERCISE_VIEWS = ['view-exercises','view-breathe','view-affirmations','view-grounding','view-pop', 'view-pomodoro'];
 const navButtons = {
   'view-chat': document.getElementById('btn-chat'),
   'view-guidance': document.getElementById('btn-guidance'),
@@ -1906,6 +1989,7 @@ function switchView(id, title){
   if(id !== 'view-affirmations' && typeof affLeave === 'function') affLeave();
   if(id !== 'view-grounding' && typeof grLeave === 'function') grLeave();
   if(id !== 'view-pop' && typeof popLeave === 'function') popLeave();
+  if(id !== 'view-pomodoro' && typeof pomoLeave === 'function') pomoLeave();
   views.forEach(v=>v.classList.toggle('active', v.id===id));
   viewTitle.textContent = title;
   Object.entries(navButtons).forEach(([vid, btn])=>{
@@ -2828,7 +2912,8 @@ const EX_TARGETS = {
   breathe:['view-breathe','Breathing Exercise'],
   affirmations:['view-affirmations','Affirmations'],
   grounding:['view-grounding','5-4-3-2-1 Grounding'],
-  pop:['view-pop','Mica Pop']
+  pop:['view-pop','Mica Pop'],
+  pomodoro:['view-pomodoro','Pomodoro']
 };
 document.querySelectorAll('[data-go]').forEach(el=>{
   el.addEventListener('click', ()=>{
@@ -2838,6 +2923,7 @@ document.querySelectorAll('[data-go]').forEach(el=>{
     if(vid === 'view-grounding') grReset();
     if(vid === 'view-pop') popShowSetup();
     if(vid === 'view-affirmations') loadAff();
+    if(vid === 'view-pomodoro') pomoOpen();
   });
 });
 
@@ -3204,6 +3290,142 @@ function popLeave(){
 }
 window.addEventListener('pagehide', popLeave);
 popRenderSetup();
+
+/* ---------- Pomodoro (only focus time and rounds are logged) ---------- */
+const POMO_KEY = 'pomo.prefs';
+const pomoPrefs = {focus: 0.1, brk:5};
+try{ Object.assign(pomoPrefs, JSON.parse(localStorage.getItem(POMO_KEY) || '{}')); }catch(e){}
+let pomoMode = 'focus', pomoRunning = false, pomoTimer = null;
+let pomoLeft = pomoPrefs.focus * 60, pomoEnd = 0, pomoLast = 0;
+let pomoRounds = 0, pomoFocusSecs = 0;
+
+const pomoFresh = () => !pomoRunning && pomoFocusSecs === 0 && pomoRounds === 0;
+
+function pomoBeep(){
+  if(localStorage.getItem('notif_sound') === 'false') return;
+  try{
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [659, 784].forEach((f, i) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'sine'; o.frequency.value = f; g.gain.value = .15;
+      o.connect(g); g.connect(ctx.destination);
+      o.start(ctx.currentTime + i * .18); o.stop(ctx.currentTime + i * .18 + .15);
+    });
+    setTimeout(() => ctx.close(), 900);
+  }catch(e){}
+}
+
+function pomoRender(){
+  const m = Math.floor(pomoLeft / 60), s = pomoLeft % 60;
+  byId('pomo-time').textContent = String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+  byId('pomo-mode').textContent = pomoMode === 'focus' ? 'FOCUS' : 'BREAK';
+  byId('pomo-rounds').textContent = pomoRounds;
+  const total = (pomoMode === 'focus' ? pomoPrefs.focus : pomoPrefs.brk) * 60;
+  byId('pomo-bar').style.transform = 'scaleX(' + (total ? pomoLeft / total : 0) + ')';
+  byId('pomo-go').textContent = pomoRunning ? 'Pause' : (pomoFresh() ? 'Start' : 'Resume');
+  byId('pomo-focus-val').textContent = pomoPrefs.focus + ' min';
+  byId('pomo-brk-val').textContent = pomoPrefs.brk + ' min';
+  const lock = !pomoFresh();
+  ['focus-minus','focus-plus','brk-minus','brk-plus'].forEach(id => byId('pomo-' + id).disabled = lock);
+  byId('pomo-note').textContent = lock ? 'Reset to change the times.' : 'You can change the times before you start.';
+}
+
+function pomoNextPhase(){
+  pomoMode = pomoMode === 'focus' ? 'break' : 'focus';
+  pomoLeft = (pomoMode === 'focus' ? pomoPrefs.focus : pomoPrefs.brk) * 60;
+  pomoEnd = Date.now() + pomoLeft * 1000;
+  pomoLast = Date.now();
+}
+
+function pomoTick(){
+  const now = Date.now();
+  if(pomoMode === 'focus') pomoFocusSecs += (now - pomoLast) / 1000;
+  pomoLast = now;
+  pomoLeft = Math.max(0, Math.round((pomoEnd - now) / 1000));
+  if(pomoLeft <= 0){
+    pomoBeep();
+    if(pomoMode === 'focus') pomoRounds++;
+    pomoNextPhase();
+  }
+  pomoRender();
+}
+
+function pomoLog(){
+  const secs = Math.round(pomoFocusSecs), rounds = pomoRounds;
+  pomoFocusSecs = 0; pomoRounds = 0;
+  if(secs < 10 && rounds === 0) return;
+  fetch("{% url 'api_exercise_log' %}", {
+    method:'POST', keepalive:true,
+    headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},
+    body: JSON.stringify({exercise:'pomodoro', duration_seconds:secs, count:rounds})
+  });
+}
+
+function pomoStop(){ pomoRunning = false; clearInterval(pomoTimer); }
+function pomoReset(){
+  pomoStop(); pomoLog();
+  pomoMode = 'focus'; pomoLeft = pomoPrefs.focus * 60;
+  pomoRender();
+}
+function pomoLeave(){ if(!pomoFresh()) pomoReset(); }
+function pomoOpen(){ pomoStop(); pomoReset(); setPomoTab('timer'); }
+window.addEventListener('pagehide', () => { if(!pomoFresh()){ pomoStop(); pomoLog(); } });
+
+function pomoAdjust(key, delta, min, max){
+  if(!pomoFresh()) return;
+  pomoPrefs[key] = Math.min(max, Math.max(min, pomoPrefs[key] + delta));
+  try{ localStorage.setItem(POMO_KEY, JSON.stringify(pomoPrefs)); }catch(e){}
+  pomoLeft = pomoPrefs.focus * 60;
+  pomoRender();
+}
+
+byId('pomo-go').addEventListener('click', () => {
+  if(pomoRunning){ pomoStop(); }
+  else {
+    pomoRunning = true; pomoLast = Date.now(); pomoEnd = pomoLast + pomoLeft * 1000;
+    pomoTimer = setInterval(pomoTick, 250);
+  }
+  pomoRender();
+});
+byId('pomo-skip').addEventListener('click', () => { pomoNextPhase(); pomoRender(); });
+byId('pomo-reset').addEventListener('click', pomoReset);
+byId('pomo-focus-minus').addEventListener('click', () => pomoAdjust('focus', -5, 5, 90));
+byId('pomo-focus-plus').addEventListener('click',  () => pomoAdjust('focus',  5, 5, 90));
+byId('pomo-brk-minus').addEventListener('click',   () => pomoAdjust('brk', -1, 1, 30));
+byId('pomo-brk-plus').addEventListener('click',    () => pomoAdjust('brk',  1, 1, 30));
+
+function setPomoTab(tab){
+  ['timer','hist'].forEach(t => {
+    byId('pomo-pane-' + t).hidden = tab !== t;
+    byId('pomo-tab-' + t).classList.toggle('active', tab === t);
+  });
+  if(tab === 'hist') loadPomoHistory();
+}
+byId('pomo-tab-timer').addEventListener('click', () => setPomoTab('timer'));
+byId('pomo-tab-hist').addEventListener('click', () => setPomoTab('hist'));
+
+async function loadPomoHistory(){
+  const box = byId('pomo-hist');
+  try{
+    const r = await fetch("{% url 'api_exercise_history' %}?exercise=pomodoro");
+    const d = await r.json();
+    byId('pomo-week').textContent = `Last 7 days: ${d.week.sessions} sessions, ${d.week.minutes} min focused`;
+    box.innerHTML = '';
+    if(!d.sessions.length){
+      const p = document.createElement('div'); p.className = 'aff-empty';
+      p.textContent = 'No sessions yet. Your finished rounds will show up here 🌱';
+      box.appendChild(p); return;
+    }
+    d.sessions.forEach(s => {
+      const row = document.createElement('div'); row.className = 'aff-fav-row';
+      const t = document.createElement('div'); t.className = 'aff-fav-text';
+      const when = new Date(s.when).toLocaleString([], {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'});
+      t.textContent = `${when}  ·  ${s.minutes} min focused  ·  ${s.rounds} ${s.rounds === 1 ? 'round' : 'rounds'}`;
+      row.appendChild(t); box.appendChild(row);
+    });
+  }catch(e){ showToast('Could not load history'); }
+}
+pomoRender();
 
 /* ---------- 5-4-3-2-1 Grounding (nothing typed, nothing saved) ---------- */
 const GR_STEPS = [
