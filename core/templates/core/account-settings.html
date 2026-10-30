@@ -120,11 +120,9 @@
           <div class="field">
             <label>Year Level</label>
             <select name="year_level">
-              <option value="1" {% if profile.year_level == "1" %}selected{% endif %}>1st Year</option>
-              <option value="2" {% if profile.year_level == "2" %}selected{% endif %}>2nd Year</option>
-              <option value="3" {% if profile.year_level == "3" %}selected{% endif %}>3rd Year</option>
-              <option value="4" {% if profile.year_level == "4" %}selected{% endif %}>4th Year</option>
-              <option value="5" {% if profile.year_level == "5" %}selected{% endif %}>5th Year</option>
+            {% for code, label in year_levels %}
+              <option value="{{ code }}" {% if profile.year_level == code %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
             </select>
           </div>
         </div>

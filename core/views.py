@@ -23,7 +23,7 @@ from .models import BreatheSession, Affirmation, ExerciseSession, Quest, DailyQu
 from .models import Appointment
 from .models import Notification
 from .models import StudentFlag
-from .models import COURSES, SERVICES
+from .models import COURSES, YEAR_LEVELS, SERVICES
 from .models import LoginThrottle
 from .models import AccessLog
 from .models import LoginVerification
@@ -235,10 +235,7 @@ def google_register(request):
 
 
 COURSE_CHOICES = COURSES
-YEAR_LEVEL_CHOICES = [
-    ("1", "1st Year"), ("2", "2nd Year"), ("3", "3rd Year"),
-    ("4", "4th Year"), ("5", "5th Year"),
-]
+YEAR_LEVEL_CHOICES = YEAR_LEVELS
 
 def _needs_profile_setup(user):
     return UserProfile.objects.filter(user=user, needs_profile_setup=True).exists()
@@ -381,6 +378,7 @@ class _CodeGone(Exception):
 
 def _register_page(request, **extra):
     ctx = {"courses": COURSES,
+           "year_levels": YEAR_LEVELS,
            "code_ok": regcodes.session_code(request) is not None,
            "closed": not SiteSettings.get().registration_open}
     ctx.update(extra)
@@ -1403,7 +1401,7 @@ def account_settings(request):
         messages.success(request, "Your settings have been updated.")
         return redirect('account_settings')
 
-    return render(request, 'core/account-settings.html', {'profile': profile, 'courses': COURSES})
+    return render(request, 'core/account-settings.html', {'profile': profile, 'courses': COURSES, 'year_levels': YEAR_LEVELS})
 
 
 # ---- Chatbot safety layer ----
@@ -2076,6 +2074,18 @@ def api_quest_delete(request, quest_id):
 def get_profile(user):
     profile, _ = UserProfile.objects.get_or_create(user=user)
     return profile
+
+
+@login_required(login_url='login')
+@require_POST
+def api_dark_mode(request):
+    data = _json_body(request)
+    if data is None:
+        return JsonResponse({"error": "Invalid JSON."}, status=400)
+    profile = get_profile(request.user)
+    profile.dark_mode = bool(data.get("dark"))
+    profile.save(update_fields=['dark_mode'])
+    return JsonResponse({"status": "ok"})
 
 
 @login_required(login_url='login')
@@ -2807,7 +2817,11 @@ def staff_students_list(request):
 
     order = {"urgent": 0, "watch": 1, "stable": 2, "nodata": 3}
     data.sort(key=lambda s: order[s["risk"]])
-    return JsonResponse({"students": data, "courses": [{"code": c, "label": l} for c, l in COURSES]})
+    return JsonResponse({
+    "students": data,
+    "courses": [{"code": c, "label": l} for c, l in COURSES],
+    "years": [{"code": c, "label": l} for c, l in YEAR_LEVELS],
+})
 
 
 _FLAG_STATUS_LABEL = {"new": "New", "review": "In Review", "resolved": "Resolved"}

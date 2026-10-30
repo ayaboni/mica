@@ -26,6 +26,7 @@ urlpatterns = [
     path('dashboard/student', views.student_dashboard, name='student_dashboard'),
     path('api/tutorial/complete/', views.api_tutorial_complete, name='api_tutorial_complete'),
     path('tutorial/reset/', views.tutorial_reset, name='tutorial_reset'),
+    path('api/preferences/dark-mode/', views.api_dark_mode, name='api_dark_mode'),
     path('dashboard/staff', views.staff_dashboard, name='staff_dashboard'),
     path('dashboard/admin', views.admin_dashboard, name='admin_dashboard'),
     path('consent/', views.consent, name='consent'),

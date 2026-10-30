@@ -38,6 +38,11 @@ COURSES = [
     ("BSN", "BS Nursing"),
 ]
 
+YEAR_LEVELS = [
+    ("1", "1st Year"), ("2", "2nd Year"), ("3", "3rd Year"),
+    ("4", "4th Year"), ("5", "5th Year"),
+]
+
 class LoginThrottle(models.Model):
     """Failed password-login attempts per (lower-cased) username.
 
@@ -104,6 +109,7 @@ class UserProfile(models.Model):
     status_reason = models.CharField(max_length=20, choices=STATUS_REASONS, blank=True)
     status_changed_at = models.DateTimeField(null=True, blank=True)
     affirmations_seeded = models.BooleanField(default=False)
+    dark_mode = models.BooleanField(default=False)
 
     class Meta:
         constraints = [

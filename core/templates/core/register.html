@@ -906,11 +906,9 @@ input::-ms-reveal, input::-ms-clear { display: none; }
   <div class="auth-field">
     <select id="yearLevel" name="year_level" required>
       <option value="" disabled selected hidden>Select Year Level</option>
-      <option value="1">1st Year</option>
-      <option value="2">2nd Year</option>
-      <option value="3">3rd Year</option>
-      <option value="4">4th Year</option>
-      <option value="5">5th Year</option>
+      {% for code, label in year_levels %}
+        <option value="{{ code }}">{{ label }}</option>
+      {% endfor %}
     </select>
   </div>
 

@@ -200,6 +200,11 @@
   .feed-item .fi-text b{font-weight:600;}
   .feed-item .fi-time{font-size:11px; color:var(--ink-soft); margin-top:2px; font-family:'IBM Plex Mono',monospace;}
 
+.grid-2.even{ grid-template-columns:repeat(2,minmax(0,1fr)); }
+@media (max-width:1080px){ .grid-2.even{ grid-template-columns:1fr; } }
+#mon-exercises .card{ min-width:0; }
+#mon-exercises canvas{ max-width:100%; }
+
   /* ---------- Tables ---------- */
   .toolbar{display:flex; align-items:center; justify-content:space-between; gap:14px; margin-bottom:18px; flex-wrap:wrap;}
   .toolbar-left{display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
@@ -347,6 +352,9 @@
 
   ::-webkit-scrollbar{width:9px; height:9px;}
   ::-webkit-scrollbar-thumb{background:var(--line); border-radius:99px;}
+  @supports not selector(::-webkit-scrollbar){
+    *{ scrollbar-width:thin; scrollbar-color:var(--line) transparent; }
+  }
 
   @media (max-width: 1080px){
     .stat-grid{grid-template-columns:repeat(2,1fr);}
@@ -426,6 +434,7 @@
   body.no-assess #modalAssessment,
   body.no-notes [onclick*="openNotesPanel"],
   body.no-notes [onclick*="openThreadNotes"]{display:none !important;}
+  body.no-export [onclick*="exportExercises"],
   body.no-export [onclick*="exportPeriod"],
   #noAccessNotice{display:none;}
   body.no-students #noAccessNotice{display:block;}
@@ -717,14 +726,20 @@
               <select class="filter-select" id="moCourse" onchange="loadExerciseStats()"><option value="">All courses</option></select>
               <select class="filter-select" id="moYear" onchange="loadExerciseStats()">
                 <option value="">All year levels</option>
-                <option value="1">Year 1</option><option value="2">Year 2</option>
-                <option value="3">Year 3</option><option value="4">Year 4</option>
               </select>
               <input class="filter-select" id="moStudent" list="moStudentList" placeholder="Search a student…" autocomplete="off" onchange="moStudentChanged()">
               <datalist id="moStudentList"></datalist>
+              <select class="filter-select" id="moExercise" onchange="loadExerciseStats()"><option value="">All exercises</option></select>
             </div>
-            <div style="margin-top:10px; font-size:12.5px; color:var(--ink-soft);">Counts and time only. What students write or type in the exercises is never saved or shown.</div>
-          </div>
+
+  <div style="margin-top:12px; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+    <div style="font-size:12.5px; color:var(--ink-soft);">Counts and time only. What students write or type in the exercises is never saved or shown.</div>
+    <div style="display:flex; gap:8px;">
+      <button class="pill-btn solid sm" onclick="exportExercisesExcel()">Export Excel</button>
+      <button class="pill-btn ghost sm" onclick="exportExercisesPdf()">Export PDF</button>
+    </div>
+  </div>
+</div>
 
           <div id="moCards" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:16px; margin-bottom:18px;"></div>
 
@@ -733,21 +748,32 @@
             <canvas id="moDailyChart" height="90"></canvas>
           </div>
 
-          <div class="grid-2" style="grid-template-columns:1fr 1fr; margin-bottom:18px;">
+          <div class="grid-2 even" style="margin-bottom:18px;">
             <div class="card panel">
               <div class="panel-head"><div><h3>How often students use them</h3><div class="sub">Number of different days used</div></div></div>
               <canvas id="moFreqChart" height="170"></canvas>
             </div>
             <div class="card panel">
-              <div class="panel-head"><div><h3>Time of day</h3><div class="sub">When sessions start</div></div></div>
-              <canvas id="moHourChart" height="170"></canvas>
+              <div class="panel-head"><div><h3>Day of the week</h3><div class="sub">When sessions start</div></div></div>
+              <canvas id="moDowChart" height="170"></canvas>
             </div>
+          </div>
+          <div class="card panel" style="margin-bottom:18px;">
+            <div class="panel-head"><div><h3>Time of day</h3><div class="sub">When sessions start</div></div></div>
+            <canvas id="moHourChart" height="70"></canvas>
           </div>
 
           <div class="card panel">
             <div class="panel-head"><div><h3>By exercise</h3></div></div>
             <div id="moTable" style="overflow-x:auto;"></div>
           </div>
+
+          <div class="card panel" id="moQuestCard" style="margin-top:18px;">
+            <div class="panel-head"><div><h3>Mica Quests</h3><div class="sub">Daily quest checklists. Counts only, no quest names.</div></div></div>
+            <div id="moQuestCards" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; margin-bottom:16px;"></div>
+            <canvas id="moQuestChart" height="110"></canvas>
+          </div>
+
         </div>
       </section>
 
@@ -941,8 +967,6 @@
               <select class="filter-select" id="repCourse" onchange="loadServiceReport()"><option value="">All courses</option></select>
               <select class="filter-select" id="repYear" onchange="loadServiceReport()">
                 <option value="">All year levels</option>
-                <option value="1">Year 1</option><option value="2">Year 2</option>
-                <option value="3">Year 3</option><option value="4">Year 4</option>
               </select>
               <button class="pill-btn solid sm" style="margin-left:auto;" onclick="exportServiceReportExcel()">Export Excel</button>
               <button class="pill-btn ghost sm" onclick="exportServiceReportPdf()">Export PDF</button>
@@ -1489,6 +1513,7 @@ function showTab(tab, el){
 ========================================================= */
 let studentsReal = [];
 let courseOptions = [];
+let yearOptions = [];
 
 function sparkPath(vals, w, h){
   const pad = 2, min = 1, max = 5;               // mood scores run 1 to 5
@@ -1520,7 +1545,19 @@ function courseSelectHtml(extraCodes){
     all.map(([v, l]) => `<option value="${escapeHtmlStaff(v)}">${escapeHtmlStaff(l)}</option>`).join('');
 }
 
-function yearLabel(y){ return !y ? '' : (/^\d/.test(y) ? 'Year ' + y : y); }
+function yearLabel(y){
+  if(!y) return '';
+  const f = yearOptions.find(o => o.code === y);
+  return f ? f.label : (/^\d/.test(y) ? 'Year ' + y : y);
+}
+
+function fillYearSelects(){
+  ['moYear', 'repYear'].forEach(id => {
+    const sel = document.getElementById(id);
+    if(!sel || sel.options.length > 1 || !yearOptions.length) return;
+    yearOptions.forEach(y => sel.add(new Option(y.label, y.code)));
+  });
+}
 
 function loadStudents(){
   document.getElementById('studentsTbody').innerHTML =
@@ -1530,6 +1567,8 @@ function loadStudents(){
     .then(data => {
       studentsReal = data.students || [];
       courseOptions = data.courses || courseOptions;
+      yearOptions = data.years || yearOptions;
+      fillYearSelects();
       const sel = document.getElementById('studentProgramFilter');
       const keep = sel.value || 'all';
       sel.innerHTML = courseSelectHtml(studentsReal.map(s => s.program));
@@ -2581,7 +2620,6 @@ function updateAlertCounts(){
   bp.textContent = openCount;
   bp.style.display = openCount ? '' : 'none';
   document.getElementById('dashRiskCount').textContent = openCount;
-  document.getElementById('printRiskCount').textContent = openCount;
 }
 
 function renderDashAlertPreview(){
@@ -3061,10 +3099,12 @@ function refreshMonitoring(){
   else loadExerciseStats();
 }
 
+let moLast = null;
 let moStudentId = '';
 const moLabel = s => `${s.name} (${s.student_number})`;
 
 function fillMoFilters(){
+  fillYearSelects();
   const course = document.getElementById('moCourse');
   if(course.options.length <= 1 && courseOptions.length){
     courseOptions.forEach(c => course.add(new Option(c.label, c.code)));
@@ -3089,7 +3129,8 @@ function loadExerciseStats(){
   const q = new URLSearchParams({from: r.from, to: r.to,
     course: document.getElementById('moCourse').value,
     year: document.getElementById('moYear').value,
-    student: moStudentId});
+    exercise: document.getElementById('moExercise').value,
+    student: moStudentId,});
   fetch("{% url 'staff_exercise_stats' %}?" + q)
     .then(x => x.json()).then(renderExerciseStats)
     .catch(() => showToast('Could not load exercise stats'));
@@ -3098,6 +3139,10 @@ function loadExerciseStats(){
 function fmtDur(sec){ return sec < 60 ? sec + ' s' : (sec / 60).toFixed(1) + ' min'; }
 
 function renderExerciseStats(d){
+  moLast = d;
+  const exSel = document.getElementById('moExercise');
+  if(exSel.options.length <= 1) d.options.forEach(o => exSel.add(new Option(o.label, o.key)));
+  document.getElementById('moQuestCard').hidden = !!d.exercise;
   const t = d.totals;
   const card = (label, value, sub) => `
     <div class="card panel">
@@ -3150,6 +3195,193 @@ function renderExerciseStats(d){
       <td class="num">${e.count_label ? e.count + ' ' + e.count_label : '–'}</td>
       <td class="num">${e.last_used || '–'}</td></tr>`).join('')}
   </table>`;
+
+  if(charts.moDow) charts.moDow.destroy();
+  charts.moDow = new Chart(document.getElementById('moDowChart'), {
+    type:'bar',
+    data:{labels:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
+          datasets:[{data:d.by_weekday, backgroundColor:'#D9A46B', borderRadius:8, maxBarThickness:36}]},
+    options:{plugins:{legend:{display:false}},
+             scales:{y:{beginAtZero:true, grid:baseGrid(), ticks:{precision:0, font:chartFont}},
+                     x:{grid:{display:false}, ticks:{font:chartFont}}}}
+  });
+
+  renderQuestStats(d.quests);
+}
+
+function renderQuestStats(q){
+  const mini = (label, value, sub) => `
+    <div style="background:var(--paper); border:1px solid var(--line); border-radius:14px; padding:14px 16px;">
+      <div style="font-size:12px; font-weight:700; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.03em;">${label}</div>
+      <div style="font-size:28px; font-weight:700; margin:4px 0 0;">${value}</div>
+      <div style="font-size:12px; color:var(--ink-soft);">${sub}</div>
+    </div>`;
+  document.getElementById('moQuestCards').innerHTML =
+    mini('Quests done', q.done, 'of ' + q.assigned + ' shown to students') +
+    mini('Completion rate', q.rate == null ? '–' : q.rate + '%', 'on days students opened it') +
+    mini('Students who finished one', q.students_done, 'of ' + q.students_opened + ' who opened it');
+
+  if(charts.moQuest) charts.moQuest.destroy();
+  charts.moQuest = new Chart(document.getElementById('moQuestChart'), {
+    type:'bar',
+    data:{labels:q.labels.map(x => x.slice(5)),
+          datasets:[
+            {label:'Done', data:q.done_per_day, backgroundColor:'#87A991', borderRadius:4, maxBarThickness:18},
+            {label:'Not done', data:q.open_per_day, backgroundColor:'#D9D3BF', borderRadius:4, maxBarThickness:18}]},
+    options:{plugins:{legend:{position:'bottom', labels:{font:chartFont, boxWidth:10}}},
+             scales:{x:{stacked:true, grid:{display:false}, ticks:{font:chartFont, maxTicksLimit:12}},
+                     y:{stacked:true, beginAtZero:true, grid:baseGrid(), ticks:{precision:0, font:chartFont}}}}
+  });
+}
+
+function exportExercisesExcel(){
+  if(!PERMS.export_records) return denied();
+  if(!moLast) return showToast('Nothing to export yet');
+  const d = moLast, t = d.totals, q = d.quests;
+  const picked = id => { const e = document.getElementById(id); return e.options[e.selectedIndex].text; };
+  const wb = XLSX.utils.book_new();
+  const add = (name, ws) => XLSX.utils.book_append_sheet(wb, ws, name);
+
+  add('Summary', XLSX.utils.aoa_to_sheet([
+    ['Item', 'Value'],
+    ['Period', d.period.from + ' to ' + d.period.to],
+    ['Exercise', picked('moExercise')],
+    ['Course', picked('moCourse')],
+    ['Year level', picked('moYear')],
+    ['Student', moStudentId ? document.getElementById('moStudent').value : 'All'],
+    ['Sessions', t.sessions],
+    ['Total minutes', t.minutes],
+    ['Average seconds per session', t.avg_seconds],
+    ['Students who used them', t.active_students + ' of ' + t.total_students],
+    ...(d.exercise ? [] : [
+      ['Quests shown to students', q.assigned],
+      ['Quests done', q.done],
+      ['Quest completion rate', q.rate == null ? '-' : q.rate + '%'],
+      ['Students who opened Quests', q.students_opened],
+      ['Students who finished a quest', q.students_done],
+    ]),
+  ]));
+  add('By exercise', XLSX.utils.json_to_sheet(d.exercises.map(e => ({
+    'Exercise': e.label, 'Sessions': e.sessions, 'Students': e.students,
+    'Total minutes': e.minutes, 'Avg seconds per session': e.avg_seconds,
+    'Extra': e.count_label ? e.count + ' ' + e.count_label : '', 'Last used': e.last_used || ''
+  }))));
+  add('Per day', XLSX.utils.json_to_sheet(d.daily.labels.map((day, i) => {
+    const row = {Date: day};
+    d.daily.series.forEach(s => { row[s.label] = s.data[i]; });
+    return row;
+  })));
+  add('Frequency', XLSX.utils.json_to_sheet(d.frequency.map(f => ({'Days used': f.label, 'Students': f.students}))));
+  add('Day of week', XLSX.utils.json_to_sheet(['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map((n, i) => ({'Day': n, 'Sessions': d.by_weekday[i]}))));
+  add('Time of day', XLSX.utils.json_to_sheet(d.by_hour.map((n, h) => ({'Hour': h + ':00', 'Sessions': n}))));
+  if(!d.exercise){
+    add('Mica Quests', XLSX.utils.json_to_sheet(q.labels.map((day, i) => ({
+      'Date': day, 'Done': q.done_per_day[i], 'Not done': q.open_per_day[i]
+    }))));
+  }
+  XLSX.writeFile(wb, `MICA_exercise_usage_${d.period.from}_to_${d.period.to}.xlsx`);
+  showToast('Excel file downloaded');
+}
+
+function exportExercisesPdf(){
+  if(!PERMS.export_records) return denied();
+  if(!moLast) return showToast('Nothing to export yet');
+  const d = moLast, t = d.totals, q = d.quests;
+  const picked = id => { const e = document.getElementById(id); return e.options[e.selectedIndex].text; };
+  const td = 'padding:5px 4px; border-bottom:1px solid #eee;';
+  const th = (align) => `text-align:${align}; ${td}`;
+  const line = (k, v) => `<tr><td style="${td}">${escapeHtmlStaff(k)}</td><td style="${td} text-align:right;">${escapeHtmlStaff(String(v))}</td></tr>`;
+  const img = c => c ? `<img src="${c.toBase64Image()}" style="width:100%; margin-top:6px;">` : '';
+  const h3 = txt => `<h3 style="font-size:14px; margin:18px 0 4px;">${txt}</h3>`;
+  const block = inner => `<div style="page-break-inside:avoid;">${inner}</div>`;
+
+  const exRows = d.exercises.map(e => `<tr>
+    <td style="${td}">${escapeHtmlStaff(e.label)}</td>
+    <td style="${td} text-align:right;">${e.sessions}</td>
+    <td style="${td} text-align:right;">${e.students}</td>
+    <td style="${td} text-align:right;">${e.minutes} min</td>
+    <td style="${td} text-align:right;">${e.sessions ? fmtDur(e.avg_seconds) : '-'}</td>
+    <td style="${td} text-align:right;">${e.count_label ? e.count + ' ' + e.count_label : '-'}</td></tr>`).join('');
+
+  const freqRows = d.frequency.map(f => line(f.label, f.students + ' students')).join('');
+
+  const days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+  const dowRows = days.map((n, i) => line(n, d.by_weekday[i] + ' sessions')).join('');
+
+    const questDays = q.labels.map((day, i) => `<tr>
+      <td style="${td}">${escapeHtmlStaff(day)}</td>
+      <td style="${td} text-align:right;">${q.done_per_day[i]}</td>
+      <td style="${td} text-align:right;">${q.open_per_day[i]}</td>
+    </tr>`).join('');
+
+  const quest = d.exercise ? '' : `
+    <div style="page-break-inside:avoid;">
+      ${h3('Mica Quests')}
+      <table style="width:100%; border-collapse:collapse;">
+        ${line('Quests shown to students', q.assigned)}
+        ${line('Quests done', q.done)}
+        ${line('Completion rate', q.rate == null ? '-' : q.rate + '%')}
+        ${line('Students who opened Quests', q.students_opened)}
+        ${line('Students who finished a quest', q.students_done)}
+      </table>
+    </div>
+    ${h3('Mica Quests per day')}
+    <table style="width:100%; border-collapse:collapse; font-size:11.5px;">
+      <tr><th style="${th('left')}">Date</th><th style="${th('right')}">Done</th><th style="${th('right')}">Not done</th></tr>
+      ${questDays}
+    </table>`;
+
+  const el = document.createElement('div');
+  el.style.cssText = 'width:700px; padding:30px; background:#fff; color:#111; font-family:Arial,sans-serif; font-size:13px;';
+  el.innerHTML = `
+    <h1 style="font-size:22px; margin:0 0 2px;">MICA - Exercise Usage Report</h1>
+    <p style="font-size:12px; color:#555; margin:0 0 16px;">${d.period.from} to ${d.period.to} · Exercise: ${escapeHtmlStaff(picked('moExercise'))} · Course: ${escapeHtmlStaff(picked('moCourse'))} · Year: ${escapeHtmlStaff(picked('moYear'))}${moStudentId ? ' · Student: ' + escapeHtmlStaff(document.getElementById('moStudent').value) : ''}</p>
+
+    ${h3('Summary')}
+    <table style="width:100%; border-collapse:collapse;">
+      ${line('Sessions', t.sessions)}
+      ${line('Total time', t.minutes + ' min')}
+      ${line('Average per session', fmtDur(t.avg_seconds))}
+      ${line('Students who used them', t.active_students + ' of ' + t.total_students + (t.adoption == null ? '' : ' (' + t.adoption + '%)'))}
+    </table>
+
+    ${block(`${h3('By exercise')}
+      <table style="width:100%; border-collapse:collapse; font-size:12px;">
+        <tr><th style="${th('left')}">Exercise</th><th style="${th('right')}">Sessions</th><th style="${th('right')}">Students</th><th style="${th('right')}">Total time</th><th style="${th('right')}">Avg</th><th style="${th('right')}">Extra</th></tr>
+        ${exRows}
+      </table>`)}
+
+    ${block(`${h3('Sessions per day')}${img(charts.moDaily)}`)}
+
+    ${block(`${h3('How often students use them')}<table style="width:100%; border-collapse:collapse;">${freqRows}</table>`)}
+
+    ${block(`${h3('Day of the week')}
+      <table style="width:100%; border-collapse:collapse;">${dowRows}</table>
+      ${img(charts.moDow)}`)}
+
+    ${block(`${h3('Time of day')}${img(charts.moHour)}`)}
+
+    ${quest}
+
+    <p style="font-size:11px; color:#888; margin-top:20px;">Counts and time only. Nothing students wrote is included. Generated by MICA Staff Dashboard. Confidential.</p>`;
+
+  const win = window.open('', '_blank');
+  if(!win){ showToast('Allow pop-ups for this site, then try again'); return; }
+  const fileName = `MICA_exercise_usage_${d.period.from}_to_${d.period.to}`;
+  win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${fileName}</title>
+    <style>
+      @page{ size:A4; margin:12mm; }
+      *{ box-sizing:border-box; }
+      body{ margin:0; font-family:Arial,sans-serif; color:#111; font-size:13px; }
+      table{ width:100%; border-collapse:collapse; }
+      tr{ page-break-inside:avoid; }
+      img{ max-width:100%; }
+    </style></head><body>${el.innerHTML}</body></html>`);
+  win.document.close();
+  const imgs = [...win.document.images];
+  Promise.all(imgs.map(i => i.complete ? 1 : new Promise(r => { i.onload = i.onerror = r; })))
+    .then(() => { win.focus(); win.print(); });
+  showToast('In the print window, choose "Save as PDF"');
 }
 
 /* ---------- Service Reports ---------- */
@@ -3194,6 +3426,7 @@ function repPeriodChanged(){
   loadServiceReport();
 }
 function fillRepCourses(){
+  fillYearSelects();
   const sel = document.getElementById('repCourse');
   if(sel.options.length > 1 || !courseOptions.length) return;
   courseOptions.forEach(c => { const o = document.createElement('option'); o.value = c.code; o.textContent = c.label; sel.appendChild(o); });
@@ -3492,12 +3725,13 @@ async function fetchPeriodData(){
     if(!res.ok) throw new Error('HTTP ' + res.status);
     return res.json();
   };
-  const [p, s, a] = await Promise.all([
+  const [p, s, a, ex] = await Promise.all([
     get("{% url 'staff_period_report' %}"),
     get("{% url 'staff_service_report' %}"),
-    get("{% url 'staff_activities' %}")
+    get("{% url 'staff_activities' %}"),
+    get("{% url 'staff_exercise_stats' %}").catch(() => null)
   ]);
-  return {p, s, acts: a.activities || []};
+  return {p, s, acts: a.activities || [], ex};
 }
 
 async function exportPeriodExcel(){
@@ -3506,7 +3740,7 @@ async function exportPeriodExcel(){
   let d;
   try{ d = await fetchPeriodData(); }
   catch(e){ return showToast('Could not load the report'); }
-  const {p, s, acts} = d, sm = p.summary;
+  const {p, s, acts, ex} = d, sm = p.summary;
   const pct = v => v == null ? '-' : v + '%';
   const keys = s.services.map(x => x.key);
   const cap = k => k[0].toUpperCase() + k.slice(1);
@@ -3558,6 +3792,20 @@ async function exportPeriodExcel(){
   add('Mood by course', XLSX.utils.json_to_sheet(p.mood_by_course.map(c => ({
     'Course': c.course, 'Average mood': c.avg_mood, 'Check-ins': c.checkins, 'Students': c.students
   }))));
+
+  if(ex){
+    add('Exercise usage', XLSX.utils.json_to_sheet(ex.exercises.map(e => ({
+      'Exercise': e.label, 'Sessions': e.sessions, 'Students': e.students,
+      'Total minutes': e.minutes, 'Avg seconds per session': e.avg_seconds,
+      'Extra': e.count_label ? e.count + ' ' + e.count_label : '', 'Last used': e.last_used || ''
+    }))));
+    add('Mica Quests', XLSX.utils.json_to_sheet([{
+      'Quests shown': ex.quests.assigned, 'Quests done': ex.quests.done,
+      'Completion rate %': ex.quests.rate == null ? '' : ex.quests.rate,
+      'Students who opened it': ex.quests.students_opened,
+      'Students who finished one': ex.quests.students_done
+    }]));
+  }
 
   MicaLoader.show('Preparing your file…');
   XLSX.writeFile(wb, `MICA_period_report_${p.period.from}_to_${p.period.to}.xlsx`);

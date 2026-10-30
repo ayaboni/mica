@@ -1695,7 +1695,7 @@ function toggleDyslexia(){
         <div class="composer">
           <div class="composer-box">
             <textarea id="guidance-input" rows="1" placeholder="Message..."></textarea>
-            <button class="icon-btn" id="chat-mic" type="button" title="Speak in English" aria-label="Start English voice input" aria-pressed="false">
+            <button class="icon-btn" id="guidance-mic" type="button" title="Speak in English" aria-label="Start English voice input" aria-pressed="false">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
             </button>
             <button class="icon-btn send" id="guidance-send" title="Send">
@@ -2485,7 +2485,7 @@ async function transcribeVoiceRecording(blob) {
      return;
    }
    chatInput.value = `${voiceInputBase}${voiceInputBase ? ' ' : ''}${transcript}`;
-   autoGrow(inputEl);
+   autoGrow(chatInput);
    chatInput.focus();
  } catch (error) {
    showToast(error.name === 'NotAllowedError'
@@ -2595,7 +2595,7 @@ function sendGuidanceMessage(){
   if(!text) return;
   addMessage('guidance-messages', escapeHtml(text), 'user');
   guidanceInput.value = '';
-  autoGrow(inputEl);
+  autoGrow(guidanceInput);
 
   fetch("{% url 'guidance_send' %}", {
     method: "POST",
@@ -2653,7 +2653,7 @@ function sendFromHome(){
   switchView('view-chat','Chat');
   addMessage('chat-messages', escapeHtml(text), 'user');
   homeInput.value = '';
-  autoGrow(inputEl);
+  autoGrow(homeInput);
   const typingRow = addTyping('chat-messages', 'MASCOT');
   getAIReply(text).then(reply => {
     typingRow.remove();
@@ -4233,7 +4233,11 @@ darkModeBtn?.addEventListener('click', () => {
   document.body.classList.toggle('dark-mode');
   const isDark = document.body.classList.contains('dark-mode');
   darkModeBtn.textContent = `Dark Mode: ${isDark ? 'On' : 'Off'}`;
-  try{ localStorage.setItem('mica_dark', isDark ? '1' : '0'); }catch(e){}
+  fetch("{% url 'api_dark_mode' %}", {
+    method:'POST',
+    headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},
+    body: JSON.stringify({dark:isDark})
+  }).catch(() => {});
   showToast(isDark ? 'Dark mode enabled' : 'Light mode enabled');
 });
 

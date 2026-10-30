@@ -18,7 +18,7 @@ from django.utils import timezone
 from django.utils.dateparse import parse_date
 from django.views.decorators.http import require_POST
 
-from .models import Activity, Appointment, StudentFlag, StudentNote, Semester, MoodEntry, ExerciseSession, COURSES, SERVICES
+from .models import Activity, Appointment, StudentFlag, StudentNote, Semester, MoodEntry, ExerciseSession, DailyQuest, COURSES, SERVICES
 from .permissions import can, require_perm, staff_permissions
 
 staff_only = user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
@@ -292,17 +292,23 @@ def exercise_stats(request):
         students = students.filter(id=int(student))
     total_students = students.count()
 
-    rows = ExerciseSession.objects.filter(
-        user__in=students, created_at__range=(t0, t1),
-    ).values_list("user_id", "exercise", "duration_seconds", "count", "created_at")
+    ex_filter = (request.GET.get("exercise") or "").strip()
+    if ex_filter not in EXERCISE_LABELS:
+        ex_filter = ""
+
+    sessions = ExerciseSession.objects.filter(user__in=students, created_at__range=(t0, t1))
+    if ex_filter:
+        sessions = sessions.filter(exercise=ex_filter)
+    rows = sessions.values_list("user_id", "exercise", "duration_seconds", "count", "created_at")
 
     def blank():
         return {"sessions": 0, "seconds": 0, "count": 0, "users": set(), "last": None}
 
-    by_ex = {k: blank() for k in EXERCISE_LABELS}
+    by_ex = {k: blank() for k in EXERCISE_LABELS if not ex_filter or k == ex_filter}
     days_by_user = defaultdict(set)
     daily = defaultdict(lambda: defaultdict(int))
     by_hour = [0] * 24
+    by_weekday = [0] * 7
 
     for uid, ex, secs, cnt, when in rows:
         local = timezone.localtime(when)
@@ -317,6 +323,7 @@ def exercise_stats(request):
         days_by_user[uid].add(day)
         daily[ex][day] += 1
         by_hour[local.hour] += 1
+        by_weekday[local.weekday()] += 1
 
     days = []
     d = start
@@ -328,6 +335,29 @@ def exercise_stats(request):
     all_seconds = sum(e["seconds"] for e in by_ex.values())
     active = len(days_by_user)
     n_days = [len(v) for v in days_by_user.values()]
+
+    q_rows = DailyQuest.objects.filter(
+        user__in=students, date__range=(start, end)).values_list("user_id", "date", "done")
+    q_assigned, q_done = defaultdict(int), defaultdict(int)
+    q_opened, q_finished = set(), set()
+    for uid, qday, qdone in q_rows:
+        q_assigned[qday] += 1
+        q_opened.add(uid)
+        if qdone:
+            q_done[qday] += 1
+            q_finished.add(uid)
+    q_assigned_total = sum(q_assigned.values())
+    q_done_total = sum(q_done.values())
+    quests = {
+        "assigned": q_assigned_total,
+        "done": q_done_total,
+        "rate": round(100 * q_done_total / q_assigned_total) if q_assigned_total else None,
+        "students_opened": len(q_opened),
+        "students_done": len(q_finished),
+        "labels": [x.isoformat() for x in days],
+        "done_per_day": [q_done.get(x, 0) for x in days],
+        "open_per_day": [q_assigned.get(x, 0) - q_done.get(x, 0) for x in days],
+    }
 
     return JsonResponse({
         "period": {"from": start.isoformat(), "to": end.isoformat()},
@@ -359,6 +389,10 @@ def exercise_stats(request):
             {"label": "4+ days", "students": sum(1 for n in n_days if n >= 4)},
         ],
         "by_hour": by_hour,
+        "by_weekday": by_weekday,
+        "exercise": ex_filter,
+        "options": [{"key": k, "label": v} for k, v in EXERCISE_LABELS.items()],
+        "quests": quests,
     })
 
 # ---------------------------------------------------------------- period report (export)
