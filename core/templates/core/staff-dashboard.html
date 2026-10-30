@@ -514,7 +514,7 @@
 
     <div class="sidebar-bottom">
       <div class="admin-chip">
-        <div class="avatar" style="background:var(--sky);">{% include 'core/_initials.html' with u=request.user %}</div>
+        <div class="avatar me-avatar" style="background:var(--sky);">{% if my_avatar_url %}<img src="{{ my_avatar_url }}" alt="">{% else %}{% include 'core/_initials.html' with u=request.user %}{% endif %}</div>
         <div class="who">
           <div class="name" id="sidebarUserName">{{ request.user.get_full_name|default:request.user.username }}</div>
           <div class="role" id="sidebarUserRole">{{ staff_role }}</div>
@@ -550,7 +550,7 @@
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2a6 6 0 0 0-6 6v3.4c0 .8-.3 1.6-.9 2.2L4 15h16l-1.1-1.4a3.2 3.2 0 0 1-.9-2.2V8a6 6 0 0 0-6-6z"/><path d="M9.5 19a2.5 2.5 0 0 0 5 0"/></svg>
           <span class="ping" id="bellPing" style="display:none;">0</span>
         </button>
-        <div class="avatar" style="background:var(--sky); cursor:pointer;" onclick="goTo('settings')">{% include 'core/_initials.html' with u=request.user %}</div>
+        <div class="avatar me-avatar" style="background:var(--sky); cursor:pointer;" onclick="goTo('settings')">{% if my_avatar_url %}<img src="{{ my_avatar_url }}" alt="">{% else %}{% include 'core/_initials.html' with u=request.user %}{% endif %}</div>
       </div>
     </div>
 
@@ -1061,6 +1061,7 @@
         <div class="subpanel active" id="tab-profile">
           <div class="card panel" style="max-width:520px;">
     
+          {% include 'core/_my_photo_field.html' %}
           <div class="field"><label>First name</label><input type="text" id="profFirst" value="{{ request.user.first_name }}"></div>
           <div class="field"><label>Last name</label><input type="text" id="profLast" value="{{ request.user.last_name }}"></div>
           <div class="field"><label>Email</label><input type="email" value="{{ request.user.email }}" disabled></div>
@@ -3034,7 +3035,7 @@ function renderAdmins(){
 }
 
 function saveStaffProfile(){
-  fetch("{% url 'staff_profile_update' %}", {
+  return fetch("{% url 'staff_profile_update' %}", {
     method:'POST',
     headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},
     body: JSON.stringify({
@@ -3045,12 +3046,21 @@ function saveStaffProfile(){
   })
   .then(r => r.json().then(d => ({ok:r.ok, d})))
   .then(({ok, d}) => {
-    if(!ok){ showToast(d.error || 'Could not save'); return; }
+    if(!ok){ showToast(d.error || 'Could not save'); return false; }
     document.getElementById('sidebarUserName').textContent = d.full_name;
+    { const f = document.getElementById('profFirst').value.trim(), l = document.getElementById('profLast').value.trim();
+      const ini = ((f[0]||'') + (l[0]||'')).toUpperCase(); if(ini){ window.MY_INITIALS = ini; if(window.refreshMyAvatar) refreshMyAvatar(); } }
+    // what is on screen is now the saved version (so it no longer counts as "unsaved")
+    ['profFirst','profLast','profLicense'].forEach(id => { const el = document.getElementById(id); if(el) el.defaultValue = el.value; });
     showToast('Profile saved');
     loadCareTeam();
-  });
+    return true;
+  })
+  .catch(() => { showToast('Could not save'); return false; });
 }
+// unsaved-changes protection (see _my_photo_js.html)
+window.MY_GUARD_FIELDS = ['profFirst','profLast','profLicense'];
+window.MY_SAVE_FIELDS = saveStaffProfile;
 
 /* =========================================================
    CHARTS
@@ -4219,5 +4229,6 @@ let staffNotifInitialized = false;
 </script>
 {% endif %}
 
+{% include 'core/_my_photo_js.html' %}
 </body>
 </html>

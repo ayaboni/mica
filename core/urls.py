@@ -87,6 +87,7 @@ urlpatterns = [
     path('api/staff/students/<int:student_id>/status/', views.staff_student_status, name='staff_student_status'),
     path('api/staff/care-team/', views.staff_care_team, name='staff_care_team'),
     path('api/staff/profile/', views.staff_profile_update, name='staff_profile_update'),
+    path('api/staff/profile/avatar/', views.staff_avatar_update, name='staff_avatar_update'),
     path('api/staff/registration-codes/', registration_codes.codes_list, name='staff_registration_codes'),
     path('api/staff/registration-codes/generate/', registration_codes.code_generate, name='staff_registration_code_generate'),
     path('api/staff/notes/<int:note_id>/review/', views.staff_note_review, name='staff_note_review'),

@@ -1412,8 +1412,20 @@ def account_settings(request):
         profile.share_mica_topics = request.POST.get('share_mica_topics') == 'on'
         if not profile.share_mica_topics:
             request.user.conversations.update(topics=[], topics_updated_at=None)
-        if request.FILES.get('avatar'):
-            profile.avatar = request.FILES['avatar']
+        new_avatar = request.FILES.get('avatar')
+        if new_avatar:
+            err = _avatar_error(new_avatar)
+            if err:
+                messages.error(request, err)
+            else:
+                if profile.avatar:
+                    profile.avatar.delete(save=False)   # don't leave the old picture behind
+                profile.avatar = new_avatar
+        elif request.POST.get('remove_avatar') == '1':
+            # Remove the picture completely: back to the default initials avatar everywhere.
+            if profile.avatar:
+                profile.avatar.delete(save=False)
+            profile.avatar = None
         profile.save()
 
         messages.success(request, "Your settings have been updated.")
@@ -2097,6 +2109,25 @@ def get_profile(user):
     return profile
 
 
+AVATAR_MAX_BYTES = 5 * 1024 * 1024
+AVATAR_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+
+
+def _avatar_error(f):
+    """Return a user-facing error string if `f` is not an acceptable profile picture, else None."""
+    if f.size > AVATAR_MAX_BYTES:
+        return "That picture is too large. Please use one under 5 MB."
+    if (f.content_type or "").lower() not in AVATAR_TYPES:
+        return "Please upload a JPG, PNG, WebP or GIF image."
+    try:
+        from PIL import Image
+        Image.open(f).verify()      # raises if the file is not really an image
+        f.seek(0)
+    except Exception:
+        return "That file doesn't look like a valid image."
+    return None
+
+
 @login_required(login_url='login')
 @require_POST
 def api_dark_mode(request):
@@ -2220,6 +2251,15 @@ def _staff_role(user):
     return sp.role_label if sp else "Guidance Staff"
 
 
+def _avatar_url(user):
+    """URL of the user's profile picture, or '' when they have none."""
+    prof = UserProfile.objects.filter(user=user).only('avatar').first()
+    try:
+        return prof.avatar.url if prof and prof.avatar else ''
+    except Exception:
+        return ''
+
+
 # ---------------------------------------------------------------------------
 # Who may open which conversation
 #
@@ -2312,6 +2352,7 @@ def chat_or_referral(view):
 def staff_dashboard(request):
     sp = getattr(request.user, 'staff_profile', None)
     return render(request, 'core/staff-dashboard.html', {
+        'my_avatar_url': _avatar_url(request.user),
         'staff_role': _staff_role(request.user),
         'staff_license': sp.license_number if sp else '',
         'staff_perms': staff_permissions(request.user),
@@ -3507,6 +3548,38 @@ def staff_profile_update(request):
 
 @login_required(login_url='login')
 @user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
+@require_POST
+def staff_avatar_update(request):
+    """Add, change or remove the signed-in staff/admin member's own profile picture.
+
+    multipart POST:  avatar=<image file>   -> set/replace
+                     remove=1              -> delete
+    """
+    profile = get_profile(request.user)
+
+    if request.POST.get("remove") == "1":
+        if profile.avatar:
+            profile.avatar.delete(save=False)
+        profile.avatar = None
+        profile.save(update_fields=["avatar"])
+        return JsonResponse({"status": "ok", "avatar_url": ""})
+
+    f = request.FILES.get("avatar")
+    if not f:
+        return JsonResponse({"error": "Choose a picture first."}, status=400)
+    err = _avatar_error(f)
+    if err:
+        return JsonResponse({"error": err}, status=400)
+
+    if profile.avatar:
+        profile.avatar.delete(save=False)   # don't leave the old picture behind
+    profile.avatar = f
+    profile.save(update_fields=["avatar"])
+    return JsonResponse({"status": "ok", "avatar_url": profile.avatar.url})
+
+
+@login_required(login_url='login')
+@user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
 @require_perm('view_students')
 def staff_summary(request):
     today = timezone.localdate()
@@ -3589,7 +3662,7 @@ def staff_summary(request):
 @login_required(login_url='login')
 @user_passes_test(lambda u: u.is_superuser, login_url='login')
 def admin_dashboard(request):
-    return render(request, 'core/admin-dashboard.html')
+    return render(request, 'core/admin-dashboard.html', {'my_avatar_url': _avatar_url(request.user)})
 
 
 # -- Logout --

@@ -398,7 +398,7 @@
 
     <div class="sidebar-bottom">
       <div class="admin-chip">
-        <div class="avatar me-avatar" style="background:var(--sky);">{% include 'core/_initials.html' with u=request.user %}</div>
+        <div class="avatar me-avatar" style="background:var(--sky);">{% if my_avatar_url %}<img src="{{ my_avatar_url }}" alt="">{% else %}{% include 'core/_initials.html' with u=request.user %}{% endif %}</div>
           <div class="who">
             <div class="name" id="meName">{{ request.user.get_full_name|default:request.user.username }}</div>
               <div class="role">System Admin</div>
@@ -431,7 +431,7 @@
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2a6 6 0 0 0-6 6v3.4c0 .8-.3 1.6-.9 2.2L4 15h16l-1.1-1.4a3.2 3.2 0 0 1-.9-2.2V8a6 6 0 0 0-6-6z"/><path d="M9.5 19a2.5 2.5 0 0 0 5 0"/></svg>
           <span class="ping" id="bellPing">2</span>
         </button>
-        <div class="avatar" style="background:var(--sky); cursor:pointer;" onclick="goTo('settings'); goTab('account')">{% include 'core/_initials.html' with u=request.user %}</div>
+        <div class="avatar me-avatar" style="background:var(--sky); cursor:pointer;" onclick="goTo('settings'); goTab('account')">{% if my_avatar_url %}<img src="{{ my_avatar_url }}" alt="">{% else %}{% include 'core/_initials.html' with u=request.user %}{% endif %}</div>
       </div>
     </div>
 
@@ -821,6 +821,7 @@
       <div class="subpanel" id="tab-account">
           <div class="card panel">
             <div class="panel-head"><div><h3>My Account</h3><div class="sub">Your own admin login. Each admin should use their own account.</div></div></div>
+            {% include 'core/_my_photo_field.html' %}
             <div class="field-grid">
               <div class="field"><label>First name</label><input id="myFirst" maxlength="150" value="{{ request.user.first_name }}"></div>
               <div class="field"><label>Last name</label><input id="myLast" maxlength="150" value="{{ request.user.last_name }}"></div>
@@ -2118,20 +2119,26 @@ function saveMyAccount(){
   const btn = document.getElementById('myAcctBtn');
   const msg = document.getElementById('myAcctMsg');
   btn.disabled = true; msg.textContent = '';
-  api('/api/staff/profile/', {
+  return api('/api/staff/profile/', {
     first_name: document.getElementById('myFirst').value,
     last_name: document.getElementById('myLast').value,
   }).then(r=>{
     btn.disabled = false;
-    if(!r.ok){ msg.style.color = 'var(--alert)'; msg.textContent = r.data.error || 'Could not save.'; return; }
+    if(!r.ok){ msg.style.color = 'var(--alert)'; msg.textContent = r.data.error || 'Could not save.'; return false; }
     msg.style.color = '';
     const f = document.getElementById('myFirst').value.trim();
     const l = document.getElementById('myLast').value.trim();
-    document.querySelectorAll('.me-avatar').forEach(a => a.textContent = (((f[0] || '') + (l[0] || '')).toUpperCase()) || a.textContent);
+    { const ini = ((f[0] || '') + (l[0] || '')).toUpperCase(); if(ini){ window.MY_INITIALS = ini; if(window.refreshMyAvatar) refreshMyAvatar(); } }
     document.getElementById('meName').textContent = r.data.full_name;
-    showToast('Name saved');  
+    // what is on screen is now the saved version (so it no longer counts as "unsaved")
+    ['myFirst','myLast'].forEach(id => { const el = document.getElementById(id); if(el) el.defaultValue = el.value; });
+    showToast('Name saved');
+    return true;
   });
 }
+// unsaved-changes protection (see _my_photo_js.html)
+window.MY_GUARD_FIELDS = ['myFirst','myLast'];
+window.MY_SAVE_FIELDS = saveMyAccount;
 
 /* =========================================================
    MAINTENANCE
@@ -2505,5 +2512,6 @@ function resetIdle(){
   document.addEventListener(ev, resetIdle, {passive:true}));
 resetIdle();
 </script>
+{% include 'core/_my_photo_js.html' %}
 </body>
 </html>

@@ -1,0 +1,237 @@
+{% comment %} Reusable profile-photo crop/edit dialog. Include ONCE per page, after _unsaved_guard.html.
+   JS API:  MicaCropper.open(fileOrBlob, {onError}) -> Promise<null | {blob, saveNow}>
+     null     = the user cancelled / discarded their edits
+     blob     = the cropped, square 512x512 JPEG
+     saveNow  = true when the user closed with unsaved edits and chose "Save changes" 
+{% endcomment %}
+<style>
+  .mc-back{ position:fixed; inset:0; z-index:9500; background:rgba(20,24,20,.6); display:flex; align-items:center; justify-content:center; padding:14px; overflow:auto; }
+  .mc-back[hidden]{ display:none !important; }
+  .mc-box{ --mc-bg:#FFFFFF; --mc-ink:#3A2E28; --mc-soft:#6B6259; --mc-line:rgba(0,0,0,.12);
+           --mc-pri:#6F9168; --mc-pri-ink:#FFFFFF; --mc-sec-bg:#F1ECDD; --mc-sec-ink:#3A2E28; --mc-stage:#E9E4D3;
+           width:min(400px,100%); background:var(--mc-bg); color:var(--mc-ink); border:1px solid var(--mc-line);
+           border-radius:20px; padding:18px 18px 16px; box-shadow:0 18px 50px rgba(0,0,0,.35); font-family:inherit; text-align:left; }
+  body.dark .mc-box, body.dark-mode .mc-box{
+           --mc-bg:#283227; --mc-ink:#E6EDE5; --mc-soft:#A3B0A2; --mc-line:rgba(255,255,255,.14);
+           --mc-pri:#7C9C74; --mc-pri-ink:#0F130F; --mc-sec-bg:#354233; --mc-sec-ink:#E6EDE5; --mc-stage:#1A1E1A; }
+  .mc-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+  .mc-head h3{ margin:0; font-size:17px; font-weight:800; color:var(--mc-ink); }
+  .mc-x{ width:32px; height:32px; border-radius:50%; border:none; background:var(--mc-sec-bg); color:var(--mc-sec-ink); font-size:20px; line-height:1; cursor:pointer; }
+  .mc-stagewrap{ background:var(--mc-stage); border-radius:14px; display:flex; justify-content:center; padding:6px; }
+  .mc-canvas{ width:min(320px,100%); aspect-ratio:1/1; height:auto; display:block; touch-action:none; cursor:grab; border-radius:10px; }
+  .mc-canvas.is-drag{ cursor:grabbing; }
+  .mc-hint{ margin:8px 0 6px; font-size:12px; color:var(--mc-soft); text-align:center; }
+  .mc-zoom{ display:flex; align-items:center; gap:10px; margin:6px 2px 10px; color:var(--mc-soft); font-weight:700; }
+  .mc-zoom input[type=range]{ flex:1; accent-color:var(--mc-pri); }
+  .mc-tools{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:14px; }
+  .mc-tool{ border:none; border-radius:12px; padding:9px 4px; background:var(--mc-sec-bg); color:var(--mc-sec-ink); font:inherit; font-size:12px; font-weight:700; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:4px; }
+  .mc-tool svg{ width:18px; height:18px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+  .mc-actions{ display:flex; gap:10px; }
+  .mc-btn{ flex:1; border:none; border-radius:999px; padding:11px 16px; font:inherit; font-weight:700; font-size:14px; cursor:pointer; background:var(--mc-sec-bg); color:var(--mc-sec-ink); }
+  .mc-btn.pri{ background:var(--mc-pri); color:var(--mc-pri-ink); }
+  .mc-btn:disabled{ opacity:.6; cursor:default; }
+  .mc-x:focus-visible, .mc-tool:focus-visible, .mc-btn:focus-visible, .mc-canvas:focus-visible{ outline:3px solid #6FA8DC; outline-offset:2px; }
+</style>
+
+<div class="mc-back" id="mcBack" hidden>
+  <div class="mc-box" role="dialog" aria-modal="true" aria-labelledby="mcTitle">
+    <div class="mc-head">
+      <h3 id="mcTitle">Adjust your photo</h3>
+      <button type="button" class="mc-x" id="mcClose" aria-label="Close">&times;</button>
+    </div>
+    <div class="mc-stagewrap"><canvas class="mc-canvas" id="mcCanvas" width="320" height="320" tabindex="0" aria-label="Photo preview. Drag to reposition."></canvas></div>
+    <div class="mc-hint">Drag the photo to reposition it. Scroll or use the slider to zoom.</div>
+    <div class="mc-zoom">
+      <span aria-hidden="true">&minus;</span>
+      <input type="range" id="mcZoom" min="1" max="4" step="0.01" value="1" aria-label="Zoom">
+      <span aria-hidden="true">+</span>
+    </div>
+    <div class="mc-tools">
+      <button type="button" class="mc-tool" id="mcRotL"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>Rotate left</button>
+      <button type="button" class="mc-tool" id="mcRotR"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg>Rotate right</button>
+      <button type="button" class="mc-tool" id="mcFlip"><svg viewBox="0 0 24 24"><path d="M12 3v18"/><path d="M8 7 3 12l5 5V7z"/><path d="M16 7l5 5-5 5V7z"/></svg>Flip</button>
+      <button type="button" class="mc-tool" id="mcReset"><svg viewBox="0 0 24 24"><path d="M4 4v6h6"/><path d="M4.5 14a8 8 0 1 0 2-8.3L4 10"/></svg>Reset</button>
+    </div>
+    <div class="mc-actions">
+      <button type="button" class="mc-btn" id="mcCancel">Cancel</button>
+      <button type="button" class="mc-btn pri" id="mcApply">Apply</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  if (window.MicaCropper) return;
+
+  var S = 320;          // on-screen canvas size (px)
+  var D = 272;          // diameter of the circular crop area on screen
+  var OUT = 512;        // exported picture size (px)
+
+  var back   = document.getElementById('mcBack');
+  var canvas = document.getElementById('mcCanvas');
+  var ctx    = canvas.getContext('2d');
+  var zoomEl = document.getElementById('mcZoom');
+
+  var st = null;        // current session: {img, url, rot, flip, zoom, ox, oy, touched, resolve, unreg, lastFocus}
+
+  function dims(){ var odd = st.rot % 2 === 1; return { w: odd ? st.img.naturalHeight : st.img.naturalWidth, h: odd ? st.img.naturalWidth : st.img.naturalHeight }; }
+  function baseScale(){ var d = dims(); return Math.max(D / d.w, D / d.h); }
+
+  function clamp(){
+    var d = dims(), s = baseScale() * st.zoom;
+    var mx = Math.max(0, d.w * s / 2 - D / 2), my = Math.max(0, d.h * s / 2 - D / 2);
+    st.ox = Math.max(-mx, Math.min(mx, st.ox));
+    st.oy = Math.max(-my, Math.min(my, st.oy));
+  }
+
+  // Draw the photo. (cx,cy) = where the crop-area centre lands; k = scale of crop area (1 on screen).
+  function paint(c, cx, cy, k){
+    c.save();
+    c.translate(cx + st.ox * k, cy + st.oy * k);
+    c.rotate(st.rot * Math.PI / 2);
+    if (st.flip) c.scale(-1, 1);
+    var s = baseScale() * st.zoom * k;
+    c.scale(s, s);
+    c.imageSmoothingQuality = 'high';
+    c.drawImage(st.img, -st.img.naturalWidth / 2, -st.img.naturalHeight / 2);
+    c.restore();
+  }
+
+  function draw(){
+    if (!st) return;
+    clamp();
+    ctx.clearRect(0, 0, S, S);
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, S, S);
+    paint(ctx, S / 2, S / 2, 1);
+    // dim everything outside the circular crop area
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,.55)';
+    ctx.beginPath(); ctx.rect(0, 0, S, S); ctx.arc(S / 2, S / 2, D / 2, 0, Math.PI * 2, true); ctx.fill('evenodd');
+    ctx.restore();
+    ctx.beginPath(); ctx.arc(S / 2, S / 2, D / 2, 0, Math.PI * 2);
+    ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.stroke();
+  }
+
+  function touch(){ st.touched = true; }
+  function setZoom(z){ st.zoom = Math.max(1, Math.min(4, z)); zoomEl.value = st.zoom; touch(); draw(); }
+
+  /* ---- interactions ---- */
+  var drag = null;
+  canvas.addEventListener('pointerdown', function(e){
+    if (!st) return;
+    drag = { x: e.clientX, y: e.clientY };
+    canvas.setPointerCapture(e.pointerId);
+    canvas.classList.add('is-drag');
+  });
+  canvas.addEventListener('pointermove', function(e){
+    if (!st || !drag) return;
+    var r = canvas.getBoundingClientRect(), f = S / r.width;
+    st.ox += (e.clientX - drag.x) * f; st.oy += (e.clientY - drag.y) * f;
+    drag.x = e.clientX; drag.y = e.clientY;
+    touch(); draw();
+  });
+  function endDrag(){ drag = null; canvas.classList.remove('is-drag'); }
+  canvas.addEventListener('pointerup', endDrag);
+  canvas.addEventListener('pointercancel', endDrag);
+  canvas.addEventListener('wheel', function(e){ if (!st) return; e.preventDefault(); setZoom(st.zoom - e.deltaY * 0.0025); }, { passive: false });
+  canvas.addEventListener('keydown', function(e){        // keyboard: arrows move, +/- zoom
+    if (!st) return;
+    var step = 8, used = true;
+    if (e.key === 'ArrowLeft') st.ox += step; else if (e.key === 'ArrowRight') st.ox -= step;
+    else if (e.key === 'ArrowUp') st.oy += step; else if (e.key === 'ArrowDown') st.oy -= step;
+    else if (e.key === '+' || e.key === '=') setZoom(st.zoom + 0.1);
+    else if (e.key === '-') setZoom(st.zoom - 0.1);
+    else used = false;
+    if (used) { e.preventDefault(); touch(); draw(); }
+  });
+  zoomEl.addEventListener('input', function(){ if (st) setZoom(parseFloat(zoomEl.value)); });
+  document.getElementById('mcRotL').addEventListener('click', function(){ st.rot = (st.rot + 3) % 4; st.ox = st.oy = 0; touch(); draw(); });
+  document.getElementById('mcRotR').addEventListener('click', function(){ st.rot = (st.rot + 1) % 4; st.ox = st.oy = 0; touch(); draw(); });
+  document.getElementById('mcFlip').addEventListener('click', function(){ st.flip = !st.flip; touch(); draw(); });
+  document.getElementById('mcReset').addEventListener('click', function(){
+    st.rot = 0; st.flip = false; st.zoom = 1; st.ox = st.oy = 0; zoomEl.value = 1; st.touched = false; draw();
+  });
+
+  /* ---- export ---- */
+  function makeBlob(){
+    return new Promise(function(resolve){
+      var out = document.createElement('canvas'); out.width = out.height = OUT;
+      var c = out.getContext('2d');
+      c.fillStyle = '#ffffff'; c.fillRect(0, 0, OUT, OUT);
+      clamp();
+      paint(c, OUT / 2, OUT / 2, OUT / D);
+      if (out.toBlob) out.toBlob(function(b){ resolve(b); }, 'image/jpeg', 0.92);
+      else {
+        var u = out.toDataURL('image/jpeg', 0.92).split(',')[1], bin = atob(u), arr = new Uint8Array(bin.length);
+        for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+        resolve(new Blob([arr], { type: 'image/jpeg' }));
+      }
+    });
+  }
+
+  /* ---- open / close ---- */
+  function finish(result){
+    if (!st) return;
+    var s = st; st = null;
+    if (s.unreg) s.unreg();
+    back.hidden = true;
+    document.removeEventListener('keydown', onKey, true);
+    try { URL.revokeObjectURL(s.url); } catch (e) {}
+    if (s.lastFocus && s.lastFocus.focus) { try { s.lastFocus.focus(); } catch (e) {} }
+    s.resolve(result);
+  }
+
+  // Closing with edits that were never applied -> ask (save / discard / keep editing)
+  function requestClose(){
+    if (!st) return;
+    if (!st.touched || !window.MicaGuard) { finish(null); return; }
+    window.MicaGuard.confirm(function(){}, {
+      only: st.provider,
+      title: 'Save your photo changes?',
+      text: "You've adjusted this photo but haven't saved it. Save it to your profile, or discard your changes.",
+      yes: 'Save changes', no: 'Discard changes'
+    });
+  }
+  function onKey(e){ if (e.key === 'Escape' && st && document.getElementById('mgBack') && document.getElementById('mgBack').hidden) { e.preventDefault(); requestClose(); } }
+
+  document.getElementById('mcClose').addEventListener('click', requestClose);
+  document.getElementById('mcCancel').addEventListener('click', requestClose);
+  back.addEventListener('mousedown', function(e){ if (e.target === back) requestClose(); });
+  document.getElementById('mcApply').addEventListener('click', function(){
+    if (!st) return;
+    var btn = this; btn.disabled = true;
+    makeBlob().then(function(b){ btn.disabled = false; finish(b ? { blob: b, saveNow: false } : null); });
+  });
+
+  function open(file, opts){
+    opts = opts || {};
+    return new Promise(function(resolve){
+      if (st) { resolve(null); return; }
+      var url = URL.createObjectURL(file);
+      var img = new Image();
+      img.onload = function(){
+        st = { img: img, url: url, rot: 0, flip: false, zoom: 1, ox: 0, oy: 0, touched: false, resolve: resolve, lastFocus: document.activeElement };
+        // a "source of unsaved changes" so the shared prompt can ask Save / Discard
+        st.provider = {
+          isDirty: function(){ return !!(st && st.touched); },
+          save: function(){ return makeBlob().then(function(b){ finish(b ? { blob: b, saveNow: true } : null); return !!b; }); },
+          discard: function(){ finish(null); }
+        };
+        zoomEl.value = 1;
+        back.hidden = false;
+        document.addEventListener('keydown', onKey, true);
+        draw();
+        canvas.focus();
+      };
+      img.onerror = function(){
+        try { URL.revokeObjectURL(url); } catch (e) {}
+        if (opts.onError) opts.onError("That file couldn't be opened as a picture."); else alert("That file couldn't be opened as a picture.");
+        resolve(null);
+      };
+      img.src = url;
+    });
+  }
+
+  window.MicaCropper = { open: open };
+})();
+</script>

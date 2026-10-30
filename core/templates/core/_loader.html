@@ -289,6 +289,11 @@
     if (url.origin !== window.location.origin) return; // external link, leave alone
 
     e.preventDefault();
+    // Unsaved changes on this page (e.g. a new profile photo)? Ask before leaving.
+    if (window.MicaGuard && window.MicaGuard.dirty()) {
+      window.MicaGuard.confirm(function(){ goTo(url.href); });
+      return;
+    }
     goTo(url.href);
   });
 

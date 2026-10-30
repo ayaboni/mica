@@ -1,0 +1,174 @@
+{% comment %} Reusable "unsaved changes" prompt. Include ONCE per page.
+   JS API (window.MicaGuard):
+     register({isDirty, save, discard}) -> unregister()   a source of unsaved changes
+     dirty()                                              true if any source has unsaved changes
+     confirm(proceed, {only, title, text, yes, no})       run proceed() now if clean, otherwise ask:
+                                                          "Save changes"      = save, then STAY on the page (proceed is not run)
+                                                          "Discard and leave" = discard, then run proceed()
+                                                          "Keep editing" / Esc / outside click = close the prompt, change nothing
+     ask({title,text,yes,no}) -> Promise<boolean>         a plain yes/no question in the same style
+     wrap(fnName, needsGuard)                             make a global function ask first when dirty 
+{% endcomment %}
+<style>
+  .mg-back{ position:fixed; inset:0; z-index:9600; background:rgba(20,24,20,.55); display:flex; align-items:center; justify-content:center; padding:16px; }
+  .mg-back[hidden]{ display:none !important; }
+  .mg-box{ --mg-bg:#FFFFFF; --mg-ink:#3A2E28; --mg-soft:#6B6259; --mg-line:rgba(0,0,0,.12);
+           --mg-pri:#6F9168; --mg-pri-ink:#FFFFFF; --mg-sec-bg:#F1ECDD; --mg-sec-ink:#3A2E28;
+           width:min(420px,100%); background:var(--mg-bg); color:var(--mg-ink); border:1px solid var(--mg-line);
+           border-radius:18px; padding:24px 22px 18px; box-shadow:0 18px 50px rgba(0,0,0,.35);
+           font-family:inherit; text-align:left; }
+  body.dark .mg-box, body.dark-mode .mg-box{
+           --mg-bg:#283227; --mg-ink:#E6EDE5; --mg-soft:#A3B0A2; --mg-line:rgba(255,255,255,.14);
+           --mg-pri:#7C9C74; --mg-pri-ink:#0F130F; --mg-sec-bg:#354233; --mg-sec-ink:#E6EDE5; }
+  .mg-box h3{ margin:0 0 8px; font-size:18px; font-weight:800; color:var(--mg-ink); }
+  .mg-box p{ margin:0 0 18px; font-size:14px; line-height:1.55; color:var(--mg-soft); }
+  .mg-actions{ display:flex; gap:10px; flex-wrap:wrap; }
+  .mg-btn{ flex:1 1 auto; min-width:140px; border:none; border-radius:999px; padding:11px 18px; font:inherit; font-weight:700; font-size:14px;
+           cursor:pointer; background:var(--mg-sec-bg); color:var(--mg-sec-ink); }
+  .mg-btn.pri{ background:var(--mg-pri); color:var(--mg-pri-ink); }
+  .mg-btn:disabled{ opacity:.6; cursor:default; }
+  .mg-btn:focus-visible, .mg-link:focus-visible{ outline:3px solid #6FA8DC; outline-offset:2px; }
+  .mg-link{ display:block; margin:12px auto 0; background:none; border:none; font:inherit; font-size:13px; font-weight:600;
+            color:var(--mg-soft); text-decoration:underline; cursor:pointer; }
+</style>
+
+<div class="mg-back" id="mgBack" hidden>
+  <div class="mg-box" role="alertdialog" aria-modal="true" aria-labelledby="mgTitle" aria-describedby="mgText">
+    <h3 id="mgTitle">You have unsaved changes</h3>
+    <p id="mgText">Save them to keep them, or discard them and leave. Changes that aren't saved will be lost.</p>
+    <div class="mg-actions">
+      <button type="button" class="mg-btn pri" id="mgYes">Save changes</button>
+      <button type="button" class="mg-btn" id="mgNo">Discard and leave</button>
+    </div>
+    <button type="button" class="mg-link" id="mgStay">Keep editing</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  if (window.MicaGuard) return;
+
+  var DEF = {
+    title: 'You have unsaved changes',
+    text: "Save them to keep them, or discard them and leave. Changes that aren't saved will be lost.",
+    yes: 'Save changes', no: 'Discard and leave', stay: 'Keep editing'
+  };
+  var providers = [];
+  var back  = document.getElementById('mgBack');
+  var elT   = document.getElementById('mgTitle');
+  var elX   = document.getElementById('mgText');
+  var bYes  = document.getElementById('mgYes');
+  var bNo   = document.getElementById('mgNo');
+  var bStay = document.getElementById('mgStay');
+  var isOpen = false, onYes = null, onNo = null, lastFocus = null, busy = false;
+
+  function dirtyList(only){
+    var list = only ? [only] : providers;
+    return list.filter(function(p){ try { return !!p.isDirty(); } catch (e) { return false; } });
+  }
+  function dirty(){ return dirtyList().length > 0; }
+
+  function show(o){
+    isOpen = true; busy = false;
+    lastFocus = document.activeElement;
+    elT.textContent = o.title || DEF.title;
+    elX.textContent = o.text  || DEF.text;
+    bYes.textContent = o.yes || DEF.yes; bNo.textContent = o.no || DEF.no;
+    bStay.textContent = o.stay || DEF.stay;
+    bStay.style.display = o.hideStay ? 'none' : '';
+    bYes.disabled = bNo.disabled = false;
+    onYes = o.onYes; onNo = o.onNo; onStay = o.onStay || null;
+    back.hidden = false;
+    bYes.focus();
+  }
+  var onStay = null;
+  function hide(){
+    back.hidden = true; isOpen = false;
+    if (lastFocus && lastFocus.focus) { try { lastFocus.focus(); } catch (e) {} }
+  }
+  function stay(){ if (busy) return; var f = onStay; hide(); if (f) f(); }
+
+  bYes.addEventListener('click', function(){
+    if (busy || !onYes) return;
+    busy = true; bYes.disabled = bNo.disabled = true;
+    var label = bYes.textContent; bYes.textContent = 'Saving…';
+    Promise.resolve().then(onYes).then(function(ok){
+      busy = false; bYes.textContent = label; hide();
+    }, function(){ busy = false; bYes.textContent = label; hide(); });
+  });
+  bNo.addEventListener('click', function(){ if (busy) return; var f = onNo; hide(); if (f) f(); });
+  bStay.addEventListener('click', stay);
+  back.addEventListener('mousedown', function(e){ if (e.target === back) stay(); });
+  document.addEventListener('keydown', function(e){
+    if (!isOpen) return;
+    if (e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); stay(); }
+    if (e.key === 'Tab') {                      // keep focus inside the dialog
+      var f = [bYes, bNo, bStay].filter(function(b){ return b.style.display !== 'none' && !b.disabled; });
+      if (!f.length) return;
+      var i = f.indexOf(document.activeElement);
+      e.preventDefault();
+      f[(i + (e.shiftKey ? f.length - 1 : 1)) % f.length].focus();
+    }
+  }, true);
+
+  /* ---- public API ---- */
+  function register(p){
+    providers.push(p);
+    return function(){ var i = providers.indexOf(p); if (i > -1) providers.splice(i, 1); };
+  }
+
+  // Ask before running proceed() when something is unsaved.
+  function confirm(proceed, opts){
+    opts = opts || {};
+    var list = dirtyList(opts.only);
+    if (!list.length) { if (proceed) proceed(); return; }
+    if (isOpen) return;
+    show({
+      title: opts.title, text: opts.text, yes: opts.yes, no: opts.no,
+      onYes: function(){
+        // Save every source in turn. The user STAYS on the page afterwards (same as the page's own
+        // Save button), so they can check or edit other details before leaving.
+        return list.reduce(function(chain, p){
+          return chain.then(function(ok){ return ok ? Promise.resolve(p.save ? p.save() : true).then(function(r){ return r !== false; }) : false; });
+        }, Promise.resolve(true));
+      },
+      onNo: function(){
+        list.forEach(function(p){ try { if (p.discard) p.discard(); } catch (e) {} });
+        if (proceed) proceed();
+      }
+    });
+  }
+
+  // Plain yes/no question in the same visual style.
+  function ask(o){
+    return new Promise(function(resolve){
+      if (isOpen) { resolve(false); return; }
+      show({
+        title: o.title, text: o.text, yes: o.yes || 'Yes', no: o.no || 'No', stay: o.stay, hideStay: true,
+        onYes: function(){ resolve(true); }, onNo: function(){ resolve(false); }, onStay: function(){ resolve(false); }
+      });
+    });
+  }
+
+  // Make a global function (e.g. a page/tab switcher) ask first when there are unsaved changes.
+  function wrap(name, needsGuard){
+    var fn = window[name];
+    if (typeof fn !== 'function' || fn.__mgWrapped) return;
+    var w = function(){
+      var self = this, args = arguments, a = Array.prototype.slice.call(args);
+      if (needsGuard && !needsGuard(a)) return fn.apply(self, args);
+      if (!dirty()) return fn.apply(self, args);
+      confirm(function(){ fn.apply(self, args); });
+    };
+    w.__mgWrapped = true;
+    window[name] = w;
+  }
+
+  // Browser-level safety net for closing the tab / reloading / typing a new address.
+  window.addEventListener('beforeunload', function(e){
+    if (dirty()) { e.preventDefault(); e.returnValue = ''; }
+  });
+
+  window.MicaGuard = { register: register, dirty: dirty, confirm: confirm, ask: ask, wrap: wrap };
+})();
+</script>
