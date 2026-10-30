@@ -56,7 +56,7 @@ from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_POST
 
-from django.contrib.auth.forms import PasswordChangeForm
+from django.contrib.auth.forms import PasswordChangeForm, SetPasswordForm
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.password_validation import validate_password
 
@@ -1231,6 +1231,17 @@ def password_reset_firebase_complete(request):
     return JsonResponse({"ok": True, "login_url": reverse("login")})
 
 
+class CreatePasswordForm(SetPasswordForm):
+    """For accounts that only sign in with Google (no password yet): no 'current password' to type,
+    and the new one has to follow MICA's password rule (the same one used at registration)."""
+
+    def clean_new_password1(self):
+        password = self.cleaned_data.get("new_password1") or ""
+        if not _password_meets_rules(password):
+            raise ValidationError(PASSWORD_RULES_MESSAGE)
+        return password
+
+
 PASSWORD_CHANGE_VERIFIED_SECONDS = 600     # after the code is confirmed, how long the form stays unlocked
 
 
@@ -1253,6 +1264,10 @@ def change_password(request):
     """Change password. Before the form unlocks, a 6-character code e-mailed to the account
     confirms it's really them (accounts with no e-mail on file keep the old, code-free form)."""
     user = request.user
+    # Google-only accounts have no password yet: the same page lets them create one (no 'current password').
+    has_password = user.has_usable_password()
+    if not has_password and _needs_profile_setup(user):
+        return redirect('complete_profile')   # they must pick their username first: that's what they'll sign in with
     needs_code = bool(user.email)
     latest = LoginVerification.objects.filter(user=user, purpose="password_change").order_by("-created_at").first()
 
@@ -1283,12 +1298,13 @@ def change_password(request):
         if needs_code and not _password_change_verified(request):
             messages.error(request, "Please confirm the code we emailed you first.")
             return redirect('change_password')
-        form = PasswordChangeForm(request.user, request.POST)
+        form = (PasswordChangeForm if has_password else CreatePasswordForm)(request.user, request.POST)
         if form.is_valid():
             user = form.save()
             update_session_auth_hash(request, user)  # keeps them logged in after changing
             request.session.pop("pw_change_verified_until", None)   # one code, one change
-            messages.success(request, "Password changed successfully.")
+            messages.success(request, "Password changed successfully." if has_password else
+                             "Password created. You can now sign in with your username and password too.")
             return redirect(_after_password_change(user))
         else:
             for error in form.errors.values():
@@ -1305,7 +1321,9 @@ def change_password(request):
     if latest:
         cooldown = max(0, math.ceil(LOGIN_CODE_RESEND_COOLDOWN - (timezone.now() - latest.created_at).total_seconds()))
     return render(request, 'core/change-password.html', {
-        'form': PasswordChangeForm(request.user), 'step': step, 'cooldown': cooldown,
+        'form': (PasswordChangeForm if has_password else CreatePasswordForm)(request.user),
+        'has_password': has_password, 'step': step, 'cooldown': cooldown,
+        'rules_message': PASSWORD_RULES_MESSAGE,
         'masked_email': _mask_email(user.email), 'code_length': LOGIN_CODE_LENGTH,
         'ttl_minutes': int(LOGIN_CODE_TTL.total_seconds() // 60),
     })
@@ -1401,7 +1419,10 @@ def account_settings(request):
         messages.success(request, "Your settings have been updated.")
         return redirect('account_settings')
 
-    return render(request, 'core/account-settings.html', {'profile': profile, 'courses': COURSES, 'year_levels': YEAR_LEVELS})
+    return render(request, 'core/account-settings.html', {
+        'profile': profile, 'courses': COURSES, 'year_levels': YEAR_LEVELS,
+        'has_password': request.user.has_usable_password(),
+    })
 
 
 # ---- Chatbot safety layer ----

@@ -179,8 +179,11 @@
           <a href="{% url 'consent_review' %}" style="font-size:13px; color:#7a6a5c;">Read the privacy and consent form again</a>
         </div>
 
+        {% if not has_password %}
+        <p style="font-size:13px; color:#7a6a5c; line-height:1.5; margin:22px 0 0;">You sign in with Google. Create a password too, so you can sign in with your username (<strong>{{ request.user.username }}</strong>) and password if your Google account can't be reached.</p>
+        {% endif %}
         <div style="display:flex; justify-content:space-between; align-items:center; margin-top:24px;">
-          <a href="{% url 'change_password' %}" class="btn-link">Change Password</a>
+          <a href="{% url 'change_password' %}" class="btn-link">{% if has_password %}Change Password{% else %}Create a Password{% endif %}</a>
           <button type="submit" style="margin-top:0;">Save Changes</button>
         </div>
       </form>

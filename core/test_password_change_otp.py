@@ -200,3 +200,68 @@ class PasswordChangeCodeTests(TestCase):
         with patch('core.views.EmailMultiAlternatives.send', side_effect=OSError('smtp down')):
             self.send_code()
         self.assertFalse(LoginVerification.objects.filter(purpose='password_change').exists())
+
+
+@override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend')
+class CreatePasswordForGoogleAccountTests(TestCase):
+    """Google-only accounts have no password; they can create one (after the e-mailed code) and then
+    also sign in with their username."""
+    PASSWORD = 'Valid-pw-456!'
+
+    def setUp(self):
+        self.user = User.objects.create_user('gina', email='gina@example.com', first_name='Gina')  # no password
+        UserProfile.objects.create(user=self.user, firebase_uid='uid-gina', needs_profile_setup=False)
+        self.client.force_login(self.user)
+        self.url = reverse('change_password')
+
+    def unlock(self):
+        self.client.post(self.url, {'action': 'send_code'})
+        code = re.search(r'^([A-Z2-9]{6})$', mail.outbox[-1].body, re.M).group(1)
+        self.client.post(self.url, {'action': 'verify_code', 'code': code})
+
+    def create(self, p1=None, p2=None):
+        p1 = self.PASSWORD if p1 is None else p1
+        return self.client.post(self.url, {'action': 'change', 'new_password1': p1,
+                                           'new_password2': p1 if p2 is None else p2})
+
+    def test_form_has_no_current_password_field(self):
+        self.unlock()
+        response = self.client.get(self.url)
+        self.assertContains(response, 'Create a Password')
+        self.assertContains(response, 'new_password1')
+        self.assertNotContains(response, 'old_password')
+
+    def test_account_settings_offers_to_create_a_password(self):
+        self.assertContains(self.client.get(reverse('account_settings')), 'Create a Password')
+
+    def test_still_needs_the_emailed_code_first(self):
+        self.create()
+        self.user.refresh_from_db()
+        self.assertFalse(self.user.has_usable_password())
+
+    def test_password_is_created_and_signs_in_with_username(self):
+        self.unlock()
+        response = self.create()
+        self.assertRedirects(response, reverse('account_settings'), fetch_redirect_response=False)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password(self.PASSWORD))
+        self.client.logout()
+        login = self.client.post(reverse('login'), {'username': 'gina', 'password': self.PASSWORD})
+        self.assertRedirects(login, reverse('login_check_email'), fetch_redirect_response=False)  # then the e-mailed code
+
+    def test_password_rule_is_enforced(self):
+        self.unlock()
+        for bad in ('alllowercase1', 'Short1!', 'NoNumberOrSymbol'):
+            self.create(bad)
+            self.user.refresh_from_db()
+            self.assertFalse(self.user.has_usable_password(), bad)
+
+    def test_mismatched_passwords_are_rejected(self):
+        self.unlock()
+        self.create(p2='Different-pw-789!')
+        self.user.refresh_from_db()
+        self.assertFalse(self.user.has_usable_password())
+
+    def test_google_user_who_has_not_finished_profile_setup_is_sent_there_first(self):
+        UserProfile.objects.filter(user=self.user).update(needs_profile_setup=True)
+        self.assertRedirects(self.client.get(self.url), reverse('complete_profile'), fetch_redirect_response=False)
