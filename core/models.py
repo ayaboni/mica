@@ -238,6 +238,7 @@ class StaffSubclass(models.Model):
     notes_need_review = models.BooleanField(default=False)     # their notes are marked "needs review"
     review_notes = models.BooleanField(default=False)          # may mark another staff member's note reviewed
     flag_students = models.BooleanField(default=True)
+    referrals = models.BooleanField(default=True)              # refer students to other staff and answer referrals sent to them
     take_cases = models.BooleanField(default=False)            # claim a chat thread / take a flag
     resolve_flags = models.BooleanField(default=False)
     view_assessments = models.BooleanField(default=False)

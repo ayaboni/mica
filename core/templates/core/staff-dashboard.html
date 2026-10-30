@@ -429,7 +429,7 @@
   body.no-students #sec-dashboard .stat-grid,
   body.no-students #sec-dashboard .grid-2,
   body.no-students .nav-item[data-section="reports"],
-  body.no-chat .nav-item[data-section="messages"],
+  body.no-chat-nav .nav-item[data-section="messages"],
   body.no-chat [onclick*="openStudentChat"],
   body.no-assess #modalAssessment,
   body.no-notes [onclick*="openNotesPanel"],
@@ -1391,11 +1391,16 @@ const IS_ADMIN = "{{ user.is_superuser|yesno:'true,false' }}" === "true";
    The server enforces all of it; this only hides what would be refused. */
 const PERMS = JSON.parse(document.getElementById('staff-perms').textContent);
 const canService = (key, svc) => (PERMS[key] || []).includes(svc);
+/* An accepted referral lets this staff member chat with that one student, whatever their role allows.
+   The server decides; this only decides what to show. */
+let refChat = {{ referral_chat|yesno:"true,false" }};
+const chatAllowed = () => !!(PERMS.chat_students || refChat);
 function applyPermissions(){
   const off = {
     'no-students':   !PERMS.view_students,
     'no-assess':     !PERMS.view_assessments,
     'no-chat':       !PERMS.chat_students,
+    'no-chat-nav':   !chatAllowed(),
     'no-notes': !((PERMS.write_note_services || []).length || (PERMS.read_note_services || []).length),
     'no-flag':       !PERMS.flag_students,
     'no-take':       !PERMS.take_cases,
@@ -1647,6 +1652,7 @@ let seenLastMsg = {};
 let threadsById = {};
 let referralsList = [];
 let responsesList = [];
+let chatsList = [];
 let referralsInit = false;
 let lastReferralCount = 0;
 let lastResponseCount = 0;
@@ -1659,12 +1665,17 @@ function pollReferrals(){
   fetch("{% url 'staff_referral_inbox' %}").then(r => r.json()).then(d => {
     referralsList = d.referrals || [];
     responsesList = d.responses || [];
+    chatsList = d.chats || [];
     const n = referralsList.length, m = responsesList.length;
     if(referralsInit && n > lastReferralCount){ playReferralSound(); showToast('A student was referred to you. Accept or decline?'); }
     else if(referralsInit && m > lastResponseCount){ playReferralSound(); showToast('A referral you made was answered'); }
     referralsInit = true; lastReferralCount = n; lastResponseCount = m;
-    document.getElementById('referralBtn').style.display = (n + m) ? '' : 'none';
-    document.getElementById('referralPing').textContent = n + m;
+    const total = n + m + chatsList.length;
+    document.getElementById('referralBtn').style.display = total ? '' : 'none';
+    document.getElementById('referralPing').textContent = total;
+    const hadChat = chatAllowed();
+    refChat = !!d.chat_access;
+    if(chatAllowed() !== hadChat){ applyPermissions(); pollStaffNotifications(); }
     if(document.getElementById('referralModal').classList.contains('active')) renderReferrals();
   }).catch(() => {});
 }
@@ -1678,10 +1689,13 @@ function renderReferrals(){
       <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
         <div>
           <div style="font-weight:700;">${escapeHtmlStaff(r.student_name)}</div>
-          <div style="font-size:12.5px; color:var(--ink-soft);">From ${escapeHtmlStaff(r.from_name)} · ${escapeHtmlStaff(r.date)}</div>
-          ${r.preview ? `<div style="font-size:13px; margin-top:6px;">${escapeHtmlStaff(r.preview)}</div>` : ''}
+          <div style="font-size:12.5px; color:var(--ink-soft);">From ${escapeHtmlStaff(r.from_name)}${r.from_role ? ' · ' + escapeHtmlStaff(r.from_role) : ''} · ${escapeHtmlStaff(r.date)}</div>
         </div>
-        <button class="pill-btn ghost sm" onclick="openReferral('${r.student_code}')">View</button>
+      </div>
+      <div style="margin-top:8px; padding:10px 12px; background:var(--card-soft, rgba(0,0,0,.04)); border-radius:12px; font-size:13px; line-height:1.5;">
+        ${r.topic ? `<div style="font-weight:700; font-size:11.5px; letter-spacing:.04em; text-transform:uppercase; color:var(--ink-soft);">Topic</div><div style="white-space:pre-wrap; margin-bottom:6px;">${escapeHtmlStaff(r.topic)}</div>` : ''}
+        ${r.realizations ? `<div style="font-weight:700; font-size:11.5px; letter-spacing:.04em; text-transform:uppercase; color:var(--ink-soft);">Notes</div><div style="white-space:pre-wrap; margin-bottom:6px;">${escapeHtmlStaff(r.realizations)}</div>` : ''}
+        <div style="font-size:12px; color:var(--ink-soft);">Session ${escapeHtmlStaff(r.session_date)} · ${r.student_informed ? 'The student was told and agrees to share their information' : 'Student consent not recorded'}</div>
       </div>
       <div style="display:flex; gap:8px; margin-top:10px;" id="refActions${r.note_id}">
         <button class="pill-btn solid sm" onclick="respondReferral(${r.note_id}, 'accept')">Accept</button>
@@ -1703,11 +1717,24 @@ function renderReferrals(){
         <div style="font-size:12.5px; color:var(--ink-soft);">${escapeHtmlStaff(r.by_name)} ${r.status === 'accepted' ? 'accepted' : 'declined'} your referral · ${escapeHtmlStaff(r.date)}</div>
         ${r.status === 'declined' && r.reason ? `<div style="font-size:13px; margin-top:6px;">“${escapeHtmlStaff(r.reason)}”</div>` : ''}
       </div>
-      <button class="pill-btn solid sm" onclick="openReferral('${r.student_code}')">Open</button>
+      <div style="display:flex; gap:8px; flex-shrink:0;">
+        ${r.status === 'declined' ? `<button class="pill-btn solid sm" onclick="referElsewhere('${r.student_code}', ${r.note_id})">Refer to someone else</button>` : ''}
+        <button class="pill-btn ghost sm" onclick="openReferral('${r.student_code}')">Open</button>
+      </div>
+    </div>`).join('');
+  const chats = chatsList.map(r => `
+    <div style="${row} display:flex; justify-content:space-between; align-items:center; gap:12px;">
+      <div>
+        <div style="font-weight:700;">${escapeHtmlStaff(r.student_name)}</div>
+        <div style="font-size:12.5px; color:var(--ink-soft);">Referred by ${escapeHtmlStaff(r.from_name)} · accepted ${escapeHtmlStaff(r.date)}</div>
+        <div style="font-size:12.5px; margin-top:4px;">You accepted this referral, so you can open a conversation with the student now.</div>
+      </div>
+      <button class="pill-btn solid sm" onclick="startReferralChat(${r.note_id})">Start chat</button>
     </div>`).join('');
   const head = t => `<div style="font-size:12px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--ink-soft); margin:6px 0 2px;">${t}</div>`;
   document.getElementById('referralList').innerHTML =
     (waiting ? head('Waiting for your answer') + waiting : '') +
+    (chats ? head('Start a conversation') + chats : '') +
     (answered ? head('Answers to your referrals') + answered : '') ||
     '<div style="padding:12px; color:var(--ink-soft);">Nothing new.</div>';
 }
@@ -1734,7 +1761,7 @@ function respondReferral(id, action){
     .then(r => r.json().then(d => ({ok:r.ok, d})))
     .then(({ok, d}) => {
       if(!ok){ showToast(d.error || 'Could not send your answer'); pollReferrals(); return; }
-      showToast(action === 'accept' ? 'Referral accepted' : 'Referral declined');
+      showToast(action === 'accept' ? 'Referral accepted. Start a chat from the Referrals panel to claim the student.' : 'Referral declined. It goes back to the staff member who sent it.');
       referralsList = referralsList.filter(r => r.note_id !== id);
       lastReferralCount = referralsList.length;
       renderReferrals();
@@ -1746,6 +1773,32 @@ function respondReferral(id, action){
     })
     .catch(() => showToast('Could not send your answer'));
 }
+function startReferralChat(noteId){
+  const r = chatsList.find(x => x.note_id === noteId);
+  fetch(`/api/staff/notes/${noteId}/referral/start-chat/`, {method:'POST', headers:{'X-CSRFToken':getCookie('csrftoken')}})
+    .then(x => x.json().then(d => ({ok:x.ok, d})))
+    .then(({ok, d}) => {
+      if(!ok){ showToast(d.error || 'Could not start the chat'); pollReferrals(); return; }
+      refChat = true; applyPermissions();
+      closeReferrals();
+      goTo('messages');
+      loadGuidanceInbox().then(() => {
+        openGuidanceThread(d.thread_id, d.student_name);
+        const input = document.getElementById('threadInput');
+        if(input && !d.shared){
+          const first = (d.student_name || '').split(' ')[0];
+          input.value = `Hi ${first}! This is a check-in from the guidance office. I'd love to hear how you've been, and I'm here whenever you'd like to talk. 💛`;
+          input.focus();
+        }
+      });
+      pollReferrals();
+    })
+    .catch(() => showToast('Could not start the chat'));
+}
+function referElsewhere(code, noteId){
+  openReferral(code);
+  setTimeout(() => { if(notesCache.some(x => x.id === noteId)) editNote(noteId); }, 900);
+}
 function openReferral(code){
   if(!studentsReal.find(x => x.code === code)) return showToast("Your staff role can't open student records.");
   closeReferrals();
@@ -1755,9 +1808,11 @@ function openReferral(code){
 }
 
 function pollStaffNotifications(){
+  if(!chatAllowed()) return;
   fetch("{% url 'staff_guidance_inbox' %}")
     .then(r => r.json())
     .then(data => {
+      if(!data.threads) return;
       const waiting = data.threads.filter(t => t.awaiting_reply).length;
       const fresh = data.threads.filter(t => t.awaiting_reply && t.last_message_id > (seenLastMsg[t.id] || 0));
       if(staffNotifInitialized && fresh.length){
@@ -1788,15 +1843,14 @@ function pollStaffNotifications(){
     });
 }
 
-if(PERMS.chat_students){
-  setInterval(pollStaffNotifications, 10000);
-  pollStaffNotifications();
-}
+setInterval(pollStaffNotifications, 10000);
+pollStaffNotifications();
 
 function loadGuidanceInbox(){
   return fetch("{% url 'staff_guidance_inbox' %}")
     .then(r=>r.json())
     .then(data=>{
+      if(!data.threads) return;
       data.threads.sort((a,b) => Number(a.archived) - Number(b.archived));
       threadsById = Object.fromEntries(data.threads.map(t => [t.id, t]));
       const cur = threadsById[activeThreadId];
@@ -1840,8 +1894,8 @@ function openGuidanceThread(threadId, studentName){
       <div class="thread-view-head">${studentName}</div>
       <div class="thread-empty" style="flex:1; display:flex; flex-direction:column; gap:12px; text-align:center; padding:24px;">
         <div>This conversation is handled by <b>${escapeHtmlStaff(t.counselor_name)}</b> (${escapeHtmlStaff(t.counselor_role)}).</div>
-        <div style="font-size:12.5px;">If they're unavailable, you can take it over. The conversation and the student's upcoming appointments will move to you.</div>
-        <button class="pill-btn solid sm" onclick="claimThread(${threadId}, true)">Take over</button>
+        ${IS_ADMIN ? `<div style="font-size:12.5px;">As system admin you can take it over. The conversation and the student's upcoming appointments will move to you.</div>
+        <button class="pill-btn solid sm" onclick="claimThread(${threadId}, true)">Take over</button>` : `<div style="font-size:12.5px;">Only the assigned counselor can open it.</div>`}
       </div>`;
     return;
   }
@@ -1937,7 +1991,7 @@ function fetchThreadMessages(){
 
 function sendStaffGuidanceMessage(){
   if(threadsById[activeThreadId]?.archived) return denied("This student's account is archived.");
-  if(!PERMS.chat_students) return denied("Your staff role doesn't allow chatting with students.");
+  if(!chatAllowed()) return denied("Your staff role doesn't allow chatting with students.");
   const input = document.getElementById('threadInput');
   const text = input.value.trim();
   if(!text || !activeThreadId) return;
@@ -2056,12 +2110,12 @@ function closeNotes(){ document.getElementById('notesModal').classList.remove('a
 
 function limitNoteServices(){
   const sel = document.getElementById('noteService');
-  [...sel.options].forEach(o => { o.hidden = o.disabled = !canService('write_note_services', o.value); });
+  [...sel.options].forEach(o => { o.hidden = o.disabled = !canService('write_note_services', o.value) || (o.value === 'referral' && !PERMS.referrals); });
 }
 
 function fillReferralOptions(selectedId){
   const sel = document.getElementById('noteReferTo');
-  const people = (admins || []).filter(a => !a.me && a.status === 'Active');
+  const people = (admins || []).filter(a => !a.me && a.status === 'Active' && a.can_receive_referrals !== false);
   sel.innerHTML = '<option value="">— Choose —</option>'
     + people.map(a => `<option value="${a.id}">${escapeHtmlStaff(a.name)} · ${escapeHtmlStaff(a.role)}</option>`).join('')
     + '<option value="external">Outside professional / clinic</option>';

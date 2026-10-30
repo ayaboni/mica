@@ -45,7 +45,7 @@ from django.template.loader import render_to_string
 from django.utils.crypto import constant_time_compare
 from django.views.decorators.http import require_http_methods
 from datetime import datetime, timedelta
-from functools import lru_cache
+from functools import lru_cache, wraps
 from pathlib import Path
 
 import json
@@ -2199,6 +2199,92 @@ def _staff_role(user):
     return sp.role_label if sp else "Guidance Staff"
 
 
+# ---------------------------------------------------------------------------
+# Who may open which conversation
+#
+# A staff member only sees the conversations ASSIGNED to them, plus the unclaimed ones waiting
+# for someone to claim them. A conversation another counselor holds is not listed, cannot be
+# opened and cannot be taken over (only the system admin oversees those).
+#
+# Referrals work like this:
+#   * staff 1 refers a student to staff 2 and keeps their conversation while waiting;
+#   * staff 2 accepts or declines. A declined referral goes back to staff 1;
+#   * the moment staff 2 ACCEPTS, a conversation staff 1 held is handed over to staff 2 for good
+#     (staff 1 can no longer open it), and staff 2 may chat with that one student whatever their
+#     role normally allows. If nobody holds the conversation, staff 2 claims it with "Start chat".
+#
+# It never overrides a conversation a third counselor is handling.
+# ---------------------------------------------------------------------------
+
+def _referral_grants(user):
+    """{student_id: [accepted referral notes addressed to `user`]}, newest first."""
+    out = {}
+    if user.is_authenticated and can(user, 'referrals'):
+        notes = (StudentNote.objects
+                 .filter(referred_to=user, service='referral', referral_status='accepted')
+                 .order_by('-referral_responded_at', '-id'))
+        for n in notes:
+            out.setdefault(n.student_id, []).append(n)
+    return out
+
+
+def _pick_grant(notes, user, holder_id, claimable=False):
+    """The accepted referral that lets `user` chat with the student, given who holds the conversation.
+
+    Normally that means nobody holds it or `user` already does. With claimable=True the staff member
+    who made the referral may still hold it: accepting hands it over, and "Start chat" finishes the
+    handover for referrals that were accepted before handovers happened automatically."""
+    for n in notes or []:
+        if holder_id in (None, user.id) or (claimable and n.author_id and holder_id == n.author_id):
+            return n
+    return None
+
+
+def _valid_grants(user, claimable=False):
+    """{student_id: referral note} for every student `user` may chat with because of an accepted referral."""
+    grants = _referral_grants(user)
+    if not grants:
+        return {}
+    holders = dict(GuidanceThread.objects.filter(student_id__in=list(grants)).values_list('student_id', 'counselor_id'))
+    out = {}
+    for student_id, notes in grants.items():
+        note = _pick_grant(notes, user, holders.get(student_id), claimable)
+        if note:
+            out[student_id] = note
+    return out
+
+
+def _referral_grant(user, student_id, thread=None):
+    notes = _referral_grants(user).get(student_id)
+    if not notes:
+        return None
+    if thread is None:
+        thread = GuidanceThread.objects.filter(student_id=student_id).first()
+    return _pick_grant(notes, user, thread.counselor_id if thread else None)
+
+
+def _thread_access(user, thread):
+    """(allowed, grant). Only a conversation that is unclaimed or yours can be opened."""
+    if thread.counselor_id not in (None, user.id):
+        return False, None
+    grant = _referral_grant(user, thread.student_id, thread)
+    return (can(user, 'chat_students') or bool(grant)), grant
+
+
+def _held_by_other(user, thread):
+    return bool(thread.counselor_id and thread.counselor_id != user.id)
+
+
+def chat_or_referral(view):
+    """View decorator: the staff member's role allows chatting, or an accepted referral does."""
+    @wraps(view)
+    def wrapped(request, *args, **kwargs):
+        if not can(request.user, 'chat_students') and not _valid_grants(request.user):
+            return JsonResponse({"error": "Your staff role doesn't allow this."}, status=403)
+        return view(request, *args, **kwargs)
+    return wrapped
+
+
 @ensure_csrf_cookie
 @login_required(login_url='login')
 @user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
@@ -2208,6 +2294,7 @@ def staff_dashboard(request):
         'staff_role': _staff_role(request.user),
         'staff_license': sp.license_number if sp else '',
         'staff_perms': staff_permissions(request.user),
+        'referral_chat': bool(_valid_grants(request.user, claimable=True)),
         # First-visit tour for staff (not for the system admin, who has their own dashboard).
         'show_staff_tutorial': not request.user.is_superuser and not (sp and sp.has_seen_tutorial),
     })
@@ -2225,14 +2312,22 @@ def release_thread(request, thread_id):
 
 @login_required(login_url='login')
 @user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
-@require_perm('chat_students')
+@chat_or_referral
 def staff_guidance_inbox(request):
+    me = request.user
+    chat_ok = can(me, 'chat_students')
+    grants = _valid_grants(me)
     threads = GuidanceThread.objects.select_related('student', 'student__profile', 'counselor', 'counselor__staff_profile')
     data = []
     for t in threads:
+        mine = t.counselor_id == me.id
+        unclaimed = t.counselor_id is None
+        if not (mine or unclaimed or me.is_superuser):
+            continue            # someone else's conversation: not listed, not openable
+        if not chat_ok and t.student_id not in grants:
+            continue            # a role that can't chat only sees the students it accepted a referral for
+        visible = mine or unclaimed
         last = t.messages.last()
-        mine = t.counselor_id == request.user.id
-        visible = mine or t.counselor_id is None
         archived = _student_archived(t.student)
         data.append({
             "id": t.id,
@@ -2243,7 +2338,7 @@ def staff_guidance_inbox(request):
             "counselor_role": _staff_role(t.counselor) if t.counselor else "",
             "counselor_name": (t.counselor.get_full_name() or t.counselor.username) if t.counselor else "",
             "last_message": (last.content if last else "") if visible else "🔒 Private conversation",
-            "last_message_id": last.id if last else 0,
+            "last_message_id": last.id if last and visible else 0,
             "awaiting_reply": bool(last) and last.sender_id == t.student_id and visible and not archived,
             "archived": archived,
         })
@@ -2285,12 +2380,13 @@ def _student_info_for(staff, student):
 
 @login_required(login_url='login')
 @user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
-@require_perm('chat_students')
 def staff_guidance_thread(request, thread_id):
     thread = get_object_or_404(GuidanceThread, id=thread_id)
-    if thread.counselor_id and thread.counselor_id != request.user.id:
-        return JsonResponse({"error": "This thread is claimed by another counselor."}, status=403)
-
+    allowed, grant = _thread_access(request.user, thread)
+    if not allowed:
+        if thread.counselor_id and thread.counselor_id != request.user.id:
+            return JsonResponse({"error": "This thread is claimed by another counselor."}, status=403)
+        return JsonResponse({"error": "Your staff role doesn't allow this."}, status=403)
     msgs = [
         {"sender": "student" if m.sender_id == thread.student_id else "counselor", "content": m.content}
         for m in thread.messages.all()
@@ -2323,8 +2419,9 @@ def staff_guidance_claim(request, thread_id):
 
     if thread.counselor_id == request.user.id:
         return JsonResponse({"status": "ok"})
-    if thread.counselor_id and not takeover:
-        return JsonResponse({"error": "Already claimed by another counselor."}, status=409)
+    if thread.counselor_id and not (takeover and request.user.is_superuser):
+        # Staff only ever see the conversations assigned to them; only the system admin may step in.
+        return JsonResponse({"error": "This conversation is assigned to another counselor."}, status=403)
 
     thread.counselor = request.user
     thread.save()
@@ -2339,10 +2436,11 @@ def staff_guidance_claim(request, thread_id):
 @require_POST
 def staff_guidance_send(request, thread_id):
     thread = get_object_or_404(GuidanceThread, id=thread_id)
-    if thread.counselor_id and thread.counselor_id != request.user.id:
+    allowed, grant = _thread_access(request.user, thread)
+    if _held_by_other(request.user, thread):
         return JsonResponse({"error": "Claimed by another counselor."}, status=403)
 
-    if not can(request.user, 'chat_students'):
+    if not allowed:
         return JsonResponse({"error": "Your staff role doesn't allow chatting with students."}, status=403)
     content = json.loads(request.body).get("message", "").strip()
     if not content:
@@ -2351,7 +2449,7 @@ def staff_guidance_send(request, thread_id):
     if _student_archived(thread.student):
         return JsonResponse({"error": "This student's account is archived. They can't read new messages."}, status=409)
 
-    if not thread.counselor_id and can(request.user, 'take_cases'):
+    if not thread.counselor_id and (can(request.user, 'take_cases') or grant):
         thread.counselor = request.user
     GuidanceMessage.objects.create(thread=thread, sender=request.user, content=content)
     Notification.objects.create(user=thread.student, message="You have a new message from Guidance.", link="/dashboard/student", kind="chat")
@@ -2364,7 +2462,7 @@ def staff_guidance_send(request, thread_id):
 @require_POST
 def staff_guidance_note(request, thread_id):
     thread = get_object_or_404(GuidanceThread, id=thread_id)
-    if thread.counselor_id and thread.counselor_id != request.user.id:
+    if _held_by_other(request.user, thread):
         return JsonResponse({"error": "Claimed by another counselor."}, status=403)
     if not can(request.user, 'write_note_services'):
         return JsonResponse({"error": "Your staff role doesn't allow writing notes."}, status=403)
@@ -2434,6 +2532,8 @@ def _read_note_payload(request):
 
     referred_to, external, informed = None, "", False
     if service == "referral":
+        if not can(request.user, 'referrals'):
+            return None, JsonResponse({"error": "Your staff role can't make referrals."}, status=403)
         if is_private:
             return None, JsonResponse({"error": "A referral note can't be private."}, status=400)
         informed = bool(data.get("student_informed", False))
@@ -2446,6 +2546,8 @@ def _read_note_payload(request):
                 referred_to = None
             if referred_to is None or referred_to.id == request.user.id:
                 return None, JsonResponse({"error": "Choose another active staff member."}, status=400)
+            if not can(referred_to, 'referrals'):
+                return None, JsonResponse({"error": "That staff member's role can't receive referrals."}, status=400)
             external = ""
     return {"topic": topic, "realizations": realizations, "session_date": session_date,
             "service": service, "service_delivered": bool(data.get("service_delivered", True)),
@@ -2540,6 +2642,8 @@ def staff_referral_inbox(request):
 
     waiting = (StudentNote.objects.filter(referred_to=request.user, service='referral', referral_status='pending')
                .select_related('student', 'author').order_by('-created_at'))
+    if not can(request.user, 'referrals'):      # a role without the referrals switch isn't asked to answer any
+        waiting = waiting.none()
     answered = (StudentNote.objects.filter(author=request.user, service='referral', referred_to__isnull=False,
                                            referral_response_seen=False)
                 .exclude(referral_status='pending')
@@ -2550,8 +2654,13 @@ def staff_referral_inbox(request):
             "student_code": f"MC-{1000 + n.student_id}",
             "student_name": n.student.get_full_name() or n.student.username,
             "from_name": who(n.author),
+            "from_role": _staff_role(n.author) if n.author else "",
             "date": timezone.localtime(n.created_at).strftime("%b %d, %I:%M %p"),
             "preview": (n.topic or n.realizations)[:140],
+            "topic": n.topic,
+            "realizations": n.realizations,
+            "session_date": n.session_date.strftime("%b %d, %Y"),
+            "student_informed": n.student_informed,
         } for n in waiting],
         "responses": [{
             "note_id": n.id,
@@ -2562,7 +2671,70 @@ def staff_referral_inbox(request):
             "reason": n.referral_decline_reason,
             "date": timezone.localtime(n.referral_responded_at).strftime("%b %d, %I:%M %p") if n.referral_responded_at else "",
         } for n in answered],
+        "chats": _referral_chats(request.user, who),
+        "chat_access": bool(_valid_grants(request.user, claimable=True)),
     })
+
+
+def _referral_chats(me, who):
+    """Accepted referrals whose conversation `me` can claim and open, wherever their role stands."""
+    grants = _valid_grants(me, claimable=True)
+    if not grants:
+        return []
+    students = User.objects.in_bulk(list(grants))
+    threads = {t.student_id: t for t in GuidanceThread.objects.filter(student_id__in=list(grants))}
+    out = []
+    for student_id, n in grants.items():
+        student, thread = students.get(student_id), threads.get(student_id)
+        if student is None or _student_archived(student):
+            continue
+        if thread and thread.counselor_id == me.id:
+            continue        # already theirs: it sits in their conversations
+        out.append({
+            "note_id": n.id,
+            "student_id": student_id,
+            "student_code": f"MC-{1000 + student_id}",
+            "student_name": student.get_full_name() or student.username,
+            "from_name": who(n.author),
+            "date": timezone.localtime(n.referral_responded_at).strftime("%b %d, %I:%M %p") if n.referral_responded_at else "",
+            "thread_id": thread.id if thread else None,
+        })
+    return out
+
+
+@login_required(login_url='login')
+@user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
+@require_POST
+def staff_referral_start_chat(request, note_id):
+    """The staff member who accepted a referral claims the student's conversation and opens it,
+    whatever their role would normally allow."""
+    me = request.user
+    note = get_object_or_404(StudentNote, id=note_id, service='referral')
+    if note.referred_to_id != me.id:
+        return JsonResponse({"error": "This referral isn't addressed to you."}, status=403)
+    if not can(me, 'referrals'):
+        return JsonResponse({"error": "Your staff role can't take referrals."}, status=403)
+    if note.referral_status != 'accepted':
+        return JsonResponse({"error": "Accept the referral first."}, status=409)
+    student = note.student
+    if _student_archived(student):
+        return JsonResponse({"error": "This student's account is archived."}, status=409)
+    thread = GuidanceThread.objects.filter(student=student).first() or GuidanceThread.objects.create(student=student)
+    if _pick_grant([note], me, thread.counselor_id, claimable=True) is None:
+        return JsonResponse({"error": "Another counselor is handling this conversation."}, status=409)
+    if thread.counselor_id != me.id:
+        _hand_conversation_to(thread, me)
+    AccessLog.objects.create(staff=me, student=student, action="open_chat")
+    return JsonResponse({"thread_id": thread.id, "student_name": student.get_full_name() or student.username})
+
+
+def _hand_conversation_to(thread, staff):
+    """Make `staff` the counselor of the thread, moving the student's upcoming appointments with it."""
+    thread.counselor = staff
+    thread.save()
+    thread.appointments.filter(
+        status__in=['pending', 'confirmed'], scheduled_time__gte=dj_timezone.now()
+    ).update(counselor=staff)
 
 
 @login_required(login_url='login')
@@ -2573,6 +2745,8 @@ def staff_referral_respond(request, note_id):
     note = get_object_or_404(StudentNote, id=note_id, service='referral')
     if note.referred_to_id != request.user.id:
         return JsonResponse({"error": "This referral isn't addressed to you."}, status=403)
+    if not can(request.user, 'referrals'):
+        return JsonResponse({"error": "Your staff role can't answer referrals."}, status=403)
     try:
         data = json.loads(request.body)
     except json.JSONDecodeError:
@@ -2582,12 +2756,18 @@ def staff_referral_respond(request, note_id):
         return JsonResponse({"error": "Choose accept or decline."}, status=400)
     if note.referral_status != 'pending':
         return JsonResponse({"error": "You've already answered this referral."}, status=409)
-    note.referral_status = 'accepted' if action == "accept" else 'declined'
-    note.referral_decline_reason = (data.get("reason") or "").strip()[:200] if action == "decline" else ""
-    note.referral_responded_at = timezone.now()
-    note.referral_response_seen = False
-    note.save(update_fields=['referral_status', 'referral_decline_reason', 'referral_responded_at',
-                             'referral_response_seen'])
+    with transaction.atomic():
+        note.referral_status = 'accepted' if action == "accept" else 'declined'
+        note.referral_decline_reason = (data.get("reason") or "").strip()[:200] if action == "decline" else ""
+        note.referral_responded_at = timezone.now()
+        note.referral_response_seen = False
+        note.save(update_fields=['referral_status', 'referral_decline_reason', 'referral_responded_at',
+                                 'referral_response_seen'])
+        if action == "accept":
+            # The conversation moves to the staff member who accepted. The one who referred can no longer open it.
+            thread = GuidanceThread.objects.select_for_update().filter(student_id=note.student_id).first()
+            if thread and note.author_id and thread.counselor_id == note.author_id:
+                _hand_conversation_to(thread, request.user)
     return JsonResponse({"note": _note_json(note, request.user)})
 
 
@@ -2599,7 +2779,7 @@ def staff_schedule_appointment(request, thread_id):
     if _student_archived(thread.student):
         return JsonResponse({"error": "This student's account is archived."}, status=409)
     
-    if thread.counselor_id and thread.counselor_id != request.user.id:
+    if _held_by_other(request.user, thread):
         return JsonResponse({"error": "Claimed by another counselor."}, status=403)
 
     try:
@@ -2752,10 +2932,13 @@ def _time_ago(dt):
 @login_required(login_url='login')
 @user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
 @require_POST
-@require_perm('chat_students')
 def staff_student_thread(request, student_id):
     student = get_object_or_404(User, id=student_id, is_staff=False, is_superuser=False)
-    thread, _ = GuidanceThread.objects.get_or_create(student=student)
+    if not can(request.user, 'chat_students') and student.id not in _valid_grants(request.user):
+        return JsonResponse({"error": "Your staff role doesn't allow this."}, status=403)
+    thread = GuidanceThread.objects.filter(student=student).first() or GuidanceThread.objects.create(student=student)
+    if _held_by_other(request.user, thread) and not request.user.is_superuser:
+        return JsonResponse({"error": "This student's conversation is assigned to another counselor."}, status=409)
     return JsonResponse({"thread_id": thread.id})
 
 
@@ -3274,6 +3457,7 @@ def staff_care_team(request):
                 "status": "Active" if m.is_active else "Suspended",
         "last_active": _time_ago(m.last_login),
         "me": m.id == request.user.id,
+        "can_receive_referrals": can(m, 'referrals'),
     } for m in members]})
 
 

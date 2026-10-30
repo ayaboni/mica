@@ -24,6 +24,7 @@ PERMISSION_FIELDS = [
     ("notes_need_review", "Their notes are marked \u201cneeds review\u201d", "bool"),
     ("review_notes", "Mark another staff member\u2019s note reviewed", "bool"),
     ("flag_students", "Flag a student", "bool"),
+    ("referrals", "Refer students to other staff & receive referrals", "bool"),
     ("take_cases", "Take a case", "bool"),
     ("resolve_flags", "Resolve a flag", "bool"),
     ("view_assessments", "View student assessments", "bool"),
