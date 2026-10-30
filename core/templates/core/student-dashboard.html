@@ -251,6 +251,22 @@ html.dyslexia body{line-height:1.7;}
     object-fit:cover;
     background:var(--btn-bg);
   }
+  /* Placeholder for students without a profile picture: their initials on a Mica-green circle */
+  .avatar-initials{
+    display:inline-flex; align-items:center; justify-content:center;
+    flex-shrink:0;
+    background:linear-gradient(135deg,#A9C6A2,#8EAE88);
+    color:#fff;
+    font-family:'Quicksand',sans-serif;
+    font-weight:700;
+    font-size:11px;
+    letter-spacing:.3px;
+    line-height:1;
+    text-transform:uppercase;
+    user-select:none;
+    box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.55);
+  }
+  span.msg-avatar.avatar-initials, body.dark-mode span.msg-avatar.avatar-initials{ width:34px; height:34px; padding:0; font-size:12px; color:#fff; background:linear-gradient(135deg,#A9C6A2,#8EAE88); }
   .settings-btn{
     width:32px;height:32px;
     border-radius:50%;
@@ -1478,9 +1494,9 @@ function toggleDyslexia(){
     <div class="sidebar-bottom">
       <button class="user-btn" id="user-btn">
           {% if request.user.profile.avatar %}
-            <img class="avatar-round" src="{{ request.user.profile.avatar.url }}" alt="User avatar">
+            <img class="avatar-round" src="{{ request.user.profile.avatar.url }}" alt="User avatar" data-initials="{% include 'core/_initials.html' with u=request.user %}">
           {% else %}
-            <img class="avatar-round" src="{% static 'core/images/account_circle_icon.svg' %}" alt="User avatar">
+            <span class="avatar-round avatar-initials" aria-hidden="true">{% include 'core/_initials.html' with u=request.user %}</span>
           {% endif %}
         <span>{{ request.user.username }}</span>
       </button>
@@ -2055,19 +2071,37 @@ document.getElementById('search-chats').addEventListener('input', (e)=>{
 /* ============================================================
    CHAT ENGINE (shared by Chat + Talk to Guidance)
 ============================================================ */
+const USER_AVATAR_URL = "{% if request.user.profile.avatar %}{{ request.user.profile.avatar.url|escapejs }}{% endif %}";
+const USER_INITIALS = "{% filter escapejs %}{% include 'core/_initials.html' with u=request.user %}{% endfilter %}".trim();
+
+/* If a saved profile picture can't be loaded (file deleted, bad link), show the initials circle instead */
+document.addEventListener('error', e => {
+  const img = e.target;
+  if(!img || img.tagName !== 'IMG' || !img.dataset.initials) return;
+  const span = document.createElement('span');
+  span.className = img.className + ' avatar-initials';
+  span.setAttribute('aria-hidden', 'true');
+  span.textContent = img.dataset.initials.trim();
+  img.replaceWith(span);
+}, true);
+
 function addMessage(containerId, text, sender, avatarLabel){
   const container = document.getElementById(containerId);
   const row = document.createElement('div');
   row.className = 'msg-row ' + sender;
   let avatarSrc;
+  let avatarHtml;
   if (sender === 'user') {
-    avatarSrc = "{% if request.user.profile.avatar %}{{ request.user.profile.avatar.url }}{% else %}{% static 'images/account_circle_icon.svg' %}{% endif %}";
+    avatarHtml = USER_AVATAR_URL
+      ? `<img class="msg-avatar" src="${USER_AVATAR_URL}" alt="" data-initials="${USER_INITIALS}">`
+      : `<span class="msg-avatar avatar-initials" aria-hidden="true">${USER_INITIALS}</span>`;
   } else if (avatarLabel === 'LEAF') {
     avatarSrc = "{% static 'core/images/guidance_icon.svg' %}";
   } else {
     avatarSrc = "{% static 'core/images/mascot_good.png' %}";
   }
-  row.innerHTML = `<img class="msg-avatar" src="${avatarSrc}" alt=""><div class="msg-bubble">${text}</div>`;
+  if(!avatarHtml) avatarHtml = `<img class="msg-avatar" src="${avatarSrc}" alt="">`;
+  row.innerHTML = `${avatarHtml}<div class="msg-bubble">${text}</div>`;
   container.appendChild(row);
   container.scrollTop = container.scrollHeight;
   return row;
