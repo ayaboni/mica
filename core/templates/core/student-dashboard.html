@@ -889,6 +889,23 @@ body.dark-mode #view-quests   { --accent:#4F7A5B; --accent-ink:#E6F2E8; }
   .entry-delete{display:block; margin:16px auto 0; background:none; border:none; color:#A0523D; font-size:12.5px; font-weight:700; text-decoration:underline; cursor:pointer;}
   .entry-delete:hover{color:#7d3b2a;}
 
+  /* ---------- Mood Diary: dark mode (entry screen, pickers, dropdowns, reminder) ---------- */
+  body.dark-mode .mood-inner{ color-scheme:dark; }
+  body.dark-mode .entry-card{ background:var(--bubble-bg); }
+  body.dark-mode .mood-opt{ background:var(--btn-bg); }
+  body.dark-mode .mood-opt:hover{ background:var(--btn-hover); }
+  body.dark-mode .mood-opt.selected{ background:var(--btn-active); }
+  body.dark-mode .diary-box textarea{ color-scheme:dark; }
+  body.dark-mode .diary-box textarea::placeholder{ color:var(--text-mute); }
+  body.dark-mode .btn-enter:hover{ background:var(--btn-hover); }
+  body.dark-mode .entry-delete{ color:#E3A08E; }
+  body.dark-mode .entry-delete:hover{ color:#F2BEAF; }
+  body.dark-mode .nav-dropdown{ color-scheme:dark; color:var(--text-dark); }
+  body.dark-mode .nav-dropdown option{ background:#283227; color:#e6ede5; }
+  body.dark-mode .month-nav .icon-btn{ color:var(--text-dark); }
+  body.dark-mode .mood-preview .mp-note{ border-top-color:rgba(255,255,255,.12); }
+  body.dark-mode #mood-reminder-time{ background:var(--btn-bg) !important; border-color:#3d4f3b !important; color:var(--text-dark) !important; color-scheme:dark; }
+
 #view-grounding .gr-inner{ padding:28px; }
 @media (max-height:760px){
   #view-grounding .gr-big{ width:108px; height:108px; font-size:46px; }
