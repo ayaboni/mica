@@ -89,6 +89,14 @@ body.dark-mode .diary-box textarea::placeholder {
   color: #798a78;
 }
 
+:root{ --scroll-thumb:#E6E3D8; }
+body.dark-mode{ --scroll-thumb:#455643; }
+::-webkit-scrollbar{ width:9px; height:9px; }
+::-webkit-scrollbar-thumb{ background:var(--scroll-thumb); border-radius:99px; }
+@supports not selector(::-webkit-scrollbar){
+  *{ scrollbar-width:thin; scrollbar-color:var(--scroll-thumb) transparent; }
+}
+
 /* Dyslexic-friendly font */
 @font-face{font-family:'OpenDyslexic'; src:url("{% static 'core/fonts/OpenDyslexic-Regular.woff2' %}") format('woff2'); font-display:swap;}
 html.dyslexia, html.dyslexia *{font-family:'OpenDyslexic','Lexend',sans-serif !important; letter-spacing:.03em; word-spacing:.12em;}
@@ -200,8 +208,6 @@ html.dyslexia body{line-height:1.7;}
     gap:8px;
     margin-top:2px;
   }
-  .chat-history::-webkit-scrollbar{width:5px;}
-  .chat-history::-webkit-scrollbar-thumb{background:rgba(0,0,0,.15);border-radius:4px;}
   .history-label{
     font-size:12px;
     font-weight:700;
@@ -448,8 +454,6 @@ html.dyslexia body{line-height:1.7;}
     flex-direction:column;
     gap:16px;
   }
-  .messages::-webkit-scrollbar{width:6px;}
-  .messages::-webkit-scrollbar-thumb{background:rgba(0,0,0,.12);border-radius:4px;}
 
   .msg-row{
     display:flex;
@@ -804,10 +808,71 @@ body.dark-mode{ --composer-accent:#9CC893; }
   .btn-pill:active{transform:scale(.96);}
   .btn-back{background:#D8D2C0;color:var(--text-dark);}
   .btn-back:hover{background:#c9c2ab;}
+  body.dark-mode .btn-back{ background:var(--btn-bg); color:var(--text-dark); }
+  body.dark-mode .btn-back:hover{ background:var(--btn-hover); }
+  :root{
+  --c-breathe-tint:#DCEBF8; --c-aff-tint:#FBEFC4; --c-ground-tint:#E8E3F6;
+  --c-pop-tint:#F9DEDC;     --c-pomo-tint:#FBE0D2; --c-quest-tint:#DDEBDF;
+}
+body.dark-mode{
+  --c-breathe-tint:#243846; --c-aff-tint:#4A3F1D; --c-ground-tint:#3A3552;
+  --c-pop-tint:#4D3033;     --c-pomo-tint:#4C3224; --c-quest-tint:#2F4535;
+}
+.ex-card[data-go="breathe"] .ex-icon{ background:var(--c-breathe-tint); }
+.ex-card[data-go="affirmations"] .ex-icon{ background:var(--c-aff-tint); }
+.ex-card[data-go="grounding"] .ex-icon{ background:var(--c-ground-tint); }
+.ex-card[data-go="pop"] .ex-icon{ background:var(--c-pop-tint); }
+.ex-card[data-go="pomodoro"] .ex-icon{ background:var(--c-pomo-tint); }
+.ex-card[data-go="quests"] .ex-icon{ background:var(--c-quest-tint); }
+
+/* each exercise gets an accent, with a softer one in dark mode */
+#view-breathe      { --accent:#6FA8DC; --accent-ink:#0F2A44; }
+#view-affirmations { --accent:#F0C13C; --accent-ink:#4A3426; }
+#view-grounding { --accent:#A99BDB; --accent-ink:#2D2552; }
+#view-pop          { --accent:#F0B9B5; --accent-ink:#5A2E2E; }
+#view-pomodoro  { --accent:#EE8A5B; --accent-ink:#4A2412; }
+#view-quests    { --accent:#87A991; --accent-ink:#1F3326; }
+body.dark-mode #view-breathe      { --accent:#3F6F9E; --accent-ink:#E8F2FB; }
+body.dark-mode #view-affirmations { --accent:#8A6D1E; --accent-ink:#FCEFC4; }
+body.dark-mode #view-grounding{ --accent:#6B5DA8; --accent-ink:#EFEBFB; }
+body.dark-mode #view-pop          { --accent:#8A4F55; --accent-ink:#F9E3E3; }
+body.dark-mode #view-pomodoro { --accent:#A85A36; --accent-ink:#FDEBDD; }
+body.dark-mode #view-quests   { --accent:#4F7A5B; --accent-ink:#E6F2E8; }
+
+#view-pop .aff-tab.active, #view-affirmations .aff-tab.active{ background:var(--accent); color:var(--accent-ink); }
+#view-pop .pop-field input[type=range]{ accent-color:var(--accent); }
+
+.btn-pill.btn-accent{ background:var(--accent); color:var(--accent-ink); }
+.btn-pill.btn-accent:hover{ filter:brightness(.95); }
+#view-pomodoro .aff-tab.active, #view-quests .aff-tab.active{ background:var(--accent); color:var(--accent-ink); }
+
+#view-pomodoro .ex-inner{ position:relative; }
+.pomo-bell{
+  position:absolute; top:12px; right:12px; width:36px; height:36px; border-radius:50%;
+  background:var(--content-bg); font-size:16px; display:grid; place-items:center;
+}
+
+.gr-big{
+  background:linear-gradient(160deg, var(--accent), color-mix(in srgb, var(--accent) 75%, #000));
+  color:var(--accent-ink);
+  box-shadow:0 4px 18px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+.gr-dot{ border-color:var(--accent); }
+.gr-dot.on{ background:var(--accent); }
+.pomo-barwrap i{ background:var(--accent); }
+.quest-check{ border-color:var(--accent); }
+.quest-row.done .quest-check{ background:var(--accent); color:var(--accent-ink); }
+  .btn-pill:disabled{ opacity:.6; cursor:default; }
   .btn-enter{background:var(--btn-active);color:var(--brown-dark);}
   .btn-enter:hover{background:#e0af2c;}
   .entry-delete{display:block; margin:16px auto 0; background:none; border:none; color:#A0523D; font-size:12.5px; font-weight:700; text-decoration:underline; cursor:pointer;}
   .entry-delete:hover{color:#7d3b2a;}
+
+#view-grounding .gr-inner{ padding:28px; }
+@media (max-height:760px){
+  #view-grounding .gr-big{ width:108px; height:108px; font-size:46px; }
+  #view-grounding .gr-prompt{ min-height:0; }
+}
 
   /* ---------- Breathe ---------- */
   .breathe-inner{
@@ -946,7 +1011,8 @@ body.dark-mode{ --composer-accent:#9CC893; }
 #view-breathe .breathe-inner,
 #view-grounding .gr-inner,
 #view-affirmations .ex-inner,
-#view-pomodoro .ex-inner{
+#view-pomodoro .ex-inner,
+#view-quests .ex-inner{
   flex:0 1 auto;
   align-self:center;
   margin:auto;
@@ -1154,6 +1220,24 @@ body.dark-mode{ --composer-accent:#9CC893; }
 .aff-fav-text{ flex:1; font-size:14px; line-height:1.45; color:var(--brown-dark); font-weight:600; }
 .aff-empty{ text-align:center; color:var(--text-mute); font-size:13.5px; padding:30px 10px; }
 
+.aff-why-btn{
+  width:100%; text-align:left; background:var(--card-bg); color:var(--text-dark);
+  border-radius:var(--radius-md); padding:12px 16px; font-size:13px; font-weight:700; box-shadow:var(--shadow);
+}
+.mini-modal{ position:fixed; inset:0; background:rgba(0,0,0,.45); display:grid; place-items:center; z-index:120; padding:16px; }
+.mini-modal[hidden]{ display:none; }
+.mini-modal-card{
+  position:relative; background:var(--card-bg); color:var(--text-dark);
+  border-radius:var(--radius-lg); box-shadow:var(--shadow);
+  padding:26px 24px 22px; max-width:420px; width:100%;
+}
+.mini-modal-card h3{ margin:0 36px 10px 0; font-family:'Quicksand',sans-serif; }
+.mini-modal-card p{ margin:0; line-height:1.6; color:var(--text-mute); font-size:14px; }
+.mini-modal-x{
+  position:absolute; top:12px; right:12px; width:32px; height:32px; border-radius:50%;
+  background:var(--content-bg); color:var(--text-dark); font-size:14px;
+}
+
 /* 5-4-3-2-1 Grounding */
 .gr-inner{ justify-content:center; text-align:center; padding-top:60px; }
 .gr-sense{ font-family:'Quicksand',sans-serif; font-weight:700; font-size:16px; letter-spacing:.5px; color:var(--text-dark); }
@@ -1185,11 +1269,21 @@ body.dark-mode{ --composer-accent:#9CC893; }
   background:var(--card-bg); box-shadow:var(--shadow);
   border-radius:999px; padding:5px 12px; font-size:12.5px; color:var(--text-dark);
 }
+.gr-big, .gr-dots, .gr-dot{ flex:none; }
+
+#view-grounding .gr-big{
+  background:linear-gradient(160deg, var(--accent), color-mix(in srgb, var(--accent) 75%, #000));
+  color:var(--accent-ink);
+  box-shadow:0 4px 18px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+#view-grounding .gr-dot{ border-color:var(--accent); }
+#view-grounding .gr-dot.on{ background:var(--accent); }
 
 /* pomodoro */
 .pomo-pane{ width:100%; display:flex; flex-direction:column; align-items:center; gap:14px; text-align:center; }
 .pomo-pane[hidden]{ display:none; }
 .pomo-mode{ font-family:'Quicksand',sans-serif; font-weight:700; letter-spacing:1px; color:var(--text-mute); }
+.pomo-modes{ display:flex; gap:8px; justify-content:center; }
 .pomo-time{ font-family:'Quicksand',sans-serif; font-weight:700; font-size:72px; line-height:1; color:var(--text-dark); }
 .pomo-barwrap{ width:100%; max-width:360px; height:10px; border-radius:999px; background:#E8E1CB; overflow:hidden; }
 .pomo-barwrap i{ display:block; height:100%; background:#87A991; transform-origin:left; transition:transform .25s linear; }
@@ -1201,6 +1295,34 @@ body.dark-mode{ --composer-accent:#9CC893; }
 .pomo-row button:disabled{ opacity:.4; cursor:not-allowed; }
 .pomo-note{ font-size:12px; color:var(--text-mute); }
 .pomo-week{ font-weight:700; font-size:14px; }
+
+/* quest */
+#view-quests .ex-inner{ display:flex; flex-direction:column; gap:12px; }   /* no fixed height anymore */
+.quest-pane{ flex:none; height:440px; display:flex; flex-direction:column; gap:12px; width:100%; }
+.quest-pane[hidden]{ display:none; }
+.quest-title{ font-family:'Quicksand',sans-serif; margin:0; text-align:center; color:var(--text-dark); }
+.quest-scroll{ flex:1; min-height:0; overflow-y:auto; scrollbar-gutter:stable; display:flex; flex-direction:column; gap:10px; }
+.quest-row, .quest-item{ flex:none; }
+.quest-head{ font-size:12.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--text-mute); margin:8px 0 0; }
+.quest-head:first-child{ margin-top:0; }
+.quest-item{ display:flex; align-items:center; gap:10px; background:var(--content-bg); border-radius:var(--radius-md); padding:10px 14px; font-size:14px; color:var(--text-dark); }
+.quest-item .quest-text{ flex:1; }
+.quest-empty{ font-size:13px; color:var(--text-mute); padding:4px 2px; }
+.quest-progress{ text-align:center; font-weight:700; font-size:14px; color:var(--text-mute); margin:4px 0 14px; }
+.quest-list{ display:flex; flex-direction:column; gap:10px; width:100%; }
+.quest-row{
+  display:flex; align-items:center; gap:12px; width:100%; text-align:left;
+  background:var(--content-bg); border:none; border-radius:var(--radius-md);
+  padding:12px 14px; cursor:pointer; color:var(--text-dark); font-size:14.5px;
+}
+.quest-check{
+  flex:none; width:24px; height:24px; border-radius:50%;
+  border:2px solid #87A991; display:grid; place-items:center; color:#fff; font-size:14px;
+}
+.quest-row.done .quest-check{ background:#87A991; }
+.quest-row.done .quest-text{ text-decoration:line-through; opacity:.6; }
+.quest-text{ flex:1; }
+.quest-actions{ display:flex; justify-content:center; margin:14px 0; }
 
   /* ---------- Settings modal ---------- */
   .overlay{
@@ -1396,7 +1518,7 @@ input:checked + .toggle-slider::before {
     position:fixed;
     bottom:24px;left:50%;
     transform:translate(-50%,20px);
-    background:var(--text-dark);
+    background:#3A2F24;
     color:#fff;
     padding:11px 20px;
     border-radius:999px;
@@ -1449,7 +1571,9 @@ function toggleDyslexia(){
 </script>
 </head>
 <body>
-{% include 'core/_loader.html' %}
+<script>try{ if(localStorage.getItem('mica_dark') === '1') document.body.classList.add('dark-mode'); }catch(e){}</script>
+  {% include 'core/_loader.html' %}
+
 
 <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
 
@@ -1686,6 +1810,12 @@ function toggleDyslexia(){
         <div class="ex-desc">Focus in short rounds with breaks in between. Set your own times.</div>
         <div class="ex-meta">25 MIN FOCUS</div>
       </button>
+      <button class="ex-card" data-go="quests">
+        <div class="ex-icon">🌱</div>
+        <div class="ex-title">Mica Quests</div>
+        <div class="ex-desc">Small daily quests to look after yourself. Add your own too.</div>
+        <div class="ex-meta">DAILY</div>
+      </button>
     </div>
   </div>
 </section>
@@ -1721,7 +1851,7 @@ function toggleDyslexia(){
         <div class="pop-chip r3"><img src="{% static 'core/images/mica-heads/happy.png' %}" alt="">Golden ×3</div>
       </div>
       <div class="pop-best" id="pop-best"></div>
-      <button class="btn-pill btn-enter pop-go" id="pop-start">Start</button>
+      <button class="btn-pill btn-enter pop-go btn-accent" id="pop-start">Start</button>
     </div>
 
     <div class="pop-game" id="pop-game" hidden>
@@ -1747,7 +1877,7 @@ function toggleDyslexia(){
         <div><b id="pop-res-rare">0</b><span>Rare ones</span></div>
       </div>
       <div class="pop-actions">
-        <button class="btn-pill btn-enter" id="pop-again">Play again</button>
+        <button class="btn-pill btn-enter btn-accent" id="pop-again">Play again</button>
         <button class="btn-pill btn-back" id="pop-settings">Change settings</button>
       </div>
     </div>
@@ -1759,19 +1889,22 @@ function toggleDyslexia(){
 <section class="view" id="view-pomodoro">
   <button class="btn-pill btn-back ex-back" data-go="exercises">← Exercises</button>
   <div class="ex-inner">
+    <button class="pomo-bell" id="pomo-sound" type="button" title="Sound on">🔔</button>
     <div class="aff-tabs">
       <button class="aff-tab active" id="pomo-tab-timer">Timer</button>
       <button class="aff-tab" id="pomo-tab-hist">History</button>
     </div>
 
     <div class="pomo-pane" id="pomo-pane-timer">
-      <div class="pomo-mode" id="pomo-mode">FOCUS</div>
+      <div class="pomo-modes">
+        <button class="aff-tab active" id="pomo-m-focus">Focus</button>
+        <button class="aff-tab" id="pomo-m-break">Break</button>
+      </div>
       <div class="pomo-time" id="pomo-time">25:00</div>
       <div class="pomo-barwrap"><i id="pomo-bar"></i></div>
       <div class="pomo-rounds">Rounds done: <b id="pomo-rounds">0</b></div>
       <div class="pomo-btns">
-        <button class="btn-pill" id="pomo-go">Start</button>
-        <button class="btn-pill btn-back" id="pomo-skip">Skip</button>
+        <button class="btn-pill btn-accent" id="pomo-go">Start</button>
         <button class="btn-pill btn-back" id="pomo-reset">Reset</button>
       </div>
       <div class="pomo-set">
@@ -1790,6 +1923,34 @@ function toggleDyslexia(){
     <div class="pomo-pane" id="pomo-pane-hist" hidden>
       <div class="pomo-week" id="pomo-week"></div>
       <div class="aff-fav-list" id="pomo-hist"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ---------- MICA QUESTS ---------- -->
+<section class="view" id="view-quests">
+  <button class="btn-pill btn-back ex-back" data-go="exercises">← Exercises</button>
+  <div class="ex-inner">
+    <div class="aff-tabs">
+      <button class="aff-tab active" id="quest-tab-today">Today</button>
+      <button class="aff-tab" id="quest-tab-list">All quests</button>
+    </div>
+
+    <div class="quest-pane" id="quest-pane-today">
+      <h3 class="quest-title">Today's Quests</h3>
+      <div class="quest-progress" id="quest-progress"></div>
+      <div class="quest-scroll" id="quest-list"></div>
+      <div class="quest-actions">
+        <button class="btn-pill btn-accent" id="quest-shuffle">🔀 Shuffle</button>
+      </div>
+    </div>
+
+    <div class="quest-pane" id="quest-pane-list" hidden>
+      <form class="aff-add" id="quest-add-form" autocomplete="off">
+        <input id="quest-add-input" maxlength="80" placeholder="Add your own quest…">
+        <button class="btn-pill btn-accent" type="submit">Add</button>
+      </form>
+      <div class="quest-scroll" id="quest-all"></div>
     </div>
   </div>
 </section>
@@ -1828,13 +1989,10 @@ function toggleDyslexia(){
 
       <form class="aff-add" id="aff-add-form">
         <input id="aff-add-input" maxlength="140" placeholder="Write your own affirmation..." autocomplete="off">
-        <button type="submit" class="btn-pill btn-enter">Add</button>
+        <button type="submit" class="btn-pill btn-accent">Add</button>
       </form>
 
-      <details class="aff-why">
-        <summary>Why does this help?</summary>
-        <p>Saying kind, believable things to yourself can help you feel steadier. Research on self-affirmation suggests it can soften stress reactions and make hard feedback easier to take in. It works best when the words feel true to you, so pick lines you can believe, even a little. It is a small tool, not a replacement for talking to someone. If things feel heavy, the Guidance Office is here for you.</p>
-      </details>
+      <button class="aff-why-btn" id="aff-why-open" type="button">Why does this help? ⓘ</button>
     </div>
 
     <div class="aff-pane hidden" id="aff-pane-list">
@@ -1860,11 +2018,19 @@ function toggleDyslexia(){
     </form>
     <div class="gr-note" id="gr-note">Optional. Not saved. It only stays on this screen.</div>
     <div class="gr-chips" id="gr-chips"></div>
-    <button class="btn-pill btn-enter" id="gr-btn">I found one</button>
+    <button class="btn-pill btn-enter btn-accent" id="gr-btn">I found one</button>
     <button class="btn-pill btn-back hidden" id="gr-again">Do it again</button>
     <div class="gr-progress" id="gr-progress"></div>
   </div>
 </section>
+
+<div class="mini-modal" id="aff-why-modal" hidden>
+  <div class="mini-modal-card" role="dialog" aria-modal="true" aria-labelledby="aff-why-title">
+    <button class="mini-modal-x" id="aff-why-close" type="button" aria-label="Close">✕</button>
+    <h3 id="aff-why-title">Why does this help?</h3>
+    <p>Saying kind, believable things to yourself can help you feel steadier. Research on self-affirmation suggests it can soften stress reactions and make hard feedback easier to take in. It works best when the words feel true to you, so pick lines you can believe, even a little. It is a small tool, not a replacement for talking to someone. If things feel heavy, the Guidance Office is here for you.</p>
+  </div>
+</div>
 
   </main>
 </div>
@@ -1992,7 +2158,7 @@ function updateLiveClock() {
 ============================================================ */
 const views = document.querySelectorAll('.view');
 const viewTitle = document.getElementById('view-title');
-const EXERCISE_VIEWS = ['view-exercises','view-breathe','view-affirmations','view-grounding','view-pop', 'view-pomodoro'];
+const EXERCISE_VIEWS = ['view-exercises','view-breathe','view-affirmations','view-grounding','view-pop', 'view-pomodoro', 'view-quests'];
 const navButtons = {
   'view-chat': document.getElementById('btn-chat'),
   'view-guidance': document.getElementById('btn-guidance'),
@@ -2947,7 +3113,8 @@ const EX_TARGETS = {
   affirmations:['view-affirmations','Affirmations'],
   grounding:['view-grounding','5-4-3-2-1 Grounding'],
   pop:['view-pop','Mica Pop'],
-  pomodoro:['view-pomodoro','Pomodoro']
+  pomodoro:['view-pomodoro','Pomodoro'],
+  quests:['view-quests','Mica Quests']
 };
 document.querySelectorAll('[data-go]').forEach(el=>{
   el.addEventListener('click', ()=>{
@@ -2958,6 +3125,7 @@ document.querySelectorAll('[data-go]').forEach(el=>{
     if(vid === 'view-pop') popShowSetup();
     if(vid === 'view-affirmations') loadAff();
     if(vid === 'view-pomodoro') pomoOpen();
+        if(vid === 'view-quests'){ setQuestTab('today'); loadQuests(); }
   });
 });
 
@@ -3325,50 +3493,79 @@ function popLeave(){
 window.addEventListener('pagehide', popLeave);
 popRenderSetup();
 
-/* ---------- Pomodoro (only focus time and rounds are logged) ---------- */
+/* ---------- Pomodoro ---------- */
 const POMO_KEY = 'pomo.prefs';
-const pomoPrefs = {focus: 0.1, brk:5};
+const pomoPrefs = {focus:25, brk:5};
 try{ Object.assign(pomoPrefs, JSON.parse(localStorage.getItem(POMO_KEY) || '{}')); }catch(e){}
-let pomoMode = 'focus', pomoRunning = false, pomoTimer = null;
+let pomoMode = 'focus', pomoRunning = false, pomoActive = false, pomoTimer = null;
 let pomoLeft = pomoPrefs.focus * 60, pomoEnd = 0, pomoLast = 0;
-let pomoRounds = 0, pomoFocusSecs = 0;
+let pomoFocusSecs = 0, pomoRounds = 0, pomoRoundsTotal = 0;   // unsaved / shown on screen
+let pomoAC = null;
 
-const pomoFresh = () => !pomoRunning && pomoFocusSecs === 0 && pomoRounds === 0;
+const pomoTotal = () => (pomoMode === 'focus' ? pomoPrefs.focus : pomoPrefs.brk) * 60;
+const pomoCanEdit = () => !pomoRunning && pomoLeft === pomoTotal();
+const pomoSoundOn = () => localStorage.getItem('pomo.sound') !== 'off';
 
-function pomoBeep(){
-  if(localStorage.getItem('notif_sound') === 'false') return;
+function pomoUnlockAudio(){
   try{
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    [659, 784].forEach((f, i) => {
-      const o = ctx.createOscillator(), g = ctx.createGain();
-      o.type = 'sine'; o.frequency.value = f; g.gain.value = .15;
-      o.connect(g); g.connect(ctx.destination);
-      o.start(ctx.currentTime + i * .18); o.stop(ctx.currentTime + i * .18 + .15);
-    });
-    setTimeout(() => ctx.close(), 900);
+    if(!pomoAC) pomoAC = new (window.AudioContext || window.webkitAudioContext)();
+    if(pomoAC.state === 'suspended') return pomoAC.resume();
   }catch(e){}
+  return Promise.resolve();
+}
+function pomoChime(){
+  if(!pomoSoundOn() || !pomoAC) return;
+  const notes = [659.25, 783.99, 1046.5];
+  const t0 = pomoAC.currentTime + .05;
+  [0, 1.3].forEach(offset => notes.forEach((f, i) => {
+    const o = pomoAC.createOscillator(), g = pomoAC.createGain(), t = t0 + offset + i * .25;
+    o.type = 'sine'; o.frequency.value = f;
+    g.gain.setValueAtTime(.0001, t);
+    g.gain.exponentialRampToValueAtTime(.35, t + .03);
+    g.gain.exponentialRampToValueAtTime(.0001, t + 1.0);
+    o.connect(g); g.connect(pomoAC.destination);
+    o.start(t); o.stop(t + 1.05);
+  }));
 }
 
 function pomoRender(){
-  const m = Math.floor(pomoLeft / 60), s = pomoLeft % 60;
+  const m = Math.floor(pomoLeft / 60), s = pomoLeft % 60, total = pomoTotal();
   byId('pomo-time').textContent = String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
-  byId('pomo-mode').textContent = pomoMode === 'focus' ? 'FOCUS' : 'BREAK';
-  byId('pomo-rounds').textContent = pomoRounds;
-  const total = (pomoMode === 'focus' ? pomoPrefs.focus : pomoPrefs.brk) * 60;
+  byId('pomo-m-focus').classList.toggle('active', pomoMode === 'focus');
+  byId('pomo-m-break').classList.toggle('active', pomoMode === 'break');
+  byId('pomo-rounds').textContent = pomoRoundsTotal;
   byId('pomo-bar').style.transform = 'scaleX(' + (total ? pomoLeft / total : 0) + ')';
-  byId('pomo-go').textContent = pomoRunning ? 'Pause' : (pomoFresh() ? 'Start' : 'Resume');
+  byId('pomo-go').textContent = pomoRunning ? 'Pause' : (pomoLeft === total ? 'Start' : 'Resume');
   byId('pomo-focus-val').textContent = pomoPrefs.focus + ' min';
   byId('pomo-brk-val').textContent = pomoPrefs.brk + ' min';
-  const lock = !pomoFresh();
+  const lock = !pomoCanEdit();
   ['focus-minus','focus-plus','brk-minus','brk-plus'].forEach(id => byId('pomo-' + id).disabled = lock);
-  byId('pomo-note').textContent = lock ? 'Reset to change the times.' : 'You can change the times before you start.';
+  byId('pomo-note').textContent = lock ? 'You can change the times before a round starts.' : 'You can change the times here.';
+  const sBtn = byId('pomo-sound');
+  sBtn.textContent = pomoSoundOn() ? '🔔' : '🔕';
+  sBtn.title = pomoSoundOn() ? 'Sound on' : 'Sound off';
 }
 
-function pomoNextPhase(){
-  pomoMode = pomoMode === 'focus' ? 'break' : 'focus';
-  pomoLeft = (pomoMode === 'focus' ? pomoPrefs.focus : pomoPrefs.brk) * 60;
-  pomoEnd = Date.now() + pomoLeft * 1000;
-  pomoLast = Date.now();
+// saves focus time and rounds since the last save, without stopping the timer
+function pomoFlush(){
+  const secs = Math.round(pomoFocusSecs), rounds = pomoRounds;
+  if(secs < 10 && rounds === 0) return Promise.resolve();
+  pomoFocusSecs = 0; pomoRounds = 0;
+  return fetch("{% url 'api_exercise_log' %}", {
+    method:'POST', keepalive:true,
+    headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},
+    body: JSON.stringify({exercise:'pomodoro', duration_seconds:secs, count:rounds})
+  }).catch(() => {});
+}
+
+function pomoStop(){ pomoRunning = false; clearInterval(pomoTimer); }
+
+function pomoSetMode(mode){
+  if(pomoMode === 'focus') pomoFlush();
+  pomoStop();
+  pomoMode = mode;
+  pomoLeft = pomoTotal();
+  pomoRender();
 }
 
 function pomoTick(){
@@ -3377,52 +3574,52 @@ function pomoTick(){
   pomoLast = now;
   pomoLeft = Math.max(0, Math.round((pomoEnd - now) / 1000));
   if(pomoLeft <= 0){
-    pomoBeep();
-    if(pomoMode === 'focus') pomoRounds++;
-    pomoNextPhase();
+    pomoStop();
+    pomoChime();
+    if(pomoMode === 'focus'){ pomoRounds++; pomoRoundsTotal++; pomoFlush(); }
+    pomoMode = pomoMode === 'focus' ? 'break' : 'focus';
+    pomoLeft = pomoTotal();
   }
   pomoRender();
 }
 
-function pomoLog(){
-  const secs = Math.round(pomoFocusSecs), rounds = pomoRounds;
-  pomoFocusSecs = 0; pomoRounds = 0;
-  if(secs < 10 && rounds === 0) return;
-  fetch("{% url 'api_exercise_log' %}", {
-    method:'POST', keepalive:true,
-    headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},
-    body: JSON.stringify({exercise:'pomodoro', duration_seconds:secs, count:rounds})
-  });
-}
-
-function pomoStop(){ pomoRunning = false; clearInterval(pomoTimer); }
 function pomoReset(){
-  pomoStop(); pomoLog();
-  pomoMode = 'focus'; pomoLeft = pomoPrefs.focus * 60;
+  pomoStop(); pomoFlush();
+  pomoActive = false; pomoFocusSecs = 0; pomoRounds = 0; pomoRoundsTotal = 0;
+  pomoMode = 'focus'; pomoLeft = pomoTotal();
   pomoRender();
 }
-function pomoLeave(){ if(!pomoFresh()) pomoReset(); }
-function pomoOpen(){ pomoStop(); pomoReset(); setPomoTab('timer'); }
-window.addEventListener('pagehide', () => { if(!pomoFresh()){ pomoStop(); pomoLog(); } });
+function pomoLeave(){ if(pomoActive) pomoReset(); }
+function pomoOpen(){ pomoReset(); setPomoTab('timer'); }
+window.addEventListener('pagehide', () => { if(pomoActive){ pomoStop(); pomoFlush(); } });
 
 function pomoAdjust(key, delta, min, max){
-  if(!pomoFresh()) return;
+  if(!pomoCanEdit()) return;
   pomoPrefs[key] = Math.min(max, Math.max(min, pomoPrefs[key] + delta));
   try{ localStorage.setItem(POMO_KEY, JSON.stringify(pomoPrefs)); }catch(e){}
-  pomoLeft = pomoPrefs.focus * 60;
+  pomoLeft = pomoTotal();
   pomoRender();
 }
 
 byId('pomo-go').addEventListener('click', () => {
-  if(pomoRunning){ pomoStop(); }
+  if(pomoRunning){ pomoStop(); pomoFlush(); }
   else {
-    pomoRunning = true; pomoLast = Date.now(); pomoEnd = pomoLast + pomoLeft * 1000;
+    pomoUnlockAudio();
+    pomoRunning = true; pomoActive = true;
+    pomoLast = Date.now(); pomoEnd = pomoLast + pomoLeft * 1000;
     pomoTimer = setInterval(pomoTick, 250);
   }
   pomoRender();
 });
-byId('pomo-skip').addEventListener('click', () => { pomoNextPhase(); pomoRender(); });
+byId('pomo-m-focus').addEventListener('click', () => pomoSetMode('focus'));
+byId('pomo-m-break').addEventListener('click', () => pomoSetMode('break'));
 byId('pomo-reset').addEventListener('click', pomoReset);
+byId('pomo-sound').addEventListener('click', () => {
+  const on = !pomoSoundOn();
+  localStorage.setItem('pomo.sound', on ? 'on' : 'off');
+  if(on) pomoUnlockAudio().then(pomoChime);
+  pomoRender();
+});
 byId('pomo-focus-minus').addEventListener('click', () => pomoAdjust('focus', -5, 5, 90));
 byId('pomo-focus-plus').addEventListener('click',  () => pomoAdjust('focus',  5, 5, 90));
 byId('pomo-brk-minus').addEventListener('click',   () => pomoAdjust('brk', -1, 1, 30));
@@ -3433,7 +3630,7 @@ function setPomoTab(tab){
     byId('pomo-pane-' + t).hidden = tab !== t;
     byId('pomo-tab-' + t).classList.toggle('active', tab === t);
   });
-  if(tab === 'hist') loadPomoHistory();
+  if(tab === 'hist') pomoFlush().then(loadPomoHistory);
 }
 byId('pomo-tab-timer').addEventListener('click', () => setPomoTab('timer'));
 byId('pomo-tab-hist').addEventListener('click', () => setPomoTab('hist'));
@@ -3447,19 +3644,146 @@ async function loadPomoHistory(){
     box.innerHTML = '';
     if(!d.sessions.length){
       const p = document.createElement('div'); p.className = 'aff-empty';
-      p.textContent = 'No sessions yet. Your finished rounds will show up here 🌱';
+      p.textContent = 'No sessions yet. Your focus sessions will show up here 🌱';
       box.appendChild(p); return;
     }
     d.sessions.forEach(s => {
       const row = document.createElement('div'); row.className = 'aff-fav-row';
       const t = document.createElement('div'); t.className = 'aff-fav-text';
       const when = new Date(s.when).toLocaleString([], {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'});
-      t.textContent = `${when}  ·  ${s.minutes} min focused  ·  ${s.rounds} ${s.rounds === 1 ? 'round' : 'rounds'}`;
+      const dur = s.minutes < 1 ? Math.round(s.minutes * 60) + ' sec' : s.minutes + ' min';
+      t.textContent = `${when}  ·  ${dur} focused  ·  ${s.rounds} ${s.rounds === 1 ? 'round' : 'rounds'} finished`;
       row.appendChild(t); box.appendChild(row);
     });
   }catch(e){ showToast('Could not load history'); }
 }
 pomoRender();
+
+/* ---------- Mica Quests ---------- */
+const Q_URL = "{% url 'api_quests' %}";
+let questList = [], questDefaults = [], questMine = [], questBusy = false;
+
+function questPost(url, body){
+  return fetch(url, {method:'POST',
+    headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},
+    body: JSON.stringify(body || {})});
+}
+function applyQuests(d){ questList = d.quests; questDefaults = d.defaults; questMine = d.mine; renderQuests(); }
+
+function setQuestTab(tab){
+  ['today','list'].forEach(t => {
+    byId('quest-pane-' + t).hidden = tab !== t;
+    byId('quest-tab-' + t).classList.toggle('active', tab === t);
+  });
+}
+byId('quest-tab-today').addEventListener('click', () => setQuestTab('today'));
+byId('quest-tab-list').addEventListener('click', () => setQuestTab('list'));
+
+async function loadQuests(){
+  try{ applyQuests(await (await fetch(Q_URL)).json()); }
+  catch(e){ showToast('Could not load quests'); }
+}
+
+let questDelPending = null, questDelTimer = null;
+function questAskDelete(q, btn){
+  if(questDelPending === q.id){
+    clearTimeout(questDelTimer); questDelPending = null;
+    questDelete(q);
+    return;
+  }
+  questDelPending = q.id;
+  btn.classList.add('confirming'); btn.title = 'Tap again to delete';
+  showToast('Tap again to delete');
+  clearTimeout(questDelTimer);
+  questDelTimer = setTimeout(() => { questDelPending = null; btn.classList.remove('confirming'); btn.title = 'Delete'; }, 3000);
+}
+
+function renderQuests(){
+  /* Today */
+  const list = byId('quest-list');
+  list.innerHTML = '';
+  const done = questList.filter(q => q.done).length;
+  byId('quest-progress').textContent = !questList.length ? ''
+    : (done === questList.length ? `All ${done} done. Nice work today 🌟` : `${done} of ${questList.length} done`);
+  questList.forEach(q => {
+    const row = document.createElement('div');
+    row.className = 'quest-row' + (q.done ? ' done' : '');
+    row.setAttribute('role', 'button'); row.tabIndex = 0;
+    const check = document.createElement('span'); check.className = 'quest-check'; check.textContent = q.done ? '✓' : '';
+    const t = document.createElement('span'); t.className = 'quest-text'; t.textContent = q.text;
+    row.append(check, t);
+    row.addEventListener('click', () => questToggle(q));
+    row.addEventListener('keydown', e => { if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); questToggle(q); } });
+    list.appendChild(row);
+  });
+
+  /* All quests */
+  const all = byId('quest-all');
+  all.innerHTML = '';
+  const head = text => { const h = document.createElement('div'); h.className = 'quest-head'; h.textContent = text; all.appendChild(h); };
+  head('Default quests');
+  questDefaults.forEach(text => {
+    const it = document.createElement('div'); it.className = 'quest-item';
+    const t = document.createElement('span'); t.className = 'quest-text'; t.textContent = text;
+    it.appendChild(t); all.appendChild(it);
+  });
+  head('Added by you');
+  if(!questMine.length){
+    const e = document.createElement('div'); e.className = 'quest-empty';
+    e.textContent = 'Nothing here yet. Add your own quest above 🌱';
+    all.appendChild(e);
+  }
+  questMine.forEach(q => {
+    const it = document.createElement('div'); it.className = 'quest-item';
+    const t = document.createElement('span'); t.className = 'quest-text'; t.textContent = q.text;
+    const del = document.createElement('button');
+    del.type = 'button'; del.className = 'icon-btn aff-act'; del.title = 'Delete'; del.innerHTML = TRASH_SVG;
+    del.addEventListener('click', () => questAskDelete(q, del));
+    it.append(t, del); all.appendChild(it);
+  });
+}
+
+async function questToggle(q){
+  q.done = !q.done; renderQuests();
+  try{ const r = await questPost(Q_URL + q.id + '/toggle/'); if(!r.ok) throw 0; }
+  catch(e){ q.done = !q.done; renderQuests(); showToast('Could not save. Try again.'); }
+}
+
+async function questDelete(q){
+  try{
+    const r = await questPost(Q_URL + q.id + '/delete/');
+    if(!r.ok) throw 0;
+    applyQuests(await r.json());
+  }catch(e){ showToast('Could not delete. Try again.'); }
+}
+
+byId('quest-shuffle').addEventListener('click', async () => {
+  if(questBusy) return;
+  questBusy = true;
+  const btn = byId('quest-shuffle'), list = byId('quest-list');
+  btn.disabled = true; btn.textContent = 'Shuffling…'; list.style.opacity = '.5';
+  try{
+    const r = await questPost(Q_URL + 'shuffle/');
+    if(!r.ok) throw 0;
+    applyQuests(await r.json());
+    showToast('New quests 🌱 (finished ones stay)');
+  }catch(e){ showToast('Could not shuffle. Try again.'); }
+  finally{ questBusy = false; btn.disabled = false; btn.textContent = '🔀 Shuffle'; list.style.opacity = ''; }
+});
+
+byId('quest-add-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const inp = byId('quest-add-input');
+  const text = inp.value.trim();
+  if(!text) return;
+  try{
+    const r = await questPost(Q_URL + 'add/', {text});
+    const d = await r.json();
+    if(!r.ok){ showToast(d.error || 'Could not add.'); return; }
+    applyQuests(d); inp.value = '';
+    showToast('Quest added. It is on today\'s list too 🌱');
+  }catch(err){ showToast('Could not add. Try again.'); }
+});
 
 /* ---------- 5-4-3-2-1 Grounding (nothing typed, nothing saved) ---------- */
 const GR_STEPS = [
@@ -3743,6 +4067,12 @@ byId('aff-add-form').addEventListener('submit', async e => {
   }catch(err){ showToast('Could not add. Try again.'); }
 });
 
+const affWhy = byId('aff-why-modal');
+byId('aff-why-open').addEventListener('click', () => { affWhy.hidden = false; });
+byId('aff-why-close').addEventListener('click', () => { affWhy.hidden = true; });
+affWhy.addEventListener('click', e => { if(e.target === affWhy) affWhy.hidden = true; });
+document.addEventListener('keydown', e => { if(e.key === 'Escape') affWhy.hidden = true; });
+
 grRender();
 renderAff();
 
@@ -3897,11 +4227,13 @@ notifForm?.addEventListener('submit', (e) => {
    DARK MODE TOGGLE
 ============================================================ */
 const darkModeBtn = document.getElementById('darkmode-toggle-btn');
+if(darkModeBtn) darkModeBtn.textContent = `Dark Mode: ${document.body.classList.contains('dark-mode') ? 'On' : 'Off'}`;
 
 darkModeBtn?.addEventListener('click', () => {
   document.body.classList.toggle('dark-mode');
   const isDark = document.body.classList.contains('dark-mode');
   darkModeBtn.textContent = `Dark Mode: ${isDark ? 'On' : 'Off'}`;
+  try{ localStorage.setItem('mica_dark', isDark ? '1' : '0'); }catch(e){}
   showToast(isDark ? 'Dark mode enabled' : 'Light mode enabled');
 });
 

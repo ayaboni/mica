@@ -147,7 +147,6 @@ class Affirmation(models.Model):
     class Meta:
         ordering = ['created_at', 'id']
 
-
 class ExerciseSession(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='exercise_sessions')
     exercise = models.CharField(max_length=30)  # 'affirmations', 'grounding', 'pomodoro'...
@@ -158,6 +157,29 @@ class ExerciseSession(models.Model):
     class Meta:
         ordering = ['-created_at']
         indexes = [models.Index(fields=['exercise', 'created_at'])]
+
+class Quest(models.Model):
+    """A student's own quest. The default quests live in views.py."""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='quests')
+    text = models.CharField(max_length=80)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at', 'id']
+
+class DailyQuest(models.Model):
+    """One quest on one student's list for one day."""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='daily_quests')
+    date = models.DateField()
+    text = models.CharField(max_length=80)
+    is_custom = models.BooleanField(default=False)
+    done = models.BooleanField(default=False)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['id']
+        constraints = [models.UniqueConstraint(fields=['user', 'date', 'text'], name='uniq_daily_quest')]
+        indexes = [models.Index(fields=['date'])]
 
 class ChatConversation(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='conversations')

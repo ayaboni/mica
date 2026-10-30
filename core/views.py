@@ -13,15 +13,13 @@ from django.db import IntegrityError, transaction
 from django.db.models import Prefetch, Q
 from django.core.exceptions import ValidationError
 from django.urls import reverse
-import math
-import secrets
-import threading
+import math, secrets, threading, random
 from .models import AssessmentResponse
 from .models import UserProfile
 from .models import CounselorNote
 from .models import StudentNote
 from .models import MoodEntry
-from .models import BreatheSession, Affirmation, ExerciseSession
+from .models import BreatheSession, Affirmation, ExerciseSession, Quest, DailyQuest
 from .models import Appointment
 from .models import Notification
 from .models import StudentFlag
@@ -1956,6 +1954,123 @@ def api_exercise_history(request):
         } for s in qs[:30]],
         "week": {"sessions": week.count(), "minutes": round(week_secs / 60, 1)},
     })
+
+
+QUESTS_PER_DAY = 4
+QUEST_DEFAULTS = [
+    "Drink a glass of water",
+    "Take a short walk",
+    "Write one good thing that happened today",
+    "Stretch for two minutes",
+    "Message someone you like",
+    "Tidy one small spot on your desk",
+    "Step outside for some fresh air",
+    "Eat something you enjoy",
+    "Take three slow breaths",
+    "Listen to a song you love",
+    "Say something kind to yourself",
+    "Put your phone down for 10 minutes",
+    "Do one small thing you have been putting off",
+    "Look at the sky for a minute",
+    "Thank someone",
+    "Wash your face or take a warm shower",
+    "Read a few pages of something",
+    "Write down one thing you are proud of",
+    "Reach out to someone you trust",
+    "Go to bed a little earlier tonight",
+]
+
+
+def _quest_pool(user):
+    return [(t, False) for t in QUEST_DEFAULTS] + [(q.text, True) for q in user.quests.all()]
+
+
+def _quests_json(user, today):
+    return {
+        "quests": [{"id": q.id, "text": q.text, "done": q.done}
+                   for q in user.daily_quests.filter(date=today)],
+        "defaults": QUEST_DEFAULTS,
+        "mine": [{"id": q.id, "text": q.text} for q in user.quests.all()],
+    }
+
+
+def _top_up_quests(user, today, avoid=()):
+    have = set(user.daily_quests.filter(date=today).values_list('text', flat=True))
+    need = QUESTS_PER_DAY - len(have)
+    if need <= 0:
+        return
+    pool = [p for p in _quest_pool(user) if p[0] not in have]
+    fresh = [p for p in pool if p[0] not in avoid]
+    picks = random.sample(fresh, min(need, len(fresh)))
+    if len(picks) < need:                       # not enough different ones, reuse
+        rest = [p for p in pool if p not in picks]
+        picks += random.sample(rest, min(need - len(picks), len(rest)))
+    DailyQuest.objects.bulk_create(
+        [DailyQuest(user=user, date=today, text=t, is_custom=c) for t, c in picks],
+        ignore_conflicts=True)
+
+
+@login_required(login_url='login')
+def api_quests(request):
+    today = timezone.localdate()
+    _top_up_quests(request.user, today)
+    return JsonResponse(_quests_json(request.user, today))
+
+
+@login_required(login_url='login')
+@require_POST
+def api_quest_toggle(request, quest_id):
+    q = request.user.daily_quests.filter(id=quest_id, date=timezone.localdate()).first()
+    if not q:
+        return JsonResponse({"error": "Not found."}, status=404)
+    q.done = not q.done
+    q.completed_at = timezone.now() if q.done else None
+    q.save(update_fields=['done', 'completed_at'])
+    return JsonResponse({"done": q.done})
+
+
+@login_required(login_url='login')
+@require_POST
+def api_quest_add(request):
+    data = _json_body(request)
+    if data is None:
+        return JsonResponse({"error": "Invalid JSON."}, status=400)
+    text = (data.get("text") or "").strip()
+    if not text or len(text) > 80:
+        return JsonResponse({"error": "Write 1 to 80 characters."}, status=400)
+    if request.user.quests.count() >= 50:
+        return JsonResponse({"error": "You have 50 quests. Delete one first."}, status=400)
+    today = timezone.localdate()
+    if text in QUEST_DEFAULTS or request.user.quests.filter(text=text).exists() \
+            or request.user.daily_quests.filter(date=today, text=text).exists():
+        return JsonResponse({"error": "That quest already exists."}, status=400)
+    Quest.objects.create(user=request.user, text=text)
+    DailyQuest.objects.create(user=request.user, date=today, text=text, is_custom=True)
+    return JsonResponse(_quests_json(request.user, today))
+
+
+@login_required(login_url='login')
+@require_POST
+def api_quest_shuffle(request):
+    today = timezone.localdate()
+    undone = request.user.daily_quests.filter(date=today, done=False)
+    avoid = set(undone.values_list('text', flat=True))
+    undone.delete()
+    _top_up_quests(request.user, today, avoid=avoid)
+    return JsonResponse(_quests_json(request.user, today))
+
+
+@login_required(login_url='login')
+@require_POST
+def api_quest_delete(request, quest_id):
+    q = request.user.quests.filter(id=quest_id).first()
+    if not q:
+        return JsonResponse({"error": "Not found."}, status=404)
+    today = timezone.localdate()
+    request.user.daily_quests.filter(date=today, text=q.text, done=False).delete()
+    q.delete()
+    _top_up_quests(request.user, today)
+    return JsonResponse(_quests_json(request.user, today))
 
 
 def get_profile(user):
