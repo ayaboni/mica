@@ -1,203 +1,10 @@
+{% extends 'core/site_base.html' %}
 {% load static %}
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MICA — A safe space for your mind</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+{% block title %}MICA | A safe space for your mind{% endblock %}
+
+{% block extra_css %}
 <style>
-/* ==========================================================================
-   MICA — shared stylesheet
-   ========================================================================== */
-
-:root {
-  --green:        #8EAE88;
-  --green-dark:    #7C9C74;
-  --green-deep:    #5F7F58;
-  --cream-bg:      #F9F6EC;
-  --cream-card:    #FCF0DA;
-  --brown:         #8C6F52;
-  --brown-dark:    #745A41;
-  --ink:           #262420;
-  --ink-soft:      #55524B;
-  --white:         #FFFFFF;
-  --line:          #8C6F52;
-
-  --font-display: "Fredoka", sans-serif;
-  --font-body: "Inter", sans-serif;
-
-  --radius-lg: 28px;
-  --radius-md: 18px;
-  --radius-pill: 999px;
-
-  --shadow-soft: 0 10px 30px rgba(76, 61, 41, 0.12);
-
-  --section-gap:  clamp(72px, 10vw, 140px);
-  --card-yellow:  #FCF0DA;
-  --card-green:   #DCE8D6;
-  --card-pink:    #F6DEDA;
-  --card-blue:    #DDE6F2;
-}
-
-* { box-sizing: border-box; }
-
-html { scroll-behavior: smooth; }
-
-body {
-  margin: 0;
-  font-family: var(--font-body);
-  color: var(--ink);
-  background: var(--cream-bg);
-  -webkit-font-smoothing: antialiased;
-}
-
-h1, h2, h3, h4 {
-  font-family: var(--font-display);
-  margin: 0;
-  color: var(--ink);
-  font-weight: 600;
-  line-height: 1.15;
-}
-
-p { line-height: 1.65; color: var(--ink-soft); margin: 0 0 1em; }
-
-a { color: inherit; text-decoration: none; }
-
-img { max-width: 100%; display: block; }
-
-.container {
-  width: 100%;
-  max-width: 1140px;
-  margin: 0 auto;
-  padding: 0 32px;
-}
-
-/* Respect reduced motion */
-@media (prefers-reduced-motion: reduce) {
-  html { scroll-behavior: auto; }
-  * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
-}
-
-/* ==========================================================================
-   Buttons
-   ========================================================================== */
-
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  border: none;
-  cursor: pointer;
-  font-family: var(--font-body);
-  font-weight: 600;
-  font-size: 0.95rem;
-  border-radius: var(--radius-pill);
-  padding: 12px 28px;
-  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
-}
-.btn:hover { transform: translateY(-2px); }
-.btn:focus-visible {
-  outline: 3px solid var(--brown-dark);
-  outline-offset: 2px;
-}
-
-.btn-pill {
-  background: var(--white);
-  color: var(--green-deep);
-  padding: 10px 22px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-}
-.btn-pill:hover { background: var(--cream-bg); }
-.btn-pill.is-active { background: var(--cream-card); }
-
-.btn-brown {
-  background: var(--brown);
-  color: var(--white);
-  box-shadow: var(--shadow-soft);
-}
-.btn-brown:hover { background: var(--brown-dark); }
-
-.btn-outline {
-  background: transparent;
-  border: 1.5px solid var(--ink);
-  color: var(--ink);
-}
-.btn-outline:hover { background: var(--ink); color: var(--white); }
-
-.btn-block { width: 100%; }
-
-/* ==========================================================================
-   Navbar
-   ========================================================================== */
-
-.navbar {
-  background: var(--green);
-  padding: 14px 0;
-  position: sticky;
-  top: 0;
-  z-index: 50;
-}
-
-.navbar .container {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-/* text-only links: the pill shows up on hover / click */
-.navbar .btn-pill {
-  background: transparent;
-  box-shadow: none;
-  color: var(--ink);
-  padding: 9px 20px;
-}
-.navbar .btn-pill:hover {
-  background: var(--white);
-  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-}
-.navbar .btn-pill:active,
-.navbar .btn-pill.is-active {
-  background: var(--cream-card);
-}
-
-.brand {
-  font-family: var(--font-display);
-  font-size: 1.6rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  color: var(--ink);
-}
-
-.nav-links {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.nav-toggle {
-  display: none;
-  flex-direction: column;
-  gap: 5px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 6px;
-}
-.nav-toggle span {
-  width: 24px;
-  height: 2.5px;
-  background: var(--ink);
-  border-radius: 2px;
-}
-
 /* ==========================================================================
    Hero (landing page)
    ========================================================================== */
@@ -245,7 +52,7 @@ img { max-width: 100%; display: block; }
   align-items: center;
   justify-content: center;
   text-align: center;
-  color: var(--cream-bg);
+  color: #F9F6EC;
   font-size: clamp(2.2rem, 6vw, 4.5rem);
   font-weight: 600;
   text-shadow: 0 2px 18px rgba(0, 0, 0, 0.35);
@@ -279,87 +86,6 @@ img { max-width: 100%; display: block; }
   font-size: clamp(1.6rem, 3.6vw, 2.4rem);
   max-width: 640px;
 }
-
-/* ==========================================================================
-   Image placeholders — swap these out for real <img> tags
-   ========================================================================== */
-
-.hero-figure {
-  margin: 0;
-  padding: 0;
-  width: 100%;
-}
-
-.img-placeholder {
-  position: relative;
-  background: transparent !important;
-  border: none !important;
-  padding: 0 !important;
-  overflow: hidden;
-  border-radius: 16px;
-  width: 100%;
-  height: 100%;
-}
-
-.hero-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center;
-  display: block;
-  border-radius: inherit;
-}
-
-.banner-credit {
-  position: absolute;
-  bottom: 12px;
-  right: 16px;
-  z-index: 2;
-  font-size: 0.7rem;
-  color: #ffffff;
-  opacity: 0.85;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
-}
-
-.banner-credit a {
-  color: inherit;
-  text-decoration: underline;
-}
-
-.banner-credit a:hover {
-  opacity: 1;
-}
-
-.img-placeholder svg { width: 34px; height: 34px; opacity: 0.6; }
-
-.img-placeholder .ph-label {
-  font-family: var(--font-body);
-  font-size: 0.78rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-}
-
-.img-placeholder .ph-sub {
-  font-size: 0.68rem;
-  color: #948B75;
-}
-
-/* ==========================================================================
-   Reveal-on-scroll animation
-   ========================================================================== */
-
-.reveal {
-  opacity: 0;
-  transform: translateY(28px);
-  transition: opacity 0.8s ease, transform 0.8s ease;
-}
-.reveal.in-view {
-  opacity: 1;
-  transform: translateY(0);
-}
-.reveal-1 { transition-delay: 0.05s; }
-.reveal-2 { transition-delay: 0.18s; }
-.reveal-3 { transition-delay: 0.3s; }
 
 /* ==========================================================================
    Features (cards move sideways while you scroll)
@@ -554,422 +280,26 @@ img { max-width: 100%; display: block; }
 .cta-card h2 { font-size: clamp(1.5rem, 2.6vw, 1.9rem); margin-bottom: 8px; }
 .cta-card .cta-sub { margin-bottom: 28px; }
 
-/* children fade in and up, one after the other */
-.reveal-group > * {
-  opacity: 0;
-  transform: translateY(24px);
-  transition: opacity 0.8s ease, transform 0.8s ease;
-}
-.reveal-group.in-view > * { opacity: 1; transform: none; }
-.reveal-group.in-view > :nth-child(2) { transition-delay: 0.2s; }
-.reveal-group.in-view > :nth-child(3) { transition-delay: 0.4s; }
-
 @media (max-width: 860px) {
   .closing-grid { grid-template-columns: 1fr; }
   .privacy { align-items: center; text-align: center; }
 }
 
 /* ==========================================================================
-   Footer
-   ========================================================================== */
-
-.site-footer {
-  background: var(--green);
-  padding: 56px 0 0;
-}
-
-.footer-top {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: start;
-  gap: 24px;
-  padding-bottom: 40px;
-}
-
-.footer-brand {
-  font-family: var(--font-display);
-  font-size: 1.5rem;
-  font-weight: 700;
-}
-
-.footer-nav {
-  display: flex !important;
-  flex-direction: row !important;
-  align-items: center;
-  gap: 24px;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.footer-nav a { font-weight: 600; }
-.footer-nav a:hover { text-decoration: underline; }
-
-.footer-login {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.footer-login a {
-  font-weight: 600;
-  border-bottom: 1.5px solid var(--ink);
-  padding-bottom: 2px;
-}
-
-.footer-bottom {
-  border-top: 1px solid rgba(38, 36, 32, 0.18);
-  padding: 18px 0;
-  text-align: center;
-  font-size: 0.8rem;
-  color: var(--ink-soft);
-}
-
-/* ==========================================================================
-   About page
-   ========================================================================== */
-
-.page-banner {
-  position: relative;
-  height: 260px;
-  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.page-banner .img-placeholder {
-  position: absolute;
-  inset: 0;
-  border-radius: 0;
-  border: none;
-}
-
-.page-banner h1 {
-  position: relative;
-  z-index: 2;
-  color: var(--white);
-  font-size: 2.4rem;
-  text-shadow: 0 2px 10px rgba(0,0,0,0.35);
-}
-
-.page-banner::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: rgba(0,0,0,0.28);
-  z-index: 1;
-}
-
-.section {
-  padding: 64px 0;
-}
-
-.section-heading {
-  font-size: 1.6rem;
-  margin-bottom: 22px;
-  position: relative;
-  display: inline-block;
-}
-
-.section-heading::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  bottom: -8px;
-  width: 56px;
-  height: 3px;
-  background: var(--brown);
-  border-radius: 2px;
-}
-
-.mission-text {
-  max-width: 720px;
-}
-
-.mission-text p:last-of-type strong { color: var(--ink); }
-
-.divider {
-  border: none;
-  border-top: 1.5px solid var(--line);
-  margin: 0;
-}
-
-.team-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 26px;
-  margin-top: 26px;
-}
-
-.team-card {
-  background: var(--cream-card);
-  border-radius: var(--radius-md);
-  padding: 24px 20px 26px;
-  text-align: center;
-}
-
-.team-photo {
-  width: 110px;
-  height: 110px;
-  border-radius: 50%;
-  margin: 0 auto 16px;
-  overflow: hidden;
-}
-
-.team-photo .img-placeholder { border-radius: 50%; min-height: 0; padding: 8px; }
-.team-photo .img-placeholder svg { width: 22px; height: 22px; }
-.team-photo .img-placeholder .ph-sub { display: none; }
-
-.team-card h4 { font-size: 1.05rem; margin-bottom: 4px; }
-.team-card .role { font-size: 0.85rem; color: var(--ink-soft); font-weight: 600; }
-
-/* ==========================================================================
-   Contact page
-   ========================================================================== */
-
-.contact-card {
-  background: var(--cream-card);
-  border-radius: var(--radius-lg);
-  padding: 42px;
-  max-width: 640px;
-  margin: 0 auto;
-  box-shadow: var(--shadow-soft);
-}
-
-.form-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 22px 20px;
-  margin-top: 20px;
-}
-
-.form-grid .field-full { grid-column: 1 / -1; }
-
-.field label {
-  display: block;
-  font-size: 0.85rem;
-  font-weight: 600;
-  margin-bottom: 8px;
-}
-
-.field label .req { color: var(--brown-dark); font-weight: 500; font-size: 0.78rem; }
-
-.field input,
-.field textarea {
-  width: 100%;
-  border: none;
-  border-bottom: 1.5px solid var(--brown);
-  background: transparent;
-  padding: 6px 2px 10px;
-  font-family: var(--font-body);
-  font-size: 0.95rem;
-  color: var(--ink);
-  resize: none;
-}
-
-.field input:focus,
-.field textarea:focus {
-  outline: none;
-  border-bottom-color: var(--ink);
-}
-
-.field textarea { min-height: 90px; }
-
-.contact-card .btn { margin-top: 28px; }
-
-.form-note {
-  margin-top: 16px;
-  font-size: 0.85rem;
-  color: var(--green-deep);
-  font-weight: 600;
-  display: none;
-}
-.form-note.is-visible { display: block; }
-
-/* ==========================================================================
-   Auth pages (login / register)
-   ========================================================================== */
-
-.auth-wrap {
-  min-height: calc(100vh - 78px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 50px 20px;
-}
-
-.auth-card {
-  background: var(--cream-card);
-  border-radius: var(--radius-lg);
-  padding: 40px 38px 42px;
-  width: 100%;
-  max-width: 380px;
-  box-shadow: var(--shadow-soft);
-}
-
-.auth-card h2 {
-  text-align: center;
-  font-size: 1.6rem;
-  margin-bottom: 26px;
-}
-
-.auth-field {
-  position: relative;
-  margin-bottom: 16px;
-}
-
-.auth-field input {
-  width: 100%;
-  padding: 13px 16px;
-  border-radius: var(--radius-md);
-  border: 1.5px solid #DECBAE;
-  background: var(--white);
-  font-family: var(--font-body);
-  font-size: 0.92rem;
-  color: var(--ink);
-}
-
-.auth-field input::placeholder { color: #A79E88; }
-
-.auth-field input:focus {
-  outline: none;
-  border-color: var(--brown);
-}
-
-.auth-field .toggle-visibility {
-  position: absolute;
-  right: 14px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: var(--ink-soft);
-  display: flex;
-  padding: 4px;
-}
-.auth-field .toggle-visibility svg { width: 18px; height: 18px; }
-
-.auth-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 0.8rem;
-  margin-bottom: 22px;
-}
-
-.auth-row label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--ink-soft);
-}
-
-.auth-row a { font-weight: 600; color: var(--ink); }
-.auth-row a:hover { text-decoration: underline; }
-
-.auth-divider {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: 22px 0;
-  color: #B3A98F;
-  font-size: 0.78rem;
-}
-.auth-divider::before,
-.auth-divider::after {
-  content: "";
-  flex: 1;
-  height: 1px;
-  background: #E2D6BC;
-}
-
-.btn-google {
-  background: var(--white);
-  border: 1.5px solid #E2D6BC;
-  color: var(--ink);
-  width: 100%;
-}
-.btn-google:hover { background: #FBF7EE; }
-.btn-google svg { width: 18px; height: 18px; }
-
-.auth-foot {
-  text-align: center;
-  font-size: 0.82rem;
-  margin-top: 20px;
-  color: var(--ink-soft);
-}
-.auth-foot a { font-weight: 700; color: var(--ink); }
-.auth-foot a:hover { text-decoration: underline; }
-
-.two-col {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
-}
-
-/* ==========================================================================
    Responsive
    ========================================================================== */
-
-@media (max-width: 860px) {
-  .hero .container { grid-template-columns: 1fr; }
-  .hero-visual { order: -1; max-width: 420px; margin: 0 auto; }
-  .team-grid { grid-template-columns: 1fr; max-width: 320px; margin-inline: auto; }
-  .footer-top { grid-template-columns: 1fr; text-align: center; gap: 28px; }
-  .footer-login { justify-content: center; }
-  .form-grid { grid-template-columns: 1fr; }
-}
 
 @media (max-width: 640px) {
   .mica-intro { padding: 90px 0; }
   .mica-avatar { width: min(320px, 80vw); }
   .mica-intro-row { flex-direction: column; text-align: center; }
   .mica-intro-text p { margin-inline: auto; }
-  .nav-toggle { display: flex; }
-  .nav-links {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    background: var(--green);
-    flex-direction: column;
-    align-items: stretch;
-    padding: 12px 24px 20px;
-    display: none;
-    gap: 10px;
-  }
-  .nav-links.is-open { display: flex; }
-  .nav-links .btn-pill { text-align: center; }
-  .contact-card { padding: 30px 22px; }
-  .two-col { grid-template-columns: 1fr; }
 }
+html[data-theme="dark"] .features-dot:not(.is-active) { background: var(--line); }
+</style>
+{% endblock %}
 
-  </style>
-</head>
-<body>
-{% include 'core/_loader.html' %}
-
-<!-- ============================= NAVBAR ============================= -->
-<header class="navbar">
-  <div class="container">
-    <a href="{% url 'home' %}" class="mica-logo-link" id="logo-home" title="Back to Home" aria-label="MICA, back to Home">
-      {% include 'core/_logo.html' %}
-    </a>
-    <button class="nav-toggle" aria-label="Toggle menu" aria-expanded="false">
-      <span></span><span></span><span></span>
-    </button>
-    <ul class="nav-links">
-      <li><a href="{% url 'about' %}" class="btn btn-pill">About</a></li>
-      <li><a href="{% url 'contact' %}" class="btn btn-pill">Contact</a></li>
-      <li><a href="{% url 'privacy' %}" class="btn btn-pill">Privacy Policy</a></li>
-      <li><a href="{% url 'login' %}" class="btn btn-pill">Log In</a></li>
-    </ul>
-  </div>
-</header>
-
-<!-- ============================= HERO ============================= -->
+{% block content %}
 <section class="hero" id="hero">
   <figure class="hero-frame" id="hero-frame">
     <img src="{% static 'core/images/priscilla-du-preez-aPa843frIzI-unsplash.jpg' %}" alt="Two people holding hands on table in comfort">
@@ -1045,7 +375,7 @@ img { max-width: 100%; display: block; }
 <!-- ============================= MICA INTRO ============================= -->
 <section class="mica-intro">
   <div class="container mica-intro-row">
-    <div class="mica-avatar img-placeholder reveal">
+    <div class="mica-avatar reveal">
       <img src="{% static 'core/images/mascot_body.png' %}" alt="Mica the Axololt mascot" class="mascot-img">
     </div>
     <div class="mica-intro-text" id="mica-typing">
@@ -1053,6 +383,7 @@ img { max-width: 100%; display: block; }
       <p data-typing>I will be your companion in your journey.</p>
       <p data-typing>Make yourself comfortable!</p>
     </div>
+  </div>
 </section>
 
 <!-- ============================= PRIVACY + CTA ============================= -->
@@ -1078,82 +409,15 @@ img { max-width: 100%; display: block; }
 
   </div>
 </section>
+{% endblock %}
 
-<!-- ============================= FOOTER ============================= -->
-<footer class="site-footer">
-  <div class="container footer-top">
-    <a href="{% url 'home' %}" class="mica-logo-link" id="footer-logo-home" title="Back to Home" aria-label="MICA, back to Home">
-      {% include 'core/_logo.html' %}
-    </a>
-    <ul class="footer-nav">
-      <li><a href="{% url 'home' %}">Home</a></li>
-      <li><a href="{% url 'about' %}">About</a></li>
-      <li><a href="{% url 'contact' %}">Contact</a></li>
-      <li><a href="{% url 'privacy' %}">Privacy Policy</a></li>
-    </ul>
-    <div class="footer-login">
-      <a href="{% url 'login' %}">Log In</a>
-    </div>
-  </div>
-  <div class="footer-bottom">© All rights reserved.</div>
-</footer>
-
+{% block extra_js %}
 <script>
-/* ==========================================================================
-   MICA — shared behaviour
-   ========================================================================== */
-
 document.addEventListener("DOMContentLoaded", () => {
-  initMobileNav();
-  initScrollReveal();
   initHeroScroll();
   initFeatureScroll();
   initMicaTyping();
-  initPasswordToggles();
-  initContactForm();
 });
-
-/* --------------------------------------------------------------------------
-   Mobile nav toggle
-   -------------------------------------------------------------------------- */
-function initMobileNav() {
-  const toggle = document.querySelector(".nav-toggle");
-  const links = document.querySelector(".nav-links");
-  if (!toggle || !links) return;
-
-  toggle.addEventListener("click", () => {
-    const isOpen = links.classList.toggle("is-open");
-    toggle.setAttribute("aria-expanded", String(isOpen));
-  });
-}
-
-/* --------------------------------------------------------------------------
-   Scroll reveal — fade + rise elements marked with .reveal as they enter view
-   -------------------------------------------------------------------------- */
-function initScrollReveal() {
-  const targets = document.querySelectorAll(".reveal, .reveal-group");
-  if (!targets.length) return;
-
-  if (!("IntersectionObserver" in window)) {
-    targets.forEach((el) => el.classList.add("in-view"));
-    return;
-  }
-
-  const observer = new IntersectionObserver(
-    (entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add("in-view");
-          observer.unobserve(entry.target);
-        }
-      });
-    },
-    { threshold: 0.15, rootMargin: "0px 0px -40px 0px" }
-  );
-
-  targets.forEach((el) => observer.observe(el));
-}
-
 /* --------------------------------------------------------------------------
    Hero photo: shrinks as you scroll down, grows back when you scroll up
    -------------------------------------------------------------------------- */
@@ -1297,40 +561,5 @@ function initMicaTyping() {
   }, { threshold: 0.6 });
   observer.observe(box);
 }
-
-/* --------------------------------------------------------------------------
-   Password show/hide toggles (login + register)
-   -------------------------------------------------------------------------- */
-function initPasswordToggles() {
-  document.querySelectorAll("[data-toggle-password]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const input = document.getElementById(btn.getAttribute("data-toggle-password"));
-      if (!input) return;
-      const isHidden = input.type === "password";
-      input.type = isHidden ? "text" : "password";
-      btn.classList.toggle("is-visible", isHidden);
-    });
-  });
-}
-
-/* --------------------------------------------------------------------------
-   Contact form — placeholder submit handling (no backend wired up yet)
-   -------------------------------------------------------------------------- */
-function initContactForm() {
-  const form = document.querySelector("[data-contact-form]");
-  if (!form) return;
-
-  form.addEventListener("submit", (e) => {
-    e.preventDefault();
-    const note = form.querySelector(".form-note");
-    if (note) {
-      note.textContent = "Thanks — your message has been noted. We'll get back to you soon.";
-      note.classList.add("is-visible");
-    }
-    form.reset();
-  });
-}
-
-  </script>
-</body>
-</html>
+</script>
+{% endblock %}

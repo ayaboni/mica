@@ -39,6 +39,7 @@
   if (!el) return;
 
   function isDark(){
+    if (document.documentElement.getAttribute('data-theme') === 'dark') return true;
     var b = document.body;
     return !!(b && (b.classList.contains('dark') || b.classList.contains('dark-mode')));
   }
@@ -70,6 +71,9 @@
       remember(t);
       el.setAttribute('data-theme', t);
     }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+      new MutationObserver(function(){
+        var t = actual(); remember(t); el.setAttribute('data-theme', t);
+        }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
   } catch (e) {}
 })();
 </script>
@@ -77,22 +81,22 @@
 <style>
   /* ---- Loader theme tokens (light default) ---- */
   .mica-loader{
-    --ml-bg:        var(--cream-bg, #F9F6EC);
-    --ml-brand:     var(--green-deep, #5F7F58);
-    --ml-track-bg:  var(--cream-card, #FCF0DA);
-    --ml-track-line:var(--line, #8C6F52);
+    --ml-bg:        #F9F6EC;
+    --ml-brand:     #5F7F58;
+    --ml-track-bg:  #FCF0DA;
+    --ml-track-line:#8C6F52;
     --ml-track-shadow: rgba(76,61,41,0.15);
-    --ml-fill-a:    var(--green, #93AF8C);
-    --ml-fill-b:    var(--green-dark, #7C9C74);
-    --ml-label:     var(--brown-dark, #745A41);
-    --ml-pct:       var(--ink-soft, #55524B);
+    --ml-fill-a:    #93AF8C;
+    --ml-fill-b:    #7C9C74;
+    --ml-label:     #745A41;
+    --ml-pct:       #55524B;
     --ml-walker-shadow: rgba(76,61,41,0.28);
   }
   /* ---- Dark palette: used only when the app interface itself is in dark mode ---- */
   .mica-loader[data-theme="dark"]{
     color-scheme: dark;
     --ml-bg:        #1a1e1a;
-    --ml-brand:     #a8bc9f;
+    --ml-brand:     #283227;
     --ml-track-bg:  #283227;
     --ml-track-line:#3d4f3b;
     --ml-track-shadow: rgba(0,0,0,0.45);

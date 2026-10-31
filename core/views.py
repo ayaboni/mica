@@ -312,7 +312,7 @@ def home(request):
     return render(request, 'core/index.html')
 
 def about(request):
-    return render(request, 'core/about.html')
+    return render(request, 'core/about.html', {'hotlines': get_hotlines()})
 
 def contact(request):
     return render(request, 'core/contact.html')

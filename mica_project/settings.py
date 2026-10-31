@@ -39,7 +39,7 @@ DEBUG = True
 
 SECURE_CROSS_ORIGIN_OPENER_POLICY = "same-origin-allow-popups"
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["127.0.0.1", "localhost", "192.168.254.113"]
 
 
 # Application definition
@@ -193,3 +193,4 @@ PASSWORD_RESET_EMAIL_VIA = os.getenv("PASSWORD_RESET_EMAIL_VIA", "mica").strip()
 PASSWORD_RESET_FOR_ADMINS = False
 
 CSRF_FAILURE_VIEW = 'core.views.csrf_failure'
+

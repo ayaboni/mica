@@ -1,0 +1,16 @@
+<footer class="site-footer">
+  <div class="container footer-top">
+    <a href="{% url 'home' %}" class="mica-logo-link" id="footer-logo-home" title="Back to Home" aria-label="MICA, back to Home">
+      {% include 'core/_logo.html' %}
+    </a>
+    <ul class="footer-nav">
+      <li><a href="{% url 'home' %}">Home</a></li>
+      <li><a href="{% url 'about' %}">About</a></li>
+      <li><a href="{% url 'contact' %}">Contact</a></li>
+      <li><a href="{% url 'privacy' %}">Privacy Policy</a></li>
+    </ul>
+    <div class="footer-login">
+      <a href="{% url 'login' %}">Log In</a>
+    </div>
+  </div>
+  <div class="footer-bottom">© All rights reserved.</div>
