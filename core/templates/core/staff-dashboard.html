@@ -2036,8 +2036,6 @@ function openGuidanceThread(threadId, studentName){
     return;
   }
 
-  if (t) logRecordAccess(t.student_id, 'open_chat');
-
   const panel = document.getElementById('threadViewPanel');
   panel.innerHTML = `
     <div class="thread-view-head" style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
@@ -2212,7 +2210,6 @@ function openThreadNotes(threadId){
   const t = threadsById[threadId];
   if(!t) return;
   notesStudent = { id: t.student_id, name: t.student_name };
-  logRecordAccess(t.student_id, 'view_notes');
   document.getElementById('notesTitle').textContent = 'Notes: ' + t.student_name;
   showNotesView('list');
   document.getElementById('notesModal').classList.add('active');
@@ -2236,7 +2233,6 @@ function openNotesPanel(){
   const s = studentsReal.find(x=>x.code===currentStudentCode);
   if(!s) return;
   notesStudent = s;
-  logRecordAccess(s.id, 'view_notes');
   document.getElementById('notesTitle').textContent = 'Notes — ' + s.name;
   showNotesView('list');
   document.getElementById('notesModal').classList.add('active');
@@ -2441,7 +2437,6 @@ function openStudentModal(code){
 
   if(PERMS.view_assessments){
     loadAssessmentPanel(s);
-    logRecordAccess(s.id, 'view_assessment');
   }
 
   if(charts.modal) charts.modal.destroy();

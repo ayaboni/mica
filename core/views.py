@@ -2680,6 +2680,7 @@ def staff_guidance_thread(request, thread_id):
         if thread.counselor_id and thread.counselor_id != request.user.id:
             return JsonResponse({"error": "This thread is claimed by another counselor."}, status=403)
         return JsonResponse({"error": "Your staff role doesn't allow this."}, status=403)
+    _log_access(request.user, thread.student, "open_chat")
     msgs = [
         {"sender": "student" if m.sender_id == thread.student_id else "counselor", "content": m.content}
         for m in thread.messages.all()
@@ -2861,6 +2862,7 @@ def staff_student_notes(request, student_id):
             student=student, author=request.user,
             needs_review=can_flag_needs_review(request.user), **payload)
         return JsonResponse({"note": _note_json(note, request.user)})
+    _log_access(request.user, student, "view_notes")
     readable = staff_permissions(request.user)['read_note_services']
     student.staff_notes.filter(referred_to=request.user, referral_seen=False).update(referral_seen=True)
     student.staff_notes.filter(author=request.user, referral_response_seen=False).update(referral_response_seen=True)
@@ -3017,7 +3019,7 @@ def staff_referral_start_chat(request, note_id):
         return JsonResponse({"error": "Another counselor is handling this conversation."}, status=409)
     if thread.counselor_id != me.id:
         _hand_conversation_to(thread, me)
-    AccessLog.objects.create(staff=me, student=student, action="open_chat")
+    _log_access(me, student, "open_chat")
     return JsonResponse({"thread_id": thread.id, "student_name": student.get_full_name() or student.username})
 
 
@@ -3554,7 +3556,27 @@ def staff_mood_stats(request):
     })
 
 
-ACCESS_ACTIONS = {"view_profile", "open_chat", "view_notes", "view_assessment"}
+ACCESS_LOG_WINDOW = timedelta(minutes=10)
+
+def _log_access(staff, student, action):
+    """Record that `staff` looked at `student`'s records. Called by the views that return the
+    data, so the trail doesn't depend on the browser. The same staff/student/action is only
+    written once per 10 minutes. Deliberately not wrapped in try/except: if the log can't be
+    written the request fails rather than handing out records with no trail."""
+    if staff is None or staff.id == student.id:
+        return
+    recent = AccessLog.objects.filter(
+        staff=staff, student=student, action=action,
+        created_at__gte=timezone.now() - ACCESS_LOG_WINDOW,
+    ).exists()
+    if not recent:
+        AccessLog.objects.create(staff=staff, student=student, action=action)
+
+
+# Only actions with no per-student endpoint of their own are still reported by the browser:
+# the profile popup (built from the bulk students list) and the all-students assessments table.
+# Chat, notes and per-student assessments are logged by the views that return them.
+ACCESS_ACTIONS = {"view_profile", "view_assessment"}
 
 @login_required(login_url='login')
 @user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
@@ -3563,16 +3585,11 @@ def staff_log_access(request, student_id):
     student = get_object_or_404(visible_students(), id=student_id)
     try:
         action = json.loads(request.body).get("action")
-    except json.JSONDecodeError:
+    except (json.JSONDecodeError, AttributeError):
         action = None
     if action not in ACCESS_ACTIONS:
         return JsonResponse({"error": "Invalid action."}, status=400)
-    recent = AccessLog.objects.filter(
-        staff=request.user, student=student, action=action,
-        created_at__gte=timezone.now() - timedelta(minutes=10),
-    ).exists()
-    if not recent:
-        AccessLog.objects.create(staff=request.user, student=student, action=action)
+    _log_access(request.user, student, action)
     return JsonResponse({"status": "ok"})
 
 
@@ -3592,6 +3609,7 @@ def staff_student_assessment(request, student_id):
     if assessment.conditions_other:
         conditions.append(assessment.conditions_other)
 
+    _log_access(request.user, student, "view_assessment")
     answers = assessment.responses or {}
     return JsonResponse({
         "completed": True,
