@@ -56,7 +56,7 @@
 
           <div class="two-col">
             <div class="auth-field"><input type="text" id="studentNumber" name="student_number" placeholder="Student Number" required></div>
-            <div class="auth-field"><input type="text" id="username" name="username" placeholder="Username" autocomplete="username" required></div>
+            <div class="auth-field"><input type="text" id="username" name="username" placeholder="Username" autocomplete="username" title="3–30 characters: English letters, numbers, dots, dashes or underscores" maxlength="30" pattern="[A-Za-z0-9][A-Za-z0-9._\-]{2,29}" required></div>
           </div>
 
   <!-- Course Dropdown -->
@@ -79,9 +79,6 @@
     </select>
   </div>
 
-  <div class="auth-field">
-    <input type="username" id="username" name="username" placeholder="Username" title="3–30 characters: English letters, numbers, dots, dashes or underscores" maxlength="30" pattern="[A-Za-z0-9][A-Za-z0-9._\-]{2,29}" required>
-  </div>
 
           <div class="auth-field">
             <input type="email" id="regEmail" name="email" placeholder="Email" required>
