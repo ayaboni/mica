@@ -475,6 +475,32 @@ class AuditLogApiTests(TestCase):
         data = self.client.get("/api/admin/audit/").json()
         self.assertEqual(data["total"], 2)
 
+    def test_logs_survive_deleting_the_student(self):
+        self.student.delete()
+        self.assertEqual(AccessLog.objects.count(), 1)
+        self.assertEqual(StudentStatusLog.objects.count(), 1)
+        log = AccessLog.objects.get()
+        self.assertIsNone(log.student)
+        self.assertEqual(log.student_label, "Ana Lim")
+        self.client.force_login(self.admin)
+        data = self.client.get("/api/admin/audit/").json()
+        self.assertEqual(data["total"], 2)
+        self.assertTrue(all(r["student"] == "Ana Lim (deleted account)" for r in data["rows"]))
+
+    def test_student_filter_finds_deleted_student(self):
+        self.student.delete()
+        self.client.force_login(self.admin)
+        data = self.client.get("/api/admin/audit/?student=ana").json()
+        self.assertEqual(data["total"], 2)
+
+    def test_admin_can_delete_student_with_logs(self):
+        self.client.force_login(self.admin)
+        url = "/admin/auth/user/%d/delete/" % self.student.pk
+        self.assertNotIn("Cannot delete user", self.client.get(url).content.decode())
+        self.client.post(url, {"post": "yes"})
+        self.assertFalse(User.objects.filter(pk=self.student.pk).exists())
+        self.assertEqual(AccessLog.objects.count(), 1)
+
     def test_action_filter(self):
         self.client.force_login(self.admin)
         data = self.client.get("/api/admin/audit/?action=status_change").json()

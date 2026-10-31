@@ -369,6 +369,10 @@ def dashboard_stats(request):
     def person(u):
         return (u.get_full_name() or u.username) if u else "Former staff"
 
+    def student_person(log):
+        # the student's account may have been deleted; the log keeps a name snapshot
+        return person(log.student) if log.student_id else "%s (deleted account)" % (log.student_label or "A student")
+
     # ---- top cards
     on_consent = students.filter(profile__consent_version=CONSENT_VERSION).count()
     signed_in = set()
@@ -418,10 +422,10 @@ def dashboard_stats(request):
         feed.append((u.date_joined, "🧑‍⚕️", "Staff account created: %s" % person(u)))
     for a in AccessLog.objects.select_related("staff", "student").order_by("-created_at")[:5]:
         feed.append((a.created_at, "🔒", "%s opened the %s of %s" % (
-            person(a.staff), what.get(a.action, a.action), person(a.student))))
+            person(a.staff), what.get(a.action, a.action), student_person(a))))
     for l in StudentStatusLog.objects.select_related("changed_by", "student").order_by("-created_at")[:5]:
         feed.append((l.created_at, "🗂️", "%s changed %s from %s to %s" % (
-            person(l.changed_by), person(l.student), state.get(l.old_status, l.old_status), state.get(l.new_status, l.new_status))))
+            person(l.changed_by), student_person(l), state.get(l.old_status, l.old_status), state.get(l.new_status, l.new_status))))
     for f in StudentFlag.objects.select_related("student").order_by("-created_at")[:5]:
         feed.append((f.created_at, "⚠️", "%s was flagged for review" % person(f.student)))
     feed.sort(key=lambda x: x[0], reverse=True)
@@ -610,6 +614,23 @@ def _audit_name(u):
     return (u.get_full_name() or u.username) if u else "Former staff"
 
 
+def _audit_student(log):
+    """Student column of an audit row. Survives the student's account being deleted."""
+    if log.student_id:
+        return _audit_name(log.student)
+    return "%s (deleted account)" % (log.student_label or "A student")
+
+
+def _student_filter(qs, text):
+    """Like _person_filter on `student`, but also matches the saved name of deleted accounts."""
+    for token in (text or "").split()[:5]:
+        qs = qs.filter(Q(student__username__icontains=token)
+                       | Q(student__first_name__icontains=token)
+                       | Q(student__last_name__icontains=token)
+                       | Q(student_label__icontains=token))
+    return qs
+
+
 def _audit_role(u):
     if u is None:
         return "-"
@@ -627,7 +648,7 @@ def _audit_rows(request, limit):
     d_to = parse_date(g.get("date_to") or "")
 
     def narrow(qs):
-        qs = _person_filter(qs, "student", g.get("student"))
+        qs = _student_filter(qs, g.get("student"))
         if d_from:
             qs = qs.filter(created_at__date__gte=d_from)
         if d_to:
@@ -642,7 +663,7 @@ def _audit_rows(request, limit):
         qs = _person_filter(narrow(qs), "staff", g.get("staff"))
         for a in qs.order_by("-created_at")[:limit]:
             rows.append({"when": a.created_at, "staff": _audit_name(a.staff), "role": _audit_role(a.staff),
-                         "action": AUDIT_LABEL.get(a.action, a.action), "student": _audit_name(a.student),
+                         "action": AUDIT_LABEL.get(a.action, a.action), "student": _audit_student(a),
                          "detail": ""})
 
     if action in ("all", "status_change"):
@@ -663,7 +684,7 @@ def _audit_rows(request, limit):
             if l.evaluation_done:
                 bits.append("evaluation done")
             rows.append({"when": l.created_at, "staff": _audit_name(l.changed_by), "role": _audit_role(l.changed_by),
-                         "action": AUDIT_LABEL["status_change"], "student": _audit_name(l.student),
+                         "action": AUDIT_LABEL["status_change"], "student": _audit_student(l),
                          "detail": " · ".join(bits)})
 
     if action in ("all", "admin_change") and not g.get("student", "").strip():

@@ -65,10 +65,16 @@ class LockedLogAdmin(admin.ModelAdmin):
     def has_change_permission(self, request, obj=None):
         return False
 
+    @admin.display(description='Student', ordering='student_label')
+    def student_name(self, obj):
+        if obj.student_id:
+            return obj.student
+        return '%s (deleted account)' % (obj.student_label or 'unknown')
+
 
 @admin.register(AccessLog)
 class AccessLogAdmin(LockedLogAdmin):
-    list_display = ('created_at', 'staff', 'student', 'action')
+    list_display = ('created_at', 'staff', 'student_name', 'action')
     list_filter = ('action',)
     date_hierarchy = 'created_at'
 
@@ -83,7 +89,7 @@ class AccessLogAdmin(LockedLogAdmin):
 
 @admin.register(StudentStatusLog)
 class StudentStatusLogAdmin(LockedLogAdmin):
-        list_display = ('created_at', 'student', 'changed_by', 'old_status', 'new_status', 'reason',
+        list_display = ('created_at', 'student_name', 'changed_by', 'old_status', 'new_status', 'reason',
                     'exit_interview_done', 'evaluation_done')
 
 

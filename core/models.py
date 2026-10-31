@@ -388,14 +388,28 @@ class StudentFlag(models.Model):
     class Meta:
         ordering = ['-created_at']
 
+def _person_label(user):
+    """Name kept on audit rows so they still say who they were about after the account is deleted."""
+    return (user.get_full_name() or user.username)[:150]
+
+
 class AccessLog(models.Model):
     staff = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='access_logs')
-    student = models.ForeignKey(User, on_delete=models.CASCADE, related_name='access_logs_received')
+    # SET_NULL, not CASCADE: deleting a student account must not erase the record of who looked
+    # at their data. `student_label` is a snapshot of the name so the row stays readable.
+    student = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                related_name='access_logs_received')
+    student_label = models.CharField(max_length=150, blank=True)
     action = models.CharField(max_length=30)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ['-created_at']
+
+    def save(self, *args, **kwargs):
+        if self.student_id and not self.student_label:
+            self.student_label = _person_label(self.student)
+        super().save(*args, **kwargs)
 
 
 class LoginVerification(models.Model):
@@ -424,7 +438,10 @@ class LoginVerification(models.Model):
         return f"{self.user} ({self.method}) {self.created_at:%Y-%m-%d %H:%M}"
 
 class StudentStatusLog(models.Model):
-    student = models.ForeignKey(User, on_delete=models.CASCADE, related_name='status_history')
+    # SET_NULL + name snapshot, same reasoning as AccessLog.student.
+    student = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                related_name='status_history')
+    student_label = models.CharField(max_length=150, blank=True)
     changed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='status_changes_made')
     old_status = models.CharField(max_length=10)
     new_status = models.CharField(max_length=10)
@@ -435,6 +452,11 @@ class StudentStatusLog(models.Model):
     evaluation_done = models.BooleanField(default=False)
     class Meta:
         ordering = ['-created_at']
+
+    def save(self, *args, **kwargs):
+        if self.student_id and not self.student_label:
+            self.student_label = _person_label(self.student)
+        super().save(*args, **kwargs)
 
 @receiver(post_save, sender=User)
 def ensure_staff_profile(sender, instance, **kwargs):
