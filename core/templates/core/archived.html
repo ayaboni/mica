@@ -1,32 +1,38 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Account archived | MICA</title>
-<style>
-  body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#F6F2E8;font-family:'Nunito',sans-serif;color:#3E3226;padding:20px;}
-  .box{max-width:520px;background:#fff;border-radius:20px;padding:32px;box-shadow:0 10px 30px rgba(0,0,0,.08);}
-  h1{font-size:22px;margin:0 0 10px;}
-  p{line-height:1.55;margin:0 0 14px;}
-  .help{background:#F6F2E8;border-radius:14px;padding:14px 16px;margin:18px 0;font-size:14px;line-height:1.6;}
-  .help b{display:block;margin-bottom:6px;}
-  a.btn{display:inline-block;padding:10px 20px;border-radius:999px;background:#E5DAC3;color:#3E3226;text-decoration:none;font-weight:700;}
-</style>
-</head>
-<body>
-<div class="box">
-  <h1>Your MICA account is archived</h1>
-  <p>Your records are kept safe. To use MICA again, please visit the Guidance Office so they can reactivate your account.</p>
-  <div class="help">
-    <b>Need to talk to someone right now?</b>
-    <ul style="margin:0 0 6px; padding-left:18px;">
-      {% for h in hotlines %}<li>{{ h.name }}{% if h.note %} ({{ h.note }}){% endif %}: {{ h.number }}</li>{% endfor %}
-    </ul>
-    Emergency: 911
+{% extends 'core/site_base.html' %}
+
+{% block title %}Account archived | MICA{% endblock %}
+{% block footer %}{% endblock %}
+
+{% block navbar %}
+  {% url 'logout' as logout_url %}
+  {% include 'core/_navbar_min.html' with nav_link_url=logout_url nav_link_label="Sign out" %}
+{% endblock %}
+
+{% block content %}
+<section class="onboard doodle-bg">
+  <div class="onboard-inner onboard-inner--narrow">
+
+    <header class="onboard-head">
+      <h1>Your MICA account is archived</h1>
+      <p>Your records are kept safe. To use MICA again, please visit the Guidance Office so they can reactivate your account.</p>
+    </header>
+
+    <article class="info-card" style="--card-bg: var(--card-pink);">
+      <h3>Need to talk to someone right now?</h3>
+      <ul>
+        {% for h in hotlines %}<li>{{ h.name }}{% if h.note %} ({{ h.note }}){% endif %}: {{ h.number }}</li>{% endfor %}
+        <li>Emergency: 911</li>
+      </ul>
+    </article>
+
+    <div class="form-card" style="margin-top:20px;">
+      <h3>Guidance Office</h3>
+      <p>Old Grade School Building, 7:00AM-6:00PM Monday-Friday, college.guidance@perpetualdalta.edu.ph, (02) 8871-0639 local 138</p>
+      <div class="form-actions form-actions--end">
+        <a class="btn btn-brown" href="{% url 'logout' %}">Sign out</a>
+      </div>
+    </div>
+
   </div>
-  <p>Guidance Office: <!-- add your school's office location, hours and contact --></p>
-  <a class="btn" href="{% url 'logout' %}">Sign out</a>
-</div>
-</body>
-</html>
+</section>
+{% endblock %}

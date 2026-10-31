@@ -1,84 +1,90 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Set up your account — MICA</title>
-  <style>
-    body{margin:0; font-family:'Nunito', Arial, sans-serif; background:#FAF7EE; color:#3A2E28;}
-    .topbar{background:#8FA98C; padding:18px 34px; display:flex; align-items:center; justify-content:space-between;}
-    .topbar a{color:#3A2E28; text-decoration:none; font-weight:700;}
-    .wrap{max-width:520px; margin:40px auto 60px; padding:0 20px;}
-    .card{background:#FBF2DE; border-radius:24px; padding:32px;}
-    h2{margin:0 0 6px;}
-    h3{margin:26px 0 12px; font-size:16px; color:#5C4229;}
-    .lead{color:#7a6a5c; font-size:14px; line-height:1.55; margin:0 0 6px;}
-    .field{margin-bottom:14px;}
-    .field label{display:block; font-weight:700; margin-bottom:6px; font-size:14px;}
-    .field input{width:100%; padding:12px 14px; border-radius:12px; border:1px solid #ddd; box-sizing:border-box; font:inherit; background:#fff;}
-    .field input[readonly]{background:#F2EBDB; color:#7a6a5c;}
-    .field small{display:block; margin-top:5px; color:#7a6a5c; font-size:12px; line-height:1.4;}
-    .row{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
-    @media (max-width:480px){ .row{grid-template-columns:1fr;} }
-    .errors{background:#FBE4E0; border:1px solid #E7B1A8; color:#9C3A2B; border-radius:14px; padding:10px 14px 10px 30px; margin:16px 0 0; font-size:13.5px; line-height:1.5;}
-    .errors li{margin:2px 0;}
-    button{background:#8B6F4E; color:#fff; border:none; padding:13px 28px; border-radius:999px; font-weight:700; cursor:pointer; width:100%; font-size:15px; margin-top:8px;}
-    button:disabled{opacity:.6; cursor:not-allowed;}
-    input::-ms-reveal, input::-ms-clear{display:none;}
-  </style>
-</head>
-<body>
-  <div class="topbar">
-    <strong>MICA</strong>
-    <a href="{% url 'logout' %}">Sign out</a>
-  </div>
-  <div class="wrap"><div class="card">
-    <h2>Welcome to MICA!</h2>
-    <p class="lead">Your {{ role_label }} account is ready. Choose your password and check your details to finish setting up.</p>
+{% extends 'core/site_base.html' %}
+
+{% block title %}Set up your account | MICA{% endblock %}
+{% block footer %}{% endblock %}
+
+{% block navbar %}
+  {% url 'logout' as logout_url %}
+  {% include 'core/_navbar_min.html' with nav_link_url=logout_url nav_link_label="Log out" %}
+{% endblock %}
+
+{% block content %}
+<section class="onboard doodle-bg">
+  <div class="onboard-inner onboard-inner--narrow">
+
+    <header class="onboard-head">
+      <h1>Welcome to MICA!</h1>
+      <p>Your {{ role_label }} account is ready. Choose your password and check your details to finish setting up.</p>
+    </header>
 
     {% if errors %}
-      <ul class="errors">{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
+      <div class="flash error">
+        <ul style="margin:0; padding-left:18px;">{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
+      </div>
     {% endif %}
 
-    <form method="post" id="setupForm" autocomplete="off">
+    <form method="post" id="setupForm" autocomplete="off" class="form-card">
       {% csrf_token %}
 
       <h3>1. Choose your password</h3>
-      <div class="field">
-        <label for="pw1">New password</label>
+      <div class="auth-field">
+        <label class="set-label" for="pw1">New password</label>
         <input type="password" id="pw1" name="new_password1" autocomplete="new-password" required>
-        <small>At least 8 characters. Avoid common passwords, all-number passwords, or ones similar to your name or username.</small>
+        <p class="set-note">At least 8 characters. Avoid common passwords, all-number passwords, or ones similar to your name or username.</p>
       </div>
-      <div class="field">
-        <label for="pw2">Confirm new password</label>
+      <div class="auth-field">
+        <label class="set-label" for="pw2">Confirm new password</label>
         <input type="password" id="pw2" name="new_password2" autocomplete="new-password" required>
       </div>
 
       <h3>2. Confirm your details</h3>
-      <div class="row">
-        <div class="field"><label for="fn">First name</label><input id="fn" name="first_name" value="{{ values.first_name }}" maxlength="150" required></div>
-        <div class="field"><label for="ln">Last name</label><input id="ln" name="last_name" value="{{ values.last_name }}" maxlength="150"></div>
-      </div>
-      <div class="field"><label for="lic">License number <span style="font-weight:400; color:#7a6a5c;">(optional)</span></label><input id="lic" name="license_number" value="{{ values.license_number }}" maxlength="50"></div>
-      <div class="row">
-        <div class="field"><label>Username</label><input value="{{ username }}" readonly><small>You sign in with this.</small></div>
-        <div class="field"><label>Email</label><input value="{{ email }}" readonly><small>Codes are sent here. To change it, ask the System Admin.</small></div>
+      <div class="two-col">
+        <div class="auth-field">
+          <label class="set-label" for="fn">First name</label>
+          <input id="fn" name="first_name" value="{{ values.first_name }}" maxlength="150" required>
+        </div>
+        <div class="auth-field">
+          <label class="set-label" for="ln">Last name</label>
+          <input id="ln" name="last_name" value="{{ values.last_name }}" maxlength="150">
+        </div>
       </div>
 
-      <button type="submit" id="setupBtn">Finish setup</button>
+      <div class="auth-field">
+        <label class="set-label" for="lic">License number <span style="font-weight:400;">(optional)</span></label>
+        <input id="lic" name="license_number" value="{{ values.license_number }}" maxlength="50">
+      </div>
+
+      <div class="two-col">
+        <div class="auth-field">
+          <label class="set-label" for="un">Username</label>
+          <input id="un" value="{{ username }}" readonly style="opacity:.65; cursor:not-allowed;">
+          <p class="set-note">You sign in with this.</p>
+        </div>
+        <div class="auth-field">
+          <label class="set-label" for="em">Email</label>
+          <input id="em" value="{{ email }}" readonly style="opacity:.65; cursor:not-allowed;">
+          <p class="set-note">Codes are sent here. To change it, ask the System Admin.</p>
+        </div>
+      </div>
+
+      <button type="submit" id="setupBtn" class="btn btn-brown btn-block" style="margin-top:22px;">Finish setup</button>
     </form>
-  </div></div>
-  <script>
-    (function(){
-      var form = document.getElementById('setupForm'), btn = document.getElementById('setupBtn'), sent = false;
-      form.addEventListener('submit', function(e){
-        if (sent) { e.preventDefault(); return; }     // never post twice
-        sent = true; btn.disabled = true; btn.textContent = 'Saving…';
-      });
-      window.addEventListener('pageshow', function(e){
-        if (e.persisted) { sent = false; btn.disabled = false; btn.textContent = 'Finish setup'; }
-      });
-    })();
-  </script>
-</body>
-</html>
+
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function(){
+  var form = document.getElementById('setupForm'), btn = document.getElementById('setupBtn'), sent = false;
+  form.addEventListener('submit', function(e){
+    if (sent) { e.preventDefault(); return; }     // never post twice
+    sent = true; btn.disabled = true; btn.textContent = 'Saving…';
+  });
+  window.addEventListener('pageshow', function(e){
+    if (e.persisted) { sent = false; btn.disabled = false; btn.textContent = 'Finish setup'; }
+  });
+})();
+</script>
+{% endblock %}

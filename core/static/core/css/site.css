@@ -706,3 +706,5 @@ html[data-theme="dark"] .flash.error   { background: #4D3033; color: #ffb4b0; }
 
 #micaToast { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); background: var(--ink); color: var(--cream-bg); padding: 10px 18px; border-radius: 999px; font-weight: 700; font-size: 14px; z-index: 9700; opacity: 0; pointer-events: none; transition: opacity .2s; }
 #micaToast.show { opacity: 1; }
+
+.pw-wrap { position: relative; }
