@@ -34,6 +34,7 @@ from .reports import EXERCISE_LABELS
 from . import registration_codes as regcodes
 from .models import SignInFailure
 from . import firebase_reset
+from .name_validation import validate_person_names, normalize_name, sanitize_person_name, validate_username
 from urllib.parse import urlencode
 from .models import StaffProfile, StaffSubclass
 from .permissions import can, require_perm, staff_permissions, SERVICE_KEYS
@@ -41,6 +42,7 @@ from .models import StudentStatusLog, ACCOUNT_STATUS, STATUS_REASONS
 from .models import AssessmentHistory
 import hashlib, hmac, re, logging, wave, unicodedata
 from django.core.mail import EmailMultiAlternatives
+from django.core.validators import validate_email
 from django.template.loader import render_to_string
 from django.utils.crypto import constant_time_compare
 from django.views.decorators.http import require_http_methods
@@ -127,7 +129,7 @@ def google_register(request):
             status=403,
         )
 
-    full_name = idinfo.get("name", "")
+    full_name = sanitize_person_name(idinfo.get("name", ""))
     first_name = full_name.split(" ")[0] if full_name else ""
     last_name = " ".join(full_name.split(" ")[1:]) if full_name else ""
 
@@ -265,11 +267,14 @@ def complete_profile(request):
             error = "Please fill in every field."
         elif form["course"] not in dict(COURSE_CHOICES) or form["year_level"] not in dict(YEAR_LEVEL_CHOICES):
             error = "Please choose a valid course and year level."
+        elif (name_error := validate_person_names(form["first_name"], form["last_name"])):
+            error = name_error
         else:
-            try:
-                User._meta.get_field("username").run_validators(form["username"])
-            except ValidationError:
-                error = "Username may only contain letters, numbers and @/./+/-/_ (150 characters max)."
+            form["first_name"] = normalize_name(form["first_name"])
+            form["last_name"] = normalize_name(form["last_name"])
+            username_error = validate_username(form["username"])
+            if username_error:
+                error = username_error
             else:
                 if _username_taken(form["username"], exclude_user=request.user):
                     error = "Username is already registered."
@@ -312,7 +317,7 @@ def home(request):
     return render(request, 'core/index.html')
 
 def about(request):
-    return render(request, 'core/about.html', {'hotlines': get_hotlines()})
+    return render(request, 'core/about.html')
 
 def contact(request):
     return render(request, 'core/contact.html')
@@ -441,15 +446,20 @@ def register(request):
             messages.error(request, "Please choose a valid course and year level.")
             return _register_page(request)
 
+        name_error = validate_person_names(first_name, last_name)
+        if name_error:
+            messages.error(request, name_error)
+            return _register_page(request)
+        first_name, last_name = normalize_name(first_name), normalize_name(last_name)
+
         problem = _enrollment_check(student_number, last_name)
         if problem:
             messages.error(request, problem)
             return _register_page(request)
 
-        try:
-            User._meta.get_field("username").run_validators(username)
-        except ValidationError:
-            messages.error(request, "Username may only contain letters, numbers and @/./+/-/_ (150 characters max).")
+        username_error = validate_username(username)
+        if username_error:
+            messages.error(request, username_error)
             return _register_page(request)
 
         if _username_taken(username):
@@ -646,6 +656,7 @@ def _trust_browser(response, request, user):
 CODE_EMAILS = {
     "login": ("{code} is your MICA sign-in code", "core/email/login_code"),
     "password_change": ("{code} is your MICA password-change code", "core/email/password_change_code"),
+    "email_change": ("{code} is your MICA email-change code", "core/email/email_change_code"),
 }
 
 
@@ -1349,8 +1360,12 @@ def staff_setup(request):
         }
         pw1 = request.POST.get("new_password1") or ""
         pw2 = request.POST.get("new_password2") or ""
-        if not values["first_name"]:
-            errors.append("Please enter your first name.")
+        name_error = validate_person_names(values["first_name"], values["last_name"], require_last=False)
+        if name_error:
+            errors.append(name_error)
+        else:
+            values["first_name"] = normalize_name(values["first_name"])
+            values["last_name"] = normalize_name(values["last_name"])
         if not pw1:
             errors.append("Please choose a password.")
         elif pw1 != pw2:
@@ -1381,6 +1396,168 @@ def staff_setup(request):
 
 # -- Student Side --
 
+# -- Changing the account e-mail ---------------------------------------------
+# The e-mail address is what every sign-in / password code is sent to, so it must not be
+# changeable by whoever happens to be holding the session. To change it the student must
+#   1. type their CURRENT PASSWORD (accounts with no password must create one first), and
+#   2. type the 6-character code we send to the NEW address (proves they own it).
+# The old address is then told about the change. The address only changes at step 2.
+
+EMAIL_CHANGE_SESSION_KEY = "pending_email_change"
+
+
+def _email_taken(email, exclude_user=None):
+    qs = User.objects.filter(email__iexact=email)
+    if exclude_user is not None:
+        qs = qs.exclude(pk=exclude_user.pk)
+    return qs.exists()
+
+
+def _email_change_problem(email, user):
+    """Why `email` can't become this user's address, or None if it can."""
+    if not email:
+        return "Please enter the new email address."
+    if len(email) > 254:
+        return "That email address is too long."
+    try:
+        validate_email(email)
+    except ValidationError:
+        return "Please enter a valid email address."
+    if email == (user.email or "").strip().lower():
+        return "That is already your email address."
+    if _email_taken(email, exclude_user=user):
+        return "That email address is already used by another account."
+    return None
+
+
+def _notify_old_email(user, old_email, new_email):
+    """Tell the previous address that the account's email was changed (best effort)."""
+    context = {
+        "name": user.first_name or user.get_username(),
+        "new_email": _mask_email(new_email),
+        "when": timezone.localtime(timezone.now()).strftime("%b %d, %Y at %I:%M %p"),
+    }
+    try:
+        EmailMultiAlternatives(
+            "Your MICA email address was changed",
+            render_to_string("core/email/email_changed_notice.txt", context),
+            None, [old_email],
+        ).send(fail_silently=False)
+    except Exception:
+        logger.exception("Could not send the email-changed notice for user %s", user.pk)
+
+
+@never_cache
+@login_required(login_url='login')
+def change_email(request):
+    user = request.user
+    if user.is_superuser:
+        return redirect('admin_dashboard')
+    if user.is_staff:
+        return redirect('staff_dashboard')
+    if _needs_profile_setup(user):
+        return redirect('complete_profile')
+
+    has_password = user.has_usable_password()
+    throttle_key = f"emailchange:{user.pk}"
+    pending = request.session.get(EMAIL_CHANGE_SESSION_KEY)
+    latest = LoginVerification.objects.filter(user=user, purpose="email_change").order_by("-created_at").first()
+    code_live = bool(pending and latest and latest.used_at is None and latest.expires_at > timezone.now())
+    if pending and not code_live:
+        # The code expired or was used up: start over rather than showing a dead end.
+        request.session.pop(EMAIL_CHANGE_SESSION_KEY, None)
+        pending = None
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'cancel':
+            request.session.pop(EMAIL_CHANGE_SESSION_KEY, None)
+            LoginVerification.objects.filter(user=user, purpose="email_change", used_at__isnull=True)\
+                .update(used_at=timezone.now())
+            return redirect('account_settings')
+
+        if action == 'send_code':
+            if not has_password:
+                messages.error(request, "To change your email, first create a password for your account.")
+                return redirect('change_email')
+            locked = _lockout_seconds_left(throttle_key)
+            if locked:
+                messages.error(request, f"Too many wrong passwords. Try again in {_plural(locked, 'second')}.")
+                return redirect('change_email')
+            # Password first, so this page can't be used to find out which emails are registered.
+            if not user.check_password(request.POST.get("current_password") or ""):
+                left, lockout = _record_failed_login(throttle_key)
+                if lockout:
+                    messages.error(request, f"Too many wrong passwords. Try again in {_plural(lockout, 'second')}.")
+                else:
+                    messages.error(request, "Your current password isn't right.")
+                return redirect('change_email')
+            new_email = (request.POST.get("new_email") or "").strip().lower()
+            problem = _email_change_problem(new_email, user)
+            if problem:
+                messages.error(request, problem)
+                return redirect('change_email')
+            if latest and (timezone.now() - latest.created_at).total_seconds() < LOGIN_CODE_RESEND_COOLDOWN:
+                messages.error(request, "Please wait a moment before requesting another email.")
+                return redirect('change_email')
+            ok, error = _send_code(request, user, "email_change", to_email=new_email)
+            if ok:
+                LoginThrottle.objects.filter(username_key=throttle_key).delete()
+                request.session[EMAIL_CHANGE_SESSION_KEY] = new_email
+                messages.success(request, f"We sent a code to {_mask_email(new_email)}.")
+            else:
+                messages.error(request, error)
+            return redirect('change_email')
+
+        if action == 'resend_code':
+            if not pending:
+                return redirect('change_email')
+            if latest and (timezone.now() - latest.created_at).total_seconds() < LOGIN_CODE_RESEND_COOLDOWN:
+                messages.error(request, "Please wait a moment before requesting another email.")
+            else:
+                ok, error = _send_code(request, user, "email_change", to_email=pending)
+                if ok:
+                    messages.success(request, f"We sent a new code to {_mask_email(pending)}.")
+                else:
+                    messages.error(request, error)
+            return redirect('change_email')
+
+        if action == 'verify_code':
+            if not pending:
+                messages.error(request, "Start by entering the new email address.")
+                return redirect('change_email')
+            record, error = _check_code(user, "email_change", request.POST.get("code"))
+            if error:
+                messages.error(request, error)
+                return redirect('change_email')
+            request.session.pop(EMAIL_CHANGE_SESSION_KEY, None)
+            if _email_taken(pending, exclude_user=user):      # someone else took it while we waited
+                messages.error(request, "That email address is already used by another account.")
+                return redirect('change_email')
+            old_email = user.email
+            user.email = pending
+            user.save(update_fields=["email"])
+            if old_email:
+                _notify_old_email(user, old_email, pending)
+            messages.success(request, "Your email address has been updated.")
+            return redirect('account_settings')
+
+        return redirect('change_email')
+
+    cooldown = 0
+    if latest:
+        cooldown = max(0, math.ceil(LOGIN_CODE_RESEND_COOLDOWN - (timezone.now() - latest.created_at).total_seconds()))
+    return render(request, 'core/change-email.html', {
+        'step': 'code' if pending else 'enter',
+        'has_password': has_password,
+        'masked_current': _mask_email(user.email),
+        'masked_new': _mask_email(pending or ""),
+        'cooldown': cooldown, 'code_length': LOGIN_CODE_LENGTH,
+        'ttl_minutes': int(LOGIN_CODE_TTL.total_seconds() // 60),
+    })
+
+
 @login_required(login_url='login')
 def account_settings(request):
     if request.user.is_superuser:
@@ -1391,16 +1568,30 @@ def account_settings(request):
     profile = request.user.profile
     if request.method == 'POST':
         new_username = request.POST.get('username', request.user.username).strip()
+        # Only a username that is actually being changed has to follow the rule, so older
+        # accounts with a looser username can still save their other settings.
+        if new_username != request.user.username:
+            username_error = validate_username(new_username)
+            if username_error:
+                messages.error(request, username_error)
+                return redirect('account_settings')
         if new_username != request.user.username and (
             not new_username or _username_taken(new_username, exclude_user=request.user)
         ):
             messages.error(request, "Username is already registered.")
             return redirect('account_settings')
 
-        request.user.first_name = request.POST.get('first_name', '').strip()
-        request.user.last_name = request.POST.get('last_name', '').strip()
+        name_error = validate_person_names(
+            request.POST.get('first_name', ''), request.POST.get('last_name', ''), require_last=False)
+        if name_error:
+            messages.error(request, name_error)
+            return redirect('account_settings')
+
+        request.user.first_name = normalize_name(request.POST.get('first_name', ''))
+        request.user.last_name = normalize_name(request.POST.get('last_name', ''))
         request.user.username = new_username
-        request.user.email = request.POST.get('email', request.user.email).strip()
+        # The email address is NOT saved here: changing it needs a code sent to the new address
+        # (see change_email), so a hijacked session can't quietly redirect the account's codes.
         request.user.save()
 
         profile.course = request.POST.get('course', '').strip()
@@ -1412,20 +1603,8 @@ def account_settings(request):
         profile.share_mica_topics = request.POST.get('share_mica_topics') == 'on'
         if not profile.share_mica_topics:
             request.user.conversations.update(topics=[], topics_updated_at=None)
-        new_avatar = request.FILES.get('avatar')
-        if new_avatar:
-            err = _avatar_error(new_avatar)
-            if err:
-                messages.error(request, err)
-            else:
-                if profile.avatar:
-                    profile.avatar.delete(save=False)   # don't leave the old picture behind
-                profile.avatar = new_avatar
-        elif request.POST.get('remove_avatar') == '1':
-            # Remove the picture completely: back to the default initials avatar everywhere.
-            if profile.avatar:
-                profile.avatar.delete(save=False)
-            profile.avatar = None
+        if request.FILES.get('avatar'):
+            profile.avatar = request.FILES['avatar']
         profile.save()
 
         messages.success(request, "Your settings have been updated.")
@@ -2109,25 +2288,6 @@ def get_profile(user):
     return profile
 
 
-AVATAR_MAX_BYTES = 5 * 1024 * 1024
-AVATAR_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
-
-
-def _avatar_error(f):
-    """Return a user-facing error string if `f` is not an acceptable profile picture, else None."""
-    if f.size > AVATAR_MAX_BYTES:
-        return "That picture is too large. Please use one under 5 MB."
-    if (f.content_type or "").lower() not in AVATAR_TYPES:
-        return "Please upload a JPG, PNG, WebP or GIF image."
-    try:
-        from PIL import Image
-        Image.open(f).verify()      # raises if the file is not really an image
-        f.seek(0)
-    except Exception:
-        return "That file doesn't look like a valid image."
-    return None
-
-
 @login_required(login_url='login')
 @require_POST
 def api_dark_mode(request):
@@ -2251,15 +2411,6 @@ def _staff_role(user):
     return sp.role_label if sp else "Guidance Staff"
 
 
-def _avatar_url(user):
-    """URL of the user's profile picture, or '' when they have none."""
-    prof = UserProfile.objects.filter(user=user).only('avatar').first()
-    try:
-        return prof.avatar.url if prof and prof.avatar else ''
-    except Exception:
-        return ''
-
-
 # ---------------------------------------------------------------------------
 # Who may open which conversation
 #
@@ -2352,7 +2503,6 @@ def chat_or_referral(view):
 def staff_dashboard(request):
     sp = getattr(request.user, 'staff_profile', None)
     return render(request, 'core/staff-dashboard.html', {
-        'my_avatar_url': _avatar_url(request.user),
         'staff_role': _staff_role(request.user),
         'staff_license': sp.license_number if sp else '',
         'staff_perms': staff_permissions(request.user),
@@ -3531,11 +3681,15 @@ def staff_profile_update(request):
         data = json.loads(request.body)
     except json.JSONDecodeError:
         return JsonResponse({"error": "Invalid request."}, status=400)
-    first = (data.get("first_name") or "").strip()[:150]
-    last = (data.get("last_name") or "").strip()[:150]
+    first = str(data.get("first_name") or "")
+    last = str(data.get("last_name") or "")
     license_no = (data.get("license_number") or "").strip()[:50]
-    if not first:
+    if not first.strip():
         return JsonResponse({"error": "First name can't be empty."}, status=400)
+    name_error = validate_person_names(first, last, require_last=False)
+    if name_error:
+        return JsonResponse({"error": name_error}, status=400)
+    first, last = normalize_name(first), normalize_name(last)
     user = request.user
     user.first_name, user.last_name = first, last
     user.save(update_fields=["first_name", "last_name"])
@@ -3544,38 +3698,6 @@ def staff_profile_update(request):
         sp.license_number = license_no
         sp.save(update_fields=["license_number"])
     return JsonResponse({"status": "ok", "full_name": user.get_full_name()})
-
-
-@login_required(login_url='login')
-@user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
-@require_POST
-def staff_avatar_update(request):
-    """Add, change or remove the signed-in staff/admin member's own profile picture.
-
-    multipart POST:  avatar=<image file>   -> set/replace
-                     remove=1              -> delete
-    """
-    profile = get_profile(request.user)
-
-    if request.POST.get("remove") == "1":
-        if profile.avatar:
-            profile.avatar.delete(save=False)
-        profile.avatar = None
-        profile.save(update_fields=["avatar"])
-        return JsonResponse({"status": "ok", "avatar_url": ""})
-
-    f = request.FILES.get("avatar")
-    if not f:
-        return JsonResponse({"error": "Choose a picture first."}, status=400)
-    err = _avatar_error(f)
-    if err:
-        return JsonResponse({"error": err}, status=400)
-
-    if profile.avatar:
-        profile.avatar.delete(save=False)   # don't leave the old picture behind
-    profile.avatar = f
-    profile.save(update_fields=["avatar"])
-    return JsonResponse({"status": "ok", "avatar_url": profile.avatar.url})
 
 
 @login_required(login_url='login')
@@ -3662,7 +3784,7 @@ def staff_summary(request):
 @login_required(login_url='login')
 @user_passes_test(lambda u: u.is_superuser, login_url='login')
 def admin_dashboard(request):
-    return render(request, 'core/admin-dashboard.html', {'my_avatar_url': _avatar_url(request.user)})
+    return render(request, 'core/admin-dashboard.html')
 
 
 # -- Logout --

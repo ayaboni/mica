@@ -1,0 +1,10 @@
+{% autoescape off %}Hi {{ name }},
+
+The email address on your MICA account was changed to {{ new_email }} on {{ when }}.
+
+If this was you, there's nothing more to do.
+
+If this wasn't you, someone may have access to your account. Change your password right away from Account Settings, and tell the guidance office.
+
+— MICA
+{% endautoescape %}

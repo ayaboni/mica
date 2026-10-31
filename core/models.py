@@ -386,7 +386,7 @@ class LoginVerification(models.Model):
     `attempts` counts wrong guesses; after a few the code is refused.
     """
     METHOD_CHOICES = [('password', 'Password'), ('google', 'Google')]
-    PURPOSE_CHOICES = [('login', 'Sign-in'), ('password_change', 'Password change')]
+    PURPOSE_CHOICES = [('login', 'Sign-in'), ('password_change', 'Password change'), ('email_change', 'Email change')]
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='login_verifications')
     # What the code is for. A sign-in code can't confirm a password change, and vice versa.

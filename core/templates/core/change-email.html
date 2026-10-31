@@ -1,0 +1,128 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Change Email — MICA</title>
+</head>
+<style>
+  body{margin:0; font-family:'Nunito', sans-serif; background:#FAF7EE; color:#3A2E28;}
+  .topbar{background:#8FA98C; padding:18px 34px; display:flex; align-items:center; justify-content:space-between;}
+  .topbar a{color:#3A2E28; text-decoration:none; font-weight:700;}
+  .wrap{max-width:420px; margin:60px auto; padding:0 20px;}
+  .card{background:#FBF2DE; border-radius:24px; padding:32px;}
+  .field{margin-bottom:16px;}
+  .field label{display:block; font-weight:700; margin-bottom:6px; font-size:14px;}
+  .field input{width:100%; padding:12px 14px; border-radius:12px; border:1px solid #ddd; box-sizing:border-box;}
+  button{background:#8B6F4E; color:#fff; border:none; padding:13px 28px; border-radius:999px; font-weight:700; cursor:pointer;}
+  .back-btn{display:inline-block; background:#8B6F4E; color:#fff; padding:13px 28px; border-radius:999px; font-weight:700; text-decoration:none; margin-top:10px;}
+  .msg-success{color:green; font-weight:bold;}
+  .msg-error{color:#d9534f; font-weight:bold;}
+  .lead{color:#7a6a5c; font-size:14px; line-height:1.55; margin:0 0 16px;}
+  .lead strong{color:#3A2E28;}
+  button:disabled{opacity:.55; cursor:not-allowed;}
+  .full{width:100%;}
+  .secondary{background:transparent; color:#7B5B3F; border:2px solid #8B6F4E; margin-top:8px;}
+  .code-input{width:100%; box-sizing:border-box; text-align:center; font-family:'Courier New', Courier, monospace; font-size:32px; font-weight:700; letter-spacing:10px; text-transform:uppercase; padding:14px 8px 14px 18px; border:2px solid #CDBFA6; border-radius:16px; background:#fff; color:#3A2E28; margin:6px 0 14px;}
+  .code-input:focus{outline:none; border-color:#8B6F4E; box-shadow:0 0 0 4px rgba(139,111,78,.18);}
+  .hint{font-size:12.5px; color:#7a6a5c; margin-top:14px; line-height:1.5;}
+</style>
+<body>
+  {% include 'core/_loader.html' %}
+
+  <div class="topbar">
+    <a href="{% url 'account_settings' %}">Back to Account Settings</a>
+    <strong>MICA</strong>
+  </div>
+  <div class="wrap"><div class="card">
+    <h2>Change Email</h2>
+    {% if messages %}
+    {% for m in messages %}
+      <p class="msg-{{ m.tags }}">{{ m }}</p>
+    {% endfor %}
+    {% endif %}
+
+    {% if not has_password %}
+      <p class="lead">To change your email you first need a password on your account, so only you can do it. Create one, then come back here.</p>
+      <a href="{% url 'change_password' %}" class="back-btn" style="margin-top:0;">Create a Password</a>
+
+    {% elif step == 'enter' %}
+      <p class="lead">Your email is currently <strong>{{ masked_current }}</strong>. We'll send a {{ code_length }}-character code to the new address to make sure it's yours. Your email only changes after you enter that code.</p>
+      <form method="post" autocomplete="off">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="send_code">
+        <div class="field"><label for="new_email">New email address</label>
+          <input type="email" id="new_email" name="new_email" maxlength="254" required autocomplete="email"></div>
+        <div class="field"><label for="current_password">Your current password</label>
+          <input type="password" id="current_password" name="current_password" required autocomplete="current-password"></div>
+        <button type="submit" class="full" id="sendBtn" {% if cooldown %}disabled data-cooldown="{{ cooldown }}"{% endif %}>Email me a code</button>
+      </form>
+
+    {% else %}
+      <p class="lead">We sent a {{ code_length }}-character code to <strong>{{ masked_new }}</strong>. Enter it below. It works once and expires in {{ ttl_minutes }} minutes. Your email stays the same until you do.</p>
+      <form method="post" id="codeForm" autocomplete="off">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="verify_code">
+        <input type="text" name="code" id="codeInput" class="code-input" placeholder="••••••"
+               maxlength="24" inputmode="text" autocomplete="one-time-code" autocapitalize="characters"
+               autocorrect="off" spellcheck="false" autofocus required aria-label="{{ code_length }}-character code">
+        <button type="submit" class="full" id="codeBtn" disabled>Confirm new email</button>
+      </form>
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="resend_code">
+        <button type="submit" class="full secondary" id="sendBtn" {% if cooldown %}disabled data-cooldown="{{ cooldown }}"{% endif %}>Send a new code</button>
+      </form>
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="cancel">
+        <button type="submit" class="full secondary">Cancel and keep my current email</button>
+      </form>
+      <p class="hint">Can't find it? Check your spam folder. Typed the wrong address? Cancel and start again.</p>
+      <script>
+        (function(){
+          var LEN = {{ code_length }};
+          var input = document.getElementById('codeInput');
+          var btn = document.getElementById('codeBtn');
+          var form = document.getElementById('codeForm');
+          var sent = false;
+          function clean(){
+            input.value = input.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, LEN);
+            btn.disabled = sent || input.value.length !== LEN;
+            return input.value.length === LEN;
+          }
+          form.addEventListener('submit', function(e){
+            if (sent || !clean()) { e.preventDefault(); return; }
+            sent = true; input.readOnly = true; btn.disabled = true; btn.textContent = 'Checking…';
+          });
+          input.addEventListener('input', function(){
+            if (clean() && !sent) { if (form.requestSubmit) { form.requestSubmit(); } else { form.submit(); } }
+          });
+          window.addEventListener('pageshow', function(e){
+            if (!e.persisted) return;
+            sent = false; input.readOnly = false; input.value = ''; btn.textContent = 'Confirm new email'; clean(); input.focus();
+          });
+          clean();
+        })();
+      </script>
+    {% endif %}
+
+    <script>
+      // Count down the 60-second wait between emails.
+      (function(){
+        var btn = document.getElementById('sendBtn');
+        if (!btn) return;
+        var label = btn.textContent;
+        var left = parseInt(btn.getAttribute('data-cooldown') || '0', 10);
+        if (!left) return;
+        (function tick(){
+          if (left <= 0) { btn.disabled = false; btn.textContent = label; return; }
+          btn.textContent = label + ' in ' + left + 's';
+          left--; setTimeout(tick, 1000);
+        })();
+      })();
+    </script>
+    <a href="{% url 'account_settings' %}" class="back-btn">Back</a>
+  </div></div>
+</body>
+</html>

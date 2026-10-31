@@ -20,6 +20,7 @@ from django.shortcuts import get_object_or_404
 from django.utils.dateparse import parse_date
 from django.views.decorators.http import require_POST
 
+from .name_validation import validate_person_names
 from .models import (COURSES, SERVICES, STATUS_REASONS, StaffProfile, StaffSubclass, GuidanceThread, GuidanceMessage,
                      StudentFlag, StudentNote, Appointment, AccessLog, StudentStatusLog, LoginThrottle,
                     MoodEntry, ChatConversation, SiteSettings, AuditEvent, Semester, EnrolledStudent,
@@ -240,6 +241,9 @@ def staff_create(request):
     email = str(data.get("email") or "").strip().lower()
     if not first:
         return JsonResponse({"error": "Please enter the staff member\u2019s first name."}, status=400)
+    name_error = validate_person_names(first, last, require_last=False)
+    if name_error:
+        return JsonResponse({"error": name_error.replace("your ", "the staff member\u2019s ").replace("Your ", "The staff member\u2019s ")}, status=400)
     if not last:
         return JsonResponse({"error": "Please enter the staff member\u2019s last name."}, status=400)
     if not USERNAME_RE.match(username):

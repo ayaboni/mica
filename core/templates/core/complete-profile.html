@@ -66,7 +66,7 @@
       </select>
     </div>
 
-    <div class="field"><input type="text" name="username" placeholder="Username" value="{{ form.username }}" autocomplete="username" autofocus required></div>
+    <div class="field"><input type="text" name="username" placeholder="Username" title="3–30 characters: English letters, numbers, dots, dashes or underscores" maxlength="30" pattern="[A-Za-z0-9][A-Za-z0-9._\-]{2,29}" value="{{ form.username }}" autocomplete="username" autofocus required></div>
 
     <button type="submit">Continue</button>
   </form>

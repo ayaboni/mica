@@ -1,0 +1,18 @@
+{% autoescape off %}Hi {{ name }},
+
+Someone (hopefully you) asked to use this email address for their MICA account on {{ when }}.
+
+Your confirmation code is:
+
+{{ code }}
+
+Enter it on the "Change Email" page to finish. (Double-click the code to select it, then copy and paste.)
+
+The code works once and expires in {{ ttl_minutes }} minutes.
+
+If this wasn't you, ignore this email: nothing will change unless the code is entered.{% if ip %}
+
+Request came from IP address {{ ip }}.{% endif %}
+
+— MICA
+{% endautoescape %}

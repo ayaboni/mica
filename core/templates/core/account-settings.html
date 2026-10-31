@@ -24,9 +24,6 @@
   border-radius:999px; font-weight:700; cursor:pointer; font-size:14px;
   }
   .file-btn:hover{background:#75603f;}
-  .file-btn-alt{background:#EDE3CC; color:#5C4229; border:none; font:inherit; font-weight:700; cursor:pointer; margin-left:6px;}
-  .file-btn-alt:hover{background:#E2D5B6;}
-  #avatarHint{margin-top:6px;}
   .two-col{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
   button[type=submit]{background:#8B6F4E; color:#fff; border:none; padding:13px 28px; border-radius:999px; font-weight:700; cursor:pointer; margin-top:8px;}
   .msg{padding:10px 16px; border-radius:12px; margin-bottom:16px; font-weight:600;}
@@ -64,7 +61,7 @@
       <form method="post" enctype="multipart/form-data">
         {% csrf_token %}
 
-        <div class="avatar-row" id="avatarRow" data-initials="{% filter striptags %}{% include 'core/_initials.html' with u=request.user %}{% endfilter %}">
+        <div class="avatar-row">
           {% if profile.avatar %}
             <img class="avatar-preview" id="avatarPreview" src="{{ profile.avatar.url }}" alt="Avatar" data-initials="{% include 'core/_initials.html' with u=request.user %}">
           {% else %}
@@ -73,13 +70,10 @@
           {% endif %}
           <div>
             <label style="font-weight:700; font-size:14px;">Change avatar</label><br>
-            <input type="file" name="avatar" id="avatarInput" accept="image/png,image/jpeg,image/webp,image/gif" style="display:none;">
-            <input type="hidden" name="remove_avatar" id="removeAvatar" value="">
-            <label for="avatarInput" class="file-btn" id="avatarChoose">Choose Photo</label>
-            <button type="button" class="file-btn file-btn-alt" id="avatarAdjust" style="display:none;">Adjust</button>
-            <button type="button" class="file-btn file-btn-alt" id="avatarRemove" style="display:none;">Remove</button>
-            <small id="avatarHint" style="display:none; color:#7a6a5c;">Preview only. Press "Save Changes" to keep it.</small>
-          </div>
+          <input type="file" name="avatar" id="avatarInput" accept="image/*" style="display:none;">
+          <label for="avatarInput" class="file-btn">Choose Photo</label>
+          <small id="avatarHint" style="display:none; color:#7a6a5c;">Preview only. Press "Save Changes" to keep it.</small>  
+        </div>
         </div>
 
         <div class="two-col">
@@ -105,7 +99,8 @@
           </div>
           <div class="field">
             <label>Email</label>
-            <input type="email" name="email" value="{{ request.user.email }}">
+            <input type="email" value="{{ request.user.email }}" disabled style="background:#f0ece0;">
+            <a href="{% url 'change_email' %}" style="display:inline-block; margin-top:6px; font-size:13px; font-weight:700; color:#7B5B3F;">Change email</a>
           </div>
         </div>
 
@@ -196,9 +191,6 @@
 
       <form id="tutorialResetForm" method="post" action="{% url 'tutorial_reset' %}">{% csrf_token %}</form>
 
-{% include 'core/_unsaved_guard.html' %}
-{% include 'core/_avatar_cropper.html' %}
-
 <script>
   /* Saved picture missing or broken? Fall back to the initials circle */
   (function(){
@@ -225,164 +217,6 @@
     if(ph) ph.style.display = 'none';
     document.getElementById('avatarHint').style.display = 'block';
   });
-
-  (function(){
-    var form    = document.querySelector('form[enctype="multipart/form-data"]');
-    var input   = document.getElementById('avatarInput');
-    var removeF = document.getElementById('removeAvatar');
-    var hint    = document.getElementById('avatarHint');
-    var bAdj    = document.getElementById('avatarAdjust');
-    var bRem    = document.getElementById('avatarRemove');
-    var bChoose = document.getElementById('avatarChoose');
-    var row     = document.getElementById('avatarRow');
-    var initials = (row.dataset.initials || '').trim();
-    var savedUrl = (document.getElementById('avatarPreview').getAttribute('src') || '');
-    var G = window.MicaGuard, C = window.MicaCropper;
-    var staged = null;        // cropped File waiting to be saved
-    var submitting = false;
-
-    function preview(){ return document.getElementById('avatarPreview'); }
-    function placeholder(){ return document.getElementById('avatarPlaceholder'); }
-    function hasPhoto(){ return !!staged || (!!savedUrl && removeF.value !== '1'); }
-
-    function showImage(url){
-      var img = preview(); img.src = url; img.style.display = '';
-      var ph = placeholder(); if (ph) ph.style.display = 'none';
-    }
-    function showInitials(){
-      var img = preview(); img.style.display = 'none'; img.removeAttribute('src');
-      var ph = placeholder();
-      if (!ph) {
-        ph = document.createElement('div');
-        ph.id = 'avatarPlaceholder';
-        ph.setAttribute('aria-hidden', 'true');
-        img.parentNode.insertBefore(ph, img.nextSibling);
-      }
-      ph.className = 'avatar-preview avatar-initials';
-      ph.textContent = initials;
-      ph.style.display = '';
-    }
-    function refreshButtons(){
-      var has = hasPhoto();
-      bChoose.textContent = has ? 'Change Photo' : 'Choose Photo';
-      bAdj.style.display = has ? '' : 'none';
-      bRem.style.display = has ? '' : 'none';
-      hint.style.display = (staged || removeF.value === '1') ? 'block' : 'none';
-      hint.textContent = removeF.value === '1' && !staged
-        ? 'Photo will be removed. Press "Save Changes" to confirm.'
-        : 'Preview only. Press "Save Changes" to keep it.';
-    }
-
-    function stage(blob){
-      var file = new File([blob], 'avatar.jpg', { type: 'image/jpeg' });
-      var dt = new DataTransfer(); dt.items.add(file); input.files = dt.files;
-      staged = file; removeF.value = '';
-      showImage(URL.createObjectURL(blob));
-      refreshButtons();
-    }
-    function unstage(){
-      staged = null; input.value = ''; removeF.value = '';
-      if (savedUrl) showImage(savedUrl); else showInitials();
-      refreshButtons();
-    }
-
-    function edit(file){
-      return C.open(file).then(function(r){
-        if (!r) return;
-        stage(r.blob);
-        if (r.saveNow) return saveViaFetch();     // closed the editor with "Save changes"
-      });
-    }
-
-    input.addEventListener('change', function(){
-      var f = input.files && input.files[0];
-      input.value = '';
-      if (!f) return;
-      if (!/^image\/(jpeg|png|webp|gif)$/.test(f.type)) { alert('Please choose a JPG, PNG, WebP or GIF image.'); return; }
-      if (f.size > 5 * 1024 * 1024) { alert('That picture is too large. Please use one under 5 MB.'); return; }
-      edit(f);
-    });
-
-    bAdj.addEventListener('click', function(){
-      if (staged) { edit(staged); return; }
-      fetch(savedUrl, { credentials: 'same-origin' })
-        .then(function(r){ if (!r.ok) throw 0; return r.blob(); })
-        .then(edit)
-        .catch(function(){ alert("Couldn't load your current photo. Try choosing a new one."); });
-    });
-
-    bRem.addEventListener('click', function(){
-      staged = null; input.value = '';
-      if (savedUrl) removeF.value = '1';          // saved photo -> removed when the form is saved
-      showInitials();
-      refreshButtons();
-    });
-
-    /* ---- unsaved-changes protection: any edit on this form, including the photo ---- */
-    function snapshot(){
-      var out = [];
-      new FormData(form).forEach(function(v, k){
-        if (k === 'csrfmiddlewaretoken' || k === 'avatar' || k === 'remove_avatar') return;
-        out.push(k + '=' + v);
-      });
-      out.push('avatar=' + (staged ? 'new' : (removeF.value === '1' ? 'removed' : 'same')));
-      return out.join('&');
-    }
-    var baseline = snapshot();
-
-    // Save through fetch (no page reload), so the user stays here and can keep checking or editing.
-    // Same look as the message the page shows after pressing the Save Changes button
-    function showSavedBanner(){
-      var card = document.querySelector('.card');
-      card.querySelectorAll('.msg.js-saved').forEach(function(n){ n.remove(); });
-      var d = document.createElement('div');
-      d.className = 'msg success js-saved';
-      d.setAttribute('role', 'status');
-      d.textContent = 'Your changes have been saved.';
-      var h1 = card.querySelector('h1');
-      h1.parentNode.insertBefore(d, h1.nextSibling);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-
-    function saveViaFetch(){
-      return fetch(form.getAttribute('action') || window.location.href, {
-        method: 'POST', body: new FormData(form), credentials: 'same-origin'
-      }).then(function(r){ return r.text().then(function(t){ return { ok: r.ok, html: t }; }); })
-        .then(function(res){
-          // Look for a real error box in the returned page (parse it; never search the raw text,
-          // because this page's own script also contains the words "msg error").
-          var doc = new DOMParser().parseFromString(res.html, 'text/html');
-          var errBox = doc.querySelector('.card .msg.error');
-          if (!res.ok || errBox) {
-            alert((errBox && errBox.textContent.trim()) || 'Could not save your changes.');
-            return false;
-          }
-          showSavedBanner();
-          // reflect what is now saved
-          if (removeF.value === '1') savedUrl = '';
-          else if (staged) savedUrl = preview().src;
-          staged = null; input.value = ''; removeF.value = '';
-          baseline = snapshot();
-          refreshButtons();
-          return true;
-        })
-        .catch(function(){ alert('Could not reach the server.'); return false; });
-    }
-
-    var discarded = false;
-    G.register({
-      isDirty: function(){ return !submitting && !discarded && snapshot() !== baseline; },
-      save: saveViaFetch,
-      discard: function(){
-        // "Discard and leave": throw away every edit on the form, so the browser doesn't ask a second time
-        discarded = true;
-        unstage();
-        form.reset();
-      }
-    });
-    form.addEventListener('submit', function(){ submitting = true; });   // pressing Save Changes is not "leaving unsaved"
-    refreshButtons();
-  })();
 </script>
 </body>
 </html>
