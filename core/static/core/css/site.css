@@ -295,6 +295,9 @@ html[data-theme="dark"] .btn:focus-visible { outline-color: var(--green-deep); }
 html[data-theme="dark"] .footer-bottom { border-top-color: rgba(255,255,255,.12); }
 html[data-theme="dark"] .page-banner::before { background: rgba(0,0,0,.45); }
 
+html[data-theme="dark"] .tool-list li { background: rgba(255,255,255,.12); }
+html[data-theme="dark"] .field label .req { color: #c9b08f; }
+
 /* toggle button */
 .theme-toggle {
   width: 40px; height: 40px;
@@ -316,3 +319,24 @@ html[data-theme="dark"] .theme-toggle .icon-sun  { display: inline; }
 
 /* smooth swap */
 body, .navbar, .site-footer { transition: background-color .3s ease, color .3s ease; }
+
+:root { --doodle-color: #7F9F79; --doodle-opacity: .34; }
+html[data-theme="dark"] { --doodle-color: #7FD1BE; --doodle-opacity: .27; }
+
+.doodle-bg { position: relative; isolation: isolate; }
+.doodle-bg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-color: var(--doodle-color);
+  opacity: calc(var(--doodle-opacity) * var(--doodle-scale, 1));
+  .auth-wrap { --doodle-scale: .75; }
+  -webkit-mask-image: url("../images/chat-doodles.png");
+          mask-image: url("../images/chat-doodles.png");
+  -webkit-mask-size: 600px 600px;
+          mask-size: 600px 600px;
+  -webkit-mask-repeat: repeat;
+          mask-repeat: repeat;
+}

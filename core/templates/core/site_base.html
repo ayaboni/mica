@@ -27,7 +27,7 @@
 
 {% block content %}{% endblock %}
 
-{% include 'core/_footer.html' %}
+{% block footer %}{% include 'core/_footer.html' %}{% endblock %}
 <script src="{% static 'core/js/site.js' %}"></script>
 {% block extra_js %}{% endblock %}
 </body>
