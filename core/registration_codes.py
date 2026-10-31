@@ -13,6 +13,7 @@ The student enters the code on /register/; it is remembered in their session unt
 """
 import csv
 import json
+import logging
 import secrets
 import uuid
 from datetime import timedelta
@@ -29,6 +30,8 @@ from django.views.decorators.http import require_GET, require_POST
 from .models import AuditEvent, RegistrationCode
 from .net import client_ip
 from .permissions import require_perm
+
+logger = logging.getLogger(__name__)
 
 REG_CODE_LENGTH = 6                            # single-use codes
 SHARED_CODE_LENGTH = 8                         # generated shared codes
@@ -117,20 +120,32 @@ def _fail_key(request):
 
 
 def entry_locked(request):
-    return cache.get(_fail_key(request), 0) >= ENTRY_MAX_FAILURES
+    # The lockout counters live in the cache. If the cache is down or its table is missing, let the
+    # student carry on (and log it) rather than blocking every registration with a 500.
+    try:
+        return cache.get(_fail_key(request), 0) >= ENTRY_MAX_FAILURES
+    except Exception:
+        logger.exception("Registration lockout cache unavailable; allowing code entry")
+        return False
 
 
 def record_entry_failure(request):
     key = _fail_key(request)
-    cache.add(key, 0, ENTRY_LOCKOUT_SECONDS)
     try:
-        cache.incr(key)
-    except ValueError:
-        cache.set(key, 1, ENTRY_LOCKOUT_SECONDS)
+        cache.add(key, 0, ENTRY_LOCKOUT_SECONDS)
+        try:
+            cache.incr(key)
+        except ValueError:
+            cache.set(key, 1, ENTRY_LOCKOUT_SECONDS)
+    except Exception:
+        logger.exception("Registration lockout cache unavailable; failure not recorded")
 
 
 def clear_entry_failures(request):
-    cache.delete(_fail_key(request))
+    try:
+        cache.delete(_fail_key(request))
+    except Exception:
+        logger.exception("Registration lockout cache unavailable; failures not cleared")
 
 
 def new_code_value(length=REG_CODE_LENGTH):
