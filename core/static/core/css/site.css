@@ -528,3 +528,169 @@ html[data-theme="dark"] .auth-field select {
 .booklet--compact .pw-hint { margin: -4px 4px 14px; }
 .booklet--compact .auth-divider { margin: 14px 0; }
 .booklet--compact .auth-foot { margin-top: 14px; }
+
+
+/* ---------- onboarding pages (consent, assessment) ---------- */
+.nav-right { display: flex; align-items: center; gap: 8px; }
+
+.onboard { padding: 40px 20px 72px; --doodle-scale: .75; }
+.onboard-inner { max-width: 860px; margin: 0 auto; }
+.onboard-head { background: color-mix(in srgb, var(--bg) 85%, transparent); border-radius: 20px; padding: 1rem 1.5rem; }
+.onboard-head h1 { font-size: clamp(1.7rem, 4vw, 2.3rem); margin-bottom: 10px; }
+.onboard-head p { color: var(--text); font-size: 1.05rem; line-height: 1.6; max-width: 60ch; margin-inline: auto; }
+
+.text-link { font-weight: 600; font-size: 0.9rem; color: var(--ink); border-bottom: 1.5px solid currentColor; padding-bottom: 1px; }
+
+.info-card {
+  height: 100%;
+  background: var(--card-bg);
+  border-radius: var(--radius-lg);
+  padding: 22px 24px;
+}
+.info-grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.25rem; align-items: stretch; }
+.info-card h3 { font-size: 1.15rem; margin-bottom: 10px; }
+.info-card ul { margin: 0; padding-left: 20px; color: var(--ink-soft); font-size: 0.92rem; line-height: 1.6; }
+.info-card li { margin-bottom: 6px; }
+.info-card li b, .info-card li strong { color: var(--ink); }
+.info-card p { font-size: 0.92rem; margin: 0; }
+
+.form-card {
+  --field-border: #DECBAE;
+  --placeholder: #A79E88;
+  background: var(--cream-card);
+  border-radius: var(--radius-lg);
+  padding: clamp(24px, 4vw, 38px);
+  box-shadow: var(--shadow-soft);
+}
+html[data-theme="dark"] .form-card { --field-border: #4d6149; --placeholder: #798a78; }
+.form-card h3 { font-size: 1.1rem; margin: 0 0 8px; }
+.form-card h3:not(:first-child) { margin-top: 24px; }
+.form-card p { font-size: 0.92rem; }
+
+.check-row { display: flex; gap: 12px; align-items: flex-start; font-size: 0.92rem; line-height: 1.5; color: var(--ink); margin: 12px 0; cursor: pointer; }
+.check-row input { margin-top: 3px; width: 18px; height: 18px; flex-shrink: 0; accent-color: var(--brown); }
+.check-row--agree { font-weight: 700; margin-top: 22px; padding-top: 18px; border-top: 1px solid rgba(127,127,127,.25); }
+
+.form-actions { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; margin-top: 22px; }
+.form-actions--end { justify-content: flex-end; }
+
+/* assessment */
+.assess-label { font-family: var(--font-display); font-weight: 600; font-size: 1.05rem; color: var(--ink); margin: 28px 0 8px; }
+.assess-label:first-of-type { margin-top: 0; }
+.check-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 18px; }
+.check-grid label { display: flex; align-items: center; gap: 10px; font-size: 0.92rem; color: var(--ink); cursor: pointer; }
+.check-grid input { width: 18px; height: 18px; accent-color: var(--brown); }
+.text-input {
+  width: 100%; margin-top: 14px; padding: 12px 16px;
+  border-radius: var(--radius-md); border: 1.5px solid var(--field-border);
+  background: var(--white); color: var(--ink);
+  font-family: var(--font-body); font-size: 0.92rem;
+}
+.text-input::placeholder { color: var(--placeholder); }
+.text-input:focus { outline: none; border-color: var(--brown); }
+
+.table-wrap { overflow-x: auto; }
+.likert { width: 100%; min-width: 560px; border-collapse: collapse; font-size: 0.88rem; }
+.likert th { font-weight: 600; color: var(--ink-soft); padding: 8px 6px; text-align: center; }
+.likert td { padding: 11px 6px; text-align: center; }
+.likert td:first-child { text-align: left; color: var(--ink); padding-left: 10px; }
+.likert tbody tr:nth-child(odd) { background: rgba(127,127,127,.10); }
+.likert input { width: 18px; height: 18px; accent-color: var(--brown); }
+
+.yesno { display: flex; gap: 24px; margin: 8px 0 18px; }
+.yesno label { display: flex; align-items: center; gap: 8px; font-size: 0.92rem; color: var(--ink); cursor: pointer; }
+.yesno input { width: 18px; height: 18px; accent-color: var(--brown); }
+.assess-q { font-size: 0.92rem; color: var(--ink); margin: 14px 0 0; }
+
+@media (max-width: 760px) {
+  .info-grid-2 { grid-template-columns: 1fr; }
+  .check-grid { grid-template-columns: 1fr; }
+}
+
+/* ---------- checkboxes and radios ---------- */
+input[type="checkbox"], input[type="radio"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  vertical-align: middle;
+  cursor: pointer;
+  border: 2px solid var(--brown);
+  background: var(--white);
+}
+input[type="radio"]    { border-radius: 50%; }
+input[type="checkbox"] { border-radius: 5px; }
+
+input[type="radio"]:checked {
+  background: var(--brown);
+  box-shadow: inset 0 0 0 3px var(--white);
+}
+input[type="checkbox"]:checked {
+  background: var(--brown) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='5 12 10 17 19 7'/></svg>") center / 80% no-repeat;
+}
+input[type="checkbox"]:focus-visible, input[type="radio"]:focus-visible {
+  outline: 3px solid var(--green-deep);
+  outline-offset: 2px;
+}
+
+/* ---------- dyslexia-friendly font ---------- */
+@font-face {
+  font-family: 'OpenDyslexic';
+  src: url("../fonts/OpenDyslexic-Regular.woff2") format('woff2');
+  font-display: swap;
+}
+html.dyslexia, html.dyslexia * {
+  font-family: 'OpenDyslexic', 'Lexend', sans-serif !important;
+  letter-spacing: .03em;
+  word-spacing: .12em;
+}
+html.dyslexia body { line-height: 1.7; }
+html.dyslexia .code-input { letter-spacing: .35em; }
+
+/* the "Aa" button in the navbar (it also has the .theme-toggle class) */
+.dys-toggle { font-family: var(--font-display); font-weight: 700; font-size: 15px; }
+.dys-toggle[aria-pressed="true"] { background: rgba(127,127,127,.25); }
+
+.nav-tools { display: flex; align-items: center; gap: 4px; }
+
+/* ---------- account settings ---------- */
+.onboard-inner--narrow { max-width: 680px; }
+
+.set-label { display: block; font-weight: 700; font-size: .88rem; color: var(--ink); margin: 0 0 6px; }
+.set-note  { font-size: .82rem; line-height: 1.5; margin: 6px 0 0; }
+
+.auth-field input:disabled { opacity: .65; cursor: not-allowed; background: rgba(127,127,127,.12); }
+.auth-field .text-link { display: inline-block; margin-top: 8px; font-size: .82rem; }
+
+.avatar-row { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
+.avatar-preview { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+.avatar-initials {
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, #A9C6A2, #8EAE88);
+  color: #fff;
+  font-family: var(--font-display);
+  font-weight: 700; font-size: 26px; letter-spacing: .5px;
+  text-transform: uppercase;
+  user-select: none;
+  box-shadow: inset 0 0 0 3px rgba(255,255,255,.55);
+}
+
+.btn-sm { padding: 9px 20px; font-size: .88rem; }
+
+.sub-card { background: rgba(127,127,127,.10); border-radius: var(--radius-md); padding: 18px 20px; margin-top: 20px; }
+.sub-card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
+.form-card .sub-card-head h3 { margin: 0; }
+.sub-card p { margin: 0 0 14px; font-size: .88rem; }
+
+.status-pill { padding: 4px 12px; border-radius: var(--radius-pill); font-size: .75rem; font-weight: 700; white-space: nowrap; }
+.status-done    { background: #dff0d8; color: #3c763d; }
+.status-pending { background: #fbe8c6; color: #8a6b1f; }
+html[data-theme="dark"] .status-done    { background: #2F4535; color: #bfe0b8; }
+html[data-theme="dark"] .status-pending { background: #4A3F1D; color: #f0d896; }
+
+.flash { padding: 10px 16px; border-radius: 12px; margin: 0 0 16px; font-weight: 600; font-size: .92rem; background: rgba(127,127,127,.15); color: var(--ink); }
+.flash.success { background: #dff0d8; color: #3c763d; }
+.flash.error   { background: #f2dede; color: #a94442; }
+html[data-theme="dark"] .flash.success { background: #2F4535; color: #bfe0b8; }
+html[data-theme="dark"] .flash.error   { background: #4D3033; color: #ffb4b0; }
