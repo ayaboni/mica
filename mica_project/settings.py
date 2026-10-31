@@ -194,3 +194,12 @@ PASSWORD_RESET_FOR_ADMINS = False
 
 CSRF_FAILURE_VIEW = 'core.views.csrf_failure'
 
+
+# Mica (the AI companion) daily message caps, counted per calendar day in TIME_ZONE.
+# Unverified accounts (registered with a shared term code, not yet approved by staff) get a small
+# personal allowance plus one shared pool for ALL unverified accounts together, so a leaked code
+# can't be used to burn the AI quota by registering many accounts. Crisis/safety replies never
+# count against, or get blocked by, these caps.
+MICA_DAILY_LIMIT = int(os.getenv("MICA_DAILY_LIMIT", "100"))                              # verified students
+MICA_DAILY_LIMIT_UNVERIFIED = int(os.getenv("MICA_DAILY_LIMIT_UNVERIFIED", "15"))         # each unverified student
+MICA_DAILY_LIMIT_UNVERIFIED_TOTAL = int(os.getenv("MICA_DAILY_LIMIT_UNVERIFIED_TOTAL", "300"))  # all of them together

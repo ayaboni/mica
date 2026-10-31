@@ -33,11 +33,11 @@
           {% csrf_token %}
           <input type="hidden" name="step" value="code">
 
-          <p class="auth-intro">Enter the 6-character registration code from the Guidance Office to continue.</p>
+          <p class="auth-intro">Enter the registration code from the Guidance Office to continue.</p>
 
           <div class="auth-field">
             <input type="text" id="registrationCode" class="code-input" name="registration_code"
-                   placeholder="Registration code" maxlength="12" required autofocus
+                   placeholder="Registration code" maxlength="24" required autofocus
                    autocapitalize="characters" spellcheck="false">
           </div>
 

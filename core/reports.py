@@ -20,6 +20,7 @@ from django.views.decorators.http import require_POST
 
 from .models import Activity, Appointment, StudentFlag, StudentNote, Semester, MoodEntry, ExerciseSession, DailyQuest, COURSES, SERVICES
 from .permissions import can, require_perm, staff_permissions
+from .verification import visible_students
 
 staff_only = user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
 SERVICE_KEYS = [k for k, _ in SERVICES]
@@ -106,7 +107,7 @@ def service_report(request):
     course = (request.GET.get("course") or "").strip()
     year = (request.GET.get("year") or "").strip()
 
-    students = User.objects.filter(is_staff=False, is_superuser=False)     # archived students still count
+    students = visible_students()     # archived students still count; unverified ones don't
     if course:
         students = students.filter(profile__course=course)
     if year:
@@ -245,7 +246,7 @@ def analytics(request):
         "open_now": StudentFlag.objects.exclude(status="resolved").count(),
     }
 
-    students = User.objects.filter(is_staff=False, is_superuser=False).filter(
+    students = visible_students().filter(
         Q(profile__account_status="active") | Q(profile__isnull=True))
     total = students.count()
     done = students.filter(assessment__completed_at__isnull=False, assessment__skipped=False).count()
@@ -282,7 +283,7 @@ def exercise_stats(request):
     year = (request.GET.get("year") or "").strip()
     student = (request.GET.get("student") or "").strip()
 
-    students = User.objects.filter(is_staff=False, is_superuser=False).filter(
+    students = visible_students().filter(
         Q(profile__account_status="active") | Q(profile__isnull=True))
     if course:
         students = students.filter(profile__course=course)
@@ -410,7 +411,7 @@ def period_report(request):
     today = timezone.localdate()
     allowed = _allowed_services(request.user)
 
-    students = User.objects.filter(is_staff=False, is_superuser=False).filter(
+    students = visible_students().filter(
         Q(profile__account_status="active") | Q(profile__isnull=True))
     total = students.count()
 

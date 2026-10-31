@@ -496,6 +496,7 @@ def students_list(request):
         "active": base.filter(active_q).count(),
         "inactive": base.filter(profile__account_status="inactive").count(),
         "graduated": base.filter(profile__account_status="graduated").count(),
+        "unverified": base.filter(profile__verification_status="unverified").count(),
     }
 
     qs = base.select_related("profile")
@@ -504,6 +505,8 @@ def students_list(request):
         qs = qs.filter(active_q)
     elif status in ("inactive", "graduated"):
         qs = qs.filter(profile__account_status=status)
+    elif status == "unverified":
+        qs = qs.filter(profile__verification_status="unverified")
     course = request.GET.get("course", "").strip()
     if course:
         qs = qs.filter(profile__course=course)
@@ -542,6 +545,7 @@ def students_list(request):
             "has_password": u.has_usable_password(),
             "locked": _throttle_key(u.username) in locked,
             "setup_pending": bool(p and p.needs_profile_setup),
+            "verification": p.verification_status if p else "verified",
         })
 
     return JsonResponse({
@@ -876,6 +880,7 @@ def _missing_students(listed=None):
         listed = set(EnrolledStudent.objects.annotate(k=Lower("student_number")).values_list("k", flat=True))
     qs = (UserProfile.objects.filter(account_status="active", needs_profile_setup=False,
                                      user__is_staff=False, user__is_superuser=False)
+          .exclude(verification_status="rejected")
           .select_related("user").order_by("user__last_name", "user__first_name"))
     return [p for p in qs if (p.student_number or "").lower() not in listed]
 

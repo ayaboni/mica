@@ -21,6 +21,12 @@ STATUS_REASONS = [
     ("other", "Other"),
 ]
 
+VERIFICATION_STATUS = [
+    ("verified", "Verified"),
+    ("unverified", "Unverified"),
+    ("rejected", "Rejected"),
+]
+
 SERVICES = [
     ("information", "Information"),
     ("counseling", "Counseling"),
@@ -110,13 +116,23 @@ class UserProfile(models.Model):
     status_changed_at = models.DateTimeField(null=True, blank=True)
     affirmations_seeded = models.BooleanField(default=False)
     dark_mode = models.BooleanField(default=False)
+    # Accounts made with a shared term code start "unverified": the student can use MICA, but is
+    # invisible to Guidance until a staff member approves them. "rejected" = deactivated as junk.
+    # Everyone else (single-use codes, admin-made, accounts from before this existed) is "verified".
+    verification_status = models.CharField(max_length=10, choices=VERIFICATION_STATUS,
+                                           default='verified', db_index=True)
+    verified_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    verified_at = models.DateTimeField(null=True, blank=True)
+    registered_code = models.ForeignKey('RegistrationCode', null=True, blank=True,
+                                        on_delete=models.SET_NULL, related_name='registrants')
 
     class Meta:
         constraints = [
-            # One student number per student (case-insensitive); blanks are exempt.
+            # One student number per student (case-insensitive); blanks are exempt, and so are
+            # rejected (deactivated junk) accounts, so a real student can still register with their number.
             models.UniqueConstraint(
                 Lower('student_number'),
-                condition=~models.Q(student_number=''),
+                condition=~models.Q(student_number='') & ~models.Q(verification_status='rejected'),
                 name='unique_student_number_ci',
             ),
         ]
@@ -245,6 +261,7 @@ class StaffSubclass(models.Model):
     archive_students = models.BooleanField(default=False)     # archive / reactivate
     export_records = models.BooleanField(default=False)
     generate_codes = models.BooleanField(default=False)       # make student registration codes
+    verify_students = models.BooleanField(default=False)      # approve / deactivate unverified student accounts
 
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -500,19 +517,39 @@ class EnrolledStudent(models.Model):
     
 
 class RegistrationCode(models.Model):
-    """A short code (6 characters) a staff member hands to a student so they can register.
+    """A code a student types on /register/ to get an account.
 
-    Single-use, and it stops working `expires_at`. Staff may generate one code a minute.
+    Two kinds:
+      * "single": one code per student, works once. Made one at a time or in a printed batch
+        (`batch` groups the codes made together). Staff handed it over in person, so the account
+        it creates is verified straight away.
+      * "shared": one "term code" announced to a whole class or year, with a cap on how many
+        accounts it can create (`max_uses`) and an expiry. Accounts it creates are *unverified*
+        until a staff member approves them.
+    Either kind stops working at `expires_at`, when it is used up, or once `revoked_at` is set.
     """
-    code = models.CharField(max_length=6, unique=True)
+    KIND_CHOICES = [("single", "Single-use"), ("shared", "Shared term code")]
+
+    code = models.CharField(max_length=24, unique=True)
+    kind = models.CharField(max_length=10, choices=KIND_CHOICES, default="single", db_index=True)
+    label = models.CharField(max_length=80, blank=True)          # e.g. "BSN 1st years" or "1st Sem AY 2026-2027"
+    batch = models.CharField(max_length=32, blank=True, db_index=True)
+    max_uses = models.PositiveIntegerField(default=1)
+    use_count = models.PositiveIntegerField(default=0)
     created_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='registration_codes')
     created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField()
-    used_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
-    used_at = models.DateTimeField(null=True, blank=True)
+    used_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')   # single-use: who
+    used_at = models.DateTimeField(null=True, blank=True)        # most recent use
+    revoked_at = models.DateTimeField(null=True, blank=True)
+    revoked_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
 
     class Meta:
         ordering = ['-created_at']
+
+    @property
+    def uses_left(self):
+        return max(0, self.max_uses - self.use_count)
 
     def __str__(self):
         return self.code

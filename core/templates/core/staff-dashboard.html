@@ -414,6 +414,7 @@
   body.no-students .nav-item[data-section="alerts"],
   body.no-assess .nav-item[data-section="assessments"],
   body.no-codes .nav-item[data-section="regcodes"],
+  body.no-verify .nav-item[data-section="pending"],
   body.no-chat .thread-composer,
   body.no-flag [onclick*="flagCurrentStudent"],
   body.no-flag [onclick*="openFlagModal"],
@@ -487,6 +488,11 @@
         Risk Alerts
         <span class="count" id="alertNavCount">0</span>
       </button>
+      <button class="nav-item" data-section="pending" onclick="goTo('pending')">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3.4"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6M16 11l2.2 2.2L22 9.4"/></svg>
+        Pending Accounts
+        <span class="count" id="pendingNavCount" style="display:none;">0</span>
+      </button>
       <button class="nav-item" data-section="messages" onclick="goTo('messages')">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 11.5a8.4 8.4 0 0 1-8.9 8.4 8.7 8.7 0 0 1-3.1-.6L3 21l1.8-5.4A8.4 8.4 0 0 1 3.6 11.5 8.4 8.4 0 0 1 12 3a8.6 8.6 0 0 1 9 8.5z"/></svg>
         Student Messages
@@ -514,7 +520,7 @@
 
     <div class="sidebar-bottom">
       <div class="admin-chip">
-        <div class="avatar" style="background:var(--sky);">{% include 'core/_initials.html' with u=request.user %}</div>
+        <div class="avatar me-avatar" style="background:var(--sky);">{% if my_avatar_url %}<img src="{{ my_avatar_url }}" alt="">{% else %}{% include 'core/_initials.html' with u=request.user %}{% endif %}</div>
         <div class="who">
           <div class="name" id="sidebarUserName">{{ request.user.get_full_name|default:request.user.username }}</div>
           <div class="role" id="sidebarUserRole">{{ staff_role }}</div>
@@ -550,7 +556,7 @@
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2a6 6 0 0 0-6 6v3.4c0 .8-.3 1.6-.9 2.2L4 15h16l-1.1-1.4a3.2 3.2 0 0 1-.9-2.2V8a6 6 0 0 0-6-6z"/><path d="M9.5 19a2.5 2.5 0 0 0 5 0"/></svg>
           <span class="ping" id="bellPing" style="display:none;">0</span>
         </button>
-        <div class="avatar" style="background:var(--sky); cursor:pointer;" onclick="goTo('settings')">{% include 'core/_initials.html' with u=request.user %}</div>
+        <div class="avatar me-avatar" style="background:var(--sky); cursor:pointer;" onclick="goTo('settings')">{% if my_avatar_url %}<img src="{{ my_avatar_url }}" alt="">{% else %}{% include 'core/_initials.html' with u=request.user %}{% endif %}</div>
       </div>
     </div>
 
@@ -906,6 +912,40 @@
         </div>
       </section>
 
+      <!-- ============ PENDING ACCOUNTS ============ -->
+      <section class="section" id="sec-pending">
+        <div class="card" style="padding:22px 26px; margin-bottom:18px;">
+          <div style="font-weight:700; font-size:16px; margin-bottom:6px;">Accounts waiting for confirmation</div>
+          <p style="font-size:13.5px; color:var(--ink-soft); line-height:1.55; margin-bottom:16px;">
+            These students signed up with a shared registration code. They can use MICA, but nothing about them
+            shows up in your dashboards until you approve them. Approve the ones you recognise or have met;
+            deactivate accounts that look like junk or outsiders.
+          </p>
+          <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
+            <button class="pill-btn solid" id="pendingApproveBtn" onclick="approvePending()">Approve selected</button>
+            <button class="pill-btn ghost" id="pendingDeactivateBtn" onclick="deactivatePending()">Deactivate selected</button>
+            <span id="pendingSelCount" style="font-size:13px; color:var(--ink-soft);"></span>
+          </div>
+        </div>
+        <div class="card" style="overflow-x:auto;">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:36px;"><br><input type="checkbox" id="pendingAll" onchange="togglePendingAll(this.checked)" aria-label="Select all"></th>
+                <th><br>Student</th>
+                <th><br>Student no.</th>
+                <th><br>Program</th>
+                <th><br>Email</th>
+                <th><br>Signed up</th>
+                <th><br>Enrollment list</th>
+                <th><br>Code</th>
+              </tr>
+            </thead>
+            <tbody id="pendingRows"></tbody>
+          </table>
+        </div>
+      </section>
+
       <!-- ============ REGISTRATION CODES ============ -->
       <section class="section" id="sec-regcodes">
         <div class="card" style="padding:26px; max-width:640px; margin-bottom:18px;">
@@ -926,6 +966,63 @@
           <span id="regCodeWait" style="margin-left:12px; font-size:13px; color:var(--ink-soft);"></span>
         </div>
 
+        <div class="card" style="padding:26px; max-width:640px; margin-bottom:18px;">
+          <div style="font-weight:700; font-size:16px; margin-bottom:6px;">Batch of single-use codes</div>
+          <p style="font-size:13.5px; color:var(--ink-soft); line-height:1.55; margin-bottom:16px;">
+            Make several codes at once to hand out on slips. Each works once. Students who use one are confirmed straight away.
+          </p>
+          <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px;">
+            <div class="field" style="margin-bottom:6px;"><label for="regBatchLabel">Name (optional)</label><input type="text" id="regBatchLabel" maxlength="80" placeholder="e.g. BSN 1st years"></div>
+            <div class="field" style="margin-bottom:6px;"><label for="regBatchCount">How many</label><input type="number" id="regBatchCount" min="1" max="100" value="20"></div>
+            <div class="field" style="margin-bottom:6px;"><label for="regBatchDays">Valid for (days)</label><input type="number" id="regBatchDays" min="1" max="30" value="7"></div>
+          </div>
+          <div id="regBatchBox" style="display:none; margin:12px 0;">
+            <textarea id="regBatchCodes" readonly rows="6" style="width:100%; padding:12px; border:1.5px dashed var(--line); border-radius:12px; font-family:'IBM Plex Mono',monospace; font-size:15px; letter-spacing:.12em; background:var(--cream); color:var(--ink);"></textarea>
+            <div style="margin-top:8px; display:flex; gap:10px; flex-wrap:wrap;">
+              <button class="pill-btn ghost sm" onclick="copyBatchCodes()">Copy all</button>
+              <button class="pill-btn ghost sm" id="regBatchCsv" onclick="downloadBatchCsv(this.dataset.batch)">Download CSV</button>
+            </div>
+          </div>
+          <button class="pill-btn solid" id="regBatchBtn" onclick="generateBatch()">Generate batch</button>
+        </div>
+
+        <div class="card" style="padding:26px; max-width:640px; margin-bottom:18px;">
+          <div style="font-weight:700; font-size:16px; margin-bottom:6px;">Shared term code</div>
+          <p style="font-size:13.5px; color:var(--ink-soft); line-height:1.55; margin-bottom:16px;">
+            One code you can announce to a whole class. It stops working when the sign-up limit is reached or it expires.
+            Because anyone who hears it can use it, accounts made with it stay <b>unverified</b> and are hidden from your
+            dashboards until someone approves them under Pending Accounts.
+          </p>
+          <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px;">
+            <div class="field" style="margin-bottom:6px;"><label for="regSharedLabel">Name</label><input type="text" id="regSharedLabel" maxlength="80" placeholder="e.g. 1st Sem AY 2026-2027"></div>
+            <div class="field" style="margin-bottom:6px;"><label for="regSharedUses">Max sign-ups</label><input type="number" id="regSharedUses" min="1" max="1000" value="100"></div>
+            <div class="field" style="margin-bottom:6px;"><label for="regSharedDays">Valid for (days)</label><input type="number" id="regSharedDays" min="1" max="180" value="30"></div>
+            <div class="field" style="margin-bottom:6px;"><label for="regSharedCode">Custom code (optional)</label><input type="text" id="regSharedCode" maxlength="20" placeholder="auto-generated" autocapitalize="characters" spellcheck="false"></div>
+          </div>
+          <div id="regSharedBox" style="display:none; text-align:center; padding:18px; border:1.5px dashed var(--line); border-radius:14px; margin:12px 0;">
+            <div style="font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-soft); font-weight:700; margin-bottom:8px;">Shared code</div>
+            <div id="regSharedValue" style="font-family:'IBM Plex Mono',monospace; font-size:30px; font-weight:700; letter-spacing:.2em; padding-left:.2em; user-select:all;"></div>
+            <button class="pill-btn ghost sm" style="margin-top:12px;" onclick="copySharedCode()">Copy code</button>
+          </div>
+          <button class="pill-btn solid" id="regSharedBtn" onclick="createSharedCode()">Create shared code</button>
+        </div>
+
+        <div class="card" style="overflow-x:auto; margin-bottom:18px;">
+          <div style="padding:16px 20px 0; font-weight:700;">Shared codes</div>
+          <table>
+            <thead><tr><th><br>Code</th><th><br>Name</th><th><br>Sign-ups</th><th><br>Awaiting approval</th><th><br>Status</th><th><br>Expires</th><th><br></th></tr></thead>
+            <tbody id="regSharedRows"></tbody>
+          </table>
+        </div>
+
+        <div class="card" style="overflow-x:auto; margin-bottom:18px;">
+          <div style="padding:16px 20px 0; font-weight:700;">Your batches</div>
+          <table>
+            <thead><tr><th><br>Batch</th><th><br>Codes</th><th><br>Created</th><th><br>Expires</th><th><br></th></tr></thead>
+            <tbody id="regBatchRows"></tbody>
+          </table>
+        </div>
+
         <div class="card" style="overflow-x:auto;">
           <table>
             <thead>
@@ -935,6 +1032,7 @@
                 <th><br>Generated</th>
                 <th><br>Expires</th>
                 <th><br>Used by</th>
+                <th><br></th>
               </tr>
             </thead>
             <tbody id="regCodeRows"></tbody>
@@ -1061,6 +1159,7 @@
         <div class="subpanel active" id="tab-profile">
           <div class="card panel" style="max-width:520px;">
     
+          {% include 'core/_my_photo_field.html' %}
           <div class="field"><label>First name</label><input type="text" id="profFirst" value="{{ request.user.first_name }}"></div>
           <div class="field"><label>Last name</label><input type="text" id="profLast" value="{{ request.user.last_name }}"></div>
           <div class="field"><label>Email</label><input type="email" value="{{ request.user.email }}" disabled></div>
@@ -1153,6 +1252,31 @@
 </div>
 
 <!-- ================= STUDENT MODAL ================= -->
+<div class="modal-overlay" id="batchModal" onclick="if(event.target===this) closeBatchModal()">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <h2 id="batchModalTitle">Batch</h2>
+        <div class="sub" id="batchModalSub">&mdash;</div>
+      </div>
+      <button class="modal-close" onclick="closeBatchModal()" aria-label="Close">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <div style="overflow-x:auto;">
+        <table class="data-table" style="width:100%;">
+          <thead><tr><th>Code</th><th>Status</th><th>Used by</th><th>Student no.</th><th>Used on</th></tr></thead>
+          <tbody id="batchModalRows"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="pill-btn ghost sm" onclick="copyBatchModalCodes(false)">Copy all codes</button>
+      <button class="pill-btn ghost sm" onclick="copyBatchModalCodes(true)">Copy unused only</button>
+      <button class="pill-btn ghost sm" id="batchModalCsv">Download CSV</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="studentModal">
   <div class="modal">
     <div class="modal-head">
@@ -1409,6 +1533,7 @@ function applyPermissions(){
     'no-archive':    !PERMS.archive_students,
     'no-export':     !PERMS.export_records,
     'no-codes':      !PERMS.generate_codes,
+    'no-verify':     !PERMS.verify_students,
     'no-schedule':   !(PERMS.schedule_services || []).length,
     'no-writenotes': !(PERMS.write_note_services || []).length,
   };
@@ -1476,6 +1601,7 @@ const titles = {
   assessments:["Monitor","Assessment Records"],
   alerts:["Monitor","Risk Alerts"],
   appointments:["Operations","Appointments"],
+  pending:["Monitor","Pending Accounts"],
   regcodes:["Operations","Registration Codes"],
   reports:["Operations","Reports & Analytics"],
   settings:["Operations","Settings"],
@@ -1491,6 +1617,7 @@ function goTo(section){
   if(section==='dashboard') setTimeout(renderCharts,10);
   if(section === 'appointments'){ loadAppointments(); }
   if(section === 'regcodes'){ loadRegCodes(); } else { clearInterval(regCodeTimer); }
+  if(section === 'pending'){ loadPending(); }
   if(section==='messages'){
     setTimeout(loadGuidanceInbox,10);
     if(activeThreadId){
@@ -1659,7 +1786,7 @@ let lastReferralCount = 0;
 let lastResponseCount = 0;
 
 function initials(name){
-  return escapeHtmlStaff(name.split(' ').filter(Boolean).map(w=>w[0]).join('').slice(0,2).toUpperCase() || '?');
+  return name.split(' ').filter(Boolean).map(w=>w[0]).join('').slice(0,2).toUpperCase() || '?';
 }
 
 function pollReferrals(){
@@ -1866,10 +1993,10 @@ function loadGuidanceInbox(){
         list.innerHTML = data.threads.map(t => {
           const owner = !t.claimed ? 'Unclaimed' : (t.mine ? 'Claimed by you' : 'Claimed by ' + escapeHtmlStaff(t.counselor_name) + ' · ' + escapeHtmlStaff(t.counselor_role));
           return `
-          <div class="thread-item ${t.id===activeThreadId?'active':''}" data-name="${escapeHtmlStaff(t.student_name)}" onclick="openGuidanceThread(${Number(t.id)}, this.dataset.name)">
+          <div class="thread-item ${t.id===activeThreadId?'active':''}" onclick="openGuidanceThread(${t.id}, '${t.student_name.replace(/'/g,"\\'")}')">
             <div class="avatar">${initials(t.student_name)}</div>
             <div class="t-info">
-              <div class="t-name">${escapeHtmlStaff(t.student_name)}${t.archived ? '<span class="archived-tag">Archived</span>' : ''} ${t.awaiting_reply && t.id !== activeThreadId ? '<span style="background:var(--alert); color:#fff; font-size:10px; padding:2px 7px; border-radius:999px; margin-left:6px;">New</span>' : ''}</div>
+              <div class="t-name">${t.student_name}${t.archived ? '<span class="archived-tag">Archived</span>' : ''} ${t.awaiting_reply && t.id !== activeThreadId ? '<span style="background:var(--alert); color:#fff; font-size:10px; padding:2px 7px; border-radius:999px; margin-left:6px;">New</span>' : ''}</div>
               <div class="t-preview">${escapeHtmlStaff(t.last_message || 'No messages yet')}</div>
               <div class="t-counselor">${owner}</div>
             </div>
@@ -1882,7 +2009,6 @@ function loadGuidanceInbox(){
 }
 
 function openGuidanceThread(threadId, studentName){
-  const safeName = escapeHtmlStaff(studentName || '');
   activeThreadId = threadId;
   loadGuidanceInbox();
   const t = threadsById[threadId];
@@ -1893,7 +2019,7 @@ function openGuidanceThread(threadId, studentName){
   if (t && t.claimed && !t.mine) {
     clearInterval(threadPollTimer);
     document.getElementById('threadViewPanel').innerHTML = `
-      <div class="thread-view-head">${safeName}</div>
+      <div class="thread-view-head">${studentName}</div>
       <div class="thread-empty" style="flex:1; display:flex; flex-direction:column; gap:12px; text-align:center; padding:24px;">
         <div>This conversation is handled by <b>${escapeHtmlStaff(t.counselor_name)}</b> (${escapeHtmlStaff(t.counselor_role)}).</div>
         ${IS_ADMIN ? `<div style="font-size:12.5px;">As system admin you can take it over. The conversation and the student's upcoming appointments will move to you.</div>
@@ -1908,7 +2034,7 @@ function openGuidanceThread(threadId, studentName){
   panel.innerHTML = `
     <div class="thread-view-head" style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
       <div style="min-width:0;">
-        <div>${safeName}${archived ? '<span class="archived-tag">Archived</span>' : ''}</div>
+        <div>${studentName}${archived ? '<span class="archived-tag">Archived</span>' : ''}</div>
         <div id="threadStudentSub" style="font-size:12.5px; font-weight:500; color:var(--ink-soft); margin-top:2px;"></div>
       </div>
       <span style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
@@ -1921,7 +2047,7 @@ function openGuidanceThread(threadId, studentName){
     ${archived ? `<div class="archived-banner">This student's account is archived, so they can't see new messages. Replies are turned off. You can still read the history.</div>` : ''}
     <div class="thread-messages" id="threadMessages"></div>
     <div class="thread-composer">
-      <input type="text" id="threadInput" placeholder="${archived ? 'Replies are off for archived students' : 'Reply to ' + safeName + '...'}" ${archived ? 'disabled' : ''}>
+      <input type="text" id="threadInput" placeholder="${archived ? 'Replies are off for archived students' : 'Reply to ' + studentName + '...'}" ${archived ? 'disabled' : ''}>
       <button class="pill-btn solid sm" onclick="sendStaffGuidanceMessage()" ${archived ? 'disabled' : ''}>Send</button>
     </div>
   `;
@@ -2065,12 +2191,7 @@ function getCookie(name) {
 function escapeHtmlStaff(str){
   const div = document.createElement('div');
   div.textContent = str;
-  // textContent->innerHTML escapes & < > only; also escape quotes so the
-  // result is safe inside quoted HTML attributes (data-*, placeholder, etc.)
-  return div.innerHTML
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
-    .replace(/\n/g, '<br>');
+  return div.innerHTML.replace(/\n/g, '<br>');
 }
 
 /* =========================================================
@@ -2973,8 +3094,8 @@ function renderAppointments() {
 
   body.innerHTML = filtered.map(a => `
     <tr>
-      <td style="font-weight:600;">${escapeHtmlStaff(a.student_name)}</td>
-      <td>${escapeHtmlStaff(a.counselor_name)}</td>
+      <td style="font-weight:600;">${a.student_name}</td>
+      <td>${a.counselor_name}</td>
       <td>${escapeHtmlStaff(a.service)}</td>
       <td class="mono-cell">${a.date}</td>
       <td class="mono-cell">${a.time}</td>
@@ -3040,7 +3161,7 @@ function renderAdmins(){
 }
 
 function saveStaffProfile(){
-  fetch("{% url 'staff_profile_update' %}", {
+  return fetch("{% url 'staff_profile_update' %}", {
     method:'POST',
     headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},
     body: JSON.stringify({
@@ -3051,12 +3172,21 @@ function saveStaffProfile(){
   })
   .then(r => r.json().then(d => ({ok:r.ok, d})))
   .then(({ok, d}) => {
-    if(!ok){ showToast(d.error || 'Could not save'); return; }
+    if(!ok){ showToast(d.error || 'Could not save'); return false; }
     document.getElementById('sidebarUserName').textContent = d.full_name;
+    { const f = document.getElementById('profFirst').value.trim(), l = document.getElementById('profLast').value.trim();
+      const ini = ((f[0]||'') + (l[0]||'')).toUpperCase(); if(ini){ window.MY_INITIALS = ini; if(window.refreshMyAvatar) refreshMyAvatar(); } }
+    // what is on screen is now the saved version (so it no longer counts as "unsaved")
+    ['profFirst','profLast','profLicense'].forEach(id => { const el = document.getElementById(id); if(el) el.defaultValue = el.value; });
     showToast('Profile saved');
     loadCareTeam();
-  });
+    return true;
+  })
+  .catch(() => { showToast('Could not save'); return false; });
 }
+// unsaved-changes protection (see _my_photo_js.html)
+window.MY_GUARD_FIELDS = ['profFirst','profLast','profLicense'];
+window.MY_SAVE_FIELDS = saveStaffProfile;
 
 /* =========================================================
    CHARTS
@@ -3945,30 +4075,65 @@ function regDateText(iso){
   return new Date(iso).toLocaleString([], {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'});
 }
 
+function regStatusBadge(status){
+  const cls = {active:'stable', used:'neutral', full:'neutral', expired:'urgent', revoked:'urgent'};
+  const label = {active:'Active', used:'Used', full:'Full', expired:'Expired', revoked:'Revoked'};
+  return `<span class="badge ${cls[status] || 'neutral'}">${label[status] || escapeHtmlStaff(status)}</span>`;
+}
+const REG_EMPTY = (cols, text) => `<tr style="cursor:default;"><td colspan="${cols}" style="text-align:center; color:var(--ink-soft); padding:24px;">${text}</td></tr>`;
+
 function renderRegCodes(data){
   if(data.ttl_hours) document.getElementById('regCodeTtl').textContent = data.ttl_hours;
-  const badgeCls = {active:'stable', used:'neutral', expired:'urgent'};
-  const label = {active:'Active', used:'Used', expired:'Expired'};
   const rows = data.codes || [];
   document.getElementById('regCodeRows').innerHTML = rows.length ? rows.map(c => `
     <tr style="cursor:default;">
       <td style="font-family:'IBM Plex Mono',monospace; font-weight:700; letter-spacing:.12em;">${escapeHtmlStaff(c.code)}</td>
-      <td><span class="badge ${badgeCls[c.status] || 'neutral'}">${label[c.status] || c.status}</span></td>
+      <td>${regStatusBadge(c.status)}</td>
       <td>${regDateText(c.created_at)}</td>
       <td>${regDateText(c.expires_at)}</td>
       <td>${c.used_by ? escapeHtmlStaff(c.used_by) : '<span style="color:var(--ink-soft);">\u2014</span>'}</td>
+      <td>${c.status === 'active' ? `<button class="pill-btn ghost sm" onclick="revokeRegCode(${c.id})">Revoke</button>` : ''}</td>
     </tr>`).join('')
-    : '<tr style="cursor:default;"><td colspan="5" style="text-align:center; color:var(--ink-soft); padding:28px;">No codes generated yet.</td></tr>';
+    : REG_EMPTY(6, 'No single codes generated yet.');
+
+  const shared = data.shared || [];
+  document.getElementById('regSharedRows').innerHTML = shared.length ? shared.map(c => `
+    <tr style="cursor:default;">
+      <td style="font-family:'IBM Plex Mono',monospace; font-weight:700; letter-spacing:.12em;">${escapeHtmlStaff(c.code)}</td>
+      <td>${escapeHtmlStaff(c.label || '')}<div style="font-size:11.5px; color:var(--ink-soft);">by ${escapeHtmlStaff(c.created_by || 'Former staff')}</div></td>
+      <td>${c.use_count} / ${c.max_uses}</td>
+      <td>${c.pending ? `<span class="badge watch">${c.pending}</span>` : '<span style="color:var(--ink-soft);">\u2014</span>'}</td>
+      <td>${regStatusBadge(c.status)}</td>
+      <td>${regDateText(c.expires_at)}</td>
+      <td>${c.status === 'active' ? `<button class="pill-btn ghost sm" onclick="revokeRegCode(${c.id})">Revoke</button>` : ''}</td>
+    </tr>`).join('')
+    : REG_EMPTY(7, 'No shared codes yet.');
+
+  const batches = data.batches || [];
+  document.getElementById('regBatchRows').innerHTML = batches.length ? batches.map(b => `
+    <tr style="cursor:default;">
+      <td>${escapeHtmlStaff(b.label || 'Batch')}</td>
+      <td>${b.used} used \u00b7 ${b.active} unused \u00b7 ${b.total} total</td>
+      <td>${regDateText(b.created_at)}</td>
+      <td>${regDateText(b.expires_at)}</td>
+      <td style="white-space:nowrap;">
+        <button class="pill-btn ghost sm" onclick="openBatchModal('${escapeHtmlStaff(b.batch)}')">View</button>
+        <button class="pill-btn ghost sm" onclick="downloadBatchCsv('${escapeHtmlStaff(b.batch)}')">CSV</button>
+        ${b.active ? `<button class="pill-btn ghost sm" onclick="revokeRegBatch('${escapeHtmlStaff(b.batch)}')">Revoke unused</button>` : ''}
+      </td>
+    </tr>`).join('')
+    : REG_EMPTY(5, 'No batches yet.');
+
   startRegCodeCountdown(data.cooldown_seconds || 0);
 }
 
 function startRegCodeCountdown(seconds){
   clearInterval(regCodeTimer);
   regCodeWaitLeft = seconds;
-  const btn = document.getElementById('regCodeBtn');
+  const btns = ['regCodeBtn','regBatchBtn','regSharedBtn'].map(id => document.getElementById(id)).filter(Boolean);
   const note = document.getElementById('regCodeWait');
   const paint = () => {
-    btn.disabled = regCodeWaitLeft > 0;
+    btns.forEach(b => b.disabled = regCodeWaitLeft > 0);
     note.textContent = regCodeWaitLeft > 0 ? `Next code in ${regCodeWaitLeft}s` : '';
   };
   paint();
@@ -3978,6 +4143,14 @@ function startRegCodeCountdown(seconds){
     paint();
     if(regCodeWaitLeft <= 0) clearInterval(regCodeTimer);
   }, 1000);
+}
+
+function regPost(url, body){
+  return fetch(url, {
+    method:'POST',
+    headers:{'X-CSRFToken':getCookie('csrftoken'), 'Content-Type':'application/json'},
+    body: JSON.stringify(body || {})
+  }).then(r => r.json().then(data => ({ok:r.ok, data})));
 }
 
 function loadRegCodes(){
@@ -4020,6 +4193,186 @@ function copyRegCode(){
   }
 }
 
+function copyText(text, okMsg){
+  if(!text) return;
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(() => showToast(okMsg), () => showToast("Select the text and copy it by hand."));
+  } else {
+    showToast("Select the text and copy it by hand.");
+  }
+}
+function copySharedCode(){ copyText(document.getElementById('regSharedValue').textContent, "Code copied"); }
+let _batchModalCodes = [];
+function openBatchModal(batch){
+  const body = document.getElementById('batchModalRows');
+  body.innerHTML = REG_EMPTY(5, 'Loading\u2026');
+  document.getElementById('batchModalTitle').textContent = 'Batch';
+  document.getElementById('batchModalSub').textContent = '';
+  document.getElementById('batchModalCsv').onclick = () => downloadBatchCsv(batch);
+  document.getElementById('batchModal').classList.add('active');
+  fetch(`/api/staff/registration-codes/batch/${encodeURIComponent(batch)}/`, {credentials:'same-origin'})
+    .then(r => r.json().then(d => ({ok:r.ok, d})))
+    .then(({ok, d}) => {
+      if(!ok){ body.innerHTML = REG_EMPTY(5, escapeHtmlStaff(d.error || "Couldn't load this batch.")); return; }
+      _batchModalCodes = d.codes || [];
+      const used = _batchModalCodes.filter(c => c.status === 'used').length;
+      document.getElementById('batchModalTitle').textContent = d.label || 'Batch';
+      document.getElementById('batchModalSub').textContent =
+        `${used} of ${_batchModalCodes.length} used \u00b7 created ${regDateText(d.created_at)} \u00b7 expires ${regDateText(d.expires_at)}`;
+      body.innerHTML = _batchModalCodes.map(c => `
+        <tr style="cursor:default;">
+          <td style="font-family:'IBM Plex Mono',monospace; letter-spacing:.04em;">${escapeHtmlStaff(c.code)}</td>
+          <td>${regStatusBadge(c.status)}</td>
+          <td>${c.used_by ? escapeHtmlStaff(c.used_by) : '<span style="color:var(--ink-soft);">\u2014</span>'}</td>
+          <td>${c.student_number ? escapeHtmlStaff(c.student_number) : '<span style="color:var(--ink-soft);">\u2014</span>'}</td>
+          <td>${c.used_at ? regDateText(c.used_at) : '<span style="color:var(--ink-soft);">\u2014</span>'}</td>
+        </tr>`).join('');
+    })
+    .catch(() => { body.innerHTML = REG_EMPTY(5, "Couldn't load this batch."); });
+}
+function closeBatchModal(){ document.getElementById('batchModal').classList.remove('active'); }
+function copyBatchModalCodes(unusedOnly){
+  const list = _batchModalCodes.filter(c => !unusedOnly || c.status === 'active').map(c => c.code);
+  if(!list.length){ showToast('No codes to copy'); return; }
+  copyText(list.join('\n'), unusedOnly ? 'Unused codes copied' : 'Codes copied');
+}
+function copyBatchCodes(){ copyText(document.getElementById('regBatchCodes').value, "Codes copied"); }
+function downloadBatchCsv(batch){ if(batch) window.location.href = `/api/staff/registration-codes/batch/${encodeURIComponent(batch)}/csv/`; }
+
+function generateBatch(){
+  if(!PERMS.generate_codes) return denied();
+  const btn = document.getElementById('regBatchBtn');
+  btn.disabled = true;
+  regPost("{% url 'staff_registration_batch' %}", {
+    label: document.getElementById('regBatchLabel').value,
+    count: document.getElementById('regBatchCount').value,
+    days: document.getElementById('regBatchDays').value,
+  }).then(({ok, data}) => {
+    if(ok && data.new_batch){
+      document.getElementById('regBatchCodes').value = data.new_batch.codes.join('\n');
+      document.getElementById('regBatchCsv').dataset.batch = data.new_batch.batch;
+      document.getElementById('regBatchBox').style.display = 'block';
+      showToast(`${data.new_batch.codes.length} codes ready`);
+    } else {
+      showToast(data.error || "Couldn't generate the batch.");
+    }
+    if(data.codes) renderRegCodes(data); else btn.disabled = false;
+  }).catch(() => { btn.disabled = false; showToast("Couldn't generate the batch."); });
+}
+
+function createSharedCode(){
+  if(!PERMS.generate_codes) return denied();
+  const btn = document.getElementById('regSharedBtn');
+  btn.disabled = true;
+  regPost("{% url 'staff_registration_shared' %}", {
+    label: document.getElementById('regSharedLabel').value,
+    max_uses: document.getElementById('regSharedUses').value,
+    days: document.getElementById('regSharedDays').value,
+    code: document.getElementById('regSharedCode').value,
+  }).then(({ok, data}) => {
+    if(ok && data.new_shared){
+      document.getElementById('regSharedValue').textContent = data.new_shared;
+      document.getElementById('regSharedBox').style.display = 'block';
+    } else {
+      showToast(data.error || "Couldn't create the shared code.");
+    }
+    if(data.codes) renderRegCodes(data); else btn.disabled = false;
+  }).catch(() => { btn.disabled = false; showToast("Couldn't create the shared code."); });
+}
+
+function revokeRegCode(id){
+  if(!confirm("Revoke this code? It will stop working right away.")) return;
+  regPost("{% url 'staff_registration_revoke' %}", {id}).then(({ok, data}) => {
+    showToast(ok ? "Code revoked" : (data.error || "Couldn't revoke it."));
+    if(data.codes) renderRegCodes(data);
+  }).catch(() => showToast("Couldn't revoke it."));
+}
+
+function revokeRegBatch(batch){
+  if(!confirm("Revoke every unused code in this batch?")) return;
+  regPost("{% url 'staff_registration_revoke' %}", {batch}).then(({ok, data}) => {
+    showToast(ok ? `${data.revoked} code${data.revoked === 1 ? '' : 's'} revoked` : (data.error || "Couldn't revoke them."));
+    if(data.codes) renderRegCodes(data);
+  }).catch(() => showToast("Couldn't revoke them."));
+}
+
+/* =========================================================
+   PENDING (UNVERIFIED) ACCOUNTS
+========================================================= */
+let pendingAccounts = [];
+
+function loadPending(quiet){
+  if(!PERMS.verify_students){ if(!quiet) denied(); return; }
+  fetch("{% url 'staff_unverified' %}")
+    .then(r => r.json())
+    .then(d => { pendingAccounts = d.accounts || []; renderPending(d); })
+    .catch(() => { if(!quiet) showToast("Couldn't load pending accounts."); });
+}
+
+function pendingListBadge(v){
+  if(v === true)  return '<span class="badge stable">On the list</span>';
+  if(v === false) return '<span class="badge urgent">Not on the list</span>';
+  return '<span style="color:var(--ink-soft);">\u2014</span>';
+}
+
+function renderPending(d){
+  const nav = document.getElementById('pendingNavCount');
+  nav.textContent = pendingAccounts.length;
+  nav.style.display = pendingAccounts.length ? '' : 'none';
+  document.getElementById('pendingAll').checked = false;
+  document.getElementById('pendingRows').innerHTML = pendingAccounts.length ? pendingAccounts.map(a => `
+    <tr style="cursor:default;">
+      <td><input type="checkbox" class="pendingChk" value="${a.id}" onchange="updatePendingCount()" aria-label="Select ${escapeHtmlStaff(a.name)}"></td>
+      <td><div class="code">${escapeHtmlStaff(a.name)}</div><div class="prog">@${escapeHtmlStaff(a.username)}${a.profile_incomplete ? ' \u00b7 setup unfinished' : ''}</div></td>
+      <td>${a.student_number ? escapeHtmlStaff(a.student_number) : '<span style="color:var(--ink-soft);">\u2014</span>'}</td>
+      <td>${escapeHtmlStaff(a.course)}${a.year ? ' \u00b7 Y' + escapeHtmlStaff(a.year) : ''}</td>
+      <td>${escapeHtmlStaff(a.email)}</td>
+      <td>${regDateText(a.joined)}</td>
+      <td>${d.enrollment_list_loaded ? pendingListBadge(a.on_enrollment_list) : '<span style="color:var(--ink-soft);">No list loaded</span>'}</td>
+      <td>${escapeHtmlStaff(a.code_label)}</td>
+    </tr>`).join('')
+    : REG_EMPTY(8, 'Nobody is waiting. New sign-ups from a shared code will appear here.');
+  updatePendingCount();
+}
+
+function selectedPendingIds(){
+  return Array.from(document.querySelectorAll('.pendingChk:checked')).map(c => parseInt(c.value, 10));
+}
+function updatePendingCount(){
+  const n = selectedPendingIds().length;
+  document.getElementById('pendingSelCount').textContent = n ? `${n} selected` : '';
+  document.getElementById('pendingApproveBtn').disabled = !n;
+  document.getElementById('pendingDeactivateBtn').disabled = !n;
+}
+function togglePendingAll(on){
+  document.querySelectorAll('.pendingChk').forEach(c => c.checked = on);
+  updatePendingCount();
+}
+
+function runPendingAction(url, ids, doneText){
+  regPost(url, {ids}).then(({ok, data}) => {
+    if(!ok){ showToast(data.error || "Something went wrong."); return; }
+    const n = data.approved ?? data.deactivated ?? 0;
+    showToast(`${n} account${n === 1 ? '' : 's'} ${doneText}` + (data.skipped ? ` (${data.skipped} already handled)` : ''));
+    loadPending(true);
+    if(typeof loadStudents === 'function' && doneText === 'approved') loadStudents();
+  }).catch(() => showToast("Something went wrong."));
+}
+function approvePending(){
+  if(!PERMS.verify_students) return denied();
+  const ids = selectedPendingIds();
+  if(!ids.length) return;
+  if(!confirm(`Approve ${ids.length} account${ids.length === 1 ? '' : 's'}? They will appear in your student lists and dashboards.`)) return;
+  runPendingAction("{% url 'staff_unverified_approve' %}", ids, 'approved');
+}
+function deactivatePending(){
+  if(!PERMS.verify_students) return denied();
+  const ids = selectedPendingIds();
+  if(!ids.length) return;
+  if(!confirm(`Deactivate ${ids.length} account${ids.length === 1 ? '' : 's'}? They will be signed out and unable to log in.`)) return;
+  runPendingAction("{% url 'staff_unverified_deactivate' %}", ids, 'deactivated');
+}
+
 function showToast(msg){
   const t = document.getElementById('toast');
   t.textContent = msg;
@@ -4046,6 +4399,10 @@ function initAll(){
   }
   loadCareTeam();
   loadAppointments();
+  if(PERMS.verify_students){
+    loadPending(true);
+    setInterval(()=>loadPending(true), 60000);
+  }
 }
 
 /* =========================================================
@@ -4225,5 +4582,6 @@ let staffNotifInitialized = false;
 </script>
 {% endif %}
 
+{% include 'core/_my_photo_js.html' %}
 </body>
 </html>

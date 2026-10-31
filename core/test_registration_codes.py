@@ -153,7 +153,7 @@ class RegisterGateTests(TestCase):
 
     def test_expired_and_used_codes_are_refused(self):
         expired = make_code(expires_at=timezone.now() - timedelta(minutes=1))
-        used = make_code(used_at=timezone.now())
+        used = make_code(use_count=1, used_at=timezone.now())
         for code in (expired, used):
             self.assertContains(self.enter(code.code), 'valid or has expired')
 

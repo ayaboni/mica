@@ -1,5 +1,5 @@
 from django.urls import path
-from . import views, admin_api, reports, registration_codes
+from . import views, admin_api, reports, registration_codes, verification
 from django.contrib.auth import views as auth_views
 from django.views.generic import TemplateView
 
@@ -33,7 +33,6 @@ urlpatterns = [
     path('consent/review/', views.consent_review, name='consent_review'),
     path('assessment/', views.assessment_questionnaire, name='assessment'),
     path('account/settings/', views.account_settings, name='account_settings'),
-    path('account/email/', views.change_email, name='change_email'),
     path('api/mood/', views.api_mood_month, name='api_mood_month'),
     path('api/mood/save/', views.api_mood_save, name='api_mood_save'),
     path('api/mood/delete/', views.api_mood_delete, name='api_mood_delete'),
@@ -88,8 +87,17 @@ urlpatterns = [
     path('api/staff/students/<int:student_id>/status/', views.staff_student_status, name='staff_student_status'),
     path('api/staff/care-team/', views.staff_care_team, name='staff_care_team'),
     path('api/staff/profile/', views.staff_profile_update, name='staff_profile_update'),
+    path('api/staff/profile/avatar/', views.staff_avatar_update, name='staff_avatar_update'),
     path('api/staff/registration-codes/', registration_codes.codes_list, name='staff_registration_codes'),
     path('api/staff/registration-codes/generate/', registration_codes.code_generate, name='staff_registration_code_generate'),
+    path('api/staff/registration-codes/batch/', registration_codes.batch_generate, name='staff_registration_batch'),
+    path('api/staff/registration-codes/batch/<str:batch>/', registration_codes.batch_detail, name='staff_registration_batch_detail'),
+    path('api/staff/registration-codes/batch/<str:batch>/csv/', registration_codes.batch_download, name='staff_registration_batch_csv'),
+    path('api/staff/registration-codes/shared/', registration_codes.shared_create, name='staff_registration_shared'),
+    path('api/staff/registration-codes/revoke/', registration_codes.code_revoke, name='staff_registration_revoke'),
+    path('api/staff/unverified/', verification.pending_list, name='staff_unverified'),
+    path('api/staff/unverified/approve/', verification.pending_approve, name='staff_unverified_approve'),
+    path('api/staff/unverified/deactivate/', verification.pending_deactivate, name='staff_unverified_deactivate'),
     path('api/staff/notes/<int:note_id>/review/', views.staff_note_review, name='staff_note_review'),
     path('api/staff/reports/services/', reports.service_report, name='staff_service_report'),
     path('api/staff/activities/', reports.activities, name='staff_activities'),
@@ -131,4 +139,4 @@ urlpatterns = [
     path("api/admin/data-requests/", admin_api.data_requests, name="admin_data_requests"),
     path("api/admin/data-requests/create/", admin_api.data_request_create, name="admin_data_request_create"),
     path("api/admin/data-requests/<int:pk>/close/", admin_api.data_request_close, name="admin_data_request_close"),
-]
+]

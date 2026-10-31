@@ -31,6 +31,7 @@ PERMISSION_FIELDS = [
     ("archive_students", "Archive / reactivate students", "bool"),
     ("export_records", "Export records", "bool"),
     ("generate_codes", "Generate student registration codes", "bool"),
+    ("verify_students", "Approve or deactivate unverified student accounts", "bool"),
 ]
 BOOL_FIELDS = [f for f, _, k in PERMISSION_FIELDS if k == "bool"]
 SERVICE_FIELDS = [f for f, _, k in PERMISSION_FIELDS if k == "services"]

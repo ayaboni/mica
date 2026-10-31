@@ -547,6 +547,7 @@
                 <option value="active">Active</option>
                 <option value="inactive">Archived</option>
                 <option value="graduated">Graduated</option>
+                <option value="unverified">Unverified (awaiting Guidance)</option>
               </select>
               <select class="filter-select" id="stuCourse" onchange="stuFiltersChanged()"><option value="">All courses</option></select>
             </div>
@@ -1582,6 +1583,8 @@ function renderStudentCards(d){
         ${s.locked ? '<span class="badge urgent">Locked out</span>' : ''}
         ${s.google ? '<span class="badge neutral">Google</span>' : ''}
         ${s.setup_pending ? '<span class="badge watch">Setup unfinished</span>' : ''}
+        ${s.verification === 'unverified' ? '<span class="badge watch">Unverified</span>' : ''}
+        ${s.verification === 'rejected' ? '<span class="badge urgent">Deactivated</span>' : ''}
       </div>
       <div class="stu-actions"><button class="pill-btn ghost sm" onclick="openStudentModal(${s.id})">Manage</button></div>
     </div>`;

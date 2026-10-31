@@ -32,9 +32,10 @@ from .models import SiteSettings
 from .models import EnrolledStudent
 from .reports import EXERCISE_LABELS
 from . import registration_codes as regcodes
+from . import verification
+from .verification import visible_students
 from .models import SignInFailure
 from . import firebase_reset
-from .name_validation import validate_person_names, normalize_name, sanitize_person_name, validate_username
 from urllib.parse import urlencode
 from .models import StaffProfile, StaffSubclass
 from .permissions import can, require_perm, staff_permissions, SERVICE_KEYS
@@ -42,7 +43,6 @@ from .models import StudentStatusLog, ACCOUNT_STATUS, STATUS_REASONS
 from .models import AssessmentHistory
 import hashlib, hmac, re, logging, wave, unicodedata
 from django.core.mail import EmailMultiAlternatives
-from django.core.validators import validate_email
 from django.template.loader import render_to_string
 from django.utils.crypto import constant_time_compare
 from django.views.decorators.http import require_http_methods
@@ -129,7 +129,7 @@ def google_register(request):
             status=403,
         )
 
-    full_name = sanitize_person_name(idinfo.get("name", ""))
+    full_name = idinfo.get("name", "")
     first_name = full_name.split(" ")[0] if full_name else ""
     last_name = " ".join(full_name.split(" ")[1:]) if full_name else ""
 
@@ -194,6 +194,7 @@ def google_register(request):
                     )  # no password -> unusable
                     profile = UserProfile.objects.create(
                         user=user, firebase_uid=uid, needs_profile_setup=True,
+                        **regcodes.profile_fields(reg_code),
                     )
                     regcodes.use_code(request, reg_code, user)
     except IntegrityError:
@@ -267,14 +268,11 @@ def complete_profile(request):
             error = "Please fill in every field."
         elif form["course"] not in dict(COURSE_CHOICES) or form["year_level"] not in dict(YEAR_LEVEL_CHOICES):
             error = "Please choose a valid course and year level."
-        elif (name_error := validate_person_names(form["first_name"], form["last_name"])):
-            error = name_error
         else:
-            form["first_name"] = normalize_name(form["first_name"])
-            form["last_name"] = normalize_name(form["last_name"])
-            username_error = validate_username(form["username"])
-            if username_error:
-                error = username_error
+            try:
+                User._meta.get_field("username").run_validators(form["username"])
+            except ValidationError:
+                error = "Username may only contain letters, numbers and @/./+/-/_ (150 characters max)."
             else:
                 if _username_taken(form["username"], exclude_user=request.user):
                     error = "Username is already registered."
@@ -354,7 +352,8 @@ def _username_taken(username, exclude_user=None):
 
 
 def _student_number_taken(student_number, exclude_user=None):
-    qs = UserProfile.objects.filter(student_number__iexact=student_number)
+    # A deactivated (rejected) junk account doesn't hold its number, so the real student can register.
+    qs = UserProfile.objects.filter(student_number__iexact=student_number).exclude(verification_status='rejected')
     if exclude_user is not None:
         qs = qs.exclude(user=exclude_user)
     return qs.exists()
@@ -398,7 +397,8 @@ def _register_code_step(request):
     code = regcodes.find_usable_code(request.POST.get("registration_code"))
     if code is None:
         regcodes.record_entry_failure(request)
-        messages.error(request, "That code isn't valid or has expired. Please check it, or ask the Guidance Office for a new one.")
+        messages.error(request, "That code isn't valid or has expired (or it has already been fully used). "
+                                "Please check it, or ask the Guidance Office for a new one.")
         return _register_page(request)
     regcodes.clear_entry_failures(request)
     request.session[regcodes.SESSION_KEY] = code.pk
@@ -446,20 +446,15 @@ def register(request):
             messages.error(request, "Please choose a valid course and year level.")
             return _register_page(request)
 
-        name_error = validate_person_names(first_name, last_name)
-        if name_error:
-            messages.error(request, name_error)
-            return _register_page(request)
-        first_name, last_name = normalize_name(first_name), normalize_name(last_name)
-
         problem = _enrollment_check(student_number, last_name)
         if problem:
             messages.error(request, problem)
             return _register_page(request)
 
-        username_error = validate_username(username)
-        if username_error:
-            messages.error(request, username_error)
+        try:
+            User._meta.get_field("username").run_validators(username)
+        except ValidationError:
+            messages.error(request, "Username may only contain letters, numbers and @/./+/-/_ (150 characters max).")
             return _register_page(request)
 
         if _username_taken(username):
@@ -470,7 +465,7 @@ def register(request):
             messages.error(request, "Student number is already registered.")
             return _register_page(request)
 
-        if User.objects.filter(email__iexact=email).exists():
+        if User.objects.filter(email__iexact=email).exclude(profile__verification_status='rejected').exists():
             messages.error(request, "Email is already registered.")
             return _register_page(request)
 
@@ -490,8 +485,10 @@ def register(request):
                     user=user,
                     student_number=student_number,
                     course=course,
-                    year_level=year_level
+                    year_level=year_level,
+                    **regcodes.profile_fields(reg_code),
                 )
+                needs_confirmation = reg_code.kind == "shared"
                 regcodes.use_code(request, reg_code, user)
         except _CodeGone:
             messages.error(request, "Your registration code is no longer valid. Please ask the Guidance Office for a new one.")
@@ -501,7 +498,12 @@ def register(request):
             messages.error(request, "Username or student number is already registered.")
             return _register_page(request)
 
-        messages.success(request, "Account created successfully! You can now log in.")
+        if needs_confirmation:
+            messages.success(request, "Account created! You can log in now. The Guidance Office still has to confirm "
+                                      "your account: until they do, Guidance can't see your information and Mica's "
+                                      "daily chat limit is smaller.")
+        else:
+            messages.success(request, "Account created successfully! You can now log in.")
         return redirect("login")
 
     return _register_page(request)
@@ -656,7 +658,6 @@ def _trust_browser(response, request, user):
 CODE_EMAILS = {
     "login": ("{code} is your MICA sign-in code", "core/email/login_code"),
     "password_change": ("{code} is your MICA password-change code", "core/email/password_change_code"),
-    "email_change": ("{code} is your MICA email-change code", "core/email/email_change_code"),
 }
 
 
@@ -1360,12 +1361,8 @@ def staff_setup(request):
         }
         pw1 = request.POST.get("new_password1") or ""
         pw2 = request.POST.get("new_password2") or ""
-        name_error = validate_person_names(values["first_name"], values["last_name"], require_last=False)
-        if name_error:
-            errors.append(name_error)
-        else:
-            values["first_name"] = normalize_name(values["first_name"])
-            values["last_name"] = normalize_name(values["last_name"])
+        if not values["first_name"]:
+            errors.append("Please enter your first name.")
         if not pw1:
             errors.append("Please choose a password.")
         elif pw1 != pw2:
@@ -1396,168 +1393,6 @@ def staff_setup(request):
 
 # -- Student Side --
 
-# -- Changing the account e-mail ---------------------------------------------
-# The e-mail address is what every sign-in / password code is sent to, so it must not be
-# changeable by whoever happens to be holding the session. To change it the student must
-#   1. type their CURRENT PASSWORD (accounts with no password must create one first), and
-#   2. type the 6-character code we send to the NEW address (proves they own it).
-# The old address is then told about the change. The address only changes at step 2.
-
-EMAIL_CHANGE_SESSION_KEY = "pending_email_change"
-
-
-def _email_taken(email, exclude_user=None):
-    qs = User.objects.filter(email__iexact=email)
-    if exclude_user is not None:
-        qs = qs.exclude(pk=exclude_user.pk)
-    return qs.exists()
-
-
-def _email_change_problem(email, user):
-    """Why `email` can't become this user's address, or None if it can."""
-    if not email:
-        return "Please enter the new email address."
-    if len(email) > 254:
-        return "That email address is too long."
-    try:
-        validate_email(email)
-    except ValidationError:
-        return "Please enter a valid email address."
-    if email == (user.email or "").strip().lower():
-        return "That is already your email address."
-    if _email_taken(email, exclude_user=user):
-        return "That email address is already used by another account."
-    return None
-
-
-def _notify_old_email(user, old_email, new_email):
-    """Tell the previous address that the account's email was changed (best effort)."""
-    context = {
-        "name": user.first_name or user.get_username(),
-        "new_email": _mask_email(new_email),
-        "when": timezone.localtime(timezone.now()).strftime("%b %d, %Y at %I:%M %p"),
-    }
-    try:
-        EmailMultiAlternatives(
-            "Your MICA email address was changed",
-            render_to_string("core/email/email_changed_notice.txt", context),
-            None, [old_email],
-        ).send(fail_silently=False)
-    except Exception:
-        logger.exception("Could not send the email-changed notice for user %s", user.pk)
-
-
-@never_cache
-@login_required(login_url='login')
-def change_email(request):
-    user = request.user
-    if user.is_superuser:
-        return redirect('admin_dashboard')
-    if user.is_staff:
-        return redirect('staff_dashboard')
-    if _needs_profile_setup(user):
-        return redirect('complete_profile')
-
-    has_password = user.has_usable_password()
-    throttle_key = f"emailchange:{user.pk}"
-    pending = request.session.get(EMAIL_CHANGE_SESSION_KEY)
-    latest = LoginVerification.objects.filter(user=user, purpose="email_change").order_by("-created_at").first()
-    code_live = bool(pending and latest and latest.used_at is None and latest.expires_at > timezone.now())
-    if pending and not code_live:
-        # The code expired or was used up: start over rather than showing a dead end.
-        request.session.pop(EMAIL_CHANGE_SESSION_KEY, None)
-        pending = None
-
-    if request.method == 'POST':
-        action = request.POST.get('action')
-
-        if action == 'cancel':
-            request.session.pop(EMAIL_CHANGE_SESSION_KEY, None)
-            LoginVerification.objects.filter(user=user, purpose="email_change", used_at__isnull=True)\
-                .update(used_at=timezone.now())
-            return redirect('account_settings')
-
-        if action == 'send_code':
-            if not has_password:
-                messages.error(request, "To change your email, first create a password for your account.")
-                return redirect('change_email')
-            locked = _lockout_seconds_left(throttle_key)
-            if locked:
-                messages.error(request, f"Too many wrong passwords. Try again in {_plural(locked, 'second')}.")
-                return redirect('change_email')
-            # Password first, so this page can't be used to find out which emails are registered.
-            if not user.check_password(request.POST.get("current_password") or ""):
-                left, lockout = _record_failed_login(throttle_key)
-                if lockout:
-                    messages.error(request, f"Too many wrong passwords. Try again in {_plural(lockout, 'second')}.")
-                else:
-                    messages.error(request, "Your current password isn't right.")
-                return redirect('change_email')
-            new_email = (request.POST.get("new_email") or "").strip().lower()
-            problem = _email_change_problem(new_email, user)
-            if problem:
-                messages.error(request, problem)
-                return redirect('change_email')
-            if latest and (timezone.now() - latest.created_at).total_seconds() < LOGIN_CODE_RESEND_COOLDOWN:
-                messages.error(request, "Please wait a moment before requesting another email.")
-                return redirect('change_email')
-            ok, error = _send_code(request, user, "email_change", to_email=new_email)
-            if ok:
-                LoginThrottle.objects.filter(username_key=throttle_key).delete()
-                request.session[EMAIL_CHANGE_SESSION_KEY] = new_email
-                messages.success(request, f"We sent a code to {_mask_email(new_email)}.")
-            else:
-                messages.error(request, error)
-            return redirect('change_email')
-
-        if action == 'resend_code':
-            if not pending:
-                return redirect('change_email')
-            if latest and (timezone.now() - latest.created_at).total_seconds() < LOGIN_CODE_RESEND_COOLDOWN:
-                messages.error(request, "Please wait a moment before requesting another email.")
-            else:
-                ok, error = _send_code(request, user, "email_change", to_email=pending)
-                if ok:
-                    messages.success(request, f"We sent a new code to {_mask_email(pending)}.")
-                else:
-                    messages.error(request, error)
-            return redirect('change_email')
-
-        if action == 'verify_code':
-            if not pending:
-                messages.error(request, "Start by entering the new email address.")
-                return redirect('change_email')
-            record, error = _check_code(user, "email_change", request.POST.get("code"))
-            if error:
-                messages.error(request, error)
-                return redirect('change_email')
-            request.session.pop(EMAIL_CHANGE_SESSION_KEY, None)
-            if _email_taken(pending, exclude_user=user):      # someone else took it while we waited
-                messages.error(request, "That email address is already used by another account.")
-                return redirect('change_email')
-            old_email = user.email
-            user.email = pending
-            user.save(update_fields=["email"])
-            if old_email:
-                _notify_old_email(user, old_email, pending)
-            messages.success(request, "Your email address has been updated.")
-            return redirect('account_settings')
-
-        return redirect('change_email')
-
-    cooldown = 0
-    if latest:
-        cooldown = max(0, math.ceil(LOGIN_CODE_RESEND_COOLDOWN - (timezone.now() - latest.created_at).total_seconds()))
-    return render(request, 'core/change-email.html', {
-        'step': 'code' if pending else 'enter',
-        'has_password': has_password,
-        'masked_current': _mask_email(user.email),
-        'masked_new': _mask_email(pending or ""),
-        'cooldown': cooldown, 'code_length': LOGIN_CODE_LENGTH,
-        'ttl_minutes': int(LOGIN_CODE_TTL.total_seconds() // 60),
-    })
-
-
 @login_required(login_url='login')
 def account_settings(request):
     if request.user.is_superuser:
@@ -1568,30 +1403,16 @@ def account_settings(request):
     profile = request.user.profile
     if request.method == 'POST':
         new_username = request.POST.get('username', request.user.username).strip()
-        # Only a username that is actually being changed has to follow the rule, so older
-        # accounts with a looser username can still save their other settings.
-        if new_username != request.user.username:
-            username_error = validate_username(new_username)
-            if username_error:
-                messages.error(request, username_error)
-                return redirect('account_settings')
         if new_username != request.user.username and (
             not new_username or _username_taken(new_username, exclude_user=request.user)
         ):
             messages.error(request, "Username is already registered.")
             return redirect('account_settings')
 
-        name_error = validate_person_names(
-            request.POST.get('first_name', ''), request.POST.get('last_name', ''), require_last=False)
-        if name_error:
-            messages.error(request, name_error)
-            return redirect('account_settings')
-
-        request.user.first_name = normalize_name(request.POST.get('first_name', ''))
-        request.user.last_name = normalize_name(request.POST.get('last_name', ''))
+        request.user.first_name = request.POST.get('first_name', '').strip()
+        request.user.last_name = request.POST.get('last_name', '').strip()
         request.user.username = new_username
-        # The email address is NOT saved here: changing it needs a code sent to the new address
-        # (see change_email), so a hijacked session can't quietly redirect the account's codes.
+        request.user.email = request.POST.get('email', request.user.email).strip()
         request.user.save()
 
         profile.course = request.POST.get('course', '').strip()
@@ -1603,8 +1424,20 @@ def account_settings(request):
         profile.share_mica_topics = request.POST.get('share_mica_topics') == 'on'
         if not profile.share_mica_topics:
             request.user.conversations.update(topics=[], topics_updated_at=None)
-        if request.FILES.get('avatar'):
-            profile.avatar = request.FILES['avatar']
+        new_avatar = request.FILES.get('avatar')
+        if new_avatar:
+            err = _avatar_error(new_avatar)
+            if err:
+                messages.error(request, err)
+            else:
+                if profile.avatar:
+                    profile.avatar.delete(save=False)   # don't leave the old picture behind
+                profile.avatar = new_avatar
+        elif request.POST.get('remove_avatar') == '1':
+            # Remove the picture completely: back to the default initials avatar everywhere.
+            if profile.avatar:
+                profile.avatar.delete(save=False)
+            profile.avatar = None
         profile.save()
 
         messages.success(request, "Your settings have been updated.")
@@ -1720,6 +1553,14 @@ def chatbot_reply(request):
 
     if not user_message:
         return JsonResponse({"error": "Empty message."}, status=400)
+
+    # Daily cap on Mica. Crisis/safety replies cost no AI quota and are never blocked, so only the
+    # AI path is checked. `reply` is set too, so the chat shows the message as if Mica said it.
+    if not _safety_reply(user_message):
+        capped = verification.mica_cap_reached(request.user)
+        if capped:
+            note = verification.CAP_MESSAGES[capped]
+            return JsonResponse({"error": note, "reply": note, "limit_reached": True}, status=429)
 
     # Get existing conversation, or create a new one on first message
     if conversation_id:
@@ -1873,6 +1714,7 @@ def student_dashboard(request):
         'profile': profile,
         'show_tutorial': is_student and not profile.has_seen_tutorial,
         'show_mood_tutorial': is_student and not profile.has_seen_mood_tutorial,
+        'account_unverified': is_student and profile.verification_status == 'unverified',
     })
 
 
@@ -1931,6 +1773,14 @@ def tutorial_reset(request):
 @login_required(login_url='login')
 @require_POST
 def guidance_send(request):
+    if verification.is_unverified(request.user):
+        hl = get_hotlines()[0]
+        return JsonResponse({
+            "error": "The Guidance Office hasn't confirmed your account yet, so they can't see messages from you. "
+                     "Please visit the Guidance Office to get confirmed. If you need someone to talk to right now, "
+                     "call %s: %s." % (hl["name"], hl["number"]),
+            "unverified": True,
+        }, status=403)
     data = json.loads(request.body)
     content = data.get("message", "").strip()
     if not content:
@@ -2288,6 +2138,25 @@ def get_profile(user):
     return profile
 
 
+AVATAR_MAX_BYTES = 5 * 1024 * 1024
+AVATAR_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+
+
+def _avatar_error(f):
+    """Return a user-facing error string if `f` is not an acceptable profile picture, else None."""
+    if f.size > AVATAR_MAX_BYTES:
+        return "That picture is too large. Please use one under 5 MB."
+    if (f.content_type or "").lower() not in AVATAR_TYPES:
+        return "Please upload a JPG, PNG, WebP or GIF image."
+    try:
+        from PIL import Image
+        Image.open(f).verify()      # raises if the file is not really an image
+        f.seek(0)
+    except Exception:
+        return "That file doesn't look like a valid image."
+    return None
+
+
 @login_required(login_url='login')
 @require_POST
 def api_dark_mode(request):
@@ -2411,6 +2280,15 @@ def _staff_role(user):
     return sp.role_label if sp else "Guidance Staff"
 
 
+def _avatar_url(user):
+    """URL of the user's profile picture, or '' when they have none."""
+    prof = UserProfile.objects.filter(user=user).only('avatar').first()
+    try:
+        return prof.avatar.url if prof and prof.avatar else ''
+    except Exception:
+        return ''
+
+
 # ---------------------------------------------------------------------------
 # Who may open which conversation
 #
@@ -2503,6 +2381,7 @@ def chat_or_referral(view):
 def staff_dashboard(request):
     sp = getattr(request.user, 'staff_profile', None)
     return render(request, 'core/staff-dashboard.html', {
+        'my_avatar_url': _avatar_url(request.user),
         'staff_role': _staff_role(request.user),
         'staff_license': sp.license_number if sp else '',
         'staff_perms': staff_permissions(request.user),
@@ -2529,7 +2408,8 @@ def staff_guidance_inbox(request):
     me = request.user
     chat_ok = can(me, 'chat_students')
     grants = _valid_grants(me)
-    threads = GuidanceThread.objects.select_related('student', 'student__profile', 'counselor', 'counselor__staff_profile')
+    threads = (GuidanceThread.objects.filter(student__in=visible_students())
+               .select_related('student', 'student__profile', 'counselor', 'counselor__staff_profile'))
     data = []
     for t in threads:
         mine = t.counselor_id == me.id
@@ -2593,7 +2473,7 @@ def _student_info_for(staff, student):
 @login_required(login_url='login')
 @user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
 def staff_guidance_thread(request, thread_id):
-    thread = get_object_or_404(GuidanceThread, id=thread_id)
+    thread = get_object_or_404(GuidanceThread, id=thread_id, student__in=visible_students())
     allowed, grant = _thread_access(request.user, thread)
     if not allowed:
         if thread.counselor_id and thread.counselor_id != request.user.id:
@@ -2623,7 +2503,7 @@ def staff_guidance_thread(request, thread_id):
 @require_POST
 @require_perm('take_cases')
 def staff_guidance_claim(request, thread_id):
-    thread = get_object_or_404(GuidanceThread, id=thread_id)
+    thread = get_object_or_404(GuidanceThread, id=thread_id, student__in=visible_students())
     try:
         takeover = bool(json.loads(request.body or b"{}").get("takeover"))
     except json.JSONDecodeError:
@@ -2647,7 +2527,7 @@ def staff_guidance_claim(request, thread_id):
 @user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
 @require_POST
 def staff_guidance_send(request, thread_id):
-    thread = get_object_or_404(GuidanceThread, id=thread_id)
+    thread = get_object_or_404(GuidanceThread, id=thread_id, student__in=visible_students())
     allowed, grant = _thread_access(request.user, thread)
     if _held_by_other(request.user, thread):
         return JsonResponse({"error": "Claimed by another counselor."}, status=403)
@@ -2673,7 +2553,7 @@ def staff_guidance_send(request, thread_id):
 @user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
 @require_POST
 def staff_guidance_note(request, thread_id):
-    thread = get_object_or_404(GuidanceThread, id=thread_id)
+    thread = get_object_or_404(GuidanceThread, id=thread_id, student__in=visible_students())
     if _held_by_other(request.user, thread):
         return JsonResponse({"error": "Claimed by another counselor."}, status=403)
     if not can(request.user, 'write_note_services'):
@@ -2769,7 +2649,7 @@ def _read_note_payload(request):
 @login_required(login_url='login')
 @user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
 def staff_student_notes(request, student_id):
-    student = get_object_or_404(User, id=student_id, is_staff=False, is_superuser=False)
+    student = get_object_or_404(visible_students(), id=student_id)
     if request.method == "POST":
         payload, error = _read_note_payload(request)
         if error:
@@ -2987,7 +2867,7 @@ def staff_referral_respond(request, note_id):
 @user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
 @require_POST
 def staff_schedule_appointment(request, thread_id):
-    thread = get_object_or_404(GuidanceThread, id=thread_id)
+    thread = get_object_or_404(GuidanceThread, id=thread_id, student__in=visible_students())
     if _student_archived(thread.student):
         return JsonResponse({"error": "This student's account is archived."}, status=409)
     
@@ -3145,7 +3025,7 @@ def _time_ago(dt):
 @user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
 @require_POST
 def staff_student_thread(request, student_id):
-    student = get_object_or_404(User, id=student_id, is_staff=False, is_superuser=False)
+    student = get_object_or_404(visible_students(), id=student_id)
     if not can(request.user, 'chat_students') and student.id not in _valid_grants(request.user):
         return JsonResponse({"error": "Your staff role doesn't allow this."}, status=403)
     thread = GuidanceThread.objects.filter(student=student).first() or GuidanceThread.objects.create(student=student)
@@ -3164,7 +3044,7 @@ def staff_students_list(request):
     status = request.GET.get("status", "active")
     if status not in dict(ACCOUNT_STATUS):
         status = "active"
-    base = User.objects.filter(is_staff=False, is_superuser=False)
+    base = visible_students()
     if status == "active":
         base = base.filter(Q(profile__account_status="active") | Q(profile__isnull=True))
     else:
@@ -3260,7 +3140,7 @@ def _risk_from_entries(entries, today):
 
 
 def _active_students():
-    return User.objects.filter(is_staff=False, is_superuser=False).filter(
+    return visible_students().filter(
         Q(profile__account_status="active") | Q(profile__isnull=True))
 
 @login_required(login_url='login')
@@ -3268,7 +3148,8 @@ def _active_students():
 @require_perm('view_students')
 def staff_flags(request):
     today = timezone.localdate()
-    flags = StudentFlag.objects.select_related('student', 'student__profile', 'flagged_by', 'assigned_to')
+    flags = (StudentFlag.objects.filter(student__in=visible_students())
+             .select_related('student', 'student__profile', 'flagged_by', 'assigned_to'))
     flag_data = [_flag_json(f, today, request.user) for f in flags]
     open_ids = set(StudentFlag.objects.exclude(status='resolved').values_list('student_id', flat=True))
     suggested = []
@@ -3301,7 +3182,7 @@ def staff_flags(request):
 @require_POST
 @require_perm('flag_students')
 def staff_flag_create(request, student_id):
-    student = get_object_or_404(User, id=student_id, is_staff=False, is_superuser=False)
+    student = get_object_or_404(visible_students(), id=student_id)
     try:
         data = json.loads(request.body)
     except json.JSONDecodeError:
@@ -3319,7 +3200,7 @@ def staff_flag_create(request, student_id):
 @user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
 @require_POST
 def staff_flag_action(request, flag_id):
-    flag = get_object_or_404(StudentFlag, id=flag_id)
+    flag = get_object_or_404(StudentFlag, id=flag_id, student__in=visible_students())
     try:
         data = json.loads(request.body)
     except json.JSONDecodeError:
@@ -3390,9 +3271,9 @@ def staff_dashboard_stats(request):
         return escape(u.get_full_name() or u.username)
 
     feed = []
-    for f in StudentFlag.objects.select_related('student').order_by('-created_at')[:5]:
+    for f in StudentFlag.objects.filter(student__in=students).select_related('student').order_by('-created_at')[:5]:
         feed.append((f.created_at, "⚠️", f"<b>{name(f.student)}</b> was flagged for review"))
-    for a in Appointment.objects.select_related('student').order_by('-created_at')[:5]:
+    for a in Appointment.objects.filter(student__in=students).select_related('student').order_by('-created_at')[:5]:
         feed.append((a.created_at, "📅", f"Appointment scheduled with <b>{name(a.student)}</b>"))
     for u in students.order_by('-date_joined')[:5]:
         feed.append((u.date_joined, "🫶", f"<b>{name(u)}</b> joined MICA"))
@@ -3420,7 +3301,8 @@ def staff_dashboard_stats(request):
         "checkins_yesterday": sum(1 for d, _ in entries if d == today - timedelta(days=1)),
         "avg_mood_7d": avg(last7),
         "avg_mood_prev7": avg(prev7),
-        "flags_new_week": StudentFlag.objects.filter(created_at__gte=now - timedelta(days=7)).count(),
+        "flags_new_week": StudentFlag.objects.filter(student__in=students, created_at__gte=now - timedelta(days=7)).count(),
+        "pending_accounts": verification.pending_students().count() if can(request.user, 'verify_students') else 0,
         "trend": {"labels": [d.strftime("%b %d") for d in trend_days], "values": [avg([d]) for d in trend_days]},
         "engagement": engagement,
         "engagement_by_course": engagement_by_course,
@@ -3477,7 +3359,7 @@ ACCESS_ACTIONS = {"view_profile", "open_chat", "view_notes", "view_assessment"}
 @user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
 @require_POST
 def staff_log_access(request, student_id):
-    student = get_object_or_404(User, id=student_id, is_staff=False, is_superuser=False)
+    student = get_object_or_404(visible_students(), id=student_id)
     try:
         action = json.loads(request.body).get("action")
     except json.JSONDecodeError:
@@ -3497,7 +3379,7 @@ def staff_log_access(request, student_id):
 @user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
 @require_perm('view_assessments')
 def staff_student_assessment(request, student_id):
-    student = get_object_or_404(User, id=student_id, is_staff=False, is_superuser=False)
+    student = get_object_or_404(visible_students(), id=student_id)
     profile = UserProfile.objects.filter(user=student).first()
     if not profile or not profile.share_assessment_with_guidance:
         return JsonResponse({"completed": False, "shared": False})
@@ -3582,7 +3464,7 @@ def staff_assessments(request):
 @require_POST
 @require_perm('archive_students')
 def staff_student_status(request, student_id):
-    student = get_object_or_404(User, id=student_id, is_staff=False, is_superuser=False)
+    student = get_object_or_404(visible_students(), id=student_id)
     profile, _ = UserProfile.objects.get_or_create(user=student)
     try:
         body = json.loads(request.body)
@@ -3681,15 +3563,11 @@ def staff_profile_update(request):
         data = json.loads(request.body)
     except json.JSONDecodeError:
         return JsonResponse({"error": "Invalid request."}, status=400)
-    first = str(data.get("first_name") or "")
-    last = str(data.get("last_name") or "")
+    first = (data.get("first_name") or "").strip()[:150]
+    last = (data.get("last_name") or "").strip()[:150]
     license_no = (data.get("license_number") or "").strip()[:50]
-    if not first.strip():
+    if not first:
         return JsonResponse({"error": "First name can't be empty."}, status=400)
-    name_error = validate_person_names(first, last, require_last=False)
-    if name_error:
-        return JsonResponse({"error": name_error}, status=400)
-    first, last = normalize_name(first), normalize_name(last)
     user = request.user
     user.first_name, user.last_name = first, last
     user.save(update_fields=["first_name", "last_name"])
@@ -3698,6 +3576,38 @@ def staff_profile_update(request):
         sp.license_number = license_no
         sp.save(update_fields=["license_number"])
     return JsonResponse({"status": "ok", "full_name": user.get_full_name()})
+
+
+@login_required(login_url='login')
+@user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
+@require_POST
+def staff_avatar_update(request):
+    """Add, change or remove the signed-in staff/admin member's own profile picture.
+
+    multipart POST:  avatar=<image file>   -> set/replace
+                     remove=1              -> delete
+    """
+    profile = get_profile(request.user)
+
+    if request.POST.get("remove") == "1":
+        if profile.avatar:
+            profile.avatar.delete(save=False)
+        profile.avatar = None
+        profile.save(update_fields=["avatar"])
+        return JsonResponse({"status": "ok", "avatar_url": ""})
+
+    f = request.FILES.get("avatar")
+    if not f:
+        return JsonResponse({"error": "Choose a picture first."}, status=400)
+    err = _avatar_error(f)
+    if err:
+        return JsonResponse({"error": err}, status=400)
+
+    if profile.avatar:
+        profile.avatar.delete(save=False)   # don't leave the old picture behind
+    profile.avatar = f
+    profile.save(update_fields=["avatar"])
+    return JsonResponse({"status": "ok", "avatar_url": profile.avatar.url})
 
 
 @login_required(login_url='login')
@@ -3720,7 +3630,7 @@ def staff_summary(request):
                           to_attr='recent_convos')))
 
     threads = {t.student_id: t for t in
-               GuidanceThread.objects.select_related('counselor', 'counselor__staff_profile')}
+               GuidanceThread.objects.filter(student__in=users).select_related('counselor', 'counselor__staff_profile')}
 
     next_appts = {}
     for a in Appointment.objects.filter(status__in=['pending', 'confirmed'],
@@ -3784,7 +3694,7 @@ def staff_summary(request):
 @login_required(login_url='login')
 @user_passes_test(lambda u: u.is_superuser, login_url='login')
 def admin_dashboard(request):
-    return render(request, 'core/admin-dashboard.html')
+    return render(request, 'core/admin-dashboard.html', {'my_avatar_url': _avatar_url(request.user)})
 
 
 # -- Logout --
@@ -3800,4 +3710,4 @@ def user_logout(request):
     auth_logout(request)
     if expired:
         return redirect(reverse('login') + '?expired=1')
-    return redirect('login')
+    return redirect('login')

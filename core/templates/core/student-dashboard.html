@@ -1688,6 +1688,13 @@ function toggleDyslexia(){
       </div>
       <div class="live-time-clock" id="liveTime"></div>
     </header>
+    {% if account_unverified %}
+    <div role="status" style="margin:0 0 14px; padding:12px 16px; border-radius:12px; background:#FFF6E0; border:1px solid #E8D08A; color:#5C4A12; font-size:13.5px; line-height:1.5;">
+      <strong>Waiting for confirmation.</strong> The Guidance Office hasn't confirmed your account yet.
+      You can use MICA, but Guidance can't see your information or messages, and Mica's daily chat limit is smaller.
+      Visit the Guidance Office to get confirmed. If you need someone to talk to right now, please reach out to a hotline.
+    </div>
+    {% endif %}
 
     <!-- ---------- HOME ---------- -->
     <section class="view active" id="view-home">
@@ -2640,7 +2647,10 @@ function sendGuidanceMessage(){
     method: "POST",
     headers: {"Content-Type": "application/json", "X-CSRFToken": getCookie("csrftoken")},
     body: JSON.stringify({message: text}),
-  });
+  }).then(r => r.ok ? null : r.json().then(d => {
+    // e.g. an account Guidance hasn't confirmed yet: say so instead of letting it look delivered
+    addMessage('guidance-messages', escapeHtml(d.error || "Your message couldn't be sent. Please try again."), 'bot', 'LEAF');
+  })).catch(() => {});
 }
 
 function reloadGuidanceMessages() {

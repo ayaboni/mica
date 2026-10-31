@@ -4,18 +4,31 @@ from datetime import timedelta
 from django.utils import timezone
 
 from .models import RegistrationCode
-from .registration_codes import REG_CODE_TTL, SESSION_KEY, new_code_value
+from .registration_codes import REG_CODE_TTL, SESSION_KEY, SHARED_CODE_LENGTH, new_code_value
 
 
 def make_code(created_by=None, **fields):
+    """A single-use code (its accounts are verified)."""
     fields.setdefault("expires_at", timezone.now() + REG_CODE_TTL)
     return RegistrationCode.objects.create(code=new_code_value(), created_by=created_by, **fields)
 
 
-def grant_registration_code(client):
-    """Give `client` a fresh, valid code in its session (as if the student had typed it in)."""
-    code = make_code()
+def make_shared_code(created_by=None, max_uses=50, **fields):
+    """A shared term code (its accounts start unverified)."""
+    fields.setdefault("expires_at", timezone.now() + timedelta(days=30))
+    fields.setdefault("label", "Test term")
+    return RegistrationCode.objects.create(
+        code=new_code_value(SHARED_CODE_LENGTH), kind="shared", max_uses=max_uses,
+        created_by=created_by, **fields)
+
+
+def put_code_in_session(client, code):
     session = client.session
     session[SESSION_KEY] = code.pk
     session.save()
     return code
+
+
+def grant_registration_code(client):
+    """Give `client` a fresh, valid single-use code in its session (as if the student had typed it in)."""
+    return put_code_in_session(client, make_code())
