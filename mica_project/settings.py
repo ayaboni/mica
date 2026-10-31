@@ -297,13 +297,12 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 if PRODUCTION:
     # The host (Render) ends https and tells Django so with this header.
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-    SECURE_SSL_REDIRECT = _env_bool("SECURE_SSL_REDIRECT", True)
+    SECURE_SSL_REDIRECT = _env_bool("SECURE_SSL_REDIRECT", not DEBUG)
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     # HSTS tells browsers to refuse plain http for this long. It starts at one hour so a mistake
     # can be undone; once everything works raise SECURE_HSTS_SECONDS to 31536000 (one year).
-    SECURE_HSTS_SECONDS = int(os.getenv("SECURE_HSTS_SECONDS", "3600"))
-
+    SECURE_HSTS_SECONDS = int(os.getenv("SECURE_HSTS_SECONDS", "0" if DEBUG else "3600"))
 # --- Firebase Admin credentials ----------------------------------------------------------------
 # On the live server paste the whole service-account JSON into the FIREBASE_CREDENTIALS_JSON
 # environment variable instead of uploading the file. Locally the file next to manage.py still works.
