@@ -11,7 +11,11 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
 import os
+import sys
 from pathlib import Path
+from urllib.parse import urlparse
+
+from django.core.exceptions import ImproperlyConfigured
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -31,15 +35,50 @@ VOSK_MODEL_PATH = Path(os.getenv(
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv("SECRET_KEY")
+def _env_bool(name, default=False):
+    return os.getenv(name, str(default)).strip().lower() in ("1", "true", "yes", "on")
+
+
+def _env_list(name):
+    return [item.strip() for item in os.getenv(name, "").split(",") if item.strip()]
+
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# Off unless you turn it on. For local development put  DEBUG=true  in your .env file.
+# Leave it unset on the live server.
+DEBUG = _env_bool("DEBUG", False)
+
+# manage.py test (or pytest) uses plain http, so the https-only settings below stay off for it.
+RUNNING_TESTS = (len(sys.argv) > 1 and sys.argv[1] == "test") or "pytest" in sys.modules
+
+# True on the live server: every setting in the "production" blocks below applies.
+PRODUCTION = not DEBUG and not RUNNING_TESTS
+
+# SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = os.getenv("SECRET_KEY")
+if PRODUCTION and not SECRET_KEY:
+    raise ImproperlyConfigured("Set the SECRET_KEY environment variable. (Running on your own computer? Put DEBUG=true in your .env file.)")
 
 SECURE_CROSS_ORIGIN_OPENER_POLICY = "same-origin-allow-popups"
 
-ALLOWED_HOSTS = ["127.0.0.1", "localhost", "192.168.254.113"]
+# Where the site is reachable. SITE_URL (e.g. https://mica.yourschool.edu) and the hostname
+# Render provides are added automatically; add anything else with ALLOWED_HOSTS=a.com,b.com
+_site_origins = []
+for _url in (os.getenv("SITE_URL", ""), os.getenv("RENDER_EXTERNAL_URL", "")):
+    _parts = urlparse(_url.strip())
+    if _parts.scheme in ("http", "https") and _parts.netloc:
+        _site_origins.append(f"{_parts.scheme}://{_parts.netloc}")
+
+ALLOWED_HOSTS = _env_list("ALLOWED_HOSTS") + [urlparse(o).hostname for o in _site_origins]
+if os.getenv("RENDER_EXTERNAL_HOSTNAME"):
+    ALLOWED_HOSTS.append(os.environ["RENDER_EXTERNAL_HOSTNAME"])
+if DEBUG or RUNNING_TESTS:
+    ALLOWED_HOSTS += ["127.0.0.1", "localhost", "192.168.254.113"]
+if PRODUCTION and not ALLOWED_HOSTS:
+    raise ImproperlyConfigured("Set ALLOWED_HOSTS (e.g. mica.yourschool.edu) or SITE_URL. (Running on your own computer? Put DEBUG=true in your .env file.)")
+
+# Origins allowed to submit forms over https (Django checks the Origin header against these).
+CSRF_TRUSTED_ORIGINS = _env_list("CSRF_TRUSTED_ORIGINS") + [o for o in _site_origins if o.startswith("https://")]
 
 
 # Application definition
@@ -69,6 +108,11 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+
+if PRODUCTION:
+    # Serves the collected static files (needs: pip install whitenoise; run collectstatic).
+    MIDDLEWARE.insert(1, 'whitenoise.middleware.WhiteNoiseMiddleware')
 
 
 ROOT_URLCONF = 'mica_project.urls'
@@ -145,6 +189,13 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.1/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'      # python manage.py collectstatic puts everything here
+if PRODUCTION:
+    STORAGES = {
+        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+        # Compressed, but no hashed file names, so a template pointing at a missing file can't crash a page.
+        "staticfiles": {"BACKEND": "whitenoise.storage.CompressedStaticFilesStorage"},
+    }
 MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
@@ -236,3 +287,24 @@ else:
             "OPTIONS": {"MAX_ENTRIES": 100000, "CULL_FREQUENCY": 10},
         }
     }
+
+# --- HTTPS and cookies (live server only) ----------------------------------------------------
+# Referrer-Policy: other sites (Google/Firebase) only see this site's origin, never the page path
+# or query string, but an HTTP-referrer-restricted Firebase key keeps working.
+SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
+SECURE_CONTENT_TYPE_NOSNIFF = True
+
+if PRODUCTION:
+    # The host (Render) ends https and tells Django so with this header.
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SECURE_SSL_REDIRECT = _env_bool("SECURE_SSL_REDIRECT", True)
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    # HSTS tells browsers to refuse plain http for this long. It starts at one hour so a mistake
+    # can be undone; once everything works raise SECURE_HSTS_SECONDS to 31536000 (one year).
+    SECURE_HSTS_SECONDS = int(os.getenv("SECURE_HSTS_SECONDS", "3600"))
+
+# --- Firebase Admin credentials ----------------------------------------------------------------
+# On the live server paste the whole service-account JSON into the FIREBASE_CREDENTIALS_JSON
+# environment variable instead of uploading the file. Locally the file next to manage.py still works.
+FIREBASE_CREDENTIALS_JSON = os.getenv("FIREBASE_CREDENTIALS_JSON", "")

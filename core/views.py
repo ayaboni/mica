@@ -84,7 +84,10 @@ import firebase_admin
 from firebase_admin import credentials, auth as firebase_auth
 
 if not firebase_admin._apps:
-    cred = credentials.Certificate(BASE_DIR / "firebase-service-account.json")
+    if getattr(settings, "FIREBASE_CREDENTIALS_JSON", ""):
+        cred = credentials.Certificate(json.loads(settings.FIREBASE_CREDENTIALS_JSON))
+    else:
+        cred = credentials.Certificate(BASE_DIR / "firebase-service-account.json")
     firebase_admin.initialize_app(cred)
 
 from .hotlines import crisis_resources_text, hotlines_inline, get_hotlines
