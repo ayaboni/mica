@@ -23,7 +23,7 @@
 </head>
 <body>
 {% include 'core/_loader.html' %}
-{% include 'core/_navbar.html' %}
+{% block navbar %}{% include 'core/_navbar.html' %}{% endblock %}
 
 {% block content %}{% endblock %}
 
