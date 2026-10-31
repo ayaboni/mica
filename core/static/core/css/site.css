@@ -694,3 +694,15 @@ html[data-theme="dark"] .status-pending { background: #4A3F1D; color: #f0d896; }
 .flash.error   { background: #f2dede; color: #a94442; }
 html[data-theme="dark"] .flash.success { background: #2F4535; color: #bfe0b8; }
 html[data-theme="dark"] .flash.error   { background: #4D3033; color: #ffb4b0; }
+
+/* ---------- pill buttons + toast (used by the photo block) ---------- */
+.pill-btn { border: none; font-family: inherit; font-weight: 700; cursor: pointer; border-radius: 999px; padding: 10px 20px; font-size: 14px; background: rgba(127,127,127,.18); color: var(--ink); margin: 0; }
+.pill-btn.sm { padding: 8px 16px; font-size: 13px; }
+.pill-btn.solid { background: var(--brown); color: #fff; }
+.pill-btn.solid:hover { background: var(--brown-dark); }
+.pill-btn.ghost { background: transparent; border: 1.5px solid var(--brown); color: var(--brown); }
+.pill-btn.ghost:hover { background: rgba(139,111,78,.12); }
+.pill-btn:disabled { opacity: .6; cursor: default; }
+
+#micaToast { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); background: var(--ink); color: var(--cream-bg); padding: 10px 18px; border-radius: 999px; font-weight: 700; font-size: 14px; z-index: 9700; opacity: 0; pointer-events: none; transition: opacity .2s; }
+#micaToast.show { opacity: 1; }

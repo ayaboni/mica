@@ -13,7 +13,17 @@
   var dark = saved ? saved === 'dark'
                    : window.matchMedia('(prefers-color-scheme: dark)').matches;
   document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+  try { if (localStorage.getItem('dyslexia') === '1') document.documentElement.classList.add('dyslexia'); } catch (e) {}
+  document.addEventListener('DOMContentLoaded', function () {
+    var on = document.documentElement.classList.contains('dyslexia');
+    document.querySelectorAll('.dys-toggle').forEach(function (b) { b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
+  });
 })();
+function toggleDyslexia() {
+  var on = document.documentElement.classList.toggle('dyslexia');
+  try { localStorage.setItem('dyslexia', on ? '1' : '0'); } catch (e) {}
+  document.querySelectorAll('.dys-toggle').forEach(function (b) { b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
+}
 </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

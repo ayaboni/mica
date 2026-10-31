@@ -1,207 +1,195 @@
-{% load static %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Account Settings — MICA</title>
-<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet">
-<style>
-  body{margin:0; font-family:'Nunito', sans-serif; background:#FAF7EE; color:#3A2E28;}
-  .topbar{background:#8FA98C; padding:18px 34px; display:flex; align-items:center; justify-content:space-between;}
-  .topbar a{color:#3A2E28; text-decoration:none; font-weight:700;}
-  .wrap{max-width:640px; margin:40px auto; padding:0 20px;}
-  .card{background:#FBF2DE; border-radius:24px; padding:32px;}
-  h1{font-family:'Fredoka',sans-serif; margin-top:0;}
-  .avatar-row{display:flex; align-items:center; gap:16px; margin-bottom:24px;}
-  .avatar-preview{width:72px; height:72px; border-radius:50%; object-fit:cover; background:#ddd;}
-  .avatar-initials{display:flex; align-items:center; justify-content:center; flex-shrink:0; background:linear-gradient(135deg,#A9C6A2,#8EAE88); color:#fff; font-family:'Fredoka','Nunito',sans-serif; font-weight:700; font-size:26px; letter-spacing:.5px; text-transform:uppercase; user-select:none; box-shadow:inset 0 0 0 3px rgba(255,255,255,.55);}
-  .field{margin-bottom:16px;}
-  .field label{display:block; font-weight:700; margin-bottom:6px; font-size:14px;}
-  .field input{width:100%; padding:12px 14px; border-radius:12px; border:1px solid #ddd; box-sizing:border-box; font-family:inherit; font-size:14px;}
-  .field select{width:100%; padding:12px 14px; border-radius:12px; border:1px solid #ddd; box-sizing:border-box; font-family:inherit; font-size:14px; background:#fff;}
-  .file-btn{
-  display:inline-block; padding:10px 20px; background:#8B6F4E; color:#fff;
-  border-radius:999px; font-weight:700; cursor:pointer; font-size:14px;
-  }
-  .file-btn:hover{background:#75603f;}
-  :root{ --line:rgba(58,46,40,.18); --ink-soft:#7a6a5c; --sky:#A9C6A2; }
-  .pill-btn{ border:none; font-family:inherit; font-weight:700; cursor:pointer; border-radius:999px; padding:10px 20px; font-size:14px; background:#F1ECDD; color:#3A2E28; margin:0; }
-  .pill-btn.sm{ padding:8px 16px; font-size:13px; }
-  .pill-btn.solid{ background:#8B6F4E; color:#fff; }
-  .pill-btn.solid:hover{ background:#75603f; }
-  .pill-btn.ghost{ background:transparent; border:1.5px solid #8B6F4E; color:#8B6F4E; }
-  .pill-btn.ghost:hover{ background:rgba(139,111,78,.12); }
-  .pill-btn:disabled{ opacity:.6; cursor:default; }
-  #micaToast{ position:fixed; left:50%; bottom:28px; transform:translateX(-50%); background:#3A2E28; color:#fff; padding:10px 18px; border-radius:999px; font-weight:700; font-size:14px; z-index:9700; opacity:0; pointer-events:none; transition:opacity .2s; }
-  #micaToast.show{ opacity:1; }
-  .two-col{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
-  button[type=submit]{background:#8B6F4E; color:#fff; border:none; padding:13px 28px; border-radius:999px; font-weight:700; cursor:pointer; margin-top:8px;}
-  .msg{padding:10px 16px; border-radius:12px; margin-bottom:16px; font-weight:600;}
-  .msg.success{background:#dff0d8; color:#3c763d;}
-  .msg.error{background:#f2dede; color:#a94442;}
-  .assessment-box{background:#F3ECD8; border-radius:16px; padding:20px 22px; margin-top:24px;}
-  .assessment-box-head{display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:8px;}
-  .assessment-box-head h3{font-family:'Fredoka',sans-serif; margin:0; font-size:17px;}
-  .assessment-box-desc{color:#7a6a5c; font-size:13.5px; margin:0 0 14px;}
-  .status-pill{padding:4px 12px; border-radius:999px; font-size:12px; font-weight:700;}
-  .status-pill.status-done{background:#dff0d8; color:#3c763d;}
-  .status-pill.status-pending{background:#fbe8c6; color:#8a6b1f;}
-  .btn-link{display:inline-block; background:#8B6F4E; color:#fff; padding:10px 22px; border-radius:999px; font-weight:700; font-size:14px; text-decoration:none;}
-  .btn-link:hover{background:#75603f;}
-</style>
-</head>
-<body>
-  {% include 'core/_loader.html' %}
-  
-  <div class="topbar">
-    <a href="{% url 'student_dashboard' %}">← Back to Dashboard</a>
-    <strong>MICA</strong>
-  </div>
+{% extends 'core/site_base.html' %}
 
-  <div class="wrap">
-    <div class="card">
+{% block title %}Account Settings | MICA{% endblock %}
+{% block footer %}{% endblock %}
+
+{% block extra_head %}
+<script>
+/* A logged-in page follows the student's saved dark mode, same as the dashboard */
+(function () {
+  var t = '{{ profile.dark_mode|yesno:"dark,light" }}';
+  document.documentElement.setAttribute('data-theme', t);
+  try { localStorage.setItem('mica_theme', t); } catch (e) {}
+})();
+</script>
+{% endblock %}
+
+{% block navbar %}
+  {% url 'student_dashboard' as dash_url %}
+  {% include 'core/_navbar_min.html' with nav_link_url=dash_url nav_link_label="← Back to Dashboard" %}
+{% endblock %}
+
+{% block content %}
+<section class="onboard doodle-bg">
+  <div class="onboard-inner onboard-inner--narrow">
+
+    <header class="onboard-head">
       <h1>Account Settings</h1>
+    </header>
 
-      {% if messages %}
-        {% for message in messages %}
-          <div class="msg {{ message.tags }}">{{ message }}</div>
-        {% endfor %}
-      {% endif %}
+    {% if messages %}
+      {% for message in messages %}
+        <p class="flash {{ message.tags }}">{{ message }}</p>
+      {% endfor %}
+    {% endif %}
 
-      <form method="post" enctype="multipart/form-data">
-        {% csrf_token %}
+    <form method="post" class="form-card">
+      {% csrf_token %}
 
-        {% include 'core/_my_photo_field.html' %}
+      {% include 'core/_my_photo_field.html' %}
 
-        <div class="two-col">
-          <div class="field">
-            <label>First Name</label>
-            <input type="text" name="first_name" value="{{ request.user.first_name }}">
-          </div>
-          <div class="field">
-            <label>Last Name</label>
-            <input type="text" name="last_name" value="{{ request.user.last_name }}">
-          </div>
+      <div class="two-col">
+        <div class="auth-field">
+          <label class="set-label" for="first_name">First name</label>
+          <input type="text" id="first_name" name="first_name" value="{{ request.user.first_name }}">
         </div>
-
-        <div class="field">
-          <label>Nickname</label>
-          <input type="text" name="nickname" value="{{ profile.nickname|default:'' }}" placeholder="What should Mica call you?">
+        <div class="auth-field">
+          <label class="set-label" for="last_name">Last name</label>
+          <input type="text" id="last_name" name="last_name" value="{{ request.user.last_name }}">
         </div>
+      </div>
 
-        <div class="two-col">
-          <div class="field">
-            <label>Username</label>
-            <input type="text" name="username" value="{{ request.user.username }}">
-          </div>
-          <div class="field">
-            <label>Email</label>
-            <input type="email" value="{{ request.user.email }}" disabled style="background:#f0ece0;">
-            <a href="{% url 'change_email' %}" style="display:inline-block; margin-top:6px; font-size:13px; font-weight:700; color:#7B5B3F;">Change email</a>
-          </div>
+      <div class="auth-field">
+        <label class="set-label" for="nickname">Nickname</label>
+        <input type="text" id="nickname" name="nickname" value="{{ profile.nickname|default:'' }}" placeholder="What should Mica call you?">
+      </div>
+
+      <div class="two-col">
+        <div class="auth-field">
+          <label class="set-label" for="username">Username</label>
+          <input type="text" id="username" name="username" value="{{ request.user.username }}">
         </div>
-
-        <div class="field">
-          <label>Student Number</label>
-          <input type="text" value="{{ profile.student_number }}" disabled style="background:#f0ece0;">
+        <div class="auth-field">
+          <label class="set-label" for="email">Email</label>
+          <input type="email" id="email" value="{{ request.user.email }}" disabled>
+          <a class="text-link" href="{% url 'change_email' %}">Change email</a>
         </div>
+      </div>
 
-        <div class="two-col">
-          <div class="field">
-            <label>Course</label>
-            <select name="course">
-              {% for code, label in courses %}
+      <div class="auth-field">
+        <label class="set-label" for="student_number">Student number</label>
+        <input type="text" id="student_number" value="{{ profile.student_number }}" disabled>
+      </div>
+
+      <div class="two-col">
+        <div class="auth-field">
+          <label class="set-label" for="course">Course</label>
+          <select id="course" name="course">
+            {% for code, label in courses %}
               <option value="{{ code }}" {% if profile.course == code %}selected{% endif %}>{{ label }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          <div class="field">
-            <label>Year Level</label>
-            <select name="year_level">
+            {% endfor %}
+          </select>
+        </div>
+        <div class="auth-field">
+          <label class="set-label" for="year_level">Year level</label>
+          <select id="year_level" name="year_level">
             {% for code, label in year_levels %}
               <option value="{{ code }}" {% if profile.year_level == code %}selected{% endif %}>{{ label }}</option>
             {% endfor %}
-            </select>
-          </div>
+          </select>
         </div>
+      </div>
 
-        <div class="field">
-          <label>Contact Number</label>
-          <input type="text" name="contact_number" value="{{ profile.contact_number|default:'' }}">
+      <div class="auth-field">
+        <label class="set-label" for="contact_number">Contact number</label>
+        <input type="text" id="contact_number" name="contact_number" value="{{ profile.contact_number|default:'' }}">
+      </div>
+
+      <div class="two-col">
+        <div class="auth-field">
+          <label class="set-label" for="ec_name">Emergency contact name</label>
+          <input type="text" id="ec_name" name="emergency_contact_name" value="{{ profile.emergency_contact_name|default:'' }}">
         </div>
-
-        <div class="two-col">
-          <div class="field">
-            <label>Emergency Contact Name</label>
-            <input type="text" name="emergency_contact_name" value="{{ profile.emergency_contact_name|default:'' }}">
-          </div>
-          <div class="field">
-            <label>Emergency Contact Number</label>
-            <input type="text" name="emergency_contact_number" value="{{ profile.emergency_contact_number|default:'' }}">
-          </div>
+        <div class="auth-field">
+          <label class="set-label" for="ec_number">Emergency contact number</label>
+          <input type="text" id="ec_number" name="emergency_contact_number" value="{{ profile.emergency_contact_number|default:'' }}">
         </div>
+      </div>
 
-        <div class="assessment-box">
-          <div class="assessment-box-head">
-            <h3>Health &amp; Symptom Assessment</h3>
-            {% if user.assessment.completed_at %}
-              <span class="status-pill status-done">Completed</span>
-            {% else %}
-              <span class="status-pill status-pending">Pending</span>
-            {% endif %}
-          </div>
-          <p class="assessment-box-desc">Keep your health profile updated by filling out or updating your initial symptom assessment form.</p>
+      <div class="sub-card">
+        <div class="sub-card-head">
+          <h3>Student Profile Data Sheet</h3>
           {% if user.assessment.completed_at %}
-            <a href="{% url 'assessment' %}?retake=true" class="btn-link">Retake Assessment</a>
+            <span class="status-pill status-done">Completed</span>
           {% else %}
-            <a href="{% url 'assessment' %}" class="btn-link">Complete Assessment</a>
+            <span class="status-pill status-pending">Pending</span>
           {% endif %}
         </div>
-
-        <div class="assessment-box">
-          <div class="assessment-box-head">
-            <h3>App Tutorial</h3>
-          </div>
-          <p class="assessment-box-desc">Want a refresher? Replay the quick tour of your dashboard. The Mood Diary tour will play again the next time you open it.</p>
-          <button type="submit" form="tutorialResetForm" class="btn-link" style="border:none; cursor:pointer; font-family:inherit;">Replay Tutorial</button>
-        </div>
-
-        <div class="field" style="margin-top:22px;">
-          <label>Sharing with Guidance (optional)</label>
-          <label style="font-weight:400; display:flex; gap:8px; align-items:flex-start;">
-          </label>
-          <label style="font-weight:400; display:flex; gap:8px; align-items:flex-start;">
-            <input type="checkbox" name="share_mica_topics" style="width:auto; margin-top:3px;" {% if profile.share_mica_topics %}checked{% endif %}>
-            Share short topic tags from my chats with Mica
-          </label>
-          <a href="{% url 'consent_review' %}" style="font-size:13px; color:#7a6a5c;">Read the privacy and consent form again</a>
-        </div>
-
-        {% if not has_password %}
-        <p style="font-size:13px; color:#7a6a5c; line-height:1.5; margin:22px 0 0;">You sign in with Google. Create a password too, so you can sign in with your username (<strong>{{ request.user.username }}</strong>) and password if your Google account can't be reached.</p>
+        <p>Keep your profile up to date by filling out or retaking the check-in.</p>
+        {% if user.assessment.completed_at %}
+          <a href="{% url 'assessment' %}?retake=true" class="btn btn-brown btn-sm">Retake check-in</a>
+        {% else %}
+          <a href="{% url 'assessment' %}" class="btn btn-brown btn-sm">Complete check-in</a>
         {% endif %}
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:24px;">
-          <a href="{% url 'change_password' %}" class="btn-link">{% if has_password %}Change Password{% else %}Create a Password{% endif %}</a>
-          <button type="submit" style="margin-top:0;">Save Changes</button>
-        </div>
-      </form>
+      </div>
 
-      <form id="tutorialResetForm" method="post" action="{% url 'tutorial_reset' %}">{% csrf_token %}</form>
+      <div class="sub-card">
+        <div class="sub-card-head">
+          <h3>App tutorial</h3>
+        </div>
+        <p>Want a refresher? Replay the quick tour of your dashboard. The Mood Diary tour will play again the next time you open it.</p>
+        <button type="submit" form="tutorialResetForm" class="btn btn-brown btn-sm">Replay tutorial</button>
+      </div>
+
+      <h3>Sharing with Guidance (optional)</h3>
+      <label class="check-row">
+        <input type="checkbox" name="share_mica_topics" {% if profile.share_mica_topics %}checked{% endif %}>
+        <span>Share short topic tags from my chats with Mica. Guidance never sees my messages.</span>
+      </label>
+      <a class="text-link" href="{% url 'consent_review' %}">Read the privacy and consent form again</a>
+
+      {% if not has_password %}
+        <p class="set-note" style="margin-top:22px;">You sign in with Google. Create a password too, so you can sign in with your username (<strong>{{ request.user.username }}</strong>) and password if your Google account can't be reached.</p>
+      {% endif %}
+
+      <div class="form-actions">
+        <a href="{% url 'change_password' %}" class="btn btn-outline">{% if has_password %}Change password{% else %}Create a password{% endif %}</a>
+        <button type="submit" class="btn btn-brown">Save changes</button>
+      </div>
+    </form>
+
+    <form id="tutorialResetForm" method="post" action="{% url 'tutorial_reset' %}">{% csrf_token %}</form>
+
+  </div>
+</section>
 
 <div id="micaToast" role="status" aria-live="polite"></div>
+{% endblock %}
+
+{% block extra_js %}
 <script>
-  /* Helpers the shared photo script expects (showToast, getCookie) */
-  function getCookie(name){
-    var m = document.cookie.match('(?:^|; )' + name + '=([^;]*)');
-    return m ? decodeURIComponent(m[1]) : '';
-  }
-  var _toastTimer;
-  function showToast(msg){
-    var t = document.getElementById('micaToast');
-    t.textContent = msg; t.classList.add('show');
-    clearTimeout(_toastTimer); _toastTimer = setTimeout(function(){ t.classList.remove('show'); }, 2800);
-  }
+/* Helpers the photo script expects (showToast, getCookie) */
+function getCookie(name){
+  var m = document.cookie.match('(?:^|; )' + name + '=([^;]*)');
+  return m ? decodeURIComponent(m[1]) : '';
+}
+var _toastTimer;
+function showToast(msg){
+  var t = document.getElementById('micaToast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(_toastTimer); _toastTimer = setTimeout(function(){ t.classList.remove('show'); }, 2800);
+}
+
+/* Toggling dark mode here also saves it, so the dashboard matches */
+(function () {
+  var csrf = document.querySelector('[name=csrfmiddlewaretoken]');
+  document.querySelectorAll('.theme-toggle:not(.dys-toggle)').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      setTimeout(function () {
+        var dark = document.documentElement.getAttribute('data-theme') === 'dark';
+        try {
+          localStorage.setItem('mica_theme', dark ? 'dark' : 'light');
+          localStorage.setItem('mica_dark', dark ? '1' : '0');
+        } catch (e) {}
+        fetch("{% url 'api_dark_mode' %}", {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrf ? csrf.value : ''},
+          body: JSON.stringify({dark: dark})
+        }).catch(function () {});
+      }, 0);
+    });
+  });
+})();
 </script>
 {% include 'core/_my_photo_js.html' %}
-</body>
-</html>
+{% endblock %}
