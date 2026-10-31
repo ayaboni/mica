@@ -1,10 +1,11 @@
 from django.urls import path
 from . import views, admin_api, reports, registration_codes, verification
 from django.contrib.auth import views as auth_views
-from django.views.generic import TemplateView
+from django.views.generic import TemplateView, RedirectView
 
 urlpatterns = [
-    path('', views.home, name='home'),
+    path('home/', views.home, name='home'),
+    path('', RedirectView.as_view(pattern_name='home', permanent=False)),
     path('about/', views.about, name='about'),
     path('privacy-policy/', views.privacy, name='privacy'),
     path('contact/', views.contact, name='contact'),
