@@ -65,6 +65,7 @@ MIDDLEWARE = [
     'core.middleware.ArchivedStudentMiddleware',
     'core.middleware.StaffSetupMiddleware',
     'core.middleware.IdleTimeoutMiddleware',
+    'core.middleware.ContentSecurityPolicyMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -203,3 +204,6 @@ CSRF_FAILURE_VIEW = 'core.views.csrf_failure'
 MICA_DAILY_LIMIT = int(os.getenv("MICA_DAILY_LIMIT", "100"))                              # verified students
 MICA_DAILY_LIMIT_UNVERIFIED = int(os.getenv("MICA_DAILY_LIMIT_UNVERIFIED", "15"))         # each unverified student
 MICA_DAILY_LIMIT_UNVERIFIED_TOTAL = int(os.getenv("MICA_DAILY_LIMIT_UNVERIFIED_TOTAL", "300"))  # all of them together
+
+# Content-Security-Policy: report-only until you set CSP_ENFORCE=true (see core/middleware.py)
+CSP_ENFORCE = os.getenv("CSP_ENFORCE", "false").lower() == "true"

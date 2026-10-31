@@ -4,6 +4,7 @@ from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 import logging
+from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
@@ -107,3 +108,41 @@ class MaintenanceModeMiddleware:
                 return JsonResponse({"error": "maintenance", "maintenance": True}, status=503)
             return render(request, "core/maintenance.html", {"message": row.maintenance_message}, status=503)
         return self.get_response(request)
+
+
+class ContentSecurityPolicyMiddleware:
+    """Adds a Content-Security-Policy header.
+
+    Report-only by default so nothing breaks while you check the browser console on a
+    staging copy. Set the environment variable CSP_ENFORCE=true to start enforcing it.
+
+    Inline scripts are still allowed ('unsafe-inline') because the templates use them;
+    the policy still blocks scripts from unknown hosts, plugins, base-tag hijacking,
+    framing by other sites, and data being sent to other origins.
+    """
+    POLICY = "; ".join([
+        "default-src 'self'",
+        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com "
+        "https://www.gstatic.com https://apis.google.com",
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+        "font-src 'self' data: https://fonts.gstatic.com",
+        "img-src 'self' data: blob:",
+        "connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.firebaseapp.com",
+        "frame-src 'self' https://*.firebaseapp.com https://accounts.google.com",
+        "object-src 'none'",
+        "base-uri 'self'",
+        "form-action 'self'",
+        "frame-ancestors 'self'",
+    ])
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        header = ("Content-Security-Policy"
+                  if getattr(settings, "CSP_ENFORCE", False)
+                  else "Content-Security-Policy-Report-Only")
+        if header not in response:
+            response[header] = self.POLICY
+        return response

@@ -1786,7 +1786,7 @@ let lastReferralCount = 0;
 let lastResponseCount = 0;
 
 function initials(name){
-  return name.split(' ').filter(Boolean).map(w=>w[0]).join('').slice(0,2).toUpperCase() || '?';
+  return escapeHtmlStaff(String(name || '').split(' ').filter(Boolean).map(w=>w[0]).join('').slice(0,2).toUpperCase() || '?');
 }
 
 function pollReferrals(){
@@ -1993,15 +1993,21 @@ function loadGuidanceInbox(){
         list.innerHTML = data.threads.map(t => {
           const owner = !t.claimed ? 'Unclaimed' : (t.mine ? 'Claimed by you' : 'Claimed by ' + escapeHtmlStaff(t.counselor_name) + ' · ' + escapeHtmlStaff(t.counselor_role));
           return `
-          <div class="thread-item ${t.id===activeThreadId?'active':''}" onclick="openGuidanceThread(${t.id}, '${t.student_name.replace(/'/g,"\\'")}')">
+          <div class="thread-item ${t.id===activeThreadId?'active':''}" data-id="${Number(t.id)}">
             <div class="avatar">${initials(t.student_name)}</div>
             <div class="t-info">
-              <div class="t-name">${t.student_name}${t.archived ? '<span class="archived-tag">Archived</span>' : ''} ${t.awaiting_reply && t.id !== activeThreadId ? '<span style="background:var(--alert); color:#fff; font-size:10px; padding:2px 7px; border-radius:999px; margin-left:6px;">New</span>' : ''}</div>
+              <div class="t-name">${escapeHtmlStaff(t.student_name)}${t.archived ? '<span class="archived-tag">Archived</span>' : ''} ${t.awaiting_reply && t.id !== activeThreadId ? '<span style="background:var(--alert); color:#fff; font-size:10px; padding:2px 7px; border-radius:999px; margin-left:6px;">New</span>' : ''}</div>
               <div class="t-preview">${escapeHtmlStaff(t.last_message || 'No messages yet')}</div>
               <div class="t-counselor">${owner}</div>
             </div>
           </div>`;
         }).join('');
+        list.querySelectorAll('.thread-item').forEach(el => {
+          el.addEventListener('click', () => {
+            const id = Number(el.dataset.id);
+            openGuidanceThread(id, (threadsById[id] && threadsById[id].student_name) || '');
+          });
+        });
       }
       const waitingCount = data.threads.filter(t => t.awaiting_reply).length;
       document.getElementById('guidanceNavCount').textContent = waitingCount;
@@ -2009,6 +2015,8 @@ function loadGuidanceInbox(){
 }
 
 function openGuidanceThread(threadId, studentName){
+  const rawStudentName = studentName;
+  studentName = escapeHtmlStaff(rawStudentName == null ? '' : String(rawStudentName));
   activeThreadId = threadId;
   loadGuidanceInbox();
   const t = threadsById[threadId];
@@ -2191,7 +2199,7 @@ function getCookie(name) {
 function escapeHtmlStaff(str){
   const div = document.createElement('div');
   div.textContent = str;
-  return div.innerHTML.replace(/\n/g, '<br>');
+  return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/\n/g, '<br>');
 }
 
 /* =========================================================
@@ -3094,8 +3102,8 @@ function renderAppointments() {
 
   body.innerHTML = filtered.map(a => `
     <tr>
-      <td style="font-weight:600;">${a.student_name}</td>
-      <td>${a.counselor_name}</td>
+      <td style="font-weight:600;">${escapeHtmlStaff(a.student_name)}</td>
+      <td>${escapeHtmlStaff(a.counselor_name)}</td>
       <td>${escapeHtmlStaff(a.service)}</td>
       <td class="mono-cell">${a.date}</td>
       <td class="mono-cell">${a.time}</td>
