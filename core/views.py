@@ -26,6 +26,9 @@ from .models import StudentFlag
 from .models import COURSES, YEAR_LEVELS, SERVICES
 from .models import LoginThrottle
 from .models import AccessLog
+from .net import client_ip
+from .name_validation import (NAME_MAX_LENGTH, normalize_name, sanitize_person_name,
+                              validate_person_names, validate_username)
 from .models import LoginVerification
 from .models import PasswordResetRequest
 from .models import SiteSettings
@@ -129,7 +132,7 @@ def google_register(request):
             status=403,
         )
 
-    full_name = _clean_external_name(idinfo.get("name", ""))
+    full_name = sanitize_person_name(idinfo.get("name", ""))
     first_name = full_name.split(" ")[0][:NAME_MAX_LENGTH] if full_name else ""
     last_name = " ".join(full_name.split(" ")[1:])[:NAME_MAX_LENGTH] if full_name else ""
 
@@ -237,25 +240,6 @@ def google_register(request):
     return response
 
 
-NAME_MAX_LENGTH = 150
-
-def _name_error(value, label="name"):
-    """Reject names that could carry markup or control characters. Empty is allowed here
-    (callers decide whether a name is required). Returns an error string or None."""
-    value = value or ""
-    if len(value) > NAME_MAX_LENGTH:
-        return f"Your {label} is too long (150 characters max)."
-    if "<" in value or ">" in value or any(unicodedata.category(c) == "Cc" for c in value):
-        return f"Your {label} can't contain < or > or control characters."
-    return None
-
-
-def _clean_external_name(value):
-    """Sanitise a display name from an outside source (Google) instead of rejecting it."""
-    value = "".join(c for c in (value or "") if c not in "<>" and unicodedata.category(c) != "Cc")
-    return " ".join(value.split())[:NAME_MAX_LENGTH * 2]
-
-
 COURSE_CHOICES = COURSES
 YEAR_LEVEL_CHOICES = YEAR_LEVELS
 
@@ -282,11 +266,13 @@ def complete_profile(request):
     if request.method == "POST":
         for key in form:
             form[key] = request.POST.get(key, "").strip()
+        form["first_name"] = normalize_name(form["first_name"])
+        form["last_name"] = normalize_name(form["last_name"])
 
         if not all(form.values()):
             error = "Please fill in every field."
-        elif _name_error(form["first_name"], "first name") or _name_error(form["last_name"], "last name"):
-            error = _name_error(form["first_name"], "first name") or _name_error(form["last_name"], "last name")
+        elif validate_person_names(form["first_name"], form["last_name"]):
+            error = validate_person_names(form["first_name"], form["last_name"])
         elif form["course"] not in dict(COURSE_CHOICES) or form["year_level"] not in dict(YEAR_LEVEL_CHOICES):
             error = "Please choose a valid course and year level."
         else:
@@ -441,8 +427,8 @@ def register(request):
             messages.error(request, "Please enter your registration code first.")
             return _register_page(request)
 
-        first_name = request.POST.get("first_name", "").strip()
-        last_name = request.POST.get("last_name", "").strip()
+        first_name = normalize_name(request.POST.get("first_name", ""))
+        last_name = normalize_name(request.POST.get("last_name", ""))
         student_number = request.POST.get("student_number", "").strip()
         course = request.POST.get("course")
         year_level = request.POST.get("year_level")
@@ -463,7 +449,7 @@ def register(request):
             messages.error(request, "Username and student number are required.")
             return _register_page(request)
 
-        name_problem = _name_error(first_name, "first name") or _name_error(last_name, "last name")
+        name_problem = validate_person_names(first_name, last_name)
         if name_problem:
             messages.error(request, name_problem)
             return _register_page(request)
@@ -557,11 +543,7 @@ def _lockout_seconds_left(key):
 
 
 def _client_ip(request):
-    if getattr(settings, "TRUST_PROXY_IP", False):         # only when behind Render's proxy
-        forwarded = request.META.get("HTTP_X_FORWARDED_FOR", "")
-        if forwarded:
-            return forwarded.split(",")[0].strip() or None
-    return request.META.get("REMOTE_ADDR") or None
+    return client_ip(request)        # see core/net.py (proxy-aware, spoof-resistant)
 
 
 def _log_sign_in_failure(request, reason, user=None, typed=None):
@@ -704,7 +686,7 @@ def _send_code(request, user, purpose, remember_me=False, method="password", to_
     record = LoginVerification.objects.create(
         user=user, purpose=purpose, code_hash=_hash_code(user, code), expires_at=now + LOGIN_CODE_TTL,
         remember_me=remember_me, method=method,
-        request_ip=request.META.get("REMOTE_ADDR") or None,
+        request_ip=client_ip(request),
     )
 
     context = {
@@ -1196,7 +1178,7 @@ def password_reset_request(request):
             messages.error(request, "Please enter your username or email.")
             return render(request, "core/password-reset.html", {"step": "request"})
 
-        ip = request.META.get("REMOTE_ADDR") or None
+        ip = client_ip(request)
         PasswordResetRequest.objects.filter(created_at__lt=timezone.now() - timedelta(days=1)).delete()
         for email in sorted({user.email.strip().lower() for user in _reset_accounts(identifier)}):
             if not _reset_allowed_now(email, ip):
@@ -1381,18 +1363,15 @@ def staff_setup(request):
     values = {"first_name": user.first_name, "last_name": user.last_name, "license_number": sp.license_number}
     if request.method == 'POST':
         values = {
-            "first_name": (request.POST.get("first_name") or "").strip()[:150],
-            "last_name": (request.POST.get("last_name") or "").strip()[:150],
+            "first_name": normalize_name(request.POST.get("first_name")),
+            "last_name": normalize_name(request.POST.get("last_name")),
             "license_number": (request.POST.get("license_number") or "").strip()[:50],
         }
         pw1 = request.POST.get("new_password1") or ""
         pw2 = request.POST.get("new_password2") or ""
-        if not values["first_name"]:
-            errors.append("Please enter your first name.")
-        for _key, _label in (("first_name", "first name"), ("last_name", "last name")):
-            _problem = _name_error(values[_key], _label)
-            if _problem:
-                errors.append(_problem)
+        name_problem = validate_person_names(values["first_name"], values["last_name"], require_last=False)
+        if name_problem:
+            errors.append(name_problem)
         if not pw1:
             errors.append("Please choose a password.")
         elif pw1 != pw2:
@@ -1596,15 +1575,20 @@ def account_settings(request):
     profile = request.user.profile
     if request.method == 'POST':
         new_username = request.POST.get('username', request.user.username).strip()
+        if new_username != request.user.username:
+            username_problem = validate_username(new_username)      # only checked when it changes: older loose usernames keep working
+            if username_problem:
+                messages.error(request, username_problem)
+                return redirect('account_settings')
         if new_username != request.user.username and (
             not new_username or _username_taken(new_username, exclude_user=request.user)
         ):
             messages.error(request, "Username is already registered.")
             return redirect('account_settings')
 
-        new_first = request.POST.get('first_name', '').strip()
-        new_last = request.POST.get('last_name', '').strip()
-        name_problem = _name_error(new_first, "first name") or _name_error(new_last, "last name")
+        new_first = normalize_name(request.POST.get('first_name'))
+        new_last = normalize_name(request.POST.get('last_name'))
+        name_problem = validate_person_names(new_first, new_last, require_last=False)
         if name_problem:
             messages.error(request, name_problem)
             return redirect('account_settings')
@@ -1612,7 +1596,6 @@ def account_settings(request):
         request.user.first_name = new_first
         request.user.last_name = new_last
         request.user.username = new_username
-        request.user.email = request.POST.get('email', request.user.email).strip()
         request.user.save()
 
         profile.course = request.POST.get('course', '').strip()
@@ -3782,14 +3765,12 @@ def staff_profile_update(request):
         data = json.loads(request.body)
     except json.JSONDecodeError:
         return JsonResponse({"error": "Invalid request."}, status=400)
-    first = (data.get("first_name") or "").strip()
-    last = (data.get("last_name") or "").strip()
-    name_problem = _name_error(first, "first name") or _name_error(last, "last name")
+    first = normalize_name(data.get("first_name"))
+    last = normalize_name(data.get("last_name"))
+    name_problem = validate_person_names(first, last, require_last=False)
     if name_problem:
         return JsonResponse({"error": name_problem}, status=400)
     license_no = (data.get("license_number") or "").strip()[:50]
-    if not first:
-        return JsonResponse({"error": "First name can't be empty."}, status=400)
     user = request.user
     user.first_name, user.last_name = first, last
     user.save(update_fields=["first_name", "last_name"])

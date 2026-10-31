@@ -21,6 +21,7 @@ from django.utils.dateparse import parse_date
 from django.views.decorators.http import require_POST
 
 from .name_validation import validate_person_names
+from .net import client_ip
 from .models import (COURSES, SERVICES, STATUS_REASONS, StaffProfile, StaffSubclass, GuidanceThread, GuidanceMessage,
                      StudentFlag, StudentNote, Appointment, AccessLog, StudentStatusLog, LoginThrottle,
                     MoodEntry, ChatConversation, SiteSettings, AuditEvent, Semester, EnrolledStudent,
@@ -40,7 +41,7 @@ def _admin(view):
 
 def _log_admin(request, detail):
     AuditEvent.objects.create(actor=request.user, event="admin_action", detail=str(detail)[:300],
-                              ip=request.META.get("REMOTE_ADDR") or None)
+                              ip=client_ip(request))
 
 def _body(request):
     try:
@@ -170,7 +171,7 @@ def site_settings_save(request):
     if changed:
         AuditEvent.objects.create(actor=request.user, event="settings_changed",
                                   detail="General: changed " + ", ".join(changed),
-                                  ip=request.META.get("REMOTE_ADDR") or None)
+                                  ip=client_ip(request))
     return JsonResponse(_site_json(s))
 
 
@@ -187,7 +188,7 @@ def registration_set(request):
         s.save()
         AuditEvent.objects.create(actor=request.user, event="settings_changed",
                                   detail="General: student registration " + ("opened" if data["open"] else "closed"),
-                                  ip=request.META.get("REMOTE_ADDR") or None)
+                                  ip=client_ip(request))
     return JsonResponse(_site_json(s))
 
 
@@ -750,7 +751,7 @@ def hotlines_save(request):
     s.save()
     AuditEvent.objects.create(actor=request.user, event="settings_changed",
                               detail="Crisis hotlines updated (%d listed)" % len(clean),
-                              ip=request.META.get("REMOTE_ADDR") or None)
+                              ip=client_ip(request))
     return JsonResponse({"hotlines": clean})
 
 
@@ -819,7 +820,7 @@ def semester_create(request):
     s = Semester.objects.create(name=name, start_date=start, end_date=end)
     AuditEvent.objects.create(actor=request.user, event="settings_changed",
                               detail="Semesters: added %s" % name[:200],
-                              ip=request.META.get("REMOTE_ADDR") or None)
+                              ip=client_ip(request))
     return JsonResponse({"semester": _semester_json(s)}, status=201)
 
 
@@ -831,7 +832,7 @@ def semester_delete(request, semester_id):
     s.delete()
     AuditEvent.objects.create(actor=request.user, event="settings_changed",
                               detail="Semesters: deleted %s" % name[:200],
-                              ip=request.META.get("REMOTE_ADDR") or None)
+                              ip=client_ip(request))
     return JsonResponse({"status": "ok"})
 
 
@@ -950,7 +951,7 @@ def enrollment_upload(request):
         updated = _sync_year_levels(rows)
     AuditEvent.objects.create(actor=request.user, event="settings_changed",
                               detail="Enrollment: uploaded a list of %d students, updated %d year levels" % (len(rows), updated),
-                              ip=request.META.get("REMOTE_ADDR") or None)
+                              ip=client_ip(request))
     return JsonResponse({"count": len(rows), "year_updated": updated})
 
 
@@ -961,7 +962,7 @@ def enrollment_clear(request):
     EnrolledStudent.objects.all().delete()
     AuditEvent.objects.create(actor=request.user, event="settings_changed",
                               detail="Enrollment: cleared the list (%d students)" % n,
-                              ip=request.META.get("REMOTE_ADDR") or None)
+                              ip=client_ip(request))
     return JsonResponse({"status": "ok"})
 
 

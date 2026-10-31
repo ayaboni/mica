@@ -27,6 +27,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
 from .models import AuditEvent, RegistrationCode
+from .net import client_ip
 from .permissions import require_perm
 
 REG_CODE_LENGTH = 6                            # single-use codes
@@ -108,7 +109,7 @@ def use_code(request, code, user):
 
 
 def _client_ip(request):
-    return request.META.get("REMOTE_ADDR") or "unknown"
+    return client_ip(request) or "unknown"
 
 
 def _fail_key(request):
@@ -240,7 +241,7 @@ def _payload(user):
 
 def _audit(request, event, detail):
     AuditEvent.objects.create(actor=request.user, event=event, detail=detail[:300],
-                              ip=request.META.get("REMOTE_ADDR") or None)
+                              ip=client_ip(request))
 
 
 def _cooldown_response(user):

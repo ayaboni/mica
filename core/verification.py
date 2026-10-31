@@ -20,6 +20,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
 from .models import AuditEvent, ChatMessage, EnrolledStudent, UserProfile
+from .net import client_ip
 from .permissions import require_perm
 
 UNVERIFIED = "unverified"
@@ -99,7 +100,7 @@ def _staff(view):
 
 def _audit(request, event, detail):
     AuditEvent.objects.create(actor=request.user, event=event, detail=detail[:300],
-                              ip=request.META.get("REMOTE_ADDR") or None)
+                              ip=client_ip(request))
 
 
 def _name_key(value):

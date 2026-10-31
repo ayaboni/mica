@@ -207,3 +207,32 @@ MICA_DAILY_LIMIT_UNVERIFIED_TOTAL = int(os.getenv("MICA_DAILY_LIMIT_UNVERIFIED_T
 
 # Content-Security-Policy: report-only until you set CSP_ENFORCE=true (see core/middleware.py)
 CSP_ENFORCE = os.getenv("CSP_ENFORCE", "false").lower() == "true"
+
+# --- Client IP behind a proxy (see core/net.py) ---------------------------------------------
+# Leave TRUST_PROXY_IP off for local development. On the live server set TRUST_PROXY_IP=true and
+# TRUSTED_PROXY_COUNT to the number of proxies in front of the app, then check the IP shown in
+# the audit log is yours. If Cloudflare is in front you can set CLIENT_IP_HEADER=CF-Connecting-IP.
+TRUST_PROXY_IP = os.getenv("TRUST_PROXY_IP", "false").lower() == "true"
+TRUSTED_PROXY_COUNT = int(os.getenv("TRUSTED_PROXY_COUNT", "1"))
+CLIENT_IP_HEADER = os.getenv("CLIENT_IP_HEADER", "")
+
+# --- Shared cache for rate limits -------------------------------------------------------------
+# The default cache lives in each worker's memory, so lockout counters were per-process and reset
+# on every restart. Use Redis if REDIS_URL is set, otherwise the database (run
+# `python manage.py createcachetable` once per database).
+if os.getenv("REDIS_URL"):
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": os.getenv("REDIS_URL"),
+        }
+    }
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.db.DatabaseCache",
+            "LOCATION": "django_cache",
+            # The default of 300 entries would start evicting lockout counters under load.
+            "OPTIONS": {"MAX_ENTRIES": 100000, "CULL_FREQUENCY": 10},
+        }
+    }
