@@ -105,6 +105,9 @@ class UserProfile(models.Model):
     firebase_uid = models.CharField(max_length=128, unique=True, null=True, blank=True)
     # True for brand-new Google sign-ups until they fill in the registration details.
     needs_profile_setup = models.BooleanField(default=False)
+    # Set the first time the owner types the e-mailed one-time code correctly. Once set, this
+    # e-mail address is taken: nobody can register with it again (Google or local).
+    email_verified_at = models.DateTimeField(null=True, blank=True)
     consent_given_at = models.DateTimeField(null=True, blank=True)
     consent_version = models.CharField(max_length=10, blank=True)
     share_assessment_with_guidance = models.BooleanField(default=False)

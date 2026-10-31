@@ -135,6 +135,14 @@ def google_register(request):
             status=403,
         )
 
+    # The Register page sends mode="register"; the Login page doesn't. Registering with an e-mail
+    # that already belongs to a verified account must not quietly sign that account in.
+    registering = payload.get("mode") == "register"
+    already_registered = JsonResponse(
+        {"error": "This email is already registered. Please sign in instead.", "already_registered": True},
+        status=409,
+    )
+
     full_name = sanitize_person_name(idinfo.get("name", ""))
     first_name = full_name.split(" ")[0][:NAME_MAX_LENGTH] if full_name else ""
     last_name = " ".join(full_name.split(" ")[1:])[:NAME_MAX_LENGTH] if full_name else ""
@@ -148,6 +156,8 @@ def google_register(request):
                 .first()
             )
             if profile is not None:
+                if registering and profile.email_verified_at:
+                    return already_registered
                 user = profile.user
             else:
                 matches = list(
@@ -166,6 +176,8 @@ def google_register(request):
                             status=403,
                         )
                     profile, _ = UserProfile.objects.get_or_create(user=user)
+                    if registering and profile.email_verified_at:
+                        return already_registered
                     if profile.firebase_uid and profile.firebase_uid != uid:
                         return JsonResponse(
                             {"error": "This account is linked to a different Google account."},
@@ -855,6 +867,9 @@ def login_verify(request):
         messages.error(request, error)
         return redirect("login_check_email")
     remember_me, method = record.remember_me, record.method
+
+    # Typing the e-mailed code proves the owner controls this address: lock it to this account.
+    UserProfile.objects.filter(user=user, email_verified_at__isnull=True).update(email_verified_at=timezone.now())
 
     auth_login(request, user)
     request.session.set_expiry(REMEMBER_ME_SECONDS if remember_me else 0)

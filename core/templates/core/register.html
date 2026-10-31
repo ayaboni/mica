@@ -180,7 +180,7 @@
           "Content-Type": "application/json",
           "X-CSRFToken": getCookie("csrftoken")
         },
-        body: JSON.stringify({ id_token: idToken })
+        body: JSON.stringify({ id_token: idToken, mode: "register" })
       });
 
       const data = await response.json();
