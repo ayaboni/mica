@@ -1,0 +1,158 @@
+{% comment %} Styles + script for the staff/admin profile photo. Include once, near the end of <body>.
+   Pulls in the shared unsaved-changes prompt and the crop editor.
+   Pages may define:  window.MY_GUARD_FIELDS = ['id', ...]   inputs to watch for unsaved edits
+                      window.MY_SAVE_FIELDS  = () => Promise<boolean>   saves those inputs 
+{% endcomment %}
+{% include 'core/_unsaved_guard.html' %}
+{% include 'core/_avatar_cropper.html' %}
+<style>
+  .avatar.me-avatar{ overflow:hidden; }
+  .avatar.me-avatar img, .me-pic img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .pf-photo{ display:flex; align-items:flex-start; gap:18px; margin-bottom:22px; padding-bottom:20px; border-bottom:1px solid var(--line, rgba(0,0,0,.08)); }
+  .me-pic{ width:84px; height:84px; border-radius:50%; flex-shrink:0; overflow:hidden; background:var(--sky, #9CC8E6); color:#0f130f;
+           display:flex; align-items:center; justify-content:center; font-weight:700; font-size:28px; }
+  .pf-photo-body{ min-width:0; }
+  .pf-photo-title{ font-weight:700; font-size:14px; }
+  .pf-photo-sub{ font-size:12px; color:var(--ink-soft); margin:2px 0 10px; }
+  .pf-photo-btns{ display:flex; gap:8px; flex-wrap:wrap; }
+  .pf-photo-pending{ margin-top:12px; padding:10px 12px; border-radius:12px; background:rgba(240,193,63,.16); border:1px solid rgba(240,193,63,.55); font-size:12.5px; }
+  .pf-photo-pending span{ display:block; margin-bottom:8px; font-weight:600; }
+  .pf-photo [hidden]{ display:none !important; }
+  @media (max-width:480px){ .pf-photo{ flex-direction:column; } }
+</style>
+<script>
+(function(){
+  var URL_SAVE = "{% url 'staff_avatar_update' %}";
+  var MAX = 5 * 1024 * 1024;
+  var TYPES = ['image/jpeg','image/png','image/webp','image/gif'];
+  var G = window.MicaGuard, C = window.MicaCropper;
+
+  window.MY_AVATAR_URL = "{{ my_avatar_url|escapejs }}";
+  window.MY_INITIALS = "{% filter escapejs %}{% include 'core/_initials.html' with u=request.user %}{% endfilter %}".trim();
+
+  var pending = null;        // { blob, url } - a cropped photo that is not saved yet
+
+  function $(id){ return document.getElementById(id); }
+  function toast(m){ if (typeof showToast === 'function') showToast(m); else alert(m); }
+  function csrf(){ return (typeof getCookie === 'function') ? getCookie('csrftoken') : ''; }
+  function busy(on){ ['myPicBtn','myPicAdjust','myPicRemove','myPicSave','myPicCancel'].forEach(function(id){ var e = $(id); if (e) e.disabled = on; }); }
+
+  function paint(el, url){
+    el.textContent = '';
+    if (url) { var img = document.createElement('img'); img.alt = ''; img.src = url; el.appendChild(img); }
+    else el.textContent = window.MY_INITIALS;
+  }
+
+  // Repaint every place that shows "me". Chips show the SAVED photo; the big preview also shows an unsaved one.
+  window.refreshMyAvatar = function(){
+    document.querySelectorAll('.me-avatar').forEach(function(el){ paint(el, window.MY_AVATAR_URL); });
+    document.querySelectorAll('.me-pic').forEach(function(el){ paint(el, pending ? pending.url : window.MY_AVATAR_URL); });
+    var has = !!window.MY_AVATAR_URL, any = has || !!pending;
+    $('myPicBtn') && ($('myPicBtn').textContent = any ? 'Change photo' : 'Add photo');
+    $('myPicAdjust') && ($('myPicAdjust').hidden = !any);
+    $('myPicRemove') && ($('myPicRemove').hidden = !any);
+    $('myPicPending') && ($('myPicPending').hidden = !pending);
+  };
+
+  function setPending(blob){
+    if (pending) { try { URL.revokeObjectURL(pending.url); } catch (e) {} }
+    pending = blob ? { blob: blob, url: URL.createObjectURL(blob) } : null;
+    window.refreshMyAvatar();
+  }
+
+  function post(fd){
+    busy(true);
+    return fetch(URL_SAVE, { method:'POST', credentials:'same-origin', headers:{'X-CSRFToken': csrf()}, body: fd })
+      .then(function(r){ return r.json().catch(function(){ return {}; }).then(function(d){ return {ok:r.ok, d:d}; }); })
+      .catch(function(){ return {ok:false, d:{error:'Could not reach the server.'}}; })
+      .then(function(res){ busy(false); return res; });
+  }
+
+  // Upload the pending (cropped) photo. Resolves true on success.
+  function savePending(){
+    if (!pending) return Promise.resolve(true);
+    var fd = new FormData();
+    fd.append('avatar', new File([pending.blob], 'avatar.jpg', { type: 'image/jpeg' }));
+    return post(fd).then(function(res){
+      if (!res.ok){ toast(res.d.error || 'Could not save the picture.'); return false; }
+      window.MY_AVATAR_URL = res.d.avatar_url || '';
+      setPending(null);
+      toast('Profile photo saved');
+      return true;
+    });
+  }
+
+  /* ---- buttons ---- */
+  function openEditor(file){
+    return C.open(file, { onError: toast }).then(function(r){
+      if (!r) return;
+      setPending(r.blob);
+      if (r.saveNow) return savePending();      // user chose "Save changes" when closing the editor
+    });
+  }
+
+  window.pickMyPhoto = function(input){
+    var f = input.files && input.files[0];
+    input.value = '';                           // lets the same file be picked again later
+    if (!f) return;
+    if (TYPES.indexOf(f.type) === -1){ toast('Please choose a JPG, PNG, WebP or GIF image.'); return; }
+    if (f.size > MAX){ toast('That picture is too large. Please use one under 5 MB.'); return; }
+    openEditor(f);
+  };
+
+  window.adjustMyPhoto = function(){
+    if (pending) { openEditor(pending.blob); return; }
+    if (!window.MY_AVATAR_URL) return;
+    fetch(window.MY_AVATAR_URL, { credentials:'same-origin' })
+      .then(function(r){ if (!r.ok) throw 0; return r.blob(); })
+      .then(openEditor)
+      .catch(function(){ toast("Couldn't load your current photo. Try choosing a new one."); });
+  };
+
+  window.saveMyPhoto   = function(){ savePending(); };
+  window.cancelMyPhoto = function(){ setPending(null); };
+
+  window.removeMyPhoto = function(){
+    if (!window.MY_AVATAR_URL) { setPending(null); return; }      // only an unsaved photo: just drop it
+    G.ask({
+      title: 'Remove your photo?',
+      text: 'Your profile will go back to the default avatar with your initials.',
+      yes: 'Yes, remove it', no: 'No, keep it'
+    }).then(function(yes){
+      if (!yes) return;
+      var fd = new FormData(); fd.append('remove', '1');
+      post(fd).then(function(res){
+        if (!res.ok){ toast(res.d.error || 'Could not remove the picture.'); return; }
+        window.MY_AVATAR_URL = '';
+        setPending(null);
+        toast('Profile photo removed');
+      });
+    });
+  };
+
+  /* ---- unsaved-changes protection (photo + the name/licence fields on this page) ---- */
+  function fieldEls(){ return (window.MY_GUARD_FIELDS || []).map($).filter(Boolean); }
+  function fieldsDirty(){ return fieldEls().some(function(el){ return el.value !== el.defaultValue; }); }
+
+  G.register({
+    isDirty: function(){ return !!pending || fieldsDirty(); },
+    save: function(){
+      return savePending().then(function(ok){
+        if (!ok) return false;
+        if (fieldsDirty() && window.MY_SAVE_FIELDS) return window.MY_SAVE_FIELDS();
+        return true;
+      });
+    },
+    discard: function(){
+      setPending(null);
+      fieldEls().forEach(function(el){ el.value = el.defaultValue; });
+    }
+  });
+
+  // Leaving this tab/section, or logging out, with unsaved changes -> ask first
+  G.wrap('goTo',    function(a){ return a[0] !== 'settings'; });
+  G.wrap('showTab', function(a){ return a[0] !== 'profile'; });    // staff dashboard
+  G.wrap('goTab',   function(a){ return a[0] !== 'account'; });    // admin dashboard
+  G.wrap('doLogout');
+})();
+</script>
