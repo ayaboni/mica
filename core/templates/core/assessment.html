@@ -1,57 +1,42 @@
-{% load static %}
-<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>Quick Check-In — MICA</title>
-<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
-<style>
-  body{margin:0; font-family:'Nunito', sans-serif; background:#FAF7EE; color:#3A2E28;}
-  .wrap{max-width:680px; margin:40px auto; padding:0 20px 60px;}
-  .card{background:#FBF2DE; border-radius:24px; padding:32px;}
-  h1{font-family:'Fredoka',sans-serif; margin-top:0;}
-  .intro{color:#7a6a5c; margin-bottom:28px;}
-  .section-label{font-weight:700; margin:28px 0 10px; font-size:15px;}
-  .checkbox-grid{display:grid; grid-template-columns:1fr 1fr; gap:8px 16px;}
-  .checkbox-grid label{display:flex; align-items:center; gap:8px; font-size:14px;}
-  .other-input{width:100%; margin-top:10px; padding:10px 14px; border-radius:10px; border:1px solid #ddd; box-sizing:border-box; font-family:inherit;}
-  table{width:100%; border-collapse:collapse; margin-top:10px; font-size:13px;}
-  table th{text-align:left; padding:8px 6px; font-size:13px;}
-  table td{text-align:center; padding:8px 4px;}
-  table tr:nth-child(even){background:rgba(0,0,0,0.03);}
-  .yesno{display:flex; gap:20px; margin-top:6px;}
-  .yesno label{display:flex; align-items:center; gap:6px; font-size:14px;}
-  .actions{display:flex; justify-content:space-between; align-items:center; margin-top:32px;}
-  button[type=submit]{background:#8B6F4E; color:#fff; border:none; padding:13px 28px; border-radius:999px; font-weight:700; cursor:pointer;}
-  .skip-link{background:none; border:none; color:#7a6a5c; text-decoration:underline; cursor:pointer; font-size:14px;}
-</style>
-</head>
-<body>
-  {% include 'core/_loader.html' %}
+{% extends 'core/site_base.html' %}
 
-  <div style="background:#8FA98C; padding:18px 34px; display:flex; align-items:center; justify-content:space-between;">
-    {% if is_retake %}
-      <a href="{% url 'account_settings' %}" style="color:#3A2E28; text-decoration:none; font-weight:700;">← Back to Account Settings</a>
-    {% else %}
-      <a href="{% url 'logout' %}" style="color:#3A2E28; text-decoration:none; font-weight:700;">Log out</a>
-    {% endif %}
-    <strong>MICA</strong>
-  </div>
-  
-  <div class="wrap"><div class="card">
-    <h1>Before we get started</h1>
+{% block title %}Quick Check-In | MICA{% endblock %}
+{% block footer %}{% endblock %}
+
+{% block navbar %}
+  {% url 'account_settings' as settings_url %}
+  {% url 'logout' as logout_url %}
+  {% if is_retake %}
+    {% include 'core/_navbar_min.html' with nav_link_url=settings_url nav_link_label="← Account Settings" %}
+  {% else %}
+    {% include 'core/_navbar_min.html' with nav_link_url=logout_url nav_link_label="Log out" %}
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+<section class="onboard doodle-bg">
+  <div class="onboard-inner onboard-inner--narrow">
+
+    <header class="onboard-head">
+      <h1>Before we get started</h1>
+      <p>This is part of your Student Profile Data Sheet. Your answers go to the Guidance Office so they can support you. It is not a diagnosis. Please answer every question.</p>
+    </header>
+
     {% if messages %}
       {% for message in messages %}
-        <p style="color:#d9534f; font-weight:700; margin-bottom:14px;">{{ message }}</p>
+        <p class="flash error">{{ message }}</p>
       {% endfor %}
     {% endif %}
-    <p class="intro">This check-in is part of your Student Profile Data Sheet. Your answers are shared with the Guidance Office so they can support you. It is not a diagnosis, and all questions need an answer (the conditions list is optional).</p>
 
-    <form method="post">
+    <form method="post" class="form-card">
       {% csrf_token %}
 
-      <div class="section-label">Have you experienced or been diagnosed with any of the following? (the conditions list needs an answer, or tick None of these)</div>
-      <div class="checkbox-grid">
+      <div class="assess-label">Have you experienced or been diagnosed with any of the following? (the conditions list needs an answer, or tick None of these)</div>
+      <div class="check-grid">
         <label><input type="checkbox" name="conditions" value="Anxiety"> Anxiety</label>
         <label><input type="checkbox" name="conditions" value="Depression"> Depression</label>
         <label><input type="checkbox" name="conditions" value="ADHD"> ADHD / Attention difficulties</label>
+        <label><input type="checkbox" name="conditions" value="Autism"> Autism spectrum</label>
         <label><input type="checkbox" name="conditions" value="OCD"> OCD</label>
         <label><input type="checkbox" name="conditions" value="Bipolar"> Bipolar Disorder</label>
         <label><input type="checkbox" name="conditions" value="PTSD"> PTSD / Trauma-related stress</label>
@@ -59,42 +44,51 @@
         <label><input type="checkbox" name="conditions" value="Sleep"> Sleep difficulties</label>
         <label><input type="checkbox" name="conditions" value="None" id="condNone"> None of these</label>
       </div>
-      <input type="text" class="other-input" name="conditions_other" placeholder="Others (please specify)">
+      <input type="text" class="text-input" name="conditions_other" placeholder="Others (please specify)">
 
-      <div class="section-label">In the past few weeks, how often have you felt...</div>
-      <table>
-        <tr><th></th><th>Never</th><th>Rarely</th><th>Sometimes</th><th>Often</th><th>Always</th></tr>
-        {% for key, label in questions %}
-        <tr>
-          <td style="text-align:left;">{{ label }}</td>
-          <td><input type="radio" name="{{ key }}" value="Never" required></td>
-          <td><input type="radio" name="{{ key }}" value="Rarely" required></td>
-          <td><input type="radio" name="{{ key }}" value="Sometimes" required></td>
-          <td><input type="radio" name="{{ key }}" value="Often" required></td>
-          <td><input type="radio" name="{{ key }}" value="Always" required></td>
-        </tr>
-        {% endfor %}
-      </table>
+      <div class="assess-label">In the past few weeks, how often have you felt...</div>
+      <div class="table-wrap">
+        <table class="likert">
+          <thead>
+            <tr><th></th><th>Never</th><th>Rarely</th><th>Sometimes</th><th>Often</th><th>Always</th></tr>
+          </thead>
+          <tbody>
+            {% for key, label in questions %}
+            <tr>
+              <td>{{ label }}</td>
+              <td><input type="radio" name="{{ key }}" value="Never" required aria-label="Never"></td>
+              <td><input type="radio" name="{{ key }}" value="Rarely" required aria-label="Rarely"></td>
+              <td><input type="radio" name="{{ key }}" value="Sometimes" required aria-label="Sometimes"></td>
+              <td><input type="radio" name="{{ key }}" value="Often" required aria-label="Often"></td>
+              <td><input type="radio" name="{{ key }}" value="Always" required aria-label="Always"></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
 
-      <div class="section-label">A few more questions</div>
-      <p style="font-size:14px; margin-bottom:4px;">Have you sought professional help for your mental health before?</p>
+      <div class="assess-label">A few more questions</div>
+      <p class="assess-q">Have you sought professional help for your mental health before?</p>
       <div class="yesno">
         <label><input type="radio" name="sought_help_before" value="yes" required> Yes</label>
         <label><input type="radio" name="sought_help_before" value="no" required> No</label>
       </div>
-      <p style="font-size:14px; margin:14px 0 4px;">Do you currently have a support system (friends, family, etc.)?</p>
+      <p class="assess-q">Do you currently have a support system (friends, family, etc.)?</p>
       <div class="yesno">
         <label><input type="radio" name="has_support_system" value="yes" required> Yes</label>
         <label><input type="radio" name="has_support_system" value="no" required> No</label>
       </div>
 
-      <div class="actions" style="justify-content:flex-end;">
-        <button type="submit">Submit</button>
+      <div class="form-actions form-actions--end">
+        <button type="submit" class="btn btn-brown">Submit</button>
       </div>
     </form>
-  </div>
-</div>
 
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
 <script>
 const none = document.getElementById('condNone');
 const boxes = document.querySelectorAll('input[name="conditions"]:not(#condNone)');
@@ -103,6 +97,4 @@ none.addEventListener('change', () => { if (none.checked) { boxes.forEach(b => b
 boxes.forEach(b => b.addEventListener('change', () => { if (b.checked) none.checked = false; }));
 other.addEventListener('input', () => { if (other.value) none.checked = false; });
 </script>
-
-</body>
-</html>
+{% endblock %}
