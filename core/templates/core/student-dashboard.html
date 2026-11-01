@@ -518,6 +518,21 @@ html.dyslexia body{line-height:1.7;}
   .msg-act[data-act="down"] svg{transform:rotate(180deg);}
   .msg-row.bot:not(:last-child) .msg-act[data-act="retry"]{display:none;}  /* retry only on the newest reply */
 
+  /* buttons under the student's own messages */
+  .msg-row.user .msg-col{align-items:flex-end;}
+  .msg-row.user .msg-actions{margin-left:0; margin-right:4px;}
+  .msg-row.user:not(.is-latest) .msg-act[data-act="edit"],
+  .msg-row.user:not(.is-latest) .msg-act[data-act="retry"]{display:none;}
+
+  /* editing a message */
+  .msg-row.user.editing{width:80%;}
+  .msg-row.user.editing .msg-col{flex:1; width:100%;}
+  .msg-edit{width:100%; display:flex; flex-direction:column; gap:8px; align-items:flex-end;}
+  .msg-edit textarea{width:100%; resize:none; border:1.5px solid rgba(142,174,136,.5); outline:none; border-radius:var(--radius-md); padding:12px 14px; font:inherit; font-size:var(--chat-font); line-height:1.5; background:var(--card-bg); color:var(--text-dark);}
+  .msg-edit textarea:focus{border-color:var(--composer-accent);}
+  .msg-edit-btns{display:flex; gap:8px;}
+  .msg-edit .btn-pill{padding:8px 18px;}
+
   .typing-dots{display:inline-flex;gap:4px;align-items:center;}
   .typing-dots span{
     width:6px;height:6px;border-radius:50%;
@@ -2452,12 +2467,28 @@ function addMessage(containerId, text, sender, avatarLabel){
   const bubble = `<div class="msg-bubble">${text}</div>`;
   // Mica's replies in the AI chat get the copy / like / dislike / retry buttons
   const withButtons = sender === 'bot' && containerId === 'chat-messages' && avatarLabel === 'MASCOT';
+  const withUserButtons = sender === 'user' && containerId === 'chat-messages';
   row.innerHTML = withButtons
     ? `${avatarHtml}<div class="msg-col">${bubble}${MSG_ACTIONS_HTML}</div>`
-    : `${avatarHtml}${bubble}`;
+    : withUserButtons
+      ? `${avatarHtml}<div class="msg-col">${bubble}${USER_ACTIONS_HTML}</div>`
+      : `${avatarHtml}${bubble}`;
   container.appendChild(row);
+  if(containerId === 'chat-messages') syncUserActions();
   container.scrollTop = container.scrollHeight;
   return row;
+}
+
+const USER_ACTIONS_HTML = `
+  <div class="msg-actions">
+    <button class="msg-act" data-act="copy" title="Copy" aria-label="Copy message"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg></button>
+    <button class="msg-act" data-act="edit" title="Edit" aria-label="Edit message"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></button>
+    <button class="msg-act" data-act="retry" title="Send again" aria-label="Send again"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg></button>
+  </div>`;
+
+function syncUserActions(){
+  const rows = document.querySelectorAll('#chat-messages .msg-row.user');
+  rows.forEach((r, i) => r.classList.toggle('is-latest', i === rows.length - 1));
 }
 
 function addTyping(containerId, avatarLabel){
@@ -2626,13 +2657,106 @@ function retryReply(row){
   });
 }
 
+/* ---- Buttons under the student's own messages ---- */
+function chatIsBusy(){ return !!document.querySelector('#chat-messages .typing-dots'); }
+
+// Removes the newest message and Mica's reply to it from the saved chat, so the old try
+// doesn't stay in Mica's memory. It only deletes if the text matches what's on screen.
+async function undoLastExchange(expectedText){
+  if(!currentConversationId) return true;
+  try{
+    const r = await fetch(`/api/conversations/${currentConversationId}/undo-last/`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json', 'X-CSRFToken': getCookie('csrftoken')},
+      body: JSON.stringify({text: expectedText})
+    });
+    return r.ok;
+  }catch(e){ return false; }
+}
+
+async function resendUserMessage(row, newText){
+  if(chatIsBusy()){ showToast('Mica is still replying'); return; }
+  const bubble = row.querySelector('.msg-bubble');
+  const oldText = bubble.innerText.trim();
+  const text = (newText == null ? oldText : newText).trim();
+  if(!text) return;
+
+  if(!(await undoLastExchange(oldText))){ showToast('Could not do that. Try again.'); return; }
+
+  while(row.nextElementSibling) row.nextElementSibling.remove();      // the old reply
+  if(newText != null) bubble.innerHTML = escapeHtml(text).replace(/\n/g, '<br>');
+  syncUserActions();
+
+  const typingRow = addTyping('chat-messages', 'MASCOT');
+  try{
+    const reply = await getAIReply(text);
+    typingRow.remove();
+    addMessage('chat-messages', escapeHtml(reply).replace(/\n/g, '<br>'), 'bot', 'MASCOT');
+  }catch(e){
+    typingRow.remove();
+    addMessage('chat-messages', "Sorry, I'm having trouble connecting right now.", 'bot', 'MASCOT');
+  }
+}
+
+function startEditMessage(row){
+  if(chatIsBusy()){ showToast('Mica is still replying'); return; }
+  if(row.classList.contains('editing')) return;
+  const col = row.querySelector('.msg-col');
+  const bubble = row.querySelector('.msg-bubble');
+  const actions = row.querySelector('.msg-actions');
+  const original = bubble.innerText;
+
+  row.classList.add('editing');
+  const box = document.createElement('div');
+  box.className = 'msg-edit';
+  const ta = document.createElement('textarea');
+  ta.value = original; ta.maxLength = 2000; ta.rows = 2;
+  const btns = document.createElement('div'); btns.className = 'msg-edit-btns';
+  const cancel = document.createElement('button');
+  cancel.type = 'button'; cancel.className = 'btn-pill btn-back'; cancel.textContent = 'Cancel';
+  const save = document.createElement('button');
+  save.type = 'button'; save.className = 'btn-pill btn-enter'; save.textContent = 'Send';
+  btns.append(cancel, save); box.append(ta, btns);
+
+  bubble.style.display = 'none'; actions.style.display = 'none';
+  col.insertBefore(box, bubble);
+  autoGrow(ta); ta.focus();
+
+  const close = () => {
+    box.remove();
+    bubble.style.display = ''; actions.style.display = '';
+    row.classList.remove('editing');
+  };
+  ta.addEventListener('input', () => autoGrow(ta));
+  ta.addEventListener('keydown', e => {
+    if(e.key === 'Enter' && !e.shiftKey && !e.isComposing){ e.preventDefault(); save.click(); }
+    else if(e.key === 'Escape'){ close(); }
+  });
+  cancel.addEventListener('click', close);
+  save.addEventListener('click', () => {
+    const t = ta.value.trim();
+    if(!t) return;
+    close();
+    if(t !== original.trim()) resendUserMessage(row, t);
+  });
+}
+
 document.getElementById('chat-messages').addEventListener('click', e => {
   const btn = e.target.closest('.msg-act');
   if(!btn) return;
   const row = btn.closest('.msg-row');
-  if(btn.dataset.act === 'copy') copyReply(row, btn);
-  else if(btn.dataset.act === 'retry') retryReply(row);
-  else rateReply(row, btn.dataset.act);
+  const act = btn.dataset.act;
+
+  if(row.classList.contains('user')){
+    if(act === 'copy') copyReply(row, btn);
+    else if(act === 'edit') startEditMessage(row);
+    else if(act === 'retry') resendUserMessage(row);
+    return;
+  }
+
+  if(act === 'copy') copyReply(row, btn);
+  else if(act === 'retry') retryReply(row);
+  else rateReply(row, act);
 });
 
 const chatMicButton = document.getElementById('chat-mic');
