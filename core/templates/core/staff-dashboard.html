@@ -265,6 +265,15 @@
   .modal-head .sub{font-size:12.5px; color:var(--ink-soft); margin-top:4px;}
   .modal-close{width:32px; height:32px; border-radius:50%; border:1.5px solid var(--line); background:none; color:var(--ink); font-size:14px; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
   .modal-close:hover{background:var(--line);}
+  .sched-overlay{position:fixed; inset:0; background:rgba(20,22,15,.5); display:flex; align-items:center; justify-content:center; z-index:999; padding:20px;}
+  .sched-card{background:var(--peach); color:var(--ink); border:1px solid var(--line); border-radius:20px; padding:28px; width:340px; max-width:100%; position:relative; box-shadow:var(--shadow);}
+  body.dark .sched-card{color-scheme:dark;}
+  .sched-card h3{margin:0 0 16px; font-size:18px;}
+  .sched-card label{display:block; font-weight:700; font-size:12.5px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.04em;}
+  .sched-card input, .sched-card select{width:100%; padding:11px 12px; margin:6px 0 16px; border-radius:12px; border:1.5px solid var(--line); background:var(--paper); color:var(--ink); font-family:inherit; font-size:14.5px; box-sizing:border-box;}
+  .sched-card input:focus, .sched-card select:focus{outline:none; border-color:var(--sage-deep);}
+  .sched-close{position:absolute; top:14px; right:14px; width:32px; height:32px; border-radius:50%; border:1.5px solid var(--line); background:none; color:var(--ink); font-size:14px; display:flex; align-items:center; justify-content:center; cursor:pointer;}
+  .sched-close:hover{background:var(--line);}
   .modal-body{padding:22px 28px 28px;}
   .modal-foot{padding:18px 28px 26px; display:flex; gap:10px; flex-wrap:wrap; border-top:1px solid var(--line);}
   .kv-grid{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:20px;}
@@ -2210,26 +2219,27 @@ function sendStaffGuidanceMessage(){
 function openScheduleModal(){
   const modal = document.createElement('div');
   modal.id = 'scheduleModal';
-  modal.style = "position:fixed; inset:0; background:rgba(0,0,0,0.4); display:flex; align-items:center; justify-content:center; z-index:999;";
+  modal.className = 'sched-overlay';
   modal.innerHTML = `
-    <div style="background:#FBF2DE; border-radius:20px; padding:28px; width:320px; position:relative;">
-      <span onclick="document.getElementById('scheduleModal').remove()" style="position:absolute; top:14px; right:18px; cursor:pointer; font-size:20px;">✕</span>
-      <h3 style="margin-top:0;">Schedule Appointment</h3>
-      <label style="font-weight:700; font-size:13px;">Date</label>
-      <input type="date" id="apptDate" style="background:#fff; width:100%; padding:10px; margin:6px 0 14px; border-radius:10px; border:1px solid #ddd; box-sizing:border-box;">
-      <label style="font-weight:700; font-size:13px;">Time</label>
-      <input type="time" id="apptTime" style="background:#fff; width:100%; padding:10px; margin:6px 0 18px; border-radius:10px; border:1px solid #ddd; box-sizing:border-box;">
-      <label style="font-weight:700; font-size:13px;">Service</label>
-        <select id="apptService" style="background:#fff; color:#2b2b2b; width:100%; padding:10px; margin:6px 0 18px; border-radius:10px; border:1px solid #ddd; box-sizing:border-box; font-family:inherit;">
-          <option value="counseling">Counseling</option>
-          <option value="information">Information</option>
-          <option value="testing">Testing</option>
-          <option value="referral">Referral</option>
-        </select>
-      <button onclick="submitSchedule()" class="pill-btn solid sm" style="width:100%;">Confirm Schedule</button>
+    <div class="sched-card">
+      <button class="sched-close" onclick="document.getElementById('scheduleModal').remove()" aria-label="Close">✕</button>
+      <h3>Schedule Appointment</h3>
+      <label for="apptDate">Date</label>
+      <input type="date" id="apptDate">
+      <label for="apptTime">Time</label>
+      <input type="time" id="apptTime">
+      <label for="apptService">Service</label>
+      <select id="apptService">
+        <option value="counseling">Counseling</option>
+        <option value="information">Information</option>
+        <option value="testing">Testing</option>
+        <option value="referral">Referral</option>
+      </select>
+      <button onclick="submitSchedule()" class="pill-btn solid sm" style="width:100%; justify-content:center; padding:11px;">Confirm Schedule</button>
     </div>
   `;
   document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if(e.target === modal) modal.remove(); });
   const apptSel = modal.querySelector('#apptService');
   [...apptSel.options].forEach(o => { if(!canService('schedule_services', o.value)) o.remove(); });
   if(!apptSel.options.length){ modal.remove(); denied("Your staff role can't schedule appointments."); }
@@ -4643,6 +4653,24 @@ function initAll(){
     setInterval(()=>loadPending(true), 60000);
   }
 }
+
+/* If a profile picture can't load, show initials instead of a broken image. */
+function avatarFallback(img){
+  const box = img.closest('.me-avatar, .me-pic');
+  if(!box) return;
+  const nameEl = document.querySelector('.admin-chip .who .name');
+  const ini = ((nameEl ? nameEl.textContent : '').trim().split(/\s+/).filter(Boolean)
+                .map(w => w[0]).join('').slice(0, 2).toUpperCase()) || '?';
+  img.remove();
+  box.textContent = ini;
+}
+document.addEventListener('error', e => {
+  if(e.target && e.target.tagName === 'IMG') avatarFallback(e.target);
+}, true);
+// pictures that already failed before this script ran
+document.querySelectorAll('.me-avatar img, .me-pic img').forEach(img => {
+  if(img.complete && img.naturalWidth === 0) avatarFallback(img);
+});
 
 /* =========================================================
    IDLE AUTO-LOGOUT

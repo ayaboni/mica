@@ -1693,6 +1693,14 @@ function unlockStudent(){
 /* =========================================================
    STAFF ROLES (SUBCLASSES) — saved on the server
 ========================================================= */
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(()=>t.classList.remove('show'), 2600);
+}
+
 function getCookie(name){
   const m = document.cookie.match('(?:^|; )'+name+'=([^;]*)');
   return m ? decodeURIComponent(m[1]) : '';
@@ -2489,6 +2497,24 @@ function initAll(){
   loadMissing();
   loadDataRequests(1);
 }
+
+/* If a profile picture can't load, show initials instead of a broken image. */
+function avatarFallback(img){
+  const box = img.closest('.me-avatar, .me-pic');
+  if(!box) return;
+  const nameEl = document.querySelector('.admin-chip .who .name');
+  const ini = ((nameEl ? nameEl.textContent : '').trim().split(/\s+/).filter(Boolean)
+                .map(w => w[0]).join('').slice(0, 2).toUpperCase()) || '?';
+  img.remove();
+  box.textContent = ini;
+}
+document.addEventListener('error', e => {
+  if(e.target && e.target.tagName === 'IMG') avatarFallback(e.target);
+}, true);
+// pictures that already failed before this script ran
+document.querySelectorAll('.me-avatar img, .me-pic img').forEach(img => {
+  if(img.complete && img.naturalWidth === 0) avatarFallback(img);
+});
 
 /* =========================================================
    IDLE AUTO-LOGOUT
