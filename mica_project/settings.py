@@ -222,6 +222,8 @@ else:
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "MICA <no-reply@mica.local>")
 SITE_URL = os.getenv("SITE_URL", "")
 
+CONTACT_EMAIL = os.getenv("CONTACT_EMAIL", "mica.thesis2026@gmail.com")
+
 # E-mailed sign-in code (6 characters)
 LOGIN_CODE_TTL_MINUTES = 10      # how long a code stays valid
 TRUSTED_BROWSER_DAYS = 14        # "Remember me" skips the e-mail this long

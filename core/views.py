@@ -14,6 +14,7 @@ from django.db.models import Prefetch, Q
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.urls import reverse
+from django.core.cache import cache
 import math, secrets, threading, random
 from .models import AssessmentResponse
 from .models import UserProfile
@@ -340,8 +341,74 @@ def home(request):
 def about(request):
     return render(request, 'core/about.html')
 
+# --- Contact form ---
+CONTACT_MAX_PER_HOUR = 3
+CONTACT_THANKS = "Thanks! Your message has been sent. The Mica team will get back to you soon."
+
+
+def _one_line(text, limit):
+    return " ".join((text or "").split())[:limit]
+
+
 def contact(request):
-    return render(request, 'core/contact.html')
+    if request.method != 'POST':
+        return render(request, 'core/contact.html')
+
+    form = {
+        'firstName': _one_line(request.POST.get('firstName'), 80),
+        'lastName': _one_line(request.POST.get('lastName'), 80),
+        'email': _one_line(request.POST.get('email'), 254).lower(),
+        'message': (request.POST.get('message') or '').strip()[:2000],
+    }
+
+    # Hidden trap field: people never see it, bots fill it. Pretend it worked.
+    if request.POST.get('website'):
+        messages.success(request, CONTACT_THANKS)
+        return redirect(reverse('contact') + '#contact-form')
+
+    def fail(text):
+        messages.error(request, text)
+        return render(request, 'core/contact.html', {'form': form})
+
+    if not (form['firstName'] and form['lastName'] and form['email'] and form['message']):
+        return fail("Please fill in every field.")
+    try:
+        validate_email(form['email'])
+    except ValidationError:
+        return fail("Please enter a valid email address.")
+    if len(form['message']) < 10:
+        return fail("Your message is a bit short. Please add a few more words.")
+
+    # Stops one person from flooding the team's inbox.
+    throttle_key = "contact-form:%s" % client_ip(request)
+    sent_count = cache.get(throttle_key, 0)
+    if sent_count >= CONTACT_MAX_PER_HOUR:
+        return fail("You've sent a few messages already. Please try again in a while.")
+
+    to_email = getattr(settings, "CONTACT_EMAIL", "") or "mica.thesis2026@gmail.com"
+    full_name = "%s %s" % (form['firstName'], form['lastName'])
+    body = (
+        "New message from the MICA contact form\n"
+        "Sent: %s\n\n"
+        "Name: %s\n"
+        "Email: %s\n\n"
+        "Message:\n%s\n"
+    ) % (
+        timezone.localtime(timezone.now()).strftime("%b %d, %Y at %I:%M %p"),
+        full_name, form['email'], form['message'],
+    )
+    try:
+        EmailMultiAlternatives(
+            "MICA contact form: %s" % full_name, body, None, [to_email],
+            reply_to=[form['email']],          # hitting Reply in Gmail answers the sender
+        ).send(fail_silently=False)
+    except Exception:
+        logger.exception("Could not send a contact form message")
+        return fail("We couldn't send your message right now. Please email us directly at %s." % to_email)
+
+    cache.set(throttle_key, sent_count + 1, 3600)
+    messages.success(request, CONTACT_THANKS)
+    return redirect(reverse('contact') + '#contact-form')
 
 def privacy(request):
     return render(request, 'core/privacy-policy.html')

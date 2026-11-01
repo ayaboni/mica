@@ -96,6 +96,11 @@
 .form-note { margin-top: 16px; font-size: 0.85rem; color: var(--green-deep); font-weight: 600; display: none; }
 .form-note.is-visible { display: block; }
 
+.form-note.error { color: #a94442; }
+html[data-theme="dark"] .form-note.error { color: #ffb4b0; }
+.hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+#contact-form { scroll-margin-top: 90px; }
+
 /* ---------- row 2: guidance office ---------- */
 .guidance-section { padding-top: 0; }
 
@@ -165,7 +170,7 @@
 
       <div class="mica-mail">
         <h3>Email the Mica team</h3>
-        <a href="mailto:[mica email]" class="mail-link">
+        <a href="mailto:mica.thesis2026@gmail.com" class="mail-link">
           <svg class="ico" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
           mica.thesis2026@gmail.com
         </a>
@@ -177,28 +182,37 @@
       </div>
     </div>
 
-    <form class="contact-card reveal reveal-1" data-contact-form>
+    <form class="contact-card reveal reveal-1" id="contact-form" method="post" action="{% url 'contact' %}">
+      {% csrf_token %}
+
+      <!-- Trap for bots. People never see this field. -->
+      <div class="hp" aria-hidden="true">
+        <label>Leave this empty <input type="text" name="website" tabindex="-1" autocomplete="off"></label>
+      </div>
+
       <div class="form-grid">
         <div class="field">
           <label for="firstName">First name <span class="req">(required)</span></label>
-          <input type="text" id="firstName" name="firstName" required>
+          <input type="text" id="firstName" name="firstName" maxlength="80" value="{{ form.firstName }}" required>
         </div>
         <div class="field">
           <label for="lastName">Last name <span class="req">(required)</span></label>
-          <input type="text" id="lastName" name="lastName" required>
+          <input type="text" id="lastName" name="lastName" maxlength="80" value="{{ form.lastName }}" required>
         </div>
         <div class="field field-full">
           <label for="email">Email <span class="req">(required)</span></label>
-          <input type="email" id="email" name="email" required>
+          <input type="email" id="email" name="email" maxlength="254" value="{{ form.email }}" required>
         </div>
         <div class="field field-full">
           <label for="message">Message <span class="req">(required)</span></label>
-          <textarea id="message" name="message" required></textarea>
+          <textarea id="message" name="message" maxlength="2000" required>{{ form.message }}</textarea>
         </div>
       </div>
 
       <button type="submit" class="btn btn-brown">Submit</button>
-      <p class="form-note" role="status"></p>
+      {% if messages %}
+        {% for m in messages %}<p class="form-note is-visible {{ m.tags }}" role="status">{{ m }}</p>{% endfor %}
+      {% endif %}
     </form>
 
   </div>
@@ -213,12 +227,12 @@
       <div class="info-grid">
         <div class="info-item">
           <span class="info-icon"><svg class="ico" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></span>
-          <div><h4>Phone</h4><p><a href="tel:[phone number]">(02) 8871-0639 local 138</a></p></div>
+          <div><h4>Phone</h4><p><a href="tel:+63288710639,138">(02) 8871-0639 local 138</a></p></div>
         </div>
 
         <div class="info-item">
           <span class="info-icon"><svg class="ico" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></span>
-          <div><h4>Email</h4><p><a href="mailto:[guidance office email]">college.guidance@perpetualdalta.edu.ph</a></p></div>
+          <div><h4>Email</h4><p><a href="mailto:college.guidance@perpetualdalta.edu.ph">college.guidance@perpetualdalta.edu.ph</a></p></div>
         </div>
 
         <div class="info-item">
@@ -240,21 +254,10 @@
 
 {% block extra_js %}
 <script>
-/* Placeholder submit handling. Khalel: delete this block and the
-   data-contact-form attribute when the real email sending is added. */
-document.addEventListener("DOMContentLoaded", () => {
-  const form = document.querySelector("[data-contact-form]");
-  if (!form) return;
-
-  form.addEventListener("submit", (e) => {
-    e.preventDefault();
-    const note = form.querySelector(".form-note");
-    if (note) {
-      note.textContent = "Thanks! Your message has been noted. We'll get back to you soon.";
-      note.classList.add("is-visible");
-    }
-    form.reset();
-  });
+/* After sending (or an error), bring the message into view */
+document.addEventListener("DOMContentLoaded", function () {
+  var note = document.querySelector(".form-note.is-visible");
+  if (note) note.scrollIntoView({ block: "center" });
 });
 </script>
 {% endblock %}
