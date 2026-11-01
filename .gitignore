@@ -226,3 +226,10 @@ media/
 db.sqlite3
 vosk-model-small-en-us-0.15*/
 mica_project/openrouterai.js
+
+# --- Added: keep student data and local logs out of the repo ---
+enrollment_admin*
+test*.txt
+t[0-9]*.txt
+*.csv
+staticfiles/

@@ -1,0 +1,37 @@
+# MICA runtime dependencies. Install with:  pip install -r requirements.txt
+# Speech-to-text (optional, needs the Vosk model): pip install -r requirements-speech.txt
+#
+# Before deploying, replace the ranges below with exact pins from the machine where the app
+# works:  pip freeze > requirements.lock   (then run:  pip-audit -r requirements.lock)
+
+Django==6.1.1                       # version the project was generated with (settings.py header)
+
+# Database (settings.py uses django.db.backends.postgresql with sslmode=require)
+psycopg[binary]>=3.2,<4
+
+# Serving static files in production (settings.py inserts WhiteNoise when PRODUCTION)
+whitenoise>=6.7,<7
+
+# Config from .env
+python-dotenv>=1.0,<2
+
+# Firebase Admin (Google sign-in token checks, password-reset codes)
+firebase-admin>=6.5,<8
+
+# Gemini API client (views.py: from google import genai)
+google-genai>=1.0,<2
+
+# Outbound HTTP (Gemini, Firebase REST)
+requests>=2.32,<3
+
+# Encrypts the admin authenticator secrets (core/twofactor.py)
+cryptography>=43
+
+# Avatar upload checks and ImageField
+Pillow>=10.4
+
+# Shared rate-limit cache. Only used when REDIS_URL is set; otherwise the database cache is used.
+redis>=5.0,<7
+
+# Production web server (start command e.g.:  gunicorn mica_project.wsgi)
+gunicorn>=22

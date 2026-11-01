@@ -21,7 +21,8 @@ from django.core.exceptions import ImproperlyConfigured
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 from dotenv import load_dotenv
-load_dotenv(BASE_DIR / '.env', override=True)
+# override=False: a real environment variable set on the server always wins over a stray .env file.
+load_dotenv(BASE_DIR / '.env', override=False)
 
 GEMINI_API_KEY= os.getenv("GEMINI_API_KEY")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite")

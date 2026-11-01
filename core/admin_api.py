@@ -721,7 +721,7 @@ def audit_logs(request):
 def _csv_safe(value):
     """Stops Excel from running a name like =HYPERLINK(...) as a formula."""
     value = str(value or "")
-    return "'" + value if value[:1] in ("=", "+", "-", "@") else value
+    return "'" + value if value[:1] in ("=", "+", "-", "@", "\t", "\r") else value
 
 
 @_admin
