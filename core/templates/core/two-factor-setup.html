@@ -1,0 +1,75 @@
+{% extends 'core/site_base.html' %}
+{% load static %}
+
+{% block title %}Set up two-factor sign-in | MICA{% endblock %}
+{% block extra_head %}<meta name="robots" content="noindex">{% endblock %}
+{% block footer %}{% endblock %}
+
+{% block navbar %}
+  {% url 'logout' as logout_url %}
+  {% include 'core/_navbar_min.html' with nav_link_url=logout_url nav_link_label="Cancel and sign out" %}
+{% endblock %}
+
+{% block content %}
+<section class="auth-wrap auth-wrap--tight doodle-bg">
+  <div class="booklet booklet--compact">
+
+    <aside class="booklet-side booklet-side--center">
+      <img src="{% static 'core/images/mascot_body.png' %}" alt="Mica the axolotl mascot">
+      <h1>Protect the admin account</h1>
+      <p class="lead">Admins can open every student's records, so a password alone isn't enough.</p>
+    </aside>
+
+    <div class="booklet-main">
+      <h2>Set up your authenticator</h2>
+
+      {% if messages %}
+        {% for message in messages %}
+          <p class="msg {% if message.tags == 'success' %}ok{% else %}err{% endif %}">{{ message }}</p>
+        {% endfor %}
+      {% endif %}
+
+      <p class="auth-intro"><strong>1.</strong> Install an authenticator app on your phone (Google Authenticator, Microsoft Authenticator, Authy, 1Password and Bitwarden all work).</p>
+
+      <p class="auth-intro"><strong>2.</strong> Add MICA to it.
+        {% if qr_svg %}Scan this code with the app:{% else %}Choose "enter a setup key" in the app and type this key:{% endif %}</p>
+
+      {% if qr_svg %}
+        <div style="display:flex; justify-content:center; margin:6px 0 12px;"><div style="background:#fff; padding:6px; border-radius:8px; line-height:0;" aria-label="QR code for your authenticator app">{{ qr_svg }}</div></div>
+        <p class="auth-foot" style="margin-top:0;">Can't scan? Type this key instead:</p>
+      {% endif %}
+      <p style="font-family:'IBM Plex Mono',ui-monospace,monospace; font-size:17px; letter-spacing:.06em; text-align:center; word-break:break-all; padding:10px 12px; border:1px dashed rgba(90,74,61,.45); border-radius:8px; user-select:all;" id="setupKey">{{ secret_display }}</p>
+      <p class="auth-foot" style="margin-top:0;">On your phone you can also <a href="{{ otpauth_uri }}">tap here to add it</a>. Keep this key private: anyone who has it can make your codes.</p>
+
+      <p class="auth-intro"><strong>3.</strong> Type the 6-digit code the app now shows to finish.</p>
+      <form method="post" action="{% url 'two_factor_setup' %}" id="setupForm" autocomplete="off">
+        {% csrf_token %}
+        <div class="auth-field">
+          <input type="text" name="code" id="setupInput" class="code-input" placeholder="000000"
+                 maxlength="7" inputmode="numeric" pattern="[0-9 ]*" autocomplete="one-time-code"
+                 autocorrect="off" spellcheck="false" autofocus required aria-label="6-digit code from your authenticator">
+        </div>
+        <button type="submit" id="setupBtn" class="btn btn-brown btn-block">Turn on two-factor sign-in</button>
+      </form>
+      <p class="auth-foot">Next you'll get one-time recovery codes, in case you lose your phone.</p>
+    </div>
+
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function(){
+  var form = document.getElementById('setupForm'), btn = document.getElementById('setupBtn'), sent = false;
+  form.addEventListener('submit', function(e){
+    if (sent) { e.preventDefault(); return; }
+    sent = true; btn.disabled = true; btn.textContent = 'Checking...';
+  });
+  window.addEventListener('pageshow', function(e){
+    if (!e.persisted) return;
+    sent = false; btn.disabled = false; btn.textContent = 'Turn on two-factor sign-in';
+  });
+})();
+</script>
+{% endblock %}

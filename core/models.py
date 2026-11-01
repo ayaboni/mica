@@ -594,7 +594,8 @@ class AuditEvent(models.Model):
 
 class SignInFailure(models.Model):
     """One failed sign-in, kept 90 days so the admin can tell a typo from an attack."""
-    REASONS = [("password", "Wrong password"), ("code", "Wrong e-mail code")]
+    REASONS = [("password", "Wrong password"), ("code", "Wrong e-mail code"),
+               ("totp", "Wrong authenticator code")]
     user = models.ForeignKey(User, null=True, blank=True, on_delete=models.CASCADE, related_name="sign_in_failures")
     reason = models.CharField(max_length=10, choices=REASONS)
     ip = models.GenericIPAddressField(null=True, blank=True)
@@ -602,6 +603,37 @@ class SignInFailure(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+
+
+class TotpDevice(models.Model):
+    """A System Admin's authenticator app (time-based one-time passwords).
+
+    `secret_enc` is the shared secret, encrypted with a key derived from SECRET_KEY (or
+    TOTP_ENCRYPTION_KEY), so a copy of the database alone can't produce sign-in codes.
+    The device counts only once `confirmed_at` is set, i.e. after the admin typed a valid code
+    from the app. `last_used_step` is the newest 30-second step already accepted: a code from
+    that step or an earlier one is refused, so a code can't be used twice.
+    """
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="totp_device")
+    secret_enc = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    confirmed_at = models.DateTimeField(null=True, blank=True)
+    last_used_step = models.BigIntegerField(default=0)
+
+    def __str__(self):
+        return f"{self.user} ({'on' if self.confirmed_at else 'not confirmed'})"
+
+
+class RecoveryCode(models.Model):
+    """One single-use backup code for an admin who has lost their authenticator.
+    Only a keyed hash is stored; the code itself is shown once, when it is made."""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="recovery_codes")
+    code_hash = models.CharField(max_length=64, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    used_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.user} ({'used' if self.used_at else 'unused'})"
 
 
 class DataRequest(models.Model):

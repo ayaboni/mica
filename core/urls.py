@@ -1,5 +1,5 @@
 from django.urls import path
-from . import views, admin_api, reports, registration_codes, verification
+from . import views, admin_api, reports, registration_codes, verification, two_factor_views
 from django.contrib.auth import views as auth_views
 from django.views.generic import TemplateView, RedirectView
 
@@ -16,6 +16,9 @@ urlpatterns = [
     path('login/check-email/', views.login_check_email, name='login_check_email'),
     path('login/resend/', views.login_resend, name='login_resend'),
     path('login/verify/', views.login_verify, name='login_verify'),
+    path('login/two-factor/', two_factor_views.login_totp, name='login_totp'),
+    path('account/two-factor/', two_factor_views.two_factor_manage, name='two_factor_manage'),
+    path('account/two-factor/setup/', two_factor_views.two_factor_setup, name='two_factor_setup'),
     path('archived/', views.archived, name='archived'),
     path('api/keepalive/', views.api_keepalive, name='api_keepalive'),
     path('logout/', views.user_logout, name='logout'),

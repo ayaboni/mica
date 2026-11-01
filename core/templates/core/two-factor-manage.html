@@ -1,0 +1,59 @@
+{% extends 'core/site_base.html' %}
+{% load static %}
+
+{% block title %}Two-factor sign-in | MICA{% endblock %}
+{% block extra_head %}<meta name="robots" content="noindex">{% endblock %}
+{% block footer %}{% endblock %}
+
+{% block navbar %}
+  {% url 'admin_dashboard' as dash_url %}
+  {% include 'core/_navbar_min.html' with nav_link_url=dash_url nav_link_label="<- Back to dashboard" %}
+{% endblock %}
+
+{% block content %}
+<section class="auth-wrap auth-wrap--tight doodle-bg">
+  <div class="booklet booklet--compact">
+
+    <aside class="booklet-side booklet-side--center">
+      <img src="{% static 'core/images/mascot_body.png' %}" alt="Mica the axolotl mascot">
+      <h1>Two-factor sign-in</h1>
+      <p class="lead">Your authenticator app and recovery codes.</p>
+    </aside>
+
+    <div class="booklet-main">
+      <h2>{% if enabled %}It's on{% else %}Not set up{% endif %}</h2>
+
+      {% if messages %}
+        {% for message in messages %}
+          <p class="msg {% if message.tags == 'success' %}ok{% else %}err{% endif %}">{{ message }}</p>
+        {% endfor %}
+      {% endif %}
+
+      {% if enabled %}
+        <p class="auth-intro">Turned on {{ enabled_since|date:"M d, Y" }}. You have <strong>{{ codes_left }}</strong> unused recovery code{{ codes_left|pluralize }}.</p>
+        {% if codes_low %}
+          <p class="msg err">You're nearly out of recovery codes. Make new ones below.</p>
+        {% endif %}
+
+        <form method="post" action="{% url 'two_factor_manage' %}" autocomplete="off" id="manageForm">
+          {% csrf_token %}
+          <p class="auth-intro">Type the current code from your authenticator (or an unused recovery code) to confirm it's you. If you just signed in with that code, wait for the next one.</p>
+          <div class="auth-field">
+            <input type="text" name="code" class="code-input" placeholder="000000" maxlength="24"
+                   autocomplete="one-time-code" autocapitalize="characters" autocorrect="off" spellcheck="false" required
+                   aria-label="Authenticator code or recovery code">
+          </div>
+          <button type="submit" name="action" value="regenerate" class="btn btn-brown btn-block">Make new recovery codes</button>
+          <button type="submit" name="action" value="replace" class="btn btn-outline btn-block" style="margin-top:10px;"
+                  onclick="return confirm('Switch to a new authenticator? The old one and all recovery codes stop working. You will set up the new one next.');">Switch to a new authenticator (new phone)</button>
+        </form>
+        <p class="auth-foot">Two-factor sign-in can't be turned off for admin accounts.</p>
+      {% else %}
+        <p class="auth-intro">This admin account has no authenticator yet. Sign out and sign in again: you'll be taken through the setup.</p>
+        <a class="btn btn-brown btn-block" href="{% url 'logout' %}">Sign out</a>
+      {% endif %}
+    </div>
+
+  </div>
+</section>
+{% endblock %}

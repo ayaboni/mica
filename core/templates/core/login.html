@@ -45,6 +45,10 @@
           <p id="lockoutMsg" class="msg err" data-seconds="{{ lockout_seconds }}"></p>
         {% endif %}
 
+        {% if request.GET.twofactor %}
+          <p class="msg err">Admin accounts need the authenticator code too. Please sign in again.</p>
+        {% endif %}
+
         {% if request.GET.expired %}
           <p class="msg err">You were signed out because of inactivity. Please log in again.</p>
         {% endif %}

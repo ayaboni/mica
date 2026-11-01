@@ -45,6 +45,7 @@ from . import verification
 from .verification import visible_students
 from .models import SignInFailure
 from . import firebase_reset
+from . import twofactor
 from urllib.parse import urlencode
 from .models import StaffProfile, StaffSubclass
 from .permissions import can, require_perm, staff_permissions, SERVICE_KEYS
@@ -229,6 +230,11 @@ def google_register(request):
 
     if not user.is_active:
         return JsonResponse({"error": "This account is disabled."}, status=403)
+
+    # Staff and admins sign in with their password (and, for admins, the authenticator code).
+    # Google sign-in must never be a way around that, whichever way the account was matched.
+    if user.is_staff or user.is_superuser:
+        return JsonResponse({"error": "Google sign-in is not available for this account."}, status=403)
 
     if profile.account_status != "active":
         hl = get_hotlines()[0]
@@ -633,6 +639,33 @@ def _client_ip(request):
     return client_ip(request)        # see core/net.py (proxy-aware, spoof-resistant)
 
 
+# Failures are also counted per network address, so one machine can't try thousands of usernames
+# (the per-username lock above only slows down attacks on a single account). The limit is high
+# because a whole campus can share one address; see LOGIN_IP_MAX_FAILURES in settings.py.
+LOGIN_IP_MAX_FAILURES = getattr(settings, "LOGIN_IP_MAX_FAILURES", 40)
+LOGIN_IP_LOCKOUT_SECONDS = getattr(settings, "LOGIN_IP_LOCKOUT_SECONDS", 300)
+
+
+def _ip_throttle_key(request):
+    ip = client_ip(request)
+    return "ip:%s" % ip if ip else None
+
+
+def _ip_lockout_seconds_left(request):
+    key = _ip_throttle_key(request)
+    return _lockout_seconds_left(key) if key else 0
+
+
+def _record_failed_ip(request):
+    """Count one failed sign-in against this address. Returns the lockout seconds (0 if none yet).
+    Deliberately NOT cleared by a successful sign-in, so someone can't reset it by logging in to
+    an account of their own between guesses."""
+    key = _ip_throttle_key(request)
+    if not key:
+        return 0
+    return _record_failed_login(key, LOGIN_IP_MAX_FAILURES, LOGIN_IP_LOCKOUT_SECONDS)[1]
+
+
 def _log_sign_in_failure(request, reason, user=None, typed=None):
     """Remember one failed sign-in. `typed` is only used to find the account; if nobody matches,
     nothing the person typed is stored (it might be a password)."""
@@ -648,8 +681,14 @@ def _log_sign_in_failure(request, reason, user=None, typed=None):
         logger.exception("Could not record a failed sign-in.")
 
 
-def _record_failed_login(key):
-    """Count a wrong password. Returns (attempts_left, lockout_seconds)."""
+def _record_failed_login(key, max_attempts=None, lockout_seconds=None):
+    """Count a wrong password (or wrong code) against `key`. Returns (attempts_left, lockout_seconds).
+
+    `key` is a lower-cased username, or "ip:<address>" / "totp:<user id>" (usernames can't contain
+    a colon, so those never collide with a real person). The limits default to the per-username
+    ones; the per-address and authenticator-code checks pass their own."""
+    max_attempts = LOGIN_MAX_ATTEMPTS if max_attempts is None else max_attempts
+    lockout_seconds = LOGIN_LOCKOUT_SECONDS if lockout_seconds is None else lockout_seconds
     now = timezone.now()
     with transaction.atomic():
         row, created = LoginThrottle.objects.select_for_update().get_or_create(username_key=key)
@@ -666,15 +705,15 @@ def _record_failed_login(key):
         row.failed_count += 1
         row.last_failed_at = now
         lockout = 0
-        if row.failed_count >= LOGIN_MAX_ATTEMPTS:
-            row.locked_until = now + timedelta(seconds=LOGIN_LOCKOUT_SECONDS)
-            lockout = LOGIN_LOCKOUT_SECONDS
+        if row.failed_count >= max_attempts:
+            row.locked_until = now + timedelta(seconds=lockout_seconds)
+            lockout = lockout_seconds
         row.save()
 
         if created:  # housekeeping: forget usernames not seen for a day
             LoginThrottle.objects.filter(last_failed_at__lt=now - timedelta(days=1)).delete()
 
-    return max(LOGIN_MAX_ATTEMPTS - row.failed_count, 0), lockout
+    return max(max_attempts - row.failed_count, 0), lockout
 
 
 def _plural(n, word):
@@ -965,6 +1004,18 @@ def login_verify(request):
     # Typing the e-mailed code proves the owner controls this address: lock it to this account.
     UserProfile.objects.filter(user=user, email_verified_at__isnull=True).update(email_verified_at=timezone.now())
 
+    if user.is_superuser and twofactor.required():
+        # An admin who already has an authenticator must use it (this code only exists for the
+        # first-time setup). Otherwise the mailbox check is done: let them set one up, nothing else.
+        request.session.pop("pending_login_user_id", None)
+        if twofactor.has_confirmed_device(user):
+            messages.error(request, "Please sign in again and use your authenticator app.")
+            return redirect("login")
+        auth_login(request, user)
+        request.session.set_expiry(0)
+        twofactor.allow_setup(request)
+        return redirect("two_factor_setup")
+
     auth_login(request, user)
     request.session.set_expiry(REMEMBER_ME_SECONDS if remember_me else 0)
     request.session.pop("pending_login_user_id", None)
@@ -980,6 +1031,25 @@ def csrf_failure(request, reason=""):
     if request.method == "POST" and request.path.rstrip("/") == "/login/verify":
         return redirect("login_check_email")
     return HttpResponseForbidden("Your page expired. Please go back, refresh, and try again.")
+
+
+def _start_admin_second_factor(request, user):
+    """The admin's password was right. They are NOT signed in yet:
+    with an authenticator set up they go on to the code page; without one they first prove they own
+    the mailbox (so a stolen password can't enrol the thief's phone), then set one up."""
+    if twofactor.has_confirmed_device(user):
+        twofactor.begin_pending(request, user)
+        return redirect('login_totp')
+    if not user.email:
+        messages.error(request, "This admin account has no email address, so it can't be set up for two-factor "
+                                "sign-in. Ask whoever runs the server to run: python manage.py reset_admin_2fa "
+                                "--username %s" % user.username)
+        return render(request, 'core/login.html', status=403)
+    ok, error = _send_login_code(request, user, False, 'password')
+    if not ok:
+        messages.error(request, error)
+        return render(request, 'core/login.html', status=429 if 'Too many' in error else 503)
+    return redirect('login_check_email')
 
 
 @never_cache
@@ -1002,6 +1072,11 @@ def login(request):
         username_input = request.POST.get('username')
         password_input = request.POST.get('password')
         throttle_key = _throttle_key(username_input)
+
+        # Too many failures from this address (any usernames): refuse without checking anything.
+        ip_wait = _ip_lockout_seconds_left(request)
+        if ip_wait:
+            return render(request, 'core/login.html', {'lockout_seconds': ip_wait, 'ip_lockout': True}, status=429)
 
         # Locked out: refuse without even checking the password.
         wait = _lockout_seconds_left(throttle_key)
@@ -1033,6 +1108,8 @@ def login(request):
                     and not (user.is_staff or user.is_superuser)):
                 messages.error(request, "This account is archived. Please visit the Guidance Office to reactivate it.")
                 return render(request, 'core/login.html', {'archived_blocked': True}, status=403)
+            if user.is_superuser and twofactor.required():
+                return _start_admin_second_factor(request, user)
             remember_me = bool(request.POST.get('remember_me'))
             trusted = _is_trusted_browser(request, user)
 
@@ -1065,6 +1142,9 @@ def login(request):
                 return render(request, 'core/login.html', status=403)
             attempts_left, wait = _record_failed_login(throttle_key)
             _log_sign_in_failure(request, "password", typed=username_input)
+            ip_wait = _record_failed_ip(request)
+            if ip_wait and not wait:
+                return render(request, 'core/login.html', {'lockout_seconds': ip_wait, 'ip_lockout': True}, status=429)
             if wait:
                 return render(request, 'core/login.html', {
                     'lockout_seconds': wait,

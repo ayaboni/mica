@@ -156,5 +156,8 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(
             "System Admin @%s created (%s). They can sign in now with their own username and password." % (user.username, email)))
         self.stdout.write(
+            "On that first sign-in MICA e-mails a code to %s, then makes them set up an authenticator app "
+            "and save recovery codes. Every sign-in after that needs the authenticator code too." % email)
+        self.stdout.write(
             "Next: have them sign in, and once everyone has a personal account, change the password of "
             "the old shared admin account (or deactivate it) so it stops being used.")

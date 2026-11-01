@@ -1,0 +1,70 @@
+{% extends 'core/site_base.html' %}
+{% load static %}
+
+{% block title %}Your recovery codes | MICA{% endblock %}
+{% block extra_head %}<meta name="robots" content="noindex">{% endblock %}
+{% block footer %}{% endblock %}
+
+{% block navbar %}
+  {% url 'admin_dashboard' as dash_url %}
+  {% include 'core/_navbar_min.html' with nav_link_url=dash_url nav_link_label="Go to dashboard" %}
+{% endblock %}
+
+{% block content %}
+<section class="auth-wrap auth-wrap--tight doodle-bg">
+  <div class="booklet booklet--compact">
+
+    <aside class="booklet-side booklet-side--center">
+      <img src="{% static 'core/images/mascot_body.png' %}" alt="Mica the axolotl mascot">
+      <h1>{% if first_time %}Two-factor is on{% else %}New recovery codes{% endif %}</h1>
+      <p class="lead">Save these now. They won't be shown again.</p>
+    </aside>
+
+    <div class="booklet-main">
+      <h2>Your recovery codes</h2>
+      <p class="auth-intro">If you lose your phone, type one of these instead of the 6-digit code. <strong>Each works only once.</strong> Keep them somewhere safe and private (a password manager or a printout in a locked drawer), not in the same place as your password.{% if not first_time %} The old codes no longer work.{% endif %}</p>
+
+      <ul id="codeList" style="list-style:none; margin:10px 0; padding:12px; display:grid; grid-template-columns:1fr 1fr; gap:6px 14px; border:1px dashed rgba(90,74,61,.45); border-radius:8px; font-family:'IBM Plex Mono',ui-monospace,monospace; font-size:16px; letter-spacing:.04em;">
+        {% for c in codes %}<li>{{ c }}</li>{% endfor %}
+      </ul>
+
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button type="button" class="btn btn-outline" id="copyBtn">Copy</button>
+        <button type="button" class="btn btn-outline" id="dlBtn">Download .txt</button>
+        <button type="button" class="btn btn-outline" id="printBtn">Print</button>
+      </div>
+
+      <label style="display:flex; gap:8px; align-items:flex-start; margin:14px 0 8px; font-size:14px;">
+        <input type="checkbox" id="savedBox" style="margin-top:3px;"> <span>I have saved these codes somewhere safe.</span>
+      </label>
+      <a class="btn btn-brown btn-block" id="continueBtn" href="{% url 'admin_dashboard' %}" aria-disabled="true" style="pointer-events:none; opacity:.5;">Continue to the dashboard</a>
+    </div>
+
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function(){
+  var items = Array.prototype.map.call(document.querySelectorAll('#codeList li'), function(li){ return li.textContent.trim(); });
+  var text = 'MICA admin recovery codes (each works once)\n\n' + items.join('\n') + '\n';
+  document.getElementById('copyBtn').addEventListener('click', function(){
+    var b = this;
+    function done(){ b.textContent = 'Copied'; setTimeout(function(){ b.textContent = 'Copy'; }, 1500); }
+    if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done); }
+  });
+  document.getElementById('dlBtn').addEventListener('click', function(){
+    var url = URL.createObjectURL(new Blob([text], {type: 'text/plain'}));
+    var a = document.createElement('a'); a.href = url; a.download = 'mica-recovery-codes.txt';
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+  });
+  document.getElementById('printBtn').addEventListener('click', function(){ window.print(); });
+  var box = document.getElementById('savedBox'), go = document.getElementById('continueBtn');
+  box.addEventListener('change', function(){
+    go.style.pointerEvents = box.checked ? '' : 'none'; go.style.opacity = box.checked ? '' : '.5';
+    go.setAttribute('aria-disabled', box.checked ? 'false' : 'true');
+  });
+})();
+</script>
+{% endblock %}

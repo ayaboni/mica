@@ -382,8 +382,8 @@ def dashboard_stats(request):
         uid, last = data.get("_auth_user_id"), data.get("last_activity")
         if uid and last and now_ts - last <= 15 * 60:
             signed_in.add(uid)
-    locked_now = LoginThrottle.objects.filter(locked_until__gt=now).count()
-    failed_24h = LoginThrottle.objects.filter(last_failed_at__gte=now - timedelta(hours=24)).count()
+    locked_now = LoginThrottle.objects.filter(locked_until__gt=now).exclude(username_key__contains=":").count()
+    failed_24h = LoginThrottle.objects.filter(last_failed_at__gte=now - timedelta(hours=24)).exclude(username_key__contains=":").count()
 
     # ---- platform activity, last 14 days
     days = [today - timedelta(days=i) for i in range(13, -1, -1)]
@@ -1020,7 +1020,7 @@ def enrollment_download(request):
     return response
 
 
-SIGNIN_REASON = {"password": "Wrong password", "code": "Wrong e-mail code"}
+SIGNIN_REASON = {"password": "Wrong password", "code": "Wrong e-mail code", "totp": "Wrong authenticator code"}
 
 
 @_admin
@@ -1056,7 +1056,7 @@ def signin_failures(request):
         "failed_24h": last_day.count(),
         "accounts_hit": last_day.exclude(user=None).values("user").distinct().count(),
         "ips": last_day.exclude(ip=None).values("ip").distinct().count(),
-        "locked_now": LoginThrottle.objects.filter(locked_until__gt=now).count(),
+        "locked_now": LoginThrottle.objects.filter(locked_until__gt=now).exclude(username_key__contains=":").count(),
         "watch": watch,
         "rows": [row(f) for f in page],
         "page": page.number, "pages": page.paginator.num_pages, "total": page.paginator.count,

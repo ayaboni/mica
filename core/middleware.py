@@ -86,6 +86,44 @@ class StaffSetupMiddleware:
                 return redirect("staff_setup")
         return self.get_response(request)
 
+ADMIN_2FA_PASS_THROUGH = ("/logout/", "/static/", "/media/")
+ADMIN_2FA_SETUP_PATHS = ("/account/two-factor/setup/",)
+
+
+class AdminTwoFactorMiddleware:
+    """A System Admin is only really signed in once the second factor is done.
+
+    The session carries a flag set by the sign-in views (core/twofactor.py). Any admin session
+    without it, for example one made by the Django /admin/ login form, which accepts the
+    password alone, is signed out here, so there is no way round the authenticator code.
+    An admin who is allowed to enrol an authenticator (and hasn't yet) can reach only the
+    setup page.
+    """
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        user = request.user
+        if user.is_authenticated and user.is_superuser:
+            from . import twofactor
+            if twofactor.required() and not twofactor.is_verified(request):
+                path = request.path
+                if path.startswith(ADMIN_2FA_PASS_THROUGH):
+                    return self.get_response(request)
+                if twofactor.may_set_up(request):
+                    if path.startswith(ADMIN_2FA_SETUP_PATHS):
+                        return self.get_response(request)
+                    if path.startswith("/api/"):
+                        return JsonResponse({"error": "Finish setting up two-factor sign-in first.",
+                                             "two_factor_setup_required": True}, status=403)
+                    return redirect("two_factor_setup")
+                logout(request)
+                if path.startswith("/api/"):
+                    return JsonResponse({"error": "Please sign in again.", "two_factor_required": True}, status=401)
+                return redirect(reverse("login") + "?twofactor=1")
+        return self.get_response(request)
+
+
 MAINTENANCE_ALLOWED = ("/login/", "/logout/", "/static/", "/media/", "/admin/")
 
 class MaintenanceModeMiddleware:

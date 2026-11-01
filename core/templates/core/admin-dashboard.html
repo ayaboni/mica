@@ -710,6 +710,7 @@
             <option value="all">All reasons</option>
             <option value="password">Wrong password</option>
             <option value="code">Wrong e-mail code</option>
+            <option value="totp">Wrong authenticator code</option>
           </select>
           <button class="pill-btn ghost sm" onclick="loadSignins(1)">Refresh</button>
         </div>
@@ -963,12 +964,17 @@
             <div class="panel-head"><div><h3>Sign-in and session rules</h3><div class="sub">Set in the code, so they are shown here but not editable.</div></div></div>
             <ul style="margin:0; padding-left:18px; line-height:1.8; font-size:14px;">
               <li>Passwords need 8+ characters, 1 uppercase letter, and 1 number or symbol.</li>
-              <li>5 wrong passwords lock the account for 60 seconds.</li>
+              <li>5 wrong passwords lock the account for 60 seconds. Many failures from one network address lock that address for a few minutes.</li>
+              <li>System Admin accounts also need a code from an authenticator app (or a one-time recovery code) every time they sign in.</li>
               <li>E-mailed sign-in code: 6 characters, valid 10 minutes, 5 tries.</li>
               <li>Idle sign-out: 15 minutes for staff and admin, 30 minutes for students.</li>
               <li>New staff accounts have no password. They sign in with their username and an e-mailed code, then set one.</li>
               <li>Archived and graduated students cannot sign in.</li>
             </ul>
+          </div>
+          <div class="card panel">
+            <div class="panel-head"><div><h3>Your two-factor sign-in</h3><div class="sub">Authenticator app and recovery codes for this admin account.</div></div></div>
+            <a class="pill-btn solid sm" href="{% url 'two_factor_manage' %}">Manage two-factor sign-in</a>
           </div>
         </div>
 

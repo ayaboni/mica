@@ -99,6 +99,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'core.middleware.AdminTwoFactorMiddleware',
     'core.middleware.MaintenanceModeMiddleware',
     'core.middleware.SuspendedAccountMiddleware',
     'core.middleware.ArchivedStudentMiddleware',
@@ -262,6 +263,26 @@ MICA_DAILY_LIMIT_UNVERIFIED_TOTAL = int(os.getenv("MICA_DAILY_LIMIT_UNVERIFIED_T
 # Chat and guidance messages are capped at 2,000 characters in views.py; this is the backstop for
 # everything else. Django's default is 2.5 MB.
 DATA_UPLOAD_MAX_MEMORY_SIZE = int(os.getenv("DATA_UPLOAD_MAX_MEMORY_SIZE", str(512 * 1024)))
+
+# --- Sign-in hardening (finding 7) -------------------------------------------------------------
+# System Admin (superuser) accounts must pass a second factor: an authenticator-app code (or a
+# recovery code), see core/twofactor.py. The first sign-in has no authenticator yet, so it uses an
+# e-mailed code and then walks the admin through setting one up. Only the automated tests turn
+# this off, so the many existing tests that log an admin in directly keep working; the tests in
+# core/test_admin_two_factor.py switch it back on.
+ADMIN_TWO_FACTOR_REQUIRED = not RUNNING_TESTS
+# Name shown in the authenticator app next to the account.
+TOTP_ISSUER = os.getenv("TOTP_ISSUER", "MICA")
+# The authenticator secrets are encrypted with a key made from SECRET_KEY. To be able to change
+# SECRET_KEY later without losing them, set TOTP_ENCRYPTION_KEY once (any long random string) and
+# keep it fixed.
+TOTP_ENCRYPTION_KEY = os.getenv("TOTP_ENCRYPTION_KEY", "")
+
+# Failed sign-ins are also counted per network address (many usernames from one IP), on top of the
+# per-username lock. Generous on purpose: a whole campus can share one address, so a handful of
+# typos must never lock everyone out.
+LOGIN_IP_MAX_FAILURES = int(os.getenv("LOGIN_IP_MAX_FAILURES", "40"))
+LOGIN_IP_LOCKOUT_SECONDS = int(os.getenv("LOGIN_IP_LOCKOUT_SECONDS", "300"))
 
 # Content-Security-Policy: report-only until you set CSP_ENFORCE=true (see core/middleware.py)
 CSP_ENFORCE = os.getenv("CSP_ENFORCE", "false").lower() == "true"

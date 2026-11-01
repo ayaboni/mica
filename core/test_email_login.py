@@ -165,6 +165,8 @@ class EmailSignInCodeTests(TestCase):
         self.assertRedirects(self.confirm(), reverse('staff_dashboard'), fetch_redirect_response=False)
 
     def test_admin_superuser_signs_in_without_an_email_code(self):
+        # Admin two-factor is switched off for the test run (settings.ADMIN_TWO_FACTOR_REQUIRED), so the
+        # old password-only path is what this checks. The real admin flow is in test_admin_two_factor.py.
         admin = User.objects.create_superuser('boss', email='boss@example.com', password=self.PASSWORD)
         response = self.login(username='boss')
         self.assertRedirects(response, reverse('admin_dashboard'), fetch_redirect_response=False)

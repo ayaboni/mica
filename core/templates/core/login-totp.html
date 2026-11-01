@@ -1,0 +1,91 @@
+{% extends 'core/site_base.html' %}
+{% load static %}
+
+{% block title %}Authenticator code | MICA{% endblock %}
+{% block extra_head %}<meta name="robots" content="noindex">{% endblock %}
+{% block footer %}{% endblock %}
+
+{% block navbar %}
+  {% url 'login' as login_url %}
+  {% include 'core/_navbar_min.html' with nav_link_url=login_url nav_link_label="<- Back to Login" %}
+{% endblock %}
+
+{% block content %}
+<section class="auth-wrap auth-wrap--tight doodle-bg">
+  <div class="booklet booklet--compact">
+
+    <aside class="booklet-side booklet-side--center">
+      <img src="{% static 'core/images/mascot_body.png' %}" alt="Mica the axolotl mascot">
+      <h1>Admin sign-in</h1>
+      <p class="lead">One more step to keep every student's records safe.</p>
+    </aside>
+
+    <div class="booklet-main">
+      <h2>Enter your code</h2>
+
+      {% if messages %}
+        {% for message in messages %}
+          <p class="msg {% if message.tags == 'success' %}ok{% else %}err{% endif %}">{{ message }}</p>
+        {% endfor %}
+      {% endif %}
+
+      {% if lockout_seconds %}
+        <p id="lockoutMsg" class="msg err" data-seconds="{{ lockout_seconds }}"></p>
+      {% endif %}
+
+      <p class="auth-intro">Open your authenticator app and type the 6-digit code it shows for MICA. The code changes every {{ step_seconds|default:30 }} seconds.</p>
+
+      <form method="post" action="{% url 'login_totp' %}" id="totpForm" autocomplete="off">
+        {% csrf_token %}
+        <div class="auth-field">
+          <input type="text" name="code" id="totpInput" class="code-input" placeholder="000000"
+                 maxlength="24" inputmode="text" autocomplete="one-time-code" autocapitalize="characters"
+                 autocorrect="off" spellcheck="false" autofocus required aria-label="Authenticator code or recovery code">
+        </div>
+        <button type="submit" id="totpBtn" class="btn btn-brown btn-block">Sign in</button>
+      </form>
+
+      <p class="auth-foot">Lost your phone? Type one of your recovery codes instead (like <strong>ABCDE-FGHJK</strong>). Each one works only once.</p>
+    </div>
+
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function(){
+  var form = document.getElementById('totpForm');
+  var input = document.getElementById('totpInput');
+  var btn = document.getElementById('totpBtn');
+  var sent = false;
+  form.addEventListener('submit', function(e){
+    // Never post twice: a second POST of the same code is refused as already used.
+    if (sent || !input.value.trim()) { e.preventDefault(); return; }
+    sent = true; btn.disabled = true; btn.textContent = 'Checking...';
+  });
+  input.addEventListener('input', function(){
+    // Six digits typed or pasted (what an authenticator shows): sign in straight away.
+    var v = input.value.replace(/\s/g, '');
+    if (/^[0-9]{6}$/.test(v) && !sent) { if (form.requestSubmit) { form.requestSubmit(); } else { form.submit(); } }
+  });
+  window.addEventListener('pageshow', function(e){
+    if (!e.persisted) return;
+    sent = false; btn.disabled = false; btn.textContent = 'Sign in'; input.value = ''; input.focus();
+  });
+
+  var msg = document.getElementById('lockoutMsg');
+  if (!msg) return;
+  var left = parseInt(msg.dataset.seconds, 10);
+  function tick(){
+    if (left > 0) {
+      msg.textContent = 'Too many wrong codes. Try again in ' + left + ' second' + (left === 1 ? '' : 's') + '.';
+      btn.disabled = true; left--; setTimeout(tick, 1000);
+    } else {
+      msg.textContent = 'You can try again now.'; msg.className = 'msg ok'; btn.disabled = false;
+    }
+  }
+  tick();
+})();
+</script>
+{% endblock %}
