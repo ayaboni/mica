@@ -708,3 +708,28 @@ html[data-theme="dark"] .flash.error   { background: #4D3033; color: #ffb4b0; }
 #micaToast.show { opacity: 1; }
 
 .pw-wrap { position: relative; }
+
+.nav-avatar {
+  position: relative;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--card-blue, #a9c8ee);
+  color: var(--ink, #262420);
+  font-weight: 700;
+  font-size: 0.9rem;
+  text-decoration: none;
+  transition: transform .15s ease;
+}
+.nav-avatar:hover { transform: scale(1.06); }
+.nav-avatar img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}

@@ -11,7 +11,21 @@
       <li><a href="{% url 'about' %}" class="btn btn-pill {% if page == 'about' %}is-active{% endif %}">About</a></li>
       <li><a href="{% url 'contact' %}" class="btn btn-pill {% if page == 'contact' %}is-active{% endif %}">Contact</a></li>
       <li><a href="{% url 'privacy' %}" class="btn btn-pill {% if page == 'privacy' %}is-active{% endif %}">Privacy Policy</a></li>
-      <li><a href="{% url 'login' %}" class="btn btn-pill {% if page == 'login' %}is-active{% endif %}">Log In</a></li>
+      {% if request.user.is_authenticated %}
+        {% if request.user.is_superuser %}{% url 'admin_dashboard' as me_url %}
+        {% elif request.user.is_staff %}{% url 'staff_dashboard' as me_url %}
+        {% else %}{% url 'student_dashboard' as me_url %}{% endif %}
+        <li>
+          <a href="{{ me_url }}" class="nav-avatar" title="Go to your dashboard" aria-label="Go to your dashboard">
+            <span class="nav-avatar-initials">{% include 'core/_initials.html' with u=request.user %}</span>
+            {% if request.user.profile.avatar %}
+              <img src="{{ request.user.profile.avatar.url }}" alt="" onerror="this.remove()">
+            {% endif %}
+          </a>
+        </li>
+        {% else %}
+          <li><a href="{% url 'login' %}" class="btn btn-pill {% if page == 'login' %}is-active{% endif %}">Log In</a></li>
+        {% endif %}
       <li class="nav-tools">
         <button type="button" class="theme-toggle dys-toggle" onclick="toggleDyslexia()" aria-pressed="false" aria-label="Dyslexia-friendly font" title="Dyslexia-friendly font">Aa</button>
         <button type="button" class="theme-toggle" data-theme-toggle aria-label="Toggle dark mode" title="Toggle dark mode">
