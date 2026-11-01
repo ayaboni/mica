@@ -59,6 +59,7 @@ urlpatterns = [
     path('api/conversations/<int:conversation_id>/', views.get_conversation, name='get_conversation'),
     path('api/conversations/<int:conversation_id>/rename/', views.api_conversation_rename, name='api_conversation_rename'),
     path('api/conversations/<int:conversation_id>/delete/', views.api_conversation_delete, name='api_conversation_delete'),
+    path('api/conversations/<int:conversation_id>/undo-last/', views.api_chat_undo_last, name='api_chat_undo_last'),
     path('api/notifications/', views.get_notifications, name='get_notifications'),
     path('api/notifications/mark-read/', views.mark_notifications_read, name='mark_notifications_read'),
     path('api/notifications/settings/save/', views.save_notification_settings, name='save_notification_settings'),

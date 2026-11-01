@@ -2144,6 +2144,24 @@ def api_conversation_delete(request, conversation_id):
     return JsonResponse({'status': 'ok'})
 
 
+@login_required(login_url='login')
+@require_POST
+def api_chat_undo_last(request, conversation_id):
+    """Remove the newest user message and the replies after it, so an edit or a retry
+    doesn't leave the old try in Mica's memory. Only deletes if the text matches."""
+    convo = get_object_or_404(ChatConversation, id=conversation_id, user=request.user)
+    data = _json_body(request) or {}
+    expected = " ".join(str(data.get("text") or "").split())
+    last_user = convo.messages.filter(sender='user').order_by('-id').first()
+    if not last_user or " ".join(last_user.content.split()) != expected:
+        return JsonResponse({"removed": 0})
+    removed, _ = convo.messages.filter(id__gte=last_user.id).delete()
+    if not convo.messages.exists():          # edited the very first message: let it be re-titled
+        convo.title = "New Chat"
+        convo.save(update_fields=['title'])
+    return JsonResponse({"removed": removed})
+
+
 @ensure_csrf_cookie
 @login_required(login_url='login')
 def student_dashboard(request):
