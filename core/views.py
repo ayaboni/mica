@@ -28,6 +28,8 @@ from .models import StudentFlag
 from .models import COURSES, YEAR_LEVELS, SERVICES
 from .models import LoginThrottle
 from .models import AccessLog
+from .models import ConsoleNotification
+from .notifications import notify, staff_with, refresh_derived
 from .net import client_ip
 from .name_validation import (NAME_MAX_LENGTH, normalize_name, sanitize_person_name,
                               validate_person_names, validate_username)
@@ -2082,6 +2084,18 @@ def guidance_send(request):
     thread, _ = GuidanceThread.objects.get_or_create(student=request.user)
     GuidanceMessage.objects.create(thread=thread, sender=request.user, content=content)
     thread.save()  # bumps updated_at
+
+    student_name = request.user.get_full_name() or request.user.username
+    if thread.counselor_id:
+        # Someone already handles this student: only they get told, with the name.
+        notify([thread.counselor], 'message', f"{student_name} messaged you",
+               section='messages', student_ref=request.user.id, ref_id=thread.id,
+               urgent=True, collapse_unread=True)
+    else:
+        # Unclaimed: everyone who can chat is told, without the name.
+        notify(staff_with('chat_students'), 'message', "A student messaged the guidance",
+               section='messages', student_ref=request.user.id, ref_id=thread.id,
+               urgent=True, collapse_unread=True)
     return JsonResponse({"status": "ok", "thread_id": thread.id})
 
 
@@ -2773,6 +2787,9 @@ def staff_guidance_thread(request, thread_id):
             return JsonResponse({"error": "This thread is claimed by another counselor."}, status=403)
         return JsonResponse({"error": "Your staff role doesn't allow this."}, status=403)
     _log_access(request.user, thread.student, "open_chat")
+    ConsoleNotification.objects.filter(
+        recipient=request.user, kind='message', ref_id=thread.id, read_at__isnull=True
+    ).update(read_at=timezone.now())
     msgs = [
         {"sender": "student" if m.sender_id == thread.student_id else "counselor", "content": m.content}
         for m in thread.messages.all()
@@ -2814,6 +2831,9 @@ def staff_guidance_claim(request, thread_id):
     thread.appointments.filter(
         status__in=['pending', 'confirmed'], scheduled_time__gte=dj_timezone.now()
     ).update(counselor=request.user)
+    ConsoleNotification.objects.filter(
+        kind='message', ref_id=thread.id, read_at__isnull=True
+    ).exclude(recipient=request.user).update(read_at=timezone.now())
     return JsonResponse({"status": "ok"})
 
 
@@ -2953,6 +2973,16 @@ def staff_student_notes(request, student_id):
         note = StudentNote.objects.create(
             student=student, author=request.user,
             needs_review=can_flag_needs_review(request.user), **payload)
+        author_name = request.user.get_full_name() or request.user.username
+        student_name = student.get_full_name() or student.username
+        if note.service == 'referral' and note.referred_to_id:
+            notify([note.referred_to], 'referral', f"{author_name} referred {student_name} to you",
+                   section='referrals', student_ref=student.id, ref_id=note.id, urgent=True)
+        if note.needs_review and not note.is_private:
+            reviewers = [u for u in staff_with('review_notes', exclude=request.user)
+                         if can(u, 'read_note_services', note.service)]
+            notify(reviewers, 'note_review', f"{author_name} wrote a note that needs review",
+                   section='students', student_ref=student.id, ref_id=note.id)
         return JsonResponse({"note": _note_json(note, request.user)})
     _log_access(request.user, student, "view_notes")
     readable = staff_permissions(request.user)['read_note_services']
@@ -2979,7 +3009,8 @@ def staff_note_update(request, note_id):
     if not can(request.user, 'write_note_services', payload["service"]):
         return JsonResponse({"error": "Your staff role can't write %s notes." % payload["service"]}, status=403)
     new_target = payload["referred_to"].id if payload["referred_to"] else None
-    if new_target != note.referred_to_id:        # a different person has to answer the referral
+    target_changed = new_target != note.referred_to_id
+    if target_changed:        # a different person has to answer the referral
         note.referral_status, note.referral_responded_at = "pending", None
         note.referral_decline_reason, note.referral_seen = "", False
         note.referral_response_seen = True
@@ -2988,6 +3019,11 @@ def staff_note_update(request, note_id):
     if can_flag_needs_review(request.user):      # an edited note goes back for review
         note.needs_review, note.reviewed_by, note.reviewed_at = True, None, None
     note.save()
+    if target_changed and payload["service"] == 'referral' and payload["referred_to"]:
+        notify([payload["referred_to"]], 'referral',
+               f"{request.user.get_full_name() or request.user.username} referred "
+               f"{note.student.get_full_name() or note.student.username} to you",
+               section='referrals', student_ref=note.student_id, ref_id=note.id, urgent=True)
     return JsonResponse({"note": _note_json(note, request.user)})
 
 
@@ -3155,6 +3191,15 @@ def staff_referral_respond(request, note_id):
             thread = GuidanceThread.objects.select_for_update().filter(student_id=note.student_id).first()
             if thread and note.author_id and thread.counselor_id == note.author_id:
                 _hand_conversation_to(thread, request.user)
+    ConsoleNotification.objects.filter(
+        recipient=request.user, kind='referral', ref_id=note.id, read_at__isnull=True
+    ).update(read_at=timezone.now())
+    if note.author_id:
+        notify([note.author], 'referral_answer',
+               f"{request.user.get_full_name() or request.user.username} "
+               f"{'accepted' if action == 'accept' else 'declined'} your referral for "
+               f"{note.student.get_full_name() or note.student.username}",
+               section='referrals', student_ref=note.student_id, ref_id=note.id, urgent=True)
     return JsonResponse({"note": _note_json(note, request.user)})
 
 
@@ -3230,6 +3275,9 @@ def confirm_appointment(request, appointment_id):
         content=f"✅ Appointment confirmed for {when}.",
     )
     appt.thread.save()
+    notify([appt.counselor], 'appointment',
+           f"{request.user.get_full_name() or request.user.username} confirmed the appointment on {when}",
+           section='appointments', student_ref=request.user.id, ref_id=appt.id)
     return JsonResponse({"status": "ok"})
 
 
@@ -3488,6 +3536,9 @@ def staff_flag_create(request, student_id):
     if StudentFlag.objects.filter(student=student).exclude(status='resolved').exists():
         return JsonResponse({"error": "This student already has an open flag."}, status=400)
     flag = StudentFlag.objects.create(student=student, flagged_by=request.user, reason=reason)
+    notify(staff_with('view_students', exclude=request.user), 'flag',
+           f"A new flag arrived for {student.get_full_name() or student.username}",
+           section='alerts', student_ref=student.id, ref_id=flag.id, urgent=True)
     return JsonResponse({"flag": _flag_json(flag, timezone.localdate(), request.user)})
 
 
@@ -3997,6 +4048,61 @@ def staff_summary(request):
     data.sort(key=lambda s: (s["chat_status"] != "awaiting",
                              s["avg_mood_7d"] if s["avg_mood_7d"] is not None else 99))
     return JsonResponse({"students": data, "courses": [{"code": c, "label": l} for c, l in COURSES]})
+
+
+def _console_unread(user):
+    return ConsoleNotification.objects.filter(recipient=user, read_at__isnull=True).count()
+
+
+@login_required(login_url='login')
+@user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
+def api_notifications(request):
+    refresh_derived(request.user)
+    qs = ConsoleNotification.objects.filter(recipient=request.user)
+    if request.GET.get('unread') == '1':
+        qs = qs.filter(read_at__isnull=True)
+    kind = request.GET.get('kind')
+    if kind:
+        qs = qs.filter(kind__in=kind.split(','))
+
+    try:
+        page = max(int(request.GET.get('page', 1)), 1)
+        size = min(max(int(request.GET.get('size', 10)), 1), 50)
+    except ValueError:
+        page, size = 1, 10
+
+    total = qs.count()
+    rows = qs[(page - 1) * size: page * size]
+    return JsonResponse({
+        'notifications': [{
+            'id': n.id,
+            'kind': n.kind,
+            'text': n.text,
+            'section': n.section,
+            'student_ref': n.student_ref,
+            'ref_id': n.ref_id,
+            'urgent': n.urgent,
+            'read': n.read_at is not None,
+            'created_at': n.created_at.isoformat(),
+        } for n in rows],
+        'unread': _console_unread(request.user),
+        'total': total,
+        'page': page,
+        'pages': max(1, -(-total // size)),
+    })
+
+
+@login_required(login_url='login')
+@user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
+@require_POST
+def api_notifications_read(request):
+    body = _json_body(request) or {}
+    qs = ConsoleNotification.objects.filter(recipient=request.user, read_at__isnull=True)
+    if not body.get('all'):
+        ids = [int(i) for i in body.get('ids', []) if str(i).isdigit()]
+        qs = qs.filter(id__in=ids)
+    qs.update(read_at=timezone.now())
+    return JsonResponse({'unread': _console_unread(request.user)})
 
 
 # -- Admin Side --

@@ -631,3 +631,32 @@ class DataRequest(models.Model):
 
     class Meta:
         ordering = ["-received_on", "-id"]
+
+class ConsoleNotification(models.Model):
+    """Bell notifications for the staff and admin consoles (students use Notification)."""
+    recipient = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='console_notifications'
+    )
+    kind = models.CharField(max_length=30)                 # 'message', 'flag', 'appointment', ...
+    text = models.CharField(max_length=200)
+    section = models.CharField(max_length=30, blank=True)  # sidebar tab to open on click, e.g. 'alerts'
+    student_ref = models.PositiveIntegerField(null=True, blank=True)  # the student's user id (same as s.id in the Students list)
+    ref_id = models.PositiveIntegerField(null=True, blank=True)       # thread / flag / appointment id
+    urgent = models.BooleanField(default=False)            # urgent ones play a sound
+    dedupe_key = models.CharField(max_length=80, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    read_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at', '-id']
+        indexes = [models.Index(fields=['recipient', 'read_at'])]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['recipient', 'dedupe_key'],
+                condition=~models.Q(dedupe_key=''),
+                name='uniq_console_notification_dedupe',
+            )
+        ]
+
+    def __str__(self):
+        return f'{self.recipient_id}: {self.text}'
