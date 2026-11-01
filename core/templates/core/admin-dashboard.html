@@ -878,6 +878,7 @@
           <button class="tab-btn" data-tab="integrations" onclick="goTab('integrations')">Integrations</button>
           <button class="tab-btn" data-tab="semesters" onclick="goTab('semesters')">Semesters</button>
           <button class="tab-btn" data-tab="account" onclick="goTab('account')">My Account</button>
+          <button class="tab-btn" data-tab="appearance" onclick="goTab('appearance')">Appearance</button>
       </div>
 
       <div class="subpanel" id="tab-account">
@@ -901,6 +902,20 @@
           <div class="card panel">
             <div class="panel-head"><div><h3>Password</h3><div class="sub">We'll email you a code first to confirm it's you.</div></div></div>
             <a class="pill-btn ghost sm" href="{% url 'change_password' %}">Change password</a>
+          </div>
+        </div>
+
+        <div class="subpanel" id="tab-appearance">
+          <div class="card panel">
+            <div class="panel-head"><div><h3>Appearance</h3><div class="sub">These settings are only for this browser.</div></div></div>
+            <div class="toggle-row">
+              <div><div class="t-label">Dark mode</div><div class="t-desc">Switch the console to a low-light color scheme.</div></div>
+              <button class="switch" id="darkSwitch" onclick="toggleTheme()"><span class="knob"></span></button>
+            </div>
+            <div class="toggle-row">
+              <div><div class="t-label">Notification volume</div><div class="t-desc">For urgent alerts on this device.</div></div>
+              <input type="range" id="volumeSlider" min="0" max="100" step="5" style="width:140px; accent-color:var(--sage-deep);" oninput="setSoundVolume(this.value)" onchange="playChime()">
+            </div>
           </div>
         </div>
 
@@ -2533,9 +2548,24 @@ function submitCloseDataRequest(){
 ========================================================= */
 function closeModal(id){ document.getElementById(id).classList.remove('active'); }
 
+function syncDarkSwitch(){
+  const sw = document.getElementById('darkSwitch');
+  if(sw) sw.classList.toggle('on', document.body.classList.contains('dark'));
+}
 function toggleTheme(){
   document.body.classList.toggle('dark');
   try{ localStorage.setItem('mica_dark', document.body.classList.contains('dark') ? '1' : '0'); }catch(e){}
+  syncDarkSwitch();
+}
+function getSoundVolume(){
+  try{
+    const v = parseInt(localStorage.getItem('mica_sound_volume'), 10);
+    if(!isNaN(v)) return Math.min(Math.max(v, 0), 100) / 100;
+  }catch(e){}
+  return 0.7;
+}
+function setSoundVolume(v){
+  try{ localStorage.setItem('mica_sound_volume', String(v)); }catch(e){}
 }
 
 if (new URLSearchParams(location.search).get('pw') === 'changed'){
@@ -2630,7 +2660,7 @@ function notifAlert(list){
   if(notifMaxSeen === null){ notifMaxSeen = maxId; return; }   // first load: stay quiet
   const fresh = list.filter(n => n.id > notifMaxSeen && !n.read && n.urgent);
   notifMaxSeen = Math.max(notifMaxSeen, maxId);
-  if(fresh.length) showToast(fresh[0].text);
+  if(fresh.length){ playChime(); showToast(fresh[0].text); }
 }
 
 function loadNotifs(){
@@ -2685,6 +2715,25 @@ function openNotif(id){
   }
 }
 
+let _actx = null;
+function playChime(){
+  try{
+    const vol = getSoundVolume(); if(vol <= 0) return;
+    _actx = _actx || new (window.AudioContext || window.webkitAudioContext)();
+    if(_actx.state === 'suspended') _actx.resume();
+    [740, 988].forEach((freq, i) => {
+      const t0 = _actx.currentTime + i * 0.2;
+      const osc = _actx.createOscillator(), gain = _actx.createGain();
+      osc.type = 'sine'; osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.0001, t0);
+      gain.gain.exponentialRampToValueAtTime(0.3 * vol, t0 + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.45);
+      osc.connect(gain); gain.connect(_actx.destination);
+      osc.start(t0); osc.stop(t0 + 0.5);
+    });
+  }catch(e){}
+}
+
 function initAll(){
   renderAccounts();
   loadIntegrations();
@@ -2700,6 +2749,9 @@ function initAll(){
   loadDataRequests(1);
   loadNotifs();
   setInterval(() => { if(!document.hidden) loadNotifs(); }, 15000);
+  syncDarkSwitch();
+  const vs = document.getElementById('volumeSlider');
+  if(vs) vs.value = Math.round(getSoundVolume() * 100);
 }
 
 /* If a profile picture can't load, show initials instead of a broken image. */

@@ -230,6 +230,19 @@ html.dyslexia body{line-height:1.7;}
   .history-title{font-size:13px;font-weight:700;color:var(--text-dark);}
   .history-time{font-size:11px;color:var(--text-mute);margin-top:1px;}
 
+  .history-item{position:relative; cursor:pointer; padding-right:38px;}
+  .history-more{position:absolute; top:50%; right:6px; transform:translateY(-50%); width:28px; height:28px; border:none; background:transparent; color:var(--text-mute); border-radius:50%; display:flex; align-items:center; justify-content:center; opacity:0;}
+  .history-item:hover .history-more, .history-item.active .history-more, .history-more:focus-visible{opacity:1;}
+  .history-more:hover{background:rgba(0,0,0,.08);}
+  body.dark-mode .history-more:hover{background:rgba(255,255,255,.12);}
+  @media (hover:none){ .history-more{opacity:1;} }
+  .history-rename{width:100%; font:inherit; font-size:13px; font-weight:700; color:var(--text-dark); background:var(--card-bg); border:1.5px solid #8EAE88; border-radius:8px; padding:2px 6px; outline:none;}
+  #history-menu{position:fixed; z-index:400; min-width:150px; background:var(--card-bg); border:1px solid rgba(142,174,136,.5); border-radius:14px; box-shadow:var(--shadow); padding:5px;}
+  #history-menu[hidden]{display:none;}
+  #history-menu button{display:block; width:100%; text-align:left; border:none; background:transparent; color:var(--text-dark); font:inherit; font-size:13px; font-weight:600; padding:8px 12px; border-radius:10px;}
+  #history-menu button:hover{background:var(--btn-bg);}
+  #history-menu button.danger{color:var(--danger);}
+
   .sidebar-bottom{
     display:flex;
     align-items:center;
@@ -273,7 +286,7 @@ html.dyslexia body{line-height:1.7;}
     user-select:none;
     box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.55);
   }
-  span.msg-avatar.avatar-initials, body.dark-mode span.msg-avatar.avatar-initials{ width:34px; height:34px; padding:0; font-size:12px; color:#fff; background:linear-gradient(135deg,#A9C6A2,#8EAE88); }
+  span.msg-avatar.avatar-initials, body.dark-mode span.msg-avatar.avatar-initials{ width:var(--chat-avatar); height:var(--chat-avatar); padding:0; font-size:calc(var(--chat-avatar) * .35); color:#fff; background:linear-gradient(135deg,#A9C6A2,#8EAE88); }
   .settings-btn{
     width:32px;height:32px;
     border-radius:50%;
@@ -447,7 +460,11 @@ html.dyslexia body{line-height:1.7;}
     .view::before{ -webkit-mask-size:460px 460px; mask-size:460px 460px; }
   }
   
-  :root{ --chat-w:760px; }
+  :root{
+    --chat-w:clamp(760px, 50vw, 950px);
+    --chat-font:clamp(13.5px, 0.9vw, 17px);
+    --chat-avatar:clamp(34px, 2.2vw, 42px);
+  }
 
   .messages{
     flex:1;
@@ -472,7 +489,7 @@ html.dyslexia body{line-height:1.7;}
   .msg-row.bot{ max-width:100%; }
   .msg-row.user{ max-width:80%; }
   .msg-avatar{
-    width:34px;height:34px;
+    width:var(--chat-avatar);height:var(--chat-avatar);
     border-radius:50%;
     flex-shrink:0;
     object-fit:contain;
@@ -482,15 +499,25 @@ html.dyslexia body{line-height:1.7;}
   .msg-bubble{
     background:var(--bubble-bg);
     color:var(--brown-dark);
-    padding:12px 16px;
+    padding:.9em 1.2em;
     border-radius:var(--radius-md);
-    font-size:13.5px;
+    font-size:var(--chat-font);
     line-height:1.5;
     box-shadow:var(--shadow);
     word-break: break-word;
     overflow-wrap: break-word;
   }
   .msg-row.user .msg-bubble{background:#F6EAD0;}
+
+  .msg-col{display:flex; flex-direction:column; align-items:flex-start; gap:4px; min-width:0;}
+  .msg-actions{display:flex; gap:2px; margin-left:4px;}
+  .msg-act{width:30px; height:30px; border-radius:50%; border:none; background:transparent; color:var(--text-mute); display:flex; align-items:center; justify-content:center;}
+  .msg-act:hover{background:var(--btn-bg);}
+  .msg-act.on{background:var(--btn-hover); color:var(--brown-dark);}
+  .msg-act svg{width:16px; height:16px;}
+  .msg-act[data-act="down"] svg{transform:rotate(180deg);}
+  .msg-row.bot:not(:last-child) .msg-act[data-act="retry"]{display:none;}  /* retry only on the newest reply */
+
   .typing-dots{display:inline-flex;gap:4px;align-items:center;}
   .typing-dots span{
     width:6px;height:6px;border-radius:50%;
@@ -534,7 +561,7 @@ body.dark-mode{ --composer-accent:#9CC893; }
   resize:none;
   background:transparent;
   font-family:inherit;
-  font-size:14px;
+  ont-size:var(--chat-font);
   line-height:1.45;
   color:var(--text-dark);
   padding:10px 0;
@@ -1647,10 +1674,11 @@ function toggleDyslexia(){
     <span class="history-label">Chat History</span>
       <div class="chat-history" id="chat-history-list">
       {% for convo in conversations %}
-      <button class="history-item" data-title="{{ convo.title }}" data-id="{{ convo.id }}">
+      <div class="history-item" role="button" tabindex="0" data-title="{{ convo.title }}" data-id="{{ convo.id }}">
         <div class="history-title">{{ convo.title }}</div>
         <div class="history-time">{{ convo.updated_at|timesince }} ago</div>
-      </button>
+        <button type="button" class="history-more" aria-label="Chat options"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></button>
+      </div>
       {% endfor %}
     </div>
 
@@ -2247,6 +2275,8 @@ function setActiveHistoryItem(el){
 }
 
 historyList.addEventListener('click', (e)=>{
+  const more = e.target.closest('.history-more');
+  if(more){ e.stopPropagation(); openHistoryMenu(more); return; }
   const item = e.target.closest('.history-item');
   if(!item) return;
   setActiveHistoryItem(item);
@@ -2264,6 +2294,104 @@ historyList.addEventListener('click', (e)=>{
       switchView('view-chat','Chat');
     });
   });
+
+/* ---- Rename / delete a chat ---- */
+const historyMenu = document.createElement('div');
+historyMenu.id = 'history-menu';
+historyMenu.hidden = true;
+historyMenu.innerHTML = '<button type="button" data-do="rename">Rename</button><button type="button" data-do="delete" class="danger">Delete</button>';
+document.body.appendChild(historyMenu);
+let menuItem = null;
+
+function closeHistoryMenu(){
+  historyMenu.hidden = true;
+  menuItem = null;
+  const d = historyMenu.querySelector('[data-do="delete"]');
+  d.textContent = 'Delete'; d.dataset.armed = '';
+}
+function openHistoryMenu(moreBtn){
+  const item = moreBtn.closest('.history-item');
+  if(!historyMenu.hidden && menuItem === item){ closeHistoryMenu(); return; }
+  closeHistoryMenu();
+  menuItem = item;
+  const r = moreBtn.getBoundingClientRect();
+  historyMenu.style.top = (r.bottom + 4) + 'px';
+  historyMenu.style.left = Math.max(8, Math.min(r.left, window.innerWidth - 170)) + 'px';
+  historyMenu.hidden = false;
+}
+
+function startRename(item){
+  const titleEl = item.querySelector('.history-title');
+  const old = item.dataset.title;
+  const input = document.createElement('input');
+  input.type = 'text'; input.value = old; input.maxLength = 60; input.className = 'history-rename';
+  titleEl.replaceWith(input);
+  input.focus(); input.select();
+  let done = false;
+  const back = t => {
+    const d = document.createElement('div');
+    d.className = 'history-title'; d.textContent = t;
+    input.replaceWith(d);
+  };
+  const finish = save => {
+    if(done) return; done = true;
+    const val = input.value.trim().replace(/\s+/g, ' ');
+    if(!save || !val || val === old){ back(old); return; }
+    fetch(`/api/conversations/${item.dataset.id}/rename/`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json', 'X-CSRFToken': getCookie('csrftoken')},
+      body: JSON.stringify({title: val})
+    }).then(r => r.json().then(d => ({ok:r.ok, d})))
+      .then(({ok, d}) => {
+        if(!ok){ showToast(d.error || 'Could not rename this chat'); back(old); return; }
+        item.dataset.title = d.title; back(d.title);
+      })
+      .catch(() => { showToast('Could not rename this chat'); back(old); });
+  };
+  input.addEventListener('keydown', e => {
+    if(e.key === 'Enter'){ e.preventDefault(); finish(true); }
+    else if(e.key === 'Escape'){ finish(false); }
+  });
+  input.addEventListener('blur', () => finish(true));
+  input.addEventListener('click', e => e.stopPropagation());
+}
+
+function deleteChat(item){
+  const id = item.dataset.id;
+  fetch(`/api/conversations/${id}/delete/`, {method:'POST', headers:{'X-CSRFToken': getCookie('csrftoken')}})
+    .then(r => r.json().then(d => ({ok:r.ok, d})))
+    .then(({ok, d}) => {
+      if(!ok){ showToast(d.error || 'Could not delete this chat'); return; }
+      const wasOpen = String(currentConversationId) === String(id);
+      item.remove();
+      if(wasOpen){
+        currentConversationId = null;
+        document.getElementById('chat-messages').innerHTML = '';
+      }
+      showToast('Chat deleted');
+    })
+    .catch(() => showToast('Could not delete this chat'));
+}
+
+historyMenu.addEventListener('click', e => {
+  const b = e.target.closest('button');
+  if(!b || !menuItem) return;
+  const item = menuItem;
+  if(b.dataset.do === 'rename'){ closeHistoryMenu(); startRename(item); }
+  else if(b.dataset.do === 'delete'){
+    if(b.dataset.armed !== '1'){ b.dataset.armed = '1'; b.textContent = 'Click again to delete'; return; }
+    closeHistoryMenu(); deleteChat(item);
+  }
+});
+document.addEventListener('click', e => {
+  if(!e.target.closest('#history-menu') && !e.target.closest('.history-more')) closeHistoryMenu();
+});
+historyList.addEventListener('scroll', closeHistoryMenu);
+historyList.addEventListener('keydown', e => {
+  if((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('history-item')){
+    e.preventDefault(); e.target.click();
+  }
+});
 
 document.getElementById('btn-newchat').addEventListener('click', ()=>{
   currentConversationId = null;
@@ -2297,6 +2425,14 @@ document.addEventListener('error', e => {
   img.replaceWith(span);
 }, true);
 
+const MSG_ACTIONS_HTML = `
+  <div class="msg-actions">
+    <button class="msg-act" data-act="copy" title="Copy" aria-label="Copy reply"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg></button>
+    <button class="msg-act" data-act="up" title="Good reply" aria-label="Good reply"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 11v9H4a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1h3z"/><path d="M7 11l4-8a2.5 2.5 0 0 1 2.5 2.5V9H19a2 2 0 0 1 2 2.3l-1.1 7A2 2 0 0 1 17.9 20H7"/></svg></button>
+    <button class="msg-act" data-act="down" title="Bad reply" aria-label="Bad reply"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 11v9H4a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1h3z"/><path d="M7 11l4-8a2.5 2.5 0 0 1 2.5 2.5V9H19a2 2 0 0 1 2 2.3l-1.1 7A2 2 0 0 1 17.9 20H7"/></svg></button>
+    <button class="msg-act" data-act="retry" title="Try again" aria-label="Try again"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg></button>
+  </div>`;
+
 function addMessage(containerId, text, sender, avatarLabel){
   const container = document.getElementById(containerId);
   const row = document.createElement('div');
@@ -2313,7 +2449,12 @@ function addMessage(containerId, text, sender, avatarLabel){
     avatarSrc = "{% static 'core/images/mascot_good.png' %}";
   }
   if(!avatarHtml) avatarHtml = `<img class="msg-avatar" src="${avatarSrc}" alt="">`;
-  row.innerHTML = `${avatarHtml}<div class="msg-bubble">${text}</div>`;
+  const bubble = `<div class="msg-bubble">${text}</div>`;
+  // Mica's replies in the AI chat get the copy / like / dislike / retry buttons
+  const withButtons = sender === 'bot' && containerId === 'chat-messages' && avatarLabel === 'MASCOT';
+  row.innerHTML = withButtons
+    ? `${avatarHtml}<div class="msg-col">${bubble}${MSG_ACTIONS_HTML}</div>`
+    : `${avatarHtml}${bubble}`;
   container.appendChild(row);
   container.scrollTop = container.scrollHeight;
   return row;
@@ -2377,11 +2518,13 @@ async function getAIReply(message) {
   if (data.conversation_id && !currentConversationId) {
     // brand-new conversation was just created — add it to the sidebar
     currentConversationId = data.conversation_id;
-    const item = document.createElement('button');
+    const item = document.createElement('div');
     item.className = 'history-item active';
+    item.setAttribute('role', 'button');
+    item.tabIndex = 0;
     item.dataset.title = data.title;
     item.dataset.id = data.conversation_id;
-    item.innerHTML = `<div class="history-title">${escapeHtml(data.title)}</div><div class="history-time">Just now</div>`;
+    item.innerHTML = `<div class="history-title">${escapeHtml(data.title)}</div><div class="history-time">Just now</div><button type="button" class="history-more" aria-label="Chat options"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></button>`;
     historyList.prepend(item);
     setActiveHistoryItem(item);
   }
@@ -2438,6 +2581,59 @@ function bindComposer(el, sendFn){
 const chatInput = document.getElementById('chat-input');
 document.getElementById('chat-send').addEventListener('click', ()=>sendChat('chat-messages', chatInput, chatReplies, 'MASCOT'));
 bindComposer(chatInput, () => sendChat('chat-messages', chatInput, chatReplies, 'MASCOT'));
+
+/* ---- Buttons under Mica's replies ---- */
+function fallbackCopy(text, done){
+  const ta = document.createElement('textarea');
+  ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta); ta.select();
+  try{ document.execCommand('copy'); done(); }catch(e){ showToast('Could not copy'); }
+  ta.remove();
+}
+
+function copyReply(row, btn){
+  const text = row.querySelector('.msg-bubble').innerText;
+  const done = () => {
+    btn.classList.add('on'); showToast('Copied');
+    setTimeout(() => btn.classList.remove('on'), 1200);
+  };
+  if(navigator.clipboard && window.isSecureContext){
+    navigator.clipboard.writeText(text).then(done).catch(() => fallbackCopy(text, done));
+  } else fallbackCopy(text, done);
+}
+
+function rateReply(row, which){
+  const up = row.querySelector('[data-act="up"]');
+  const down = row.querySelector('[data-act="down"]');
+  const picked = which === 'up' ? up : down;
+  (which === 'up' ? down : up).classList.remove('on');
+  picked.classList.toggle('on');
+}
+
+function retryReply(row){
+  const prev = row.previousElementSibling;
+  if(!prev || !prev.classList.contains('user')){ showToast('Nothing to retry'); return; }
+  const text = prev.querySelector('.msg-bubble').textContent;
+  const containerId = row.parentElement.id;
+  row.remove();
+  const typingRow = addTyping(containerId, 'MASCOT');
+  getAIReply(text).then(reply => {
+    typingRow.remove();
+    addMessage(containerId, escapeHtml(reply).replace(/\n/g, '<br>'), 'bot', 'MASCOT');
+  }).catch(() => {
+    typingRow.remove();
+    addMessage(containerId, "Sorry, I'm having trouble connecting right now.", 'bot', 'MASCOT');
+  });
+}
+
+document.getElementById('chat-messages').addEventListener('click', e => {
+  const btn = e.target.closest('.msg-act');
+  if(!btn) return;
+  const row = btn.closest('.msg-row');
+  if(btn.dataset.act === 'copy') copyReply(row, btn);
+  else if(btn.dataset.act === 'retry') retryReply(row);
+  else rateReply(row, btn.dataset.act);
+});
 
 const chatMicButton = document.getElementById('chat-mic');
 let mediaRecorder = null;
@@ -2614,7 +2810,7 @@ document.getElementById('btn-guidance').addEventListener('click', ()=>{
         setGuidanceWho(data.counselor_name);
         const container = document.getElementById('guidance-messages');
         container.innerHTML = '';
-        if(data.messages.length === 0){
+        if(data.length === 0){
           addMessage('guidance-messages', "Hi! Send a message here whenever you're ready to talk to someone from the Guidance Office. A counselor will get back to you as soon as they can.", 'bot', 'LEAF');
         } else {
           data.messages.forEach(m => {

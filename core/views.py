@@ -1990,6 +1990,32 @@ def get_conversation(request, conversation_id):
     return JsonResponse({"title": conversation.title, "messages": messages})
 
 
+@login_required(login_url='login')
+@require_POST
+def api_conversation_rename(request, conversation_id):
+    convo = get_object_or_404(ChatConversation, id=conversation_id, user=request.user)
+    try:
+        title = (json.loads(request.body).get('title') or '').strip()
+    except (json.JSONDecodeError, AttributeError):
+        return JsonResponse({'error': 'Invalid request.'}, status=400)
+    title = ' '.join(title.split())[:60]
+    if not title:
+        return JsonResponse({'error': 'Give the chat a name.'}, status=400)
+    convo.title = title
+    convo.save(update_fields=['title'])      # keeps its place in the list
+    return JsonResponse({'title': convo.title})
+
+
+@login_required(login_url='login')
+@require_POST
+def api_conversation_delete(request, conversation_id):
+    convo = get_object_or_404(ChatConversation, id=conversation_id, user=request.user)
+    if verification.is_unverified(request.user):
+        return JsonResponse({'error': 'Chats can be deleted once the Guidance Office confirms your account.'}, status=403)
+    convo.delete()
+    return JsonResponse({'status': 'ok'})
+
+
 @ensure_csrf_cookie
 @login_required(login_url='login')
 def student_dashboard(request):
