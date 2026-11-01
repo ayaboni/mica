@@ -51,7 +51,7 @@
 
       <div class="auth-field">
         <label class="set-label" for="nickname">Nickname</label>
-        <input type="text" id="nickname" name="nickname" value="{{ profile.nickname|default:'' }}" placeholder="What should Mica call you?">
+        <input type="text" id="nickname" name="nickname" maxlength="50" value="{{ profile.nickname|default:'' }}" placeholder="What should Mica call you?">
       </div>
 
       <div class="two-col">
@@ -92,17 +92,17 @@
 
       <div class="auth-field">
         <label class="set-label" for="contact_number">Contact number</label>
-        <input type="text" id="contact_number" name="contact_number" value="{{ profile.contact_number|default:'' }}">
+        <input type="text" id="contact_number" name="contact_number" maxlength="20" value="{{ profile.contact_number|default:'' }}">
       </div>
 
       <div class="two-col">
         <div class="auth-field">
           <label class="set-label" for="ec_name">Emergency contact name</label>
-          <input type="text" id="ec_name" name="emergency_contact_name" value="{{ profile.emergency_contact_name|default:'' }}">
+          <input type="text" id="ec_name" name="emergency_contact_name" maxlength="100" value="{{ profile.emergency_contact_name|default:'' }}">
         </div>
         <div class="auth-field">
           <label class="set-label" for="ec_number">Emergency contact number</label>
-          <input type="text" id="ec_number" name="emergency_contact_number" value="{{ profile.emergency_contact_number|default:'' }}">
+          <input type="text" id="ec_number" name="emergency_contact_number" maxlength="20" value="{{ profile.emergency_contact_number|default:'' }}">
         </div>
       </div>
 

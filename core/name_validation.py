@@ -12,6 +12,9 @@ import re
 import unicodedata
 
 NAME_MAX_LENGTH = 150          # matches User.first_name / User.last_name
+NICKNAME_MAX_LENGTH = 50       # matches UserProfile.nickname
+EMERGENCY_NAME_MAX_LENGTH = 100    # matches UserProfile.emergency_contact_name
+PHONE_MAX_LENGTH = 20          # matches UserProfile.contact_number / emergency_contact_number
 _ALLOWED_PUNCTUATION = frozenset(" .,'\u2019-")
 
 
@@ -25,13 +28,13 @@ def _char_allowed(ch):
     return unicodedata.category(ch)[0] in ("L", "M") or ch in _ALLOWED_PUNCTUATION
 
 
-def validate_person_name(value, label="name", required=True):
+def validate_person_name(value, label="name", required=True, max_length=NAME_MAX_LENGTH):
     """Return an error message, or None if the name is acceptable."""
     text = normalize_name(value)
     if not text:
         return "Please enter your %s." % label if required else None
-    if len(text) > NAME_MAX_LENGTH:
-        return "Your %s is too long (%d characters max)." % (label, NAME_MAX_LENGTH)
+    if len(text) > max_length:
+        return "Your %s is too long (%d characters max)." % (label, max_length)
     if not any(unicodedata.category(ch)[0] == "L" for ch in text):
         return "Your %s must contain at least one letter." % label
     if not all(_char_allowed(ch) for ch in text):
@@ -43,6 +46,26 @@ def validate_person_names(first, last, require_last=True):
     """Check a first and last name together; return the first error found, or None."""
     return (validate_person_name(first, "first name", required=True)
             or validate_person_name(last, "last name", required=require_last))
+
+
+_PHONE_PUNCTUATION = frozenset(" +-().")
+
+
+def validate_phone_number(value, label="phone number", required=False, max_length=PHONE_MAX_LENGTH):
+    """Return an error message, or None if `value` looks like a phone number.
+
+    Deliberately loose (numbers are typed in many ways: 0917 123 4567, +63 917 123 4567, (02) 8123-4567):
+    only digits, spaces and + - ( ) . are allowed, with at least 7 digits."""
+    text = normalize_name(value)
+    if not text:
+        return "Please enter your %s." % label if required else None
+    if len(text) > max_length:
+        return "Your %s is too long (%d characters max)." % (label, max_length)
+    if not all(ch.isascii() and (ch.isdigit() or ch in _PHONE_PUNCTUATION) for ch in text):
+        return "Your %s can only contain digits, spaces and + - ( ) ." % label
+    if sum(ch.isdigit() for ch in text) < 7:
+        return "Your %s looks too short." % label
+    return None
 
 
 def sanitize_person_name(value):

@@ -1119,9 +1119,8 @@ def data_requests(request):
 @_admin
 @require_POST
 def data_request_create(request):
-    try:
-        body = json.loads(request.body or "{}")
-    except ValueError:
+    body = _body(request)
+    if body is None:
         return JsonResponse({"error": "Bad request."}, status=400)
 
     try:
@@ -1163,9 +1162,8 @@ def data_request_create(request):
 @_admin
 @require_POST
 def data_request_close(request, pk):
-    try:
-        body = json.loads(request.body or "{}")
-    except ValueError:
+    body = _body(request)
+    if body is None:
         return JsonResponse({"error": "Bad request."}, status=400)
     try:
         r = DataRequest.objects.get(pk=pk)

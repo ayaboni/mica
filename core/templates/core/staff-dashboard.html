@@ -2139,7 +2139,7 @@ function openGuidanceThread(threadId, studentName){
     ${archived ? `<div class="archived-banner">This student's account is archived, so they can't see new messages. Replies are turned off. You can still read the history.</div>` : ''}
     <div class="thread-messages" id="threadMessages"></div>
     <div class="thread-composer">
-      <input type="text" id="threadInput" placeholder="${archived ? 'Replies are off for archived students' : 'Reply to ' + studentName + '...'}" ${archived ? 'disabled' : ''}>
+      <input type="text" id="threadInput" maxlength="2000" placeholder="${archived ? 'Replies are off for archived students' : 'Reply to ' + studentName + '...'}" ${archived ? 'disabled' : ''}>
       <button class="pill-btn solid sm" onclick="sendStaffGuidanceMessage()" ${archived ? 'disabled' : ''}>Send</button>
     </div>
   `;
@@ -2221,7 +2221,12 @@ function sendStaffGuidanceMessage(){
     method: "POST",
     headers: {"Content-Type": "application/json", "X-CSRFToken": getCookie("csrftoken")},
     body: JSON.stringify({message: text}),
-  }).then(fetchThreadMessages);
+  }).then(r => {
+    if(r.ok) return fetchThreadMessages();
+    // Too long or too fast: put the text back so nothing the counselor typed is lost.
+    input.value = text;
+    return r.json().then(d => denied(d.error || "Your message couldn't be sent."), () => denied("Your message couldn't be sent."));
+  });
 }
 
 function openScheduleModal(){

@@ -258,6 +258,11 @@ MICA_DAILY_LIMIT = int(os.getenv("MICA_DAILY_LIMIT", "100"))                    
 MICA_DAILY_LIMIT_UNVERIFIED = int(os.getenv("MICA_DAILY_LIMIT_UNVERIFIED", "15"))         # each unverified student
 MICA_DAILY_LIMIT_UNVERIFIED_TOTAL = int(os.getenv("MICA_DAILY_LIMIT_UNVERIFIED_TOTAL", "300"))  # all of them together
 
+# Largest request body Django will read into memory (JSON and form text, not file uploads).
+# Chat and guidance messages are capped at 2,000 characters in views.py; this is the backstop for
+# everything else. Django's default is 2.5 MB.
+DATA_UPLOAD_MAX_MEMORY_SIZE = int(os.getenv("DATA_UPLOAD_MAX_MEMORY_SIZE", str(512 * 1024)))
+
 # Content-Security-Policy: report-only until you set CSP_ENFORCE=true (see core/middleware.py)
 CSP_ENFORCE = os.getenv("CSP_ENFORCE", "false").lower() == "true"
 

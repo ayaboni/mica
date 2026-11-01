@@ -5,7 +5,7 @@ from django.contrib.auth.models import User
 from django.contrib import messages
 from django.utils import timezone
 from django.utils import timezone as dj_timezone
-from django.utils.dateparse import parse_datetime, parse_date
+from django.utils.dateparse import parse_datetime, parse_date, parse_time
 from django.utils.html import escape
 from django.db import models
 from django.db import connection
@@ -31,8 +31,10 @@ from .models import AccessLog
 from .models import ConsoleNotification
 from .notifications import notify, staff_with, refresh_derived
 from .net import client_ip
-from .name_validation import (NAME_MAX_LENGTH, normalize_name, sanitize_person_name,
-                              validate_person_names, validate_username)
+from .name_validation import (EMERGENCY_NAME_MAX_LENGTH, NAME_MAX_LENGTH, NICKNAME_MAX_LENGTH, normalize_name,
+                              sanitize_person_name,
+                              validate_person_name, validate_person_names, validate_phone_number,
+                              validate_username)
 from .models import LoginVerification
 from .models import PasswordResetRequest
 from .models import SiteSettings
@@ -1676,6 +1678,38 @@ def change_email(request):
 
 
 
+def _clean_profile_settings(post, profile):
+    """Validate the profile part of the account-settings form.
+
+    Returns (values, None) with the cleaned values to save, or (None, message) for the first problem.
+    A field the form didn't send is left alone. A value is only checked when it differs from what is
+    already saved, so an older account with a value from before these rules can still save the page."""
+    values = {}
+    for field, choices, label in (("course", COURSES, "course"), ("year_level", YEAR_LEVELS, "year level")):
+        if field not in post:
+            continue
+        value = (post.get(field) or "").strip()
+        if value != (getattr(profile, field) or "") and value not in dict(choices):
+            return None, "Please choose a valid course and year level."
+        values[field] = value
+
+    text_fields = (
+        ("nickname", lambda v: validate_person_name(v, "nickname", required=False, max_length=NICKNAME_MAX_LENGTH)),
+        ("contact_number", lambda v: validate_phone_number(v, "contact number")),
+        ("emergency_contact_name", lambda v: validate_person_name(
+            v, "emergency contact's name", required=False, max_length=EMERGENCY_NAME_MAX_LENGTH)),
+        ("emergency_contact_number", lambda v: validate_phone_number(v, "emergency contact's number")),
+    )
+    for field, check in text_fields:
+        if field not in post:
+            continue
+        value = normalize_name(post.get(field))
+        if value != (getattr(profile, field) or "") and check(value):
+            return None, check(value)
+        values[field] = value
+    return values, None
+
+
 @login_required(login_url='login')
 def account_settings(request):
     if request.user.is_superuser:
@@ -1704,35 +1738,38 @@ def account_settings(request):
             messages.error(request, name_problem)
             return redirect('account_settings')
 
-        request.user.first_name = new_first
-        request.user.last_name = new_last
-        request.user.username = new_username
-        request.user.save()
+        # Check every field before saving anything, so a bad value never leaves a half-saved form.
+        profile_values, profile_problem = _clean_profile_settings(request.POST, profile)
+        if profile_problem:
+            messages.error(request, profile_problem)
+            return redirect('account_settings')
 
-        profile.course = request.POST.get('course', '').strip()
-        profile.year_level = request.POST.get('year_level', '').strip()
-        profile.nickname = request.POST.get('nickname', '').strip()
-        profile.contact_number = request.POST.get('contact_number', '').strip()
-        profile.emergency_contact_name = request.POST.get('emergency_contact_name', '').strip()
-        profile.emergency_contact_number = request.POST.get('emergency_contact_number', '').strip()
-        profile.share_mica_topics = request.POST.get('share_mica_topics') == 'on'
-        if not profile.share_mica_topics:
-            request.user.conversations.update(topics=[], topics_updated_at=None)
-        new_avatar = request.FILES.get('avatar')
-        if new_avatar:
-            err = _avatar_error(new_avatar)
-            if err:
-                messages.error(request, err)
-            else:
+        with transaction.atomic():
+            request.user.first_name = new_first
+            request.user.last_name = new_last
+            request.user.username = new_username
+            request.user.save()
+
+            for field, value in profile_values.items():
+                setattr(profile, field, value)
+            profile.share_mica_topics = request.POST.get('share_mica_topics') == 'on'
+            if not profile.share_mica_topics:
+                request.user.conversations.update(topics=[], topics_updated_at=None)
+            new_avatar = request.FILES.get('avatar')
+            if new_avatar:
+                err = _avatar_error(new_avatar)
+                if err:
+                    messages.error(request, err)
+                else:
+                    if profile.avatar:
+                        profile.avatar.delete(save=False)   # don't leave the old picture behind
+                    profile.avatar = new_avatar
+            elif request.POST.get('remove_avatar') == '1':
+                # Remove the picture completely: back to the default initials avatar everywhere.
                 if profile.avatar:
-                    profile.avatar.delete(save=False)   # don't leave the old picture behind
-                profile.avatar = new_avatar
-        elif request.POST.get('remove_avatar') == '1':
-            # Remove the picture completely: back to the default initials avatar everywhere.
-            if profile.avatar:
-                profile.avatar.delete(save=False)
-            profile.avatar = None
-        profile.save()
+                    profile.avatar.delete(save=False)
+                profile.avatar = None
+            profile.save()
 
         messages.success(request, "Your settings have been updated.")
         return redirect('account_settings')
@@ -1839,15 +1876,21 @@ def _generate_topics(conversation_id):
 @require_POST
 @csrf_protect
 def chatbot_reply(request):
-    try:
-        data = json.loads(request.body)
-        user_message = data.get("message", "").strip()
-        conversation_id = data.get("conversation_id")
-    except json.JSONDecodeError:
-        return JsonResponse({"error": "Invalid request."}, status=400)
+    data = _json_body(request)
+    if data is None:
+        return _bad_request()
+    user_message, problem = _message_text(data)
+    if problem:
+        # "reply" too, so the chat shows it as a message from Mica instead of "something went wrong"
+        return JsonResponse({"error": problem, "reply": problem}, status=400)
+    conversation_id = data.get("conversation_id")
+    if conversation_id is not None and (isinstance(conversation_id, bool) or not isinstance(conversation_id, int)):
+        return _bad_request()
 
-    if not user_message:
-        return JsonResponse({"error": "Empty message."}, status=400)
+    # Per-minute limit: stops a script from flooding the chat (and the paid Gemini call behind it).
+    # Like the daily cap below, it never blocks a crisis reply: those cost no AI quota.
+    if _rate_limited(request, "chat", CHAT_RATE_PER_MINUTE) and not _safety_reply(user_message):
+        return _rate_limit_response(with_reply=True)
 
     # Daily cap on Mica. Crisis/safety replies cost no AI quota and are never blocked, so only the
     # AI path is checked. `reply` is set too, so the chat shows the message as if Mica said it.
@@ -1878,7 +1921,10 @@ def chatbot_reply(request):
         {"role": "user" if m.sender == "user" else "assistant", "content": m.content}
         for m in reversed(recent)
     ]
-    nickname = request.user.profile.nickname or request.user.first_name or "friend"
+    # Older nicknames were never checked, and this goes into the model's instructions: keep it to a name.
+    nickname = (sanitize_person_name(request.user.profile.nickname or "")[:NICKNAME_MAX_LENGTH]
+                or sanitize_person_name(request.user.first_name or "")
+                or "friend")
     SYSTEM_PROMPT = (
         f"You are Mica, a warm, supportive mental health companion for college students. "
         f"The student prefers to be called '{nickname}'. Use that name naturally. "
@@ -1908,7 +1954,7 @@ def chatbot_reply(request):
                 "system_instruction": {"parts": [{"text": SYSTEM_PROMPT}]},
                 "contents": gemini_contents,
             },
-            timeout=60,
+            timeout=GEMINI_TIMEOUT_SECONDS,
         )
         response.raise_for_status()
         result = response.json()
@@ -1942,6 +1988,8 @@ def _load_speech_model(model_path):
 @require_POST
 @csrf_protect
 def speech_to_text(request):
+    if _rate_limited(request, "speech", SPEECH_RATE_PER_MINUTE):
+        return _rate_limit_response()
     audio_file = request.FILES.get('audio')
     if not audio_file:
         return JsonResponse({"error": "No audio recording was provided."}, status=400)
@@ -2102,10 +2150,14 @@ def guidance_send(request):
                      "call %s: %s." % (hl["name"], hl["number"]),
             "unverified": True,
         }, status=403)
-    data = json.loads(request.body)
-    content = data.get("message", "").strip()
-    if not content:
-        return JsonResponse({"error": "Empty message."}, status=400)
+    data = _json_body(request)
+    if data is None:
+        return _bad_request()
+    content, problem = _message_text(data)
+    if problem:
+        return JsonResponse({"error": problem}, status=400)
+    if _rate_limited(request, "guidance", GUIDANCE_RATE_PER_MINUTE):
+        return _rate_limit_response()
 
     thread, _ = GuidanceThread.objects.get_or_create(student=request.user)
     GuidanceMessage.objects.create(thread=thread, sender=request.user, content=content)
@@ -2174,18 +2226,22 @@ def api_mood_month(request):
 @login_required(login_url='login')
 @require_POST
 def api_mood_save(request):
-    try:
-        data = json.loads(request.body)
-    except json.JSONDecodeError:
+    data = _json_body(request)
+    if data is None:
         return JsonResponse({"error": "Invalid request."}, status=400)
     if str(data.get("mood", "")) not in ("0", "1", "2", "3", "4"):
         return JsonResponse({"error": "Pick a mood first."}, status=400)
-    entry_date = parse_date(data.get("date") or "") or timezone.localdate()
+    entry_date = _safe_date(data.get("date") or "") or timezone.localdate()
     if entry_date > timezone.localdate():
         return JsonResponse({"error": "You can't log a future day."}, status=400)
     defaults = {"mood": str(data["mood"])}
     if "note" in data:
-        defaults["note"] = data["note"]
+        note = data["note"]
+        if note is None:
+            note = ""
+        if not isinstance(note, str) or len(note) > MOOD_NOTE_MAX_CHARS:
+            return JsonResponse({"error": "Keep your note under %d characters." % MOOD_NOTE_MAX_CHARS}, status=400)
+        defaults["note"] = note
     MoodEntry.objects.update_or_create(
         user=request.user, date=entry_date,
         defaults=defaults
@@ -2196,11 +2252,10 @@ def api_mood_save(request):
 @login_required(login_url='login')
 @require_POST
 def api_mood_delete(request):
-    try:
-        data = json.loads(request.body)
-    except json.JSONDecodeError:
+    data = _json_body(request)
+    if data is None:
         return JsonResponse({"error": "Invalid request."}, status=400)
-    entry_date = parse_date(data.get("date") or "")
+    entry_date = _safe_date(data.get("date") or "")
     if not entry_date:
         return JsonResponse({"error": "Invalid date."}, status=400)
     MoodEntry.objects.filter(user=request.user, date=entry_date).delete()
@@ -2210,11 +2265,16 @@ def api_mood_delete(request):
 @login_required(login_url='login')
 @require_POST
 def api_breathe_save(request):
-    data = json.loads(request.body)
-    BreatheSession.objects.create(
-        user=request.user,
-        duration_seconds=int(data.get("duration_seconds", 0)),
-    )
+    data = _json_body(request)
+    if data is None:
+        return _bad_request()
+    try:
+        seconds = int(data.get("duration_seconds", 0))
+    except (TypeError, ValueError, OverflowError):
+        return _bad_request()
+    if not 0 <= seconds <= 6 * 3600:          # a breathing session is never longer than a few hours
+        return _bad_request()
+    BreatheSession.objects.create(user=request.user, duration_seconds=seconds)
     return JsonResponse({"status": "ok"})
 
 
@@ -2249,10 +2309,85 @@ AFFIRMATION_STARTERS = [
 EXERCISE_KEYS = set(EXERCISE_LABELS)
 
 
+# -- Input limits and rate limits ----------------------------------------------------------------
+
+CHAT_MESSAGE_MAX_CHARS = 2000      # one message to Mica, to Guidance, or from staff to a student
+MOOD_NOTE_MAX_CHARS = 1000
+CHAT_RATE_PER_MINUTE = 20          # messages to Mica, per student
+GUIDANCE_RATE_PER_MINUTE = 10      # messages to Guidance, per student
+STAFF_CHAT_RATE_PER_MINUTE = 30    # replies from one staff member
+SPEECH_RATE_PER_MINUTE = 6         # voice recordings, per student
+GEMINI_TIMEOUT_SECONDS = 30        # a slow Gemini call must not hold a worker for a minute
+
+
 def _json_body(request):
+    """The request's JSON body as a dict, or None if it is not valid JSON or not a JSON object.
+    An empty body counts as {}. Always check for None, then use .get() safely."""
     try:
-        return json.loads(request.body or b'{}')
-    except json.JSONDecodeError:
+        data = json.loads(request.body or b'{}')
+    except ValueError:                 # bad JSON, or bytes that are not UTF-8
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _bad_request():
+    return JsonResponse({"error": "Invalid request."}, status=400)
+
+
+def _rate_limited(request, scope, limit, window=60):
+    """True if this user has already made `limit` calls to `scope` in the current `window` seconds.
+    Uses the shared cache (Redis or the database cache), so the count is the same on every worker.
+    Counts the call being made, so call it once per request, before doing any work."""
+    key = "rl:%s:%s" % (scope, request.user.pk)
+    cache.add(key, 0, window)          # starts the window only if there isn't one running
+    try:
+        count = cache.incr(key)
+    except ValueError:                 # the key expired between add() and incr()
+        cache.set(key, 1, window)
+        count = 1
+    return count > limit
+
+
+def _rate_limit_response(window=60, with_reply=False):
+    """429 for a user who is over a per-minute limit. `with_reply` adds the same text as "reply", so
+    the chat window shows it as a message from Mica."""
+    note = "You're sending messages too quickly. Please wait a moment and try again."
+    body = {"error": note, "reply": note} if with_reply else {"error": note}
+    resp = JsonResponse(body, status=429)
+    resp["Retry-After"] = str(window)
+    return resp
+
+
+def _message_text(data, key="message"):
+    """(text, error): the trimmed message in `data[key]`, or why it can't be used."""
+    raw = data.get(key, "")
+    if not isinstance(raw, str):
+        return "", "Invalid request."
+    text = raw.strip()
+    if not text:
+        return "", "Empty message."
+    if len(text) > CHAT_MESSAGE_MAX_CHARS:
+        return "", "That message is too long. Please keep it under %d characters." % CHAT_MESSAGE_MAX_CHARS
+    return text, None
+
+
+def _safe_time(value):
+    """A time of day from a client-supplied value, or None."""
+    if not isinstance(value, str):
+        return None
+    try:
+        return parse_time(value)
+    except ValueError:
+        return None
+
+
+def _safe_date(value):
+    """A date from a client-supplied value, or None. parse_date() alone can raise on odd input."""
+    if not isinstance(value, str):
+        return None
+    try:
+        return parse_date(value)
+    except ValueError:                 # looks like a date but isn't one (2026-13-45)
         return None
 
 
@@ -2510,19 +2645,27 @@ def save_notification_settings(request):
     Saves the student's notification preferences (Guidance messages, appointment 
     reminders, daily mood reminders, sound alerts) to their UserProfile.
     """
-    try:
-        data = json.loads(request.body)
-    except json.JSONDecodeError:
+    data = _json_body(request)
+    if data is None:
         return JsonResponse({"error": "Invalid JSON format."}, status=400)
 
     profile = get_profile(request.user)
 
     # Update notification preferences on user profile
-    profile.guidance_notifications = data.get("guidance_notifications", True)
-    profile.appointment_notifications = data.get("appointment_notifications", True)
-    profile.mood_notifications = data.get("mood_notifications", False)
-    profile.mood_reminder_time = data.get("mood_reminder_time") or profile.mood_reminder_time
-    profile.sound_notifications = data.get("sound_notifications", True)
+    def flag(key, default):
+        value = data.get(key, default)
+        return value if isinstance(value, bool) else default
+
+    reminder = data.get("mood_reminder_time")
+    if reminder:
+        reminder = _safe_time(reminder)
+        if reminder is None:
+            return JsonResponse({"error": "Invalid reminder time."}, status=400)
+    profile.guidance_notifications = flag("guidance_notifications", True)
+    profile.appointment_notifications = flag("appointment_notifications", True)
+    profile.mood_notifications = flag("mood_notifications", False)
+    profile.mood_reminder_time = reminder or profile.mood_reminder_time
+    profile.sound_notifications = flag("sound_notifications", True)
     profile.save()
 
     return JsonResponse({"status": "ok", "message": "Notification preferences saved successfully."})
@@ -2841,10 +2984,7 @@ def staff_guidance_thread(request, thread_id):
 @require_perm('take_cases')
 def staff_guidance_claim(request, thread_id):
     thread = get_object_or_404(GuidanceThread, id=thread_id, student__in=visible_students())
-    try:
-        takeover = bool(json.loads(request.body or b"{}").get("takeover"))
-    except json.JSONDecodeError:
-        takeover = False
+    takeover = bool((_json_body(request) or {}).get("takeover"))
 
     if thread.counselor_id == request.user.id:
         return JsonResponse({"status": "ok"})
@@ -2874,9 +3014,14 @@ def staff_guidance_send(request, thread_id):
 
     if not allowed:
         return JsonResponse({"error": "Your staff role doesn't allow chatting with students."}, status=403)
-    content = json.loads(request.body).get("message", "").strip()
-    if not content:
-        return JsonResponse({"error": "Empty message."}, status=400)
+    data = _json_body(request)
+    if data is None:
+        return _bad_request()
+    content, problem = _message_text(data)
+    if problem:
+        return JsonResponse({"error": problem}, status=400)
+    if _rate_limited(request, "staff-chat", STAFF_CHAT_RATE_PER_MINUTE):
+        return _rate_limit_response()
     
     if _student_archived(thread.student):
         return JsonResponse({"error": "This student's account is archived. They can't read new messages."}, status=409)
@@ -2898,10 +3043,10 @@ def staff_guidance_note(request, thread_id):
         return JsonResponse({"error": "Claimed by another counselor."}, status=403)
     if not can(request.user, 'write_note_services'):
         return JsonResponse({"error": "Your staff role doesn't allow writing notes."}, status=403)
-    try:
-        content = json.loads(request.body).get("note", "").strip()
-    except json.JSONDecodeError:
+    body = _json_body(request)
+    if body is None or not isinstance(body.get("note", ""), str):
         return JsonResponse({"error": "Invalid request."}, status=400)
+    content = body.get("note", "").strip()
     if not content:
         return JsonResponse({"error": "Empty note."}, status=400)
     CounselorNote.objects.create(thread=thread, counselor=request.user, content=content)
@@ -2946,15 +3091,14 @@ def can_flag_needs_review(user):
 
 
 def _read_note_payload(request):
-    try:
-        data = json.loads(request.body)
-    except json.JSONDecodeError:
+    data = _json_body(request)
+    if data is None or not all(isinstance(data.get(k) or "", str) for k in ("topic", "realizations")):
         return None, JsonResponse({"error": "Invalid request."}, status=400)
     topic = (data.get("topic") or "").strip()
     realizations = (data.get("realizations") or "").strip()
     if not topic and not realizations:
         return None, JsonResponse({"error": "Write something first."}, status=400)
-    session_date = parse_date(data.get("session_date") or "") or timezone.localdate()
+    session_date = _safe_date(data.get("session_date") or "") or timezone.localdate()
     service = data.get("service") or "counseling"
     if service not in dict(SERVICES):
         return None, JsonResponse({"error": "Invalid service."}, status=400)
@@ -3196,9 +3340,8 @@ def staff_referral_respond(request, note_id):
         return JsonResponse({"error": "This referral isn't addressed to you."}, status=403)
     if not can(request.user, 'referrals'):
         return JsonResponse({"error": "Your staff role can't answer referrals."}, status=403)
-    try:
-        data = json.loads(request.body)
-    except json.JSONDecodeError:
+    data = _json_body(request)
+    if data is None:
         return JsonResponse({"error": "Invalid request."}, status=400)
     action = data.get("action")
     if action not in ("accept", "decline"):
@@ -3240,9 +3383,8 @@ def staff_schedule_appointment(request, thread_id):
     if _held_by_other(request.user, thread):
         return JsonResponse({"error": "Claimed by another counselor."}, status=403)
 
-    try:
-        data = json.loads(request.body)
-    except json.JSONDecodeError:
+    data = _json_body(request)
+    if data is None:
         return JsonResponse({"error": "Invalid request."}, status=400)
 
     raw_time = data.get("scheduled_time")
@@ -3330,9 +3472,8 @@ def staff_appointments_list(request):
 @user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
 @require_POST
 def staff_appointment_status(request, appointment_id):
-    try:
-        data = json.loads(request.body)
-    except json.JSONDecodeError:
+    data = _json_body(request)
+    if data is None:
         return JsonResponse({"error": "Invalid JSON."}, status=400)
 
     new_status = data.get("status")
@@ -3552,9 +3693,8 @@ def staff_flags(request):
 @require_perm('flag_students')
 def staff_flag_create(request, student_id):
     student = get_object_or_404(visible_students(), id=student_id)
-    try:
-        data = json.loads(request.body)
-    except json.JSONDecodeError:
+    data = _json_body(request)
+    if data is None:
         return JsonResponse({"error": "Invalid request."}, status=400)
     reason = (data.get("reason") or "").strip()
     if not reason:
@@ -3573,9 +3713,8 @@ def staff_flag_create(request, student_id):
 @require_POST
 def staff_flag_action(request, flag_id):
     flag = get_object_or_404(StudentFlag, id=flag_id, student__in=visible_students())
-    try:
-        data = json.loads(request.body)
-    except json.JSONDecodeError:
+    data = _json_body(request)
+    if data is None:
         return JsonResponse({"error": "Invalid request."}, status=400)
     action = data.get("action")
     needed = {"review": "take_cases", "release": "take_cases", "resolve": "resolve_flags"}.get(action)
@@ -3752,10 +3891,7 @@ ACCESS_ACTIONS = {"view_profile", "view_assessment"}
 @require_POST
 def staff_log_access(request, student_id):
     student = get_object_or_404(visible_students(), id=student_id)
-    try:
-        action = json.loads(request.body).get("action")
-    except (json.JSONDecodeError, AttributeError):
-        action = None
+    action = (_json_body(request) or {}).get("action")
     if action not in ACCESS_ACTIONS:
         return JsonResponse({"error": "Invalid action."}, status=400)
     _log_access(request.user, student, action)
@@ -3854,9 +3990,8 @@ def staff_assessments(request):
 def staff_student_status(request, student_id):
     student = get_object_or_404(visible_students(), id=student_id)
     profile, _ = UserProfile.objects.get_or_create(user=student)
-    try:
-        body = json.loads(request.body)
-    except json.JSONDecodeError:
+    body = _json_body(request)
+    if body is None:
         return JsonResponse({"error": "Invalid request."}, status=400)
 
     new_status = body.get("status")
@@ -3947,9 +4082,8 @@ def staff_care_team(request):
 @user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
 @require_POST
 def staff_profile_update(request):
-    try:
-        data = json.loads(request.body)
-    except json.JSONDecodeError:
+    data = _json_body(request)
+    if data is None:
         return JsonResponse({"error": "Invalid request."}, status=400)
     first = normalize_name(data.get("first_name"))
     last = normalize_name(data.get("last_name"))
