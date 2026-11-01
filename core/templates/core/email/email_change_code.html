@@ -1,16 +1,33 @@
 <!DOCTYPE html>
-<html>
-<body style="margin:0;padding:24px;background:#FAF7EE;font-family:Arial,Helvetica,sans-serif;color:#3A2E28;">
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light only">
+<meta name="supported-color-schemes" content="light only">
+<title>Confirm your new MICA email</title>
+</head>
+<body style="margin:0;padding:0;background:#FAF7EE;">
   <div style="display:none;max-height:0;overflow:hidden;opacity:0;">Your MICA email-change code is {{ code }}. It expires in {{ ttl_minutes }} minutes.</div>
-  <div style="max-width:480px;margin:0 auto;background:#FBF2DE;border-radius:20px;padding:28px;">
-    <h2 style="margin:0 0 12px;color:#5C4229;">Confirm your new email</h2>
-    <p style="font-size:15px;line-height:1.5;margin:0 0 20px;">Hi {{ name }}, someone (hopefully you) asked to use this email address for a MICA account. Enter this code on the "Change Email" page to finish.</p>
-    <div style="background:#ffffff;border:2px dashed #8B6F4E;border-radius:16px;padding:18px 10px;text-align:center;">
-      <span style="display:inline-block;font-family:'Courier New',Courier,monospace;font-size:38px;font-weight:bold;letter-spacing:8px;color:#3A2E28;-webkit-user-select:all;user-select:all;">{{ code }}</span>
-    </div>
-    <p style="font-size:13px;line-height:1.5;color:#7a6a5c;text-align:center;margin:10px 0 0;">Double-click (or tap and hold) the code to select it, then copy and paste it.</p>
-    <p style="font-size:13px;line-height:1.5;color:#7a6a5c;margin:22px 0 0;">The code works once and expires in {{ ttl_minutes }} minutes. It was requested on {{ when }}.</p>
-    <p style="font-size:13px;line-height:1.5;color:#7a6a5c;">If this wasn't you, ignore this email &mdash; nothing changes unless the code is entered.{% if ip %} Request came from IP address {{ ip }}.{% endif %}</p>
-  </div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FAF7EE;">
+    <tr><td align="center" style="padding:24px 12px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
+        <tr><td style="background:#8FA98C;border-radius:20px 20px 0 0;padding:18px 28px;font-family:'Trebuchet MS',Arial,Helvetica,sans-serif;font-size:28px;font-weight:bold;color:#5C4229;">{% if logo_url %}<img src="{{ logo_url }}" alt="Mica" width="110" style="display:block;border:0;height:auto;">{% else %}Mica{% endif %}</td></tr>
+        <tr><td style="background:#FBF2DE;border-radius:0 0 20px 20px;padding:28px;font-family:Arial,Helvetica,sans-serif;color:#3A2E28;">
+          <h2 style="margin:0 0 12px;font-size:22px;color:#5C4229;">Confirm your new email</h2>
+          <p style="font-size:15px;line-height:1.5;margin:0 0 20px;">Hi {{ name }}, someone (hopefully you) asked to use this email address for a MICA account. Enter this code on the "Change Email" page to finish.</p>
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+            <td align="center" style="background:#ffffff;border:2px dashed #8B6F4E;border-radius:16px;padding:18px 10px;">
+              <span style="display:inline-block;font-family:'Courier New',Courier,monospace;font-size:38px;font-weight:bold;letter-spacing:8px;color:#3A2E28;-webkit-user-select:all;user-select:all;">{{ code }}</span>
+            </td>
+          </tr></table>
+          <p style="font-size:13px;line-height:1.5;color:#7a6a5c;text-align:center;margin:10px 0 0;">Double-click (or tap and hold) the code to select it, then copy and paste it.</p>
+          <p style="font-size:13px;line-height:1.5;color:#7a6a5c;margin:22px 0 0;">The code works once and expires in {{ ttl_minutes }} minutes. It was requested on {{ when }}.</p>
+          <p style="font-size:13px;line-height:1.5;color:#7a6a5c;margin:10px 0 0;">If this wasn't you, ignore this email. Nothing changes unless the code is entered.{% if ip %} Request came from IP address {{ ip }}.{% endif %}</p>
+        </td></tr>
+        <tr><td align="center" style="padding:16px 8px;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#7a6a5c;">Sent by MICA, the student well-being app. This is an automated message.</td></tr>
+      </table>
+    </td></tr>
+  </table>
 </body>
 </html>

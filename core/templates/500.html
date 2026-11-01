@@ -1,24 +1,42 @@
+{% extends 'core/site_base.html' %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Something Went Wrong — MICA</title>
-  <style>
-    body{margin:0; font-family:'Nunito', sans-serif; background:#FAF7EE; color:#3A2E28; display:flex; align-items:center; justify-content:center; min-height:100vh; text-align:center;}
-    .wrap{max-width:420px; padding:20px;}
-    img{width:140px; margin-bottom:8px;}
-    h1{font-size:28px; margin:0 0 8px;}
-    p{color:#7a6a5c; margin:0 0 24px;}
-    a{display:inline-block; padding:12px 28px; background:#8B6F4E; color:#fff; border-radius:999px; text-decoration:none; font-weight:700;}
-  </style>
-</head>
-<body>
-  <div class="wrap">
-    <img src="{% static 'core/images/mascot_bad.png' %}" alt="Mica feeling unwell">
-    <h1>Something broke on my end</h1>
-    <p>Sorry about that — try again in a moment. If it keeps happening, let us know.</p>
-    <a href="{% url 'home' %}">Back to home</a>
+
+{% block title %}Something went wrong | MICA{% endblock %}
+{% block extra_head %}<meta name="robots" content="noindex">{% endblock %}
+{% block footer %}{% endblock %}
+
+{% block navbar %}
+  {% url 'home' as home_url %}
+  {% include 'core/_navbar_min.html' with nav_link_url=home_url nav_link_label="← Back to Home" %}
+{% endblock %}
+
+{% block content %}
+<section class="auth-wrap doodle-bg">
+  <div class="booklet">
+
+    <aside class="booklet-side booklet-side--center">
+      <img src="{% static 'core/images/mica_maintenance.png' %}" alt="Mica the axolotl wearing a nurse cap and mask">
+      <h1>Oops!</h1>
+      <p class="lead">Something went wrong on our side.</p>
+    </aside>
+
+    <div class="booklet-main">
+      <h2>It's not you</h2>
+      <p class="auth-intro">We hit a problem and couldn't finish loading this page. Please try again in a few minutes.</p>
+      <a href="{% url 'home' %}" class="btn btn-brown btn-block">Go to Home</a>
+
+      <article class="info-card" style="--card-bg: var(--card-pink); height: auto; margin-top: 20px;">
+        <h3>Need to talk to someone right now?</h3>
+        <ul>
+          <li>NCMH Crisis Hotline (24/7): 1553 (landline), 0917-899-8727 or 0919-057-1553</li>
+          <li>Hopeline PH (24/7): 2919 (Globe/TM, toll-free) or 0917-558-4673</li>
+          <li>Emergency: 911</li>
+        </ul>
+      </article>
+
+      <p class="auth-foot">If this keeps happening, tell us on the <a href="{% url 'contact' %}">Contact page</a>.</p>
+    </div>
+
   </div>
-</body>
-</html>
+</section>
+{% endblock %}

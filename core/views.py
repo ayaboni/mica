@@ -12,6 +12,7 @@ from django.db import connection
 from django.db import IntegrityError, transaction
 from django.db.models import Prefetch, Q
 from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
 from django.urls import reverse
 import math, secrets, threading, random
 from .models import AssessmentResponse
@@ -677,10 +678,31 @@ def _trust_browser(response, request, user):
     )
 
 
+from email.message import MIMEPart
+
+
+def _attach_logo(message):
+    """Embed the Mica wordmark inside the email (shown as cid:mica-logo)."""
+    try:
+        path = BASE_DIR / "core" / "static" / "core" / "images" / "mica-logo" / "mica-logo-email.png"
+        part = MIMEPart()
+        part.set_content(
+            path.read_bytes(),
+            maintype="image", subtype="png",
+            disposition="inline", filename="mica-logo.png", cid="<mica-logo>",
+        )
+        message.attach(part)
+        return True
+    except Exception:
+        logger.exception("Could not attach the logo to the email")
+        return False
+
+
 # Subject and template (without extension) for each kind of code e-mail.
 CODE_EMAILS = {
     "login": ("{code} is your MICA sign-in code", "core/email/login_code"),
     "password_change": ("{code} is your MICA password-change code", "core/email/password_change_code"),
+    "email_change": ("{code} is your MICA email-change code", "core/email/email_change_code"),
 }
 
 
@@ -719,6 +741,7 @@ def _send_code(request, user, purpose, remember_me=False, method="password", to_
             render_to_string(template + ".txt", context),
             None, [to_email],
         )
+        context["logo_url"] = "cid:mica-logo" if _attach_logo(message) else ""
         message.attach_alternative(render_to_string(template + ".html", context), "text/html")
         message.send(fail_silently=False)
     except Exception:
@@ -1153,6 +1176,7 @@ def _send_reset_link(request, email):
         render_to_string("core/email/password_reset.txt", context),
         None, [email],
     )
+    context["logo_url"] = "cid:mica-logo" if _attach_logo(message) else ""
     message.attach_alternative(render_to_string("core/email/password_reset.html", context), "text/html")
     message.send(fail_silently=False)
 
@@ -3930,4 +3954,4 @@ def user_logout(request):
     auth_logout(request)
     if expired:
         return redirect(reverse('login') + '?expired=1')
-    return redirect('login')
+    return redirect('login')

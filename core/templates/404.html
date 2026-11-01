@@ -1,24 +1,31 @@
+{% extends 'core/site_base.html' %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Page Not Found — MICA</title>
-  <style>
-    body{margin:0; font-family:'Nunito', sans-serif; background:#FAF7EE; color:#3A2E28; display:flex; align-items:center; justify-content:center; min-height:100vh; text-align:center;}
-    .wrap{max-width:420px; padding:20px;}
-    img{width:140px; margin-bottom:8px;}
-    h1{font-size:28px; margin:0 0 8px;}
-    p{color:#7a6a5c; margin:0 0 24px;}
-    a{display:inline-block; padding:12px 28px; background:#8B6F4E; color:#fff; border-radius:999px; text-decoration:none; font-weight:700;}
-  </style>
-</head>
-<body>
-  <div class="wrap">
-    <img src="{% static 'core/images/mascot_sad.png' %}" alt="Mica looking apologetic">
-    <h1>Oops, I got lost too</h1>
-    <p>This page doesn't exist — but I'm still here if you need to talk.</p>
-    <a href="{% url 'home' %}">Back to home</a>
+
+{% block title %}Page not found | MICA{% endblock %}
+{% block footer %}{% endblock %}
+
+{% block navbar %}
+  {% url 'home' as home_url %}
+  {% include 'core/_navbar_min.html' with nav_link_url=home_url nav_link_label="← Back to Home" %}
+{% endblock %}
+
+{% block content %}
+<section class="auth-wrap auth-wrap--tight doodle-bg">
+  <div class="booklet booklet--compact">
+
+    <aside class="booklet-side booklet-side--center">
+      <img src="{% static 'core/images/mascot_body.png' %}" alt="Mica the axolotl mascot">
+      <h1>Oops!</h1>
+      <p class="lead">We couldn't find that page.</p>
+    </aside>
+
+    <div class="booklet-main">
+      <h2>Page not found</h2>
+      <p class="auth-intro">The link may be broken, or the page may have moved. Let's get you back on track.</p>
+      <a href="{% url 'home' %}" class="btn btn-brown btn-block">Go to Home</a>
+      <p class="auth-foot">Think this is a mistake? Tell us on the <a href="{% url 'contact' %}">Contact page</a>.</p>
+    </div>
+
   </div>
-</body>
-</html>
+</section>
+{% endblock %}
