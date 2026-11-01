@@ -408,8 +408,8 @@ def contact(request):
         full_name, form['email'], form['message'],
     )
     try:
-        EmailMultiAlternatives(
-            "MICA contact form: %s" % full_name, body, None, [to_email],
+        _plain_text_email(
+            "MICA contact form: %s" % full_name, body, [to_email],
             reply_to=[form['email']],          # hitting Reply in Gmail answers the sender
         ).send(fail_silently=False)
     except Exception:
@@ -791,6 +791,25 @@ def _trust_browser(response, request, user):
 from email.message import MIMEPart
 
 
+def _plain_text_email(subject, body, to, reply_to=None):
+    """A plain-text e-mail that also carries an HTML copy. Some HTTPS e-mail services (Brevo) refuse a
+    message that has no HTML part, so every message MICA sends has one."""
+    from django.utils.html import linebreaks
+    message = EmailMultiAlternatives(subject, body, None, to, reply_to=reply_to)
+    message.attach_alternative(linebreaks(body, autoescape=True), "text/html")
+    return message
+
+
+def _logo_url(message):
+    """What the e-mail templates put in <img src>. With an HTTPS e-mail service the logo is linked
+    from the site's own static files (an embedded cid: image is not reliable across providers);
+    otherwise it is embedded in the message as before. Empty string = send the e-mail without it."""
+    if getattr(settings, "EMAIL_PROVIDER", "") and getattr(settings, "SITE_URL", ""):
+        from django.templatetags.static import static as static_url
+        return settings.SITE_URL.rstrip("/") + static_url("core/images/mica-logo/mica-logo-email.png")
+    return "cid:mica-logo" if _attach_logo(message) else ""
+
+
 def _attach_logo(message):
     """Embed the Mica wordmark inside the email (shown as cid:mica-logo)."""
     try:
@@ -851,7 +870,7 @@ def _send_code(request, user, purpose, remember_me=False, method="password", to_
             render_to_string(template + ".txt", context),
             None, [to_email],
         )
-        context["logo_url"] = "cid:mica-logo" if _attach_logo(message) else ""
+        context["logo_url"] = _logo_url(message)
         message.attach_alternative(render_to_string(template + ".html", context), "text/html")
         message.send(fail_silently=False)
     except Exception:
@@ -1327,7 +1346,7 @@ def _send_reset_link(request, email):
         render_to_string("core/email/password_reset.txt", context),
         None, [email],
     )
-    context["logo_url"] = "cid:mica-logo" if _attach_logo(message) else ""
+    context["logo_url"] = _logo_url(message)
     message.attach_alternative(render_to_string("core/email/password_reset.html", context), "text/html")
     message.send(fail_silently=False)
 
@@ -1637,10 +1656,10 @@ def _notify_old_email(user, old_email, new_email):
         "when": timezone.localtime(timezone.now()).strftime("%b %d, %Y at %I:%M %p"),
     }
     try:
-        EmailMultiAlternatives(
+        _plain_text_email(
             "Your MICA email address was changed",
             render_to_string("core/email/email_changed_notice.txt", context),
-            None, [old_email],
+            [old_email],
         ).send(fail_silently=False)
     except Exception:
         logger.exception("Could not send the email-changed notice for user %s", user.pk)

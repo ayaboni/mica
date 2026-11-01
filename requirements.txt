@@ -33,6 +33,10 @@ segno>=1.6,<2
 # Avatar upload checks and ImageField
 Pillow>=10.4
 
+# Sends e-mail through an HTTPS service (Resend, Brevo or SendGrid) when EMAIL_PROVIDER is set.
+# Needed on Render's free tier, which blocks SMTP. Harmless if you use SMTP instead.
+django-anymail>=11
+
 # Shared rate-limit cache. Only used when REDIS_URL is set; otherwise the database cache is used.
 redis>=5.0,<7
 

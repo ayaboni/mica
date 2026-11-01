@@ -205,12 +205,25 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # Email
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
 
-# With no EMAIL_HOST in .env, e-mails (including sign-in codes) are printed to
-# the console, which is handy in development. For real delivery put these in .env:
-#   EMAIL_HOST, EMAIL_PORT, EMAIL_HOST_USER, EMAIL_HOST_PASSWORD, EMAIL_USE_TLS,
-#   DEFAULT_FROM_EMAIL, and SITE_URL (e.g. https://mica.yourschool.edu) so the
-#   password-reset links point at the public address.
-if os.getenv("EMAIL_HOST"):
+# Three ways to send mail (checked in this order):
+#   1. An HTTPS email service (works on Render's free tier, which blocks SMTP ports):
+#        EMAIL_PROVIDER=resend|brevo|sendgrid   and   EMAIL_API_KEY=<the provider's API key>
+#   2. SMTP (needs a paid Render instance, or your own server):
+#        EMAIL_HOST, EMAIL_PORT, EMAIL_HOST_USER, EMAIL_HOST_PASSWORD, EMAIL_USE_TLS
+#   3. Neither: e-mails (including sign-in codes) are printed to the console. Fine for development.
+# Always set DEFAULT_FROM_EMAIL (an address on a domain/sender you verified with the provider) and
+# SITE_URL (e.g. https://mica.yourschool.edu) so reset links and the logo use the public address.
+EMAIL_PROVIDER = os.getenv("EMAIL_PROVIDER", "").strip().lower()
+if EMAIL_PROVIDER in ("resend", "brevo", "sendgrid"):
+    INSTALLED_APPS.append("anymail")
+    EMAIL_BACKEND = f"anymail.backends.{EMAIL_PROVIDER}.EmailBackend"
+    ANYMAIL = {
+        f"{EMAIL_PROVIDER.upper()}_API_KEY": os.getenv("EMAIL_API_KEY", ""),
+        "REQUESTS_TIMEOUT": (5, 10),     # connect, read: a slow provider must not hold a worker
+    }
+elif EMAIL_PROVIDER:
+    raise ImproperlyConfigured("EMAIL_PROVIDER must be resend, brevo or sendgrid (or leave it empty).")
+elif os.getenv("EMAIL_HOST"):
     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
     EMAIL_HOST = os.getenv("EMAIL_HOST")
     EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
@@ -220,6 +233,11 @@ if os.getenv("EMAIL_HOST"):
     EMAIL_TIMEOUT = 10
 else:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+# On the live server a missing mail setup would silently print sign-in codes to the log and nobody
+# could sign in, so refuse to start instead.
+if PRODUCTION and EMAIL_BACKEND.endswith("console.EmailBackend"):
+    raise ImproperlyConfigured("Set EMAIL_PROVIDER and EMAIL_API_KEY (or EMAIL_HOST) so sign-in codes can be e-mailed. (Running on your own computer? Put DEBUG=true in your .env file.)")
 
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "MICA <no-reply@mica.local>")
 SITE_URL = os.getenv("SITE_URL", "")
