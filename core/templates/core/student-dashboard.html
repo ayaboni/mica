@@ -2295,7 +2295,7 @@ historyList.addEventListener('click', (e)=>{
   const item = e.target.closest('.history-item');
   if(!item) return;
   setActiveHistoryItem(item);
-  currentConversationId = item.dataset.id;
+  currentConversationId = Number(item.dataset.id);
 
   fetch(`/api/conversations/${currentConversationId}/`)
     .then(r => r.json())
