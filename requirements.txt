@@ -27,6 +27,9 @@ requests>=2.32,<3
 # Encrypts the admin authenticator secrets (core/twofactor.py)
 cryptography>=43
 
+# QR code for the admin authenticator-app setup (core/twofactor.py shows no QR without it)
+segno>=1.6,<2
+
 # Avatar upload checks and ImageField
 Pillow>=10.4
 
