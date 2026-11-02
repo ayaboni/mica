@@ -10,6 +10,11 @@ Two kinds (see models.RegistrationCode):
 
 The student enters the code on /register/; it is remembered in their session until the account
 (local or Google) is created, which is when one use of the code is spent.
+
+Staff use the same page and the same entry step, but with their own codes (audience="staff"):
+only the System Admin makes them (see the "Staff codes" section at the bottom), each works once,
+and each carries the staff role the new account will get. The role comes from the code, never from
+the person registering. Everything above this line deals with student codes only.
 """
 import csv
 import json
@@ -66,7 +71,8 @@ def normalize_code(raw):
 
 def _usable(qs):
     """Codes that still work: not expired, not revoked, and with a use left."""
-    return qs.filter(revoked_at__isnull=True, expires_at__gt=timezone.now(), use_count__lt=F("max_uses"))
+    return (qs.filter(revoked_at__isnull=True, expires_at__gt=timezone.now(), use_count__lt=F("max_uses"))
+              .exclude(audience="staff", subclass__isnull=True))     # its role was deleted: can't be used
 
 
 def find_usable_code(raw):
@@ -175,7 +181,7 @@ def _status(code, now):
 def _cooldown_left(user, now=None):
     """Seconds until this staff member may make more codes (0 = now)."""
     now = now or timezone.now()
-    last = RegistrationCode.objects.filter(created_by=user).order_by("-created_at").first()
+    last = RegistrationCode.objects.filter(created_by=user, audience="student").order_by("-created_at").first()
     if not last:
         return 0
     left = (last.created_at + REG_CODE_COOLDOWN - now).total_seconds()
@@ -215,7 +221,7 @@ def _shared_json(code, now):
 
 
 def _batches_json(user, now):
-    rows = (RegistrationCode.objects.filter(created_by=user).exclude(batch="")
+    rows = (RegistrationCode.objects.filter(created_by=user, audience="student").exclude(batch="")
             .order_by("-created_at"))
     out, seen = [], {}
     for c in rows:
@@ -237,9 +243,9 @@ def _batches_json(user, now):
 
 def _payload(user):
     now = timezone.now()
-    singles = (RegistrationCode.objects.filter(created_by=user, kind="single", batch="")
+    singles = (RegistrationCode.objects.filter(created_by=user, kind="single", batch="", audience="student")
                .select_related("used_by")[:REG_CODE_HISTORY])
-    shared = (RegistrationCode.objects.filter(kind="shared").select_related("created_by")
+    shared = (RegistrationCode.objects.filter(kind="shared", audience="student").select_related("created_by")
               .order_by("-created_at")[:BATCHES_SHOWN])
     return {
         "cooldown_seconds": _cooldown_left(user, now),
@@ -351,7 +357,8 @@ def batch_generate(request):
         blocked = _cooldown_response(request.user)
         if blocked:
             return blocked
-        outstanding = _usable(RegistrationCode.objects.filter(created_by=request.user, kind="single")).count()
+        outstanding = _usable(RegistrationCode.objects.filter(
+            created_by=request.user, kind="single", audience="student")).count()
         if outstanding + count > BATCH_MAX_OUTSTANDING:
             return JsonResponse({"error": "You already hold %d unused codes (limit %d). Use or revoke some first."
                                           % (outstanding, BATCH_MAX_OUTSTANDING)}, status=400)
@@ -391,7 +398,7 @@ def batch_generate(request):
 @require_GET
 def batch_detail(request, batch):
     """Every code in one batch and who used it, for the "View" pop-up. Same access rule as the CSV."""
-    qs = (RegistrationCode.objects.filter(batch=batch, kind="single")
+    qs = (RegistrationCode.objects.filter(batch=batch, kind="single", audience="student")
           .select_related("used_by", "used_by__profile").order_by("code"))
     if not request.user.is_superuser:
         qs = qs.filter(created_by=request.user)
@@ -419,7 +426,7 @@ def batch_detail(request, batch):
 @require_GET
 def batch_download(request, batch):
     """The codes in one batch as a CSV, for printing slips. Only the staff member who made it (or the admin)."""
-    qs = RegistrationCode.objects.filter(batch=batch, kind="single").order_by("code")
+    qs = RegistrationCode.objects.filter(batch=batch, kind="single", audience="student").order_by("code")
     if not request.user.is_superuser:
         qs = qs.filter(created_by=request.user)
     rows = list(qs)
@@ -497,12 +504,12 @@ def code_revoke(request):
         return JsonResponse({"error": "Invalid request."}, status=400)
     now = timezone.now()
     if body.get("batch"):
-        qs = RegistrationCode.objects.filter(batch=str(body["batch"]), kind="single")
+        qs = RegistrationCode.objects.filter(batch=str(body["batch"]), kind="single", audience="student")
     elif body.get("id") is not None:
         n = _int(body.get("id"), None, 1, 2**62)
         if n is None:
             return JsonResponse({"error": "Invalid request."}, status=400)
-        qs = RegistrationCode.objects.filter(pk=n)
+        qs = RegistrationCode.objects.filter(pk=n, audience="student")
     else:
         return JsonResponse({"error": "Invalid request."}, status=400)
     if not request.user.is_superuser:
@@ -513,5 +520,144 @@ def code_revoke(request):
         return JsonResponse({"error": "Nothing to revoke: it may already be used or revoked."}, status=404)
     _audit(request, "reg_code_revoked", "Revoked %d registration code%s" % (revoked, "" if revoked == 1 else "s"))
     data = _payload(request.user)
+    data["revoked"] = revoked
+    return JsonResponse(data)
+
+
+# -- Staff codes (System Admin only) -----------------------------------------------------------
+#
+# The student side above is for Guidance staff to hand to students. This side is for the System
+# Admin to hand to a new colleague. The colleague types it on the same /register/ page and gets a
+# staff registration form instead of the student one. A staff code:
+#   * is single-use and short-lived (a week by default),
+#   * carries the staff role (StaffSubclass) the account will get, so nobody picks their own role,
+#   * is longer than a student code (8 characters), because the account it makes is privileged,
+#   * never creates a student account, and a student code never creates a staff account.
+
+STAFF_CODE_LENGTH = 8
+STAFF_DEFAULT_DAYS, STAFF_MAX_DAYS = 7, 30
+MAX_STAFF_BATCH = 20                       # codes in one go
+STAFF_MAX_OUTSTANDING = 50                 # unused staff codes that may exist at once
+STAFF_CODES_SHOWN = 50
+
+admin_only = [login_required(login_url="login"),
+              user_passes_test(lambda u: u.is_superuser, login_url="login")]
+
+
+def _admin(view):
+    for deco in reversed(admin_only):
+        view = deco(view)
+    return view
+
+
+def staff_role_name(code):
+    return code.subclass.name if code.subclass_id else ""
+
+
+def _staff_code_json(code, now):
+    return {
+        "id": code.id,
+        "code": code.code,
+        "status": _status(code, now),
+        "role": staff_role_name(code) or "Role deleted",
+        "subclass_id": code.subclass_id,
+        "label": code.label,
+        "created_at": code.created_at.isoformat(),
+        "expires_at": code.expires_at.isoformat(),
+        "used_at": code.used_at.isoformat() if code.used_at else None,
+        "used_by": _person(code.used_by),
+    }
+
+
+def _staff_payload():
+    now = timezone.now()
+    rows = (RegistrationCode.objects.filter(audience="staff")
+            .select_related("subclass", "used_by").order_by("-created_at")[:STAFF_CODES_SHOWN])
+    return {
+        "codes": [_staff_code_json(c, now) for c in rows],
+        "limits": {"max_batch": MAX_STAFF_BATCH, "days": STAFF_MAX_DAYS, "default_days": STAFF_DEFAULT_DAYS},
+    }
+
+
+@_admin
+@require_GET
+def staff_codes_list(request):
+    return JsonResponse(_staff_payload())
+
+
+@_admin
+@require_POST
+def staff_codes_generate(request):
+    """Make `count` single-use staff codes for one role."""
+    from .models import StaffSubclass
+
+    body = _body(request)
+    if body is None:
+        return JsonResponse({"error": "Invalid request."}, status=400)
+    sub_id = _int(body.get("subclass_id"), None, 1, 2**62)
+    sub = StaffSubclass.objects.filter(pk=sub_id).first() if sub_id else None
+    if sub is None:
+        return JsonResponse({"error": "Choose the staff role this code is for."}, status=400)
+    count = _int(body.get("count"), 1, 1, MAX_STAFF_BATCH)
+    if count is None:
+        return JsonResponse({"error": "Choose between 1 and %d codes." % MAX_STAFF_BATCH}, status=400)
+    days = _int(body.get("days"), STAFF_DEFAULT_DAYS, 1, STAFF_MAX_DAYS)
+    if days is None:
+        return JsonResponse({"error": "Codes can last 1 to %d days." % STAFF_MAX_DAYS}, status=400)
+    label = _label(body.get("label"))
+
+    with transaction.atomic():
+        User.objects.select_for_update().get(pk=request.user.pk)      # one generate at a time
+        outstanding = _usable(RegistrationCode.objects.filter(audience="staff")).count()
+        if outstanding + count > STAFF_MAX_OUTSTANDING:
+            return JsonResponse({"error": "There are already %d unused staff codes (limit %d). "
+                                          "Revoke some, or wait for them to be used or expire."
+                                          % (outstanding, STAFF_MAX_OUTSTANDING)}, status=400)
+        expires = timezone.now() + timedelta(days=days)
+        values = None
+        for _ in range(5):
+            wanted = set()
+            while len(wanted) < count:
+                wanted.add(new_code_value(STAFF_CODE_LENGTH))
+            wanted -= set(RegistrationCode.objects.filter(code__in=wanted).values_list("code", flat=True))
+            if len(wanted) < count:         # a collision: draw again
+                continue
+            try:
+                with transaction.atomic():
+                    RegistrationCode.objects.bulk_create([
+                        RegistrationCode(code=v, kind="single", audience="staff", subclass=sub, label=label,
+                                         created_by=request.user, expires_at=expires)
+                        for v in sorted(wanted)])
+                values = sorted(wanted)
+                break
+            except IntegrityError:
+                continue
+        if values is None:
+            return JsonResponse({"error": "Couldn't make the codes. Please try again."}, status=503)
+        # never log the code values themselves
+        _audit(request, "staff_code_created",
+               "Generated %d staff registration code%s for the role %s (valid %d day%s)"
+               % (count, "" if count == 1 else "s", sub.name, days, "" if days == 1 else "s"))
+
+    data = _staff_payload()
+    data["new_codes"] = values
+    return JsonResponse(data)
+
+
+@_admin
+@require_POST
+def staff_code_revoke(request):
+    """Stop one unused staff code working."""
+    body = _body(request)
+    n = _int(body.get("id"), None, 1, 2**62) if body is not None else None
+    if n is None:
+        return JsonResponse({"error": "Invalid request."}, status=400)
+    revoked = (RegistrationCode.objects
+               .filter(pk=n, audience="staff", revoked_at__isnull=True, use_count__lt=F("max_uses"))
+               .update(revoked_at=timezone.now(), revoked_by=request.user))
+    if not revoked:
+        return JsonResponse({"error": "Nothing to revoke: it may already be used or revoked."}, status=404)
+    _audit(request, "staff_code_revoked", "Revoked a staff registration code")
+    data = _staff_payload()
     data["revoked"] = revoked
     return JsonResponse(data)

@@ -234,57 +234,6 @@ def staff_accounts(request):
     return JsonResponse({"staff": [_staff_json(u) for u in users]})
 
 
-USERNAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{2,29}$")
-
-
-@_admin
-@require_POST
-def staff_create(request):
-    """Create a fresh staff account: names, username, e-mail and role, but no password.
-
-    The staff member signs in with just the username, confirms an e-mailed code, then sets
-    their own password (see views.staff_setup)."""
-    data = _body(request)
-    if data is None:
-        return JsonResponse({"error": "Invalid request."}, status=400)
-    first = " ".join(str(data.get("first_name") or "").split())[:150]
-    last = " ".join(str(data.get("last_name") or "").split())[:150]
-    username = str(data.get("username") or "").strip()
-    email = str(data.get("email") or "").strip().lower()
-    if not first:
-        return JsonResponse({"error": "Please enter the staff member\u2019s first name."}, status=400)
-    name_error = validate_person_names(first, last, require_last=False)
-    if name_error:
-        return JsonResponse({"error": name_error.replace("your ", "the staff member\u2019s ").replace("Your ", "The staff member\u2019s ")}, status=400)
-    if not last:
-        return JsonResponse({"error": "Please enter the staff member\u2019s last name."}, status=400)
-    if not USERNAME_RE.match(username):
-        return JsonResponse({"error": "Username must be 3\u201330 characters: letters, numbers, dots, dashes or underscores."}, status=400)
-    if User.objects.filter(Q(username__iexact=username) | Q(email__iexact=username)).exists():
-        return JsonResponse({"error": "That username is already taken."}, status=409)
-    try:
-        validate_email(email)
-    except ValidationError:
-        return JsonResponse({"error": "Please enter a valid email address."}, status=400)
-    if User.objects.filter(email__iexact=email).exists():
-        return JsonResponse({"error": "An account with that email already exists."}, status=409)
-    sub = StaffSubclass.objects.filter(id=data.get("subclass_id")).first()
-    if sub is None:
-        return JsonResponse({"error": "Choose a staff role for this account."}, status=400)
-
-    with transaction.atomic():
-        user = User.objects.create_user(          # password=None -> unusable password: nobody can sign in with one
-            username=username, email=email, first_name=first, last_name=last, password=None, is_staff=True)
-        profile, _ = StaffProfile.objects.get_or_create(user=user, defaults={"role": "other"})
-        profile.subclass = sub
-        profile.license_number = str(data.get("license_number") or "").strip()[:50]
-        profile.must_complete_setup = True
-        profile.save()
-    user = User.objects.select_related("staff_profile").get(pk=user.pk)   # reload so the new profile is read
-    _log_admin(request, "Staff: created account %s (%s)" % (_label(user), sub.name))
-    return JsonResponse({"staff": _staff_json(user)}, status=201)
-
-
 @_admin
 @require_POST
 def staff_set_subclass(request, user_id):

@@ -573,12 +573,26 @@
                 <option value="Pending">Pending (never signed in)</option>
               </select>
             </div>
-            <button class="pill-btn solid" onclick="openCreateAccount()">+ Create staff account</button>
+            <button class="pill-btn solid" onclick="openStaffCodeModal()">+ Generate staff code</button>
           </div>
           <div class="card" style="overflow-x:auto;">
             <table>
               <thead><tr><th>Staff</th><th>Role</th><th>Status</th><th>Last Login</th><th>Action</th></tr></thead>
               <tbody id="acctTbody"></tbody>
+            </table>
+          </div>
+
+          <div class="sc-head">
+            <div>
+              <h3>Staff registration codes</h3>
+              <p>Give a new colleague one of these codes. They enter it on the Register page and fill in their own
+                 details and password. Each code works once, expires on its own, and sets the role the account gets.</p>
+            </div>
+          </div>
+          <div class="card" style="overflow-x:auto;">
+            <table>
+              <thead><tr><th>Code</th><th>Role</th><th>Status</th><th>Expires</th><th>Used by</th><th>Action</th></tr></thead>
+              <tbody id="staffCodeRows"><tr><td colspan="6"><div class="sc-empty">Loading…</div></td></tr></tbody>
             </table>
           </div>
         </div>
@@ -980,7 +994,7 @@
               <li>System Admin accounts also need a code from an authenticator app (or a one-time recovery code) every time they sign in.</li>
               <li>E-mailed sign-in code: 6 characters, valid 10 minutes, 5 tries.</li>
               <li>Idle sign-out: 15 minutes for staff and admin, 30 minutes for students.</li>
-              <li>New staff accounts have no password. They sign in with their username and an e-mailed code, then set one.</li>
+              <li>New staff register themselves on the Register page with a one-time staff code from the System Admin, and choose their own password there.</li>
               <li>Archived and graduated students cannot sign in.</li>
             </ul>
           </div>
@@ -1149,30 +1163,35 @@
   </div>
 </div>
 
-<!-- ================= CREATE ACCOUNT MODAL ================= -->
-<div class="modal-overlay" id="createModalOverlay">
+<!-- ================= GENERATE STAFF CODE MODAL ================= -->
+<div class="modal-overlay" id="staffCodeModalOverlay">
   <div class="modal">
     <div class="modal-head">
-      <div><h2>Create staff account</h2><div class="sub">They sign in with this username and an emailed code, then set their own password</div></div>
-      <button class="modal-close" onclick="closeModal('createModalOverlay')">
+      <div><h2>Generate staff code</h2><div class="sub">The new staff member registers with it, then chooses their own username and password</div></div>
+      <button class="modal-close" onclick="closeModal('staffCodeModalOverlay')">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
       </button>
     </div>
-    <div class="modal-body">
+    <div class="modal-body" id="staffCodeFormBody">
+      <div class="field"><label>Staff role</label><select id="staffCodeRole"></select></div>
       <div class="field-grid">
-        <div class="field"><label>First name</label><input id="createFirst" maxlength="150" placeholder="e.g. Maria"></div>
-        <div class="field"><label>Last name</label><input id="createLast" maxlength="150" placeholder="e.g. Santos"></div>
+        <div class="field"><label>How many codes</label><input id="staffCodeCount" type="number" min="1" max="20" value="1"></div>
+        <div class="field"><label>Valid for (days)</label><input id="staffCodeDays" type="number" min="1" max="30" value="7"></div>
       </div>
-      <div class="field-grid">
-        <div class="field"><label>Username</label><input id="createUsername" maxlength="30" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="e.g. msantos"></div>
-        <div class="field"><label>Email</label><input id="createEmail" type="email" placeholder="name@school.edu.ph"></div>
-      </div>
-      <div class="field" id="createSubclassWrap"><label>Staff role</label><select id="createSubclass"></select></div>
-      <div class="form-error" id="createError"></div>
+      <div class="field"><label>Note (optional)</label><input id="staffCodeLabel" maxlength="80" placeholder="e.g. New guidance associates"></div>
+      <div class="form-error" id="staffCodeError"></div>
     </div>
-    <div class="modal-foot">
-      <button class="pill-btn solid" onclick="submitCreateStaff()">Create Account</button>
-      <button class="pill-btn ghost" onclick="closeModal('createModalOverlay')">Cancel</button>
+    <div class="modal-body" id="staffCodeResultBody" style="display:none;">
+      <p style="font-size:13px; color:var(--ink-soft); margin-bottom:12px;">Share each code with one person. They enter it on the Register page.</p>
+      <div id="staffCodeResult" style="text-align:center; padding:16px; border:1.5px dashed var(--line); border-radius:14px; font-family:'IBM Plex Mono',monospace; font-size:26px; font-weight:700; letter-spacing:.2em; line-height:1.9; user-select:all;"></div>
+    </div>
+    <div class="modal-foot" id="staffCodeFormFoot">
+      <button class="pill-btn solid" id="staffCodeBtn" onclick="submitStaffCode()">Generate</button>
+      <button class="pill-btn ghost" onclick="closeModal('staffCodeModalOverlay')">Cancel</button>
+    </div>
+    <div class="modal-foot" id="staffCodeResultFoot" style="display:none;">
+      <button class="pill-btn solid" onclick="copyStaffCodes()">Copy</button>
+      <button class="pill-btn ghost" onclick="closeModal('staffCodeModalOverlay')">Done</button>
     </div>
   </div>
 </div>
@@ -1440,13 +1459,9 @@ function suspendAccount(){
   });
 }
 
-function openCreateAccount(){
-  document.getElementById('createError').textContent = '';
-  fillSubclassSelect('createSubclass');
-  document.getElementById('createModalOverlay').classList.add('active');
-}
 
 function loadStaffAccounts(){
+  loadStaffCodes();          // the codes table sits under the staff list, and codes get used as people register
   return api('/api/admin/staff/').then(r=>{
     if(!r.ok) return;
     accounts = (r.data.staff || []).map(staffToAccount);
@@ -1980,22 +1995,76 @@ function staffToAccount(st){
           detail:st.subclass, status:st.status, lastLogin:st.last_login, joined:st.joined};
 }
 
-function submitCreateStaff(){
-  const err = document.getElementById('createError'); err.textContent = '';
+/* ---- Staff registration codes ---- */
+let staffCodes = [], newStaffCodes = [];
+const CODE_BADGE = {active:'stable', used:'neutral', expired:'neutral', revoked:'urgent'};
+const CODE_LABEL = {active:'Active', used:'Used', expired:'Expired', revoked:'Revoked'};
+
+function loadStaffCodes(){
+  return api('/api/admin/staff-codes/').then(r=>{
+    if(!r.ok) return;
+    staffCodes = r.data.codes || [];
+    renderStaffCodes();
+  });
+}
+function renderStaffCodes(){
+  const body = document.getElementById('staffCodeRows');
+  if(!staffCodes.length){
+    body.innerHTML = '<tr><td colspan="6"><div class="sc-empty">No staff codes yet. Use “Generate staff code” to invite someone.</div></td></tr>';
+    return;
+  }
+  const day = iso => new Date(iso).toLocaleDateString(undefined, {month:'short', day:'numeric', year:'numeric'});
+  body.innerHTML = staffCodes.map(c=>`
+    <tr>
+      <td style="font-family:'IBM Plex Mono',monospace; font-weight:600; letter-spacing:.12em;">${c.status === 'active' ? esc(c.code) : '<span style="opacity:.55">'+esc(c.code)+'</span>'}</td>
+      <td><span class="badge neutral">${esc(c.role)}</span>${c.label ? '<div style="font-size:12px; color:var(--ink-soft); margin-top:4px;">'+esc(c.label)+'</div>' : ''}</td>
+      <td><span class="badge ${CODE_BADGE[c.status] || 'neutral'}"><span class="dot"></span>${CODE_LABEL[c.status] || esc(c.status)}</span></td>
+      <td>${esc(day(c.expires_at))}</td>
+      <td>${c.used_by ? esc(c.used_by) : '\u2014'}</td>
+      <td>${c.status === 'active' ? '<button class="pill-btn ghost sm" onclick="revokeStaffCode('+c.id+')">Revoke</button>' : ''}</td>
+    </tr>`).join('');
+}
+function openStaffCodeModal(){
+  document.getElementById('staffCodeError').textContent = '';
+  document.getElementById('staffCodeCount').value = 1;
+  document.getElementById('staffCodeDays').value = 7;
+  document.getElementById('staffCodeLabel').value = '';
+  fillSubclassSelect('staffCodeRole');
+  ['staffCodeResultBody','staffCodeResultFoot'].forEach(id=>document.getElementById(id).style.display='none');
+  ['staffCodeFormBody','staffCodeFormFoot'].forEach(id=>document.getElementById(id).style.display='');
+  document.getElementById('staffCodeModalOverlay').classList.add('active');
+}
+function submitStaffCode(){
+  const err = document.getElementById('staffCodeError'); err.textContent = '';
   const body = {
-    first_name: document.getElementById('createFirst').value.trim(),
-    last_name: document.getElementById('createLast').value.trim(),
-    username: document.getElementById('createUsername').value.trim(),
-    email: document.getElementById('createEmail').value.trim(),
-    subclass_id: parseInt(document.getElementById('createSubclass').value, 10) || null,
+    subclass_id: parseInt(document.getElementById('staffCodeRole').value, 10) || null,
+    count: parseInt(document.getElementById('staffCodeCount').value, 10) || 1,
+    days: parseInt(document.getElementById('staffCodeDays').value, 10) || 7,
+    label: document.getElementById('staffCodeLabel').value.trim(),
   };
-  api('/api/admin/staff/create/', body).then(r=>{
-    if(!r.ok){ err.textContent = r.data.error || 'Could not create the account.'; return; }
-    closeModal('createModalOverlay');
-    ['createFirst','createLast','createUsername','createEmail'].forEach(id=>{ document.getElementById(id).value=''; });
-    showToast('Account created. '+r.data.staff.name+' signs in with the username “'+r.data.staff.username+'” and an emailed code.');
-    loadStaffAccounts();
-    loadSubclasses();
+  const btn = document.getElementById('staffCodeBtn'); btn.disabled = true;
+  api('/api/admin/staff-codes/generate/', body).then(r=>{
+    btn.disabled = false;
+    if(!r.ok){ err.textContent = r.data.error || 'Could not generate the code.'; return; }
+    staffCodes = r.data.codes || []; renderStaffCodes();
+    newStaffCodes = r.data.new_codes || [];
+    document.getElementById('staffCodeResult').innerHTML = newStaffCodes.map(esc).join('<br>');
+    ['staffCodeFormBody','staffCodeFormFoot'].forEach(id=>document.getElementById(id).style.display='none');
+    ['staffCodeResultBody','staffCodeResultFoot'].forEach(id=>document.getElementById(id).style.display='');
+  });
+}
+function copyStaffCodes(){
+  const text = newStaffCodes.join('\n');
+  (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject())
+    .then(()=>showToast(newStaffCodes.length === 1 ? 'Code copied' : 'Codes copied'))
+    .catch(()=>showToast('Select the code and copy it by hand'));
+}
+function revokeStaffCode(id){
+  if(!confirm('Revoke this staff code? It will stop working straight away.')) return;
+  api('/api/admin/staff-codes/revoke/', {id}).then(r=>{
+    if(!r.ok){ showToast(r.data.error || 'Could not revoke the code'); return; }
+    staffCodes = r.data.codes || []; renderStaffCodes();
+    showToast('Code revoked');
   });
 }
 

@@ -4,15 +4,16 @@ import re
 from django.contrib.auth.models import User
 from django.core import mail
 from django.test import TestCase, override_settings
-from django.urls import reverse
+from django.urls import NoReverseMatch, reverse
 
 from .models import StaffProfile, StaffSubclass
 
 
 @override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend')
 class FreshStaffAccountTests(TestCase):
-    """Admin creates a staff account (no password) -> username-only sign-in with an e-mailed code
-    -> first-time setup (password + details) -> an ordinary staff account."""
+    """Accounts that were made before staff registered themselves with a code: no password yet ->
+    username-only sign-in with an e-mailed code -> first-time setup (password + details) -> an
+    ordinary staff account. (New staff now register with a staff code: see test_staff_registration.)"""
     PASSWORD = 'Sturdy-pass-9271!'
 
     def setUp(self):
@@ -22,10 +23,18 @@ class FreshStaffAccountTests(TestCase):
 
     # -- helpers --
     def create(self, **overrides):
+        """An account still waiting for first-time setup, as the admin's old "create staff" made it."""
         data = {'first_name': 'Maria', 'last_name': 'Santos', 'username': 'msantos',
-                'email': 'maria@example.com', 'subclass_id': self.sub.id}
+                'email': 'maria@example.com'}
         data.update(overrides)
-        return self.client.post(reverse('admin_staff_create'), json.dumps(data), content_type='application/json')
+        user = User.objects.create_user(          # password=None -> unusable password
+            username=data['username'], email=data['email'], first_name=data['first_name'],
+            last_name=data['last_name'], password=None, is_staff=True)
+        profile, _ = StaffProfile.objects.get_or_create(user=user, defaults={'role': 'other'})
+        profile.subclass = self.sub
+        profile.must_complete_setup = True
+        profile.save()
+        return user
 
     def fresh_client(self):
         from django.test import Client
@@ -44,39 +53,11 @@ class FreshStaffAccountTests(TestCase):
         c.post(reverse('login_verify'), {'code': self.code()})
         return c
 
-    # -- admin creates the account --
-    def test_admin_creates_a_fresh_account_without_a_password(self):
-        response = self.create()
-        self.assertEqual(response.status_code, 201)
-        user = User.objects.get(username='msantos')
-        self.assertTrue(user.is_staff)
-        self.assertFalse(user.has_usable_password())
-        self.assertEqual((user.first_name, user.last_name, user.email), ('Maria', 'Santos', 'maria@example.com'))
-        profile = user.staff_profile
-        self.assertTrue(profile.must_complete_setup)
-        self.assertEqual(profile.subclass, self.sub)
-        self.assertEqual(response.json()['staff']['status'], 'Pending')
-        self.assertTrue(response.json()['staff']['fresh'])
-        self.assertEqual(len(mail.outbox), 0)              # nothing is e-mailed at creation
-
-    def test_create_validates_the_fields(self):
-        self.assertEqual(self.create(first_name='').status_code, 400)
-        self.assertEqual(self.create(last_name='').status_code, 400)
-        self.assertEqual(self.create(username='a b').status_code, 400)
-        self.assertEqual(self.create(username='ab').status_code, 400)
-        self.assertEqual(self.create(email='nope').status_code, 400)
-        self.assertEqual(self.create(subclass_id=None).status_code, 400)
-        self.assertFalse(User.objects.filter(username='msantos').exists())
-
-    def test_username_and_email_must_be_unique(self):
-        self.create()
-        self.assertEqual(self.create(username='MSantos', email='other@example.com').status_code, 409)
-        self.assertEqual(self.create(username='another', email='MARIA@example.com').status_code, 409)
-
-    def test_only_admins_can_create_staff(self):
-        staff = User.objects.create_user('someone', 'someone@example.com', self.PASSWORD, is_staff=True)
-        self.client.force_login(staff)
-        self.assertNotEqual(self.create().status_code, 201)
+    # -- the admin no longer creates staff accounts --
+    def test_admin_can_no_longer_create_staff_accounts(self):
+        with self.assertRaises(NoReverseMatch):
+            reverse('admin_staff_create')
+        self.assertEqual(self.client.post('/api/admin/staff/create/', '{}', content_type='application/json').status_code, 404)
 
     # -- signing in with just the username --
     def test_username_alone_sends_a_code_instead_of_asking_for_a_password(self):

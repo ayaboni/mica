@@ -12,11 +12,15 @@
     <aside class="booklet-side booklet-side--center">
       <img src="{% static 'core/images/mascot_body.png' %}" alt="Mica the axolotl mascot">
       <h1>Nice to meet you!</h1>
+      {% if code_audience == 'staff' %}
+      <p class="lead">I'm Mica. Let's set up your staff account so you can start supporting students.</p>
+      {% else %}
       <p class="lead">I'm Mica. Let's set up your account so we can get started.</p>
+      {% endif %}
     </aside>
 
     <div class="booklet-main">
-      <h2>Create an account</h2>
+      <h2>{% if code_audience == 'staff' %}Create a staff account{% else %}Create an account{% endif %}</h2>
 
       {% if messages %}
         {% for message in messages %}
@@ -33,7 +37,7 @@
           {% csrf_token %}
           <input type="hidden" name="step" value="code">
 
-          <p class="auth-intro">Enter the registration code from the Guidance Office to continue.</p>
+          <p class="auth-intro">Enter your registration code to continue. Students get theirs from the Guidance Office; staff get theirs from the System Admin.</p>
 
           <div class="auth-field">
             <input type="text" id="registrationCode" class="code-input" name="registration_code"
@@ -42,6 +46,33 @@
           </div>
 
           <button type="submit" class="btn btn-brown btn-block">Continue</button>
+          <p class="auth-foot">Already have an account? <a href="{% url 'login' %}">Log In</a></p>
+        </form>
+
+      {% elif code_audience == 'staff' %}
+        <form method="POST" action="{% url 'register' %}" autocomplete="off">
+          {% csrf_token %}
+
+          <p class="auth-intro">You're registering as <strong>{{ staff_role }}</strong>.</p>
+
+          <div class="two-col">
+            <div class="auth-field"><input type="text" id="firstName" name="first_name" placeholder="First Name" value="{{ form.first_name }}" required></div>
+            <div class="auth-field"><input type="text" id="lastName" name="last_name" placeholder="Last Name" value="{{ form.last_name }}" required></div>
+          </div>
+
+          <div class="auth-field"><input type="text" id="username" name="username" placeholder="Username" autocomplete="username" title="3–30 characters: English letters, numbers, dots, dashes or underscores" maxlength="30" pattern="[A-Za-z0-9][A-Za-z0-9._\-]{2,29}" value="{{ form.username }}" required></div>
+
+          <div class="auth-field"><input type="email" id="regEmail" name="email" placeholder="Email" value="{{ form.email }}" required></div>
+
+          <div class="auth-field"><input type="text" id="licenseNumber" name="license_number" placeholder="License number (optional)" maxlength="50" value="{{ form.license_number }}"></div>
+
+          <div class="two-col">
+            <div class="auth-field"><input type="password" id="regPassword" name="password" placeholder="Password" autocomplete="new-password" required></div>
+            <div class="auth-field"><input type="password" id="confirmPassword" name="confirm_password" placeholder="Confirm Password" autocomplete="new-password" required></div>
+          </div>
+          <p class="pw-hint">At least 8 characters, with 1 uppercase letter and 1 number or symbol.</p>
+
+          <button type="submit" class="btn btn-brown btn-block">Register</button>
           <p class="auth-foot">Already have an account? <a href="{% url 'login' %}">Log In</a></p>
         </form>
 

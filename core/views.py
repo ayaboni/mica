@@ -49,7 +49,7 @@ from .models import SignInFailure
 from . import firebase_reset
 from . import twofactor
 from urllib.parse import urlencode
-from .models import StaffProfile, StaffSubclass
+from .models import StaffProfile, StaffSubclass, AuditEvent
 from .permissions import can, require_perm, staff_permissions, SERVICE_KEYS
 from .models import StudentStatusLog, ACCOUNT_STATUS, STATUS_REASONS
 from .models import AssessmentHistory
@@ -212,6 +212,11 @@ def google_register(request):
                             "error": "We couldn't find a MICA account for this Google account. New students need a "
                                      "registration code from the Guidance Office: choose Register and enter it first.",
                             "needs_code": True,
+                        }, status=403)
+                    if reg_code.audience != "student":
+                        # A staff code makes a staff account, and staff never sign in with Google.
+                        return JsonResponse({
+                            "error": "Staff accounts can't use Google sign-in. Fill in the registration form instead.",
                         }, status=403)
                     user = User.objects.create_user(
                         username=_google_username(uid),
@@ -488,10 +493,14 @@ class _CodeGone(Exception):
 
 
 def _register_page(request, **extra):
+    code = regcodes.session_code(request)
     ctx = {"courses": get_courses(),
            "course_groups": get_course_groups(),
            "year_levels": YEAR_LEVELS,
-           "code_ok": regcodes.session_code(request) is not None,
+           "code_ok": code is not None,
+           "code_audience": code.audience if code else "",
+           "staff_role": regcodes.staff_role_name(code) if code and code.audience == "staff" else "",
+           "form": extra.pop("form", {}),
            "closed": not SiteSettings.get().registration_open}
     ctx.update(extra)
     return render(request, "core/register.html", ctx)
@@ -513,6 +522,77 @@ def _register_code_step(request):
     return redirect("register")
 
 
+def _register_staff(request):
+    """The staff half of /register/: same code step as students, then a form for a staff account.
+
+    The role comes from the staff code the System Admin generated, never from the form. A staff
+    account has no Google sign-in, so this is username + password only."""
+    posted = request.POST
+    first_name = normalize_name(posted.get("first_name", ""))
+    last_name = normalize_name(posted.get("last_name", ""))
+    username = posted.get("username", "").strip()
+    email = posted.get("email", "").strip().lower()
+    license_number = posted.get("license_number", "").strip()[:50]
+    password = posted.get("password") or ""
+    confirm_password = posted.get("confirm_password") or ""
+    # Typed values come back into the form on an error; passwords never do.
+    keep = {"first_name": first_name, "last_name": last_name, "username": username,
+            "email": email, "license_number": license_number}
+
+    def fail(message):
+        messages.error(request, message)
+        return _register_page(request, form=keep)
+
+    if password != confirm_password:
+        return fail("Passwords do not match.")
+    if not _password_meets_rules(password):
+        return fail(PASSWORD_RULES_MESSAGE)
+    name_problem = validate_person_names(first_name, last_name)
+    if name_problem:
+        return fail(name_problem)
+    username_problem = validate_username(username)
+    if username_problem:
+        return fail(username_problem)
+    if _username_taken(username):
+        return fail("Username is already registered.")
+    try:
+        validate_email(email)
+    except ValidationError:
+        return fail("Please enter a valid email address.")
+    if User.objects.filter(email__iexact=email).exists():
+        return fail("Email is already registered.")
+    try:
+        validate_password(password, User(username=username, email=email,
+                                         first_name=first_name, last_name=last_name))
+    except ValidationError as e:
+        return fail(" ".join(e.messages))
+
+    try:
+        with transaction.atomic():
+            reg_code = regcodes.session_code(request, lock=True)   # re-check, and lock, as the account is made
+            if reg_code is None or reg_code.audience != "staff" or not reg_code.subclass_id:
+                raise _CodeGone()
+            user = User.objects.create_user(username=username, email=email, password=password,
+                                            first_name=first_name, last_name=last_name, is_staff=True)
+            profile, _ = StaffProfile.objects.get_or_create(user=user, defaults={"role": "other"})
+            profile.subclass_id = reg_code.subclass_id
+            profile.license_number = license_number
+            profile.must_complete_setup = False       # they chose their own password just now
+            profile.save()
+            regcodes.use_code(request, reg_code, user)
+            AuditEvent.objects.create(
+                actor=user, event="staff_registered", ip=client_ip(request),
+                detail="Staff account %s registered with a staff code (%s)" % (user.username, profile.role_label))
+    except _CodeGone:
+        messages.error(request, "Your registration code is no longer valid. Please ask the System Admin for a new one.")
+        return _register_page(request)
+    except IntegrityError:
+        return fail("Username or email is already registered.")
+
+    messages.success(request, "Staff account created! You can log in now.")
+    return redirect("login")
+
+
 @never_cache
 @ensure_csrf_cookie
 def register(request):
@@ -524,9 +604,12 @@ def register(request):
         return _register_code_step(request)
 
     if request.method == "POST":
-        if regcodes.session_code(request) is None:
+        entered = regcodes.session_code(request)
+        if entered is None:
             messages.error(request, "Please enter your registration code first.")
             return _register_page(request)
+        if entered.audience == "staff":
+            return _register_staff(request)
 
         first_name = normalize_name(request.POST.get("first_name", ""))
         last_name = normalize_name(request.POST.get("last_name", ""))

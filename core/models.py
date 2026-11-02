@@ -631,9 +631,16 @@ class RegistrationCode(models.Model):
     Either kind stops working at `expires_at`, when it is used up, or once `revoked_at` is set.
     """
     KIND_CHOICES = [("single", "Single-use"), ("shared", "Shared term code")]
+    AUDIENCE_CHOICES = [("student", "Student"), ("staff", "Staff")]
 
     code = models.CharField(max_length=24, unique=True)
     kind = models.CharField(max_length=10, choices=KIND_CHOICES, default="single", db_index=True)
+    # Who the code is for. A "staff" code is made by the System Admin only, is always single-use,
+    # and creates a staff account with the role in `subclass`. It never works for a student, and a
+    # student code never works for staff. Student codes keep everything above unchanged.
+    audience = models.CharField(max_length=7, choices=AUDIENCE_CHOICES, default="student", db_index=True)
+    subclass = models.ForeignKey(StaffSubclass, null=True, blank=True, on_delete=models.SET_NULL,
+                                 related_name="+")   # staff codes: the role the new account gets
     label = models.CharField(max_length=80, blank=True)          # e.g. "BSN 1st years" or "1st Sem AY 2026-2027"
     batch = models.CharField(max_length=32, blank=True, db_index=True)
     max_uses = models.PositiveIntegerField(default=1)

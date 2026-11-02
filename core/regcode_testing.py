@@ -32,3 +32,12 @@ def put_code_in_session(client, code):
 def grant_registration_code(client):
     """Give `client` a fresh, valid single-use code in its session (as if the student had typed it in)."""
     return put_code_in_session(client, make_code())
+
+
+def make_staff_code(subclass, created_by=None, **fields):
+    """A single-use staff code for `subclass` (its account gets that staff role)."""
+    from .registration_codes import STAFF_CODE_LENGTH
+    fields.setdefault("expires_at", timezone.now() + timedelta(days=7))
+    return RegistrationCode.objects.create(
+        code=new_code_value(STAFF_CODE_LENGTH), audience="staff", subclass=subclass,
+        created_by=created_by, **fields)
