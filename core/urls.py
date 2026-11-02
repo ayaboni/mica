@@ -93,6 +93,7 @@ urlpatterns = [
     path('api/staff/students/<int:student_id>/access/', views.staff_log_access, name='staff_log_access'),
     path('api/staff/students/<int:student_id>/assessment/', views.staff_student_assessment, name='staff_student_assessment'),
     path('api/staff/students/<int:student_id>/status/', views.staff_student_status, name='staff_student_status'),
+    path('api/staff/students/<int:student_id>/emergency-contact/', views.staff_student_emergency_contact, name='staff_student_emergency_contact'),
     path('api/staff/care-team/', views.staff_care_team, name='staff_care_team'),
     path('api/staff/profile/', views.staff_profile_update, name='staff_profile_update'),
     path('api/staff/profile/avatar/', views.staff_avatar_update, name='staff_avatar_update'),

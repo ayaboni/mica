@@ -266,6 +266,8 @@
   .modal{background:var(--paper); border-radius:22px; width:100%; max-width:640px; box-shadow:var(--shadow); border:1px solid var(--line); animation:fadeIn .25s ease;}
   #modalStatusBtn{margin-left:auto; color:var(--alert); border-color:transparent;}
   #modalStatusBtn:hover{background:var(--alert-pale); color:var(--alert); border-color:var(--alert-pale);}
+  .ec-link{background:none; border:none; padding:6px 4px; font-size:12.5px; font-weight:600; color:var(--ink-soft); text-decoration:underline; font-family:inherit; cursor:pointer;}
+  .ec-link:hover{color:var(--ink);}
   .modal-head{display:flex; justify-content:space-between; align-items:flex-start; padding:26px 28px 18px; border-bottom:1px solid var(--line);}
   .modal-head h2{font-size:19px; font-weight:700;}
   .modal-head .sub{font-size:12.5px; color:var(--ink-soft); margin-top:4px;}
@@ -1401,6 +1403,7 @@
       <button class="pill-btn ghost sm" onclick="openStudentChat(false)">Send check-in</button>
       <button class="pill-btn ghost sm" onclick="openStudentChat(true)">Schedule appointment</button>
       <button class="pill-btn ghost sm" onclick="openNotesPanel()">Notes</button>
+      <button class="ec-link" id="modalEcBtn" onclick="openEmergencyContact()">Emergency contact</button>
       <button class="pill-btn ghost sm" id="modalStatusBtn" onclick="openStatusDialog()">Archive student</button>
     </div>
   </div>
@@ -2607,6 +2610,47 @@ function loadAssessmentPanel(s){
 }
 
 function closeModal(){document.getElementById('studentModal').classList.remove('active');}
+
+function openEmergencyContact(){
+  const s = studentsReal.find(x => x.code === currentStudentCode);
+  if(!s) return;
+  const old = document.getElementById('ecModal');
+  if(old) old.remove();
+  const modal = document.createElement('div');
+  modal.id = 'ecModal';
+  modal.className = 'sched-overlay';
+  modal.innerHTML = `
+    <div class="sched-card">
+      <button class="sched-close" onclick="document.getElementById('ecModal').remove()" aria-label="Close">✕</button>
+      <h3>Emergency contact</h3>
+      <div style="font-size:12.5px; color:var(--ink-soft); margin:-8px 0 14px;">${escapeHtmlStaff(s.name)}</div>
+      <div id="ecBody" style="font-size:13.5px;">Loading…</div>
+      <div style="font-size:11.5px; color:var(--ink-soft); margin-top:14px;">Only open this when it's needed. Your access is logged.</div>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if(e.target === modal) modal.remove(); });
+
+  fetch(`/api/staff/students/${s.id}/emergency-contact/`)
+    .then(r => r.json().then(d => ({ok: r.ok, d})))
+    .then(({ok, d}) => {
+      const body = document.getElementById('ecBody');
+      if(!body) return;
+      if(!ok){ body.textContent = d.error || 'Could not load the emergency contact.'; return; }
+      if(!d.name && !d.number){
+        body.textContent = 'This student has not added an emergency contact yet.';
+        return;
+      }
+      const tel = (d.number || '').replace(/[^\d+]/g, '');
+      body.innerHTML = `
+        <div class="kv" style="margin-bottom:10px;"><div class="k">Name</div><div class="v">${d.name ? escapeHtmlStaff(d.name) : '-'}</div></div>
+        <div class="kv"><div class="k">Number</div><div class="v">${d.number
+          ? `<a href="tel:${tel}" style="color:inherit;">${escapeHtmlStaff(d.number)}</a>` : '-'}</div></div>`;
+    })
+    .catch(() => {
+      const body = document.getElementById('ecBody');
+      if(body) body.textContent = 'Could not load the emergency contact.';
+    });
+}
 
 function openStatusDialog(){
   if(!PERMS.archive_students) return denied();

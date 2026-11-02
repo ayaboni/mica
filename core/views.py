@@ -4060,6 +4060,18 @@ def staff_student_assessment(request, student_id):
     })
 
 
+@login_required(login_url='login')
+@user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
+@require_perm('view_students')
+def staff_student_emergency_contact(request, student_id):
+    student = get_object_or_404(visible_students(), id=student_id)
+    profile = UserProfile.objects.filter(user=student).first()
+    name = (profile.emergency_contact_name or "").strip() if profile else ""
+    number = (profile.emergency_contact_number or "").strip() if profile else ""
+    _log_access(request.user, student, "view_emergency_contact")
+    return JsonResponse({"name": name, "number": number})
+
+
 def _assessment_json(conditions, other, responses, sought, support, taken_at):
     local = timezone.localtime(taken_at)
     conds = [CONDITION_LABELS.get(c, c) for c in (conditions or [])]
