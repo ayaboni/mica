@@ -93,9 +93,33 @@ COURSE_GROUPS = [
         ("BSNAME", "Naval Architecture and Marine Engineering"),
     ]),
 ]
-
-# Flat list built from the groups. Everything else in the app keeps using COURSES.
 COURSES = [course for _college, items in COURSE_GROUPS for course in items]
+
+class College(models.Model):
+    """A college / department. Courses belong to one."""
+    name = models.CharField(max_length=150, unique=True)
+    sort_order = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["sort_order", "name"]
+
+    def __str__(self):
+        return self.name
+
+
+class Course(models.Model):
+    college = models.ForeignKey(College, on_delete=models.PROTECT, related_name="courses")
+    code = models.CharField(max_length=50, unique=True)   # e.g. BSIT (saved on UserProfile.course)
+    name = models.CharField(max_length=150)               # e.g. Information Technology
+    sort_order = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["sort_order", "name"]
+
+    def __str__(self):
+        return "%s - %s" % (self.code, self.name)
 
 YEAR_LEVELS = [
     ("1", "1st Year"), ("2", "2nd Year"), ("3", "3rd Year"),

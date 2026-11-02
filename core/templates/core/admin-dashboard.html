@@ -881,6 +881,7 @@
           <button class="tab-btn" data-tab="hotlines" onclick="goTab('hotlines')">Crisis Hotlines</button>
           <button class="tab-btn" data-tab="integrations" onclick="goTab('integrations')">Integrations</button>
           <button class="tab-btn" data-tab="semesters" onclick="goTab('semesters')">Semesters</button>
+          <button class="tab-btn" data-tab="courses" onclick="goTab('courses')">Courses</button>
           <button class="tab-btn" data-tab="account" onclick="goTab('account')">My Account</button>
           <button class="tab-btn" data-tab="appearance" onclick="goTab('appearance')">Appearance</button>
       </div>
@@ -1035,6 +1036,35 @@
               </table>
             </div>
           </div>
+        </div>
+
+        <!-- COURSES -->
+        <div class="subpanel" id="tab-courses">
+          <div class="card panel">
+            <div class="panel-head"><div><h3>Add a college</h3><div class="sub">A college or department. Courses go under it. Students pick the college first, then the course.</div></div></div>
+            <div class="field-grid">
+              <div class="field"><label>College name</label><input id="colName" maxlength="150" placeholder="College of Computer Studies"></div>
+            </div>
+            <div style="margin-top:16px; display:flex; gap:12px; align-items:center;">
+              <button class="pill-btn solid sm" id="colAddBtn" onclick="addCollege()">Add college</button>
+              <span id="colMsg" style="font-size:12.5px; color:var(--ink-soft);"></span>
+            </div>
+          </div>
+
+          <div class="card panel">
+            <div class="panel-head"><div><h3>Add a course</h3><div class="sub">The code can't be changed later, because students' records use it. Example: BSIT</div></div></div>
+            <div class="field-grid">
+              <div class="field"><label>College</label><select id="crsCollege"><option value="">Select college</option></select></div>
+              <div class="field"><label>Code</label><input id="crsCode" maxlength="30" placeholder="BSIT" style="text-transform:uppercase;"></div>
+              <div class="field"><label>Course name</label><input id="crsName" maxlength="150" placeholder="Information Technology"></div>
+            </div>
+            <div style="margin-top:16px; display:flex; gap:12px; align-items:center;">
+              <button class="pill-btn solid sm" id="crsAddBtn" onclick="addCourse()">Add course</button>
+              <span id="crsMsg" style="font-size:12.5px; color:var(--ink-soft);"></span>
+            </div>
+          </div>
+
+          <div id="courseList"></div>
         </div>
 
       </section>
@@ -2367,6 +2397,131 @@ function deleteSemester(id){
 }
 
 /* =========================================================
+   COURSES
+========================================================= */
+let courseData = [];
+function setCourseData(d){ courseData = d.colleges || []; renderCourses(); }
+function loadCourses(){
+  return api('/api/admin/courses/').then(r=>{ if(r.ok) setCourseData(r.data); });
+}
+function findCollege(id){ return courseData.find(c=>c.id===id); }
+function findCourse(id){
+  for(const c of courseData){ const x = c.courses.find(k=>k.id===id); if(x) return x; }
+}
+function courseCall(url, body, okMsg){
+  return api(url, body).then(r=>{
+    if(!r.ok){ showToast(r.data.error || 'Could not save.'); return r; }
+    setCourseData(r.data);
+    if(okMsg) showToast(okMsg);
+    return r;
+  });
+}
+function renderCourses(){
+  const sel = document.getElementById('crsCollege'), keep = sel.value;
+  sel.innerHTML = '<option value="">Select college</option>'
+    + courseData.map(c=>`<option value="${c.id}">${esc(c.name)}${c.is_active ? '' : ' (hidden)'}</option>`).join('');
+  sel.value = keep;
+
+  document.getElementById('courseList').innerHTML = courseData.length ? courseData.map(col=>`
+    <div class="card panel">
+      <div class="panel-head">
+        <div>
+          <h3>${esc(col.name)} ${col.is_active ? '' : '<span class="badge neutral">Hidden</span>'}</h3>
+          <div class="sub">${col.courses.length} course${col.courses.length === 1 ? '' : 's'}</div>
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button class="pill-btn ghost sm" onclick="renameCollege(${col.id})">Rename</button>
+          <button class="pill-btn ghost sm" onclick="toggleCollege(${col.id})">${col.is_active ? 'Hide' : 'Show'}</button>
+          <button class="pill-btn ghost sm" onclick="deleteCollege(${col.id})">Delete</button>
+        </div>
+      </div>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead><tr><th>Code</th><th>Course</th><th>Students</th><th>Status</th><th></th></tr></thead>
+          <tbody>${col.courses.length ? col.courses.map(c=>`
+            <tr>
+              <td class="mono-cell">${esc(c.code)}</td>
+              <td>${esc(c.name)}</td>
+              <td>${c.students}</td>
+              <td><span class="badge ${c.is_active ? 'stable' : 'neutral'}"><span class="dot"></span>${c.is_active ? 'Shown' : 'Hidden'}</span></td>
+              <td style="white-space:nowrap;">
+                <button class="pill-btn ghost sm" onclick="renameCourse(${c.id})">Rename</button>
+                <button class="pill-btn ghost sm" onclick="toggleCourse(${c.id})">${c.is_active ? 'Hide' : 'Show'}</button>
+                <button class="pill-btn ghost sm" onclick="deleteCourse(${c.id})">Delete</button>
+              </td>
+            </tr>`).join('')
+            : '<tr><td colspan="5" style="color:var(--ink-soft);">No courses yet. Add one above.</td></tr>'}
+          </tbody>
+        </table>
+      </div>
+    </div>`).join('')
+    : '<div class="card panel" style="color:var(--ink-soft);">No colleges yet. Add one above.</div>';
+}
+
+function addCollege(){
+  const msg = document.getElementById('colMsg'), btn = document.getElementById('colAddBtn');
+  btn.disabled = true; msg.style.color = 'var(--ink-soft)'; msg.textContent = 'Saving…';
+  api('/api/admin/colleges/create/', {name: document.getElementById('colName').value}).then(r=>{
+    btn.disabled = false;
+    if(!r.ok){ msg.style.color = 'var(--alert)'; msg.textContent = r.data.error || 'Could not save.'; return; }
+    msg.textContent = '';
+    document.getElementById('colName').value = '';
+    setCourseData(r.data);
+    showToast('College added');
+  });
+}
+function addCourse(){
+  const msg = document.getElementById('crsMsg'), btn = document.getElementById('crsAddBtn');
+  btn.disabled = true; msg.style.color = 'var(--ink-soft)'; msg.textContent = 'Saving…';
+  api('/api/admin/courses/create/', {
+    college_id: document.getElementById('crsCollege').value,
+    code: document.getElementById('crsCode').value,
+    name: document.getElementById('crsName').value
+  }).then(r=>{
+    btn.disabled = false;
+    if(!r.ok){ msg.style.color = 'var(--alert)'; msg.textContent = r.data.error || 'Could not save.'; return; }
+    msg.textContent = '';
+    document.getElementById('crsCode').value = '';
+    document.getElementById('crsName').value = '';
+    setCourseData(r.data);
+    showToast('Course added');
+  });
+}
+
+function renameCollege(id){
+  const c = findCollege(id); if(!c) return;
+  const n = prompt('Rename college:', c.name);
+  if(n === null || !n.trim()) return;
+  courseCall('/api/admin/colleges/' + id + '/update/', {name: n}, 'College renamed');
+}
+function toggleCollege(id){
+  const c = findCollege(id); if(!c) return;
+  if(c.is_active && !confirm('Hide "' + c.name + '"? Its courses will no longer show when students register. Existing students are not affected.')) return;
+  courseCall('/api/admin/colleges/' + id + '/update/', {is_active: !c.is_active}, c.is_active ? 'College hidden' : 'College shown');
+}
+function deleteCollege(id){
+  const c = findCollege(id); if(!c) return;
+  if(!confirm('Delete "' + c.name + '"?')) return;
+  courseCall('/api/admin/colleges/' + id + '/delete/', {}, 'College deleted');
+}
+function renameCourse(id){
+  const c = findCourse(id); if(!c) return;
+  const n = prompt('Rename course (' + c.code + '):', c.name);
+  if(n === null || !n.trim()) return;
+  courseCall('/api/admin/courses/' + id + '/update/', {name: n}, 'Course renamed');
+}
+function toggleCourse(id){
+  const c = findCourse(id); if(!c) return;
+  if(c.is_active && !confirm('Hide ' + c.code + '? It will no longer show when students register. Existing students keep it.')) return;
+  courseCall('/api/admin/courses/' + id + '/update/', {is_active: !c.is_active}, c.is_active ? 'Course hidden' : 'Course shown');
+}
+function deleteCourse(id){
+  const c = findCourse(id); if(!c) return;
+  if(!confirm('Delete ' + c.code + ' - ' + c.name + '?')) return;
+  courseCall('/api/admin/courses/' + id + '/delete/', {}, 'Course deleted');
+}
+
+/* =========================================================
    DATA REQUESTS
 ========================================================= */
 const DR_BADGE = {open:'watch', done:'stable', declined:'neutral'};
@@ -2755,6 +2910,7 @@ function initAll(){
   loadHotlines();
   loadPrivacy();
   loadSemesters();
+  loadCourses();
   loadSubclasses().then(loadStaffAccounts);
   loadEnrollment();
   loadMissing();

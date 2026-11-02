@@ -25,7 +25,8 @@ from .models import BreatheSession, Affirmation, ExerciseSession, Quest, DailyQu
 from .models import Appointment
 from .models import Notification
 from .models import StudentFlag
-from .models import COURSES, COURSE_GROUPS, YEAR_LEVELS, SERVICES
+from .models import YEAR_LEVELS, SERVICES
+from .courses import get_courses, get_course_groups
 from .models import LoginThrottle
 from .models import AccessLog
 from .models import ConsoleNotification
@@ -267,8 +268,8 @@ def google_register(request):
     return response
 
 
-COURSE_CHOICES = COURSES
 YEAR_LEVEL_CHOICES = YEAR_LEVELS
+
 
 def _needs_profile_setup(user):
     return UserProfile.objects.filter(user=user, needs_profile_setup=True).exists()
@@ -300,7 +301,7 @@ def complete_profile(request):
             error = "Please fill in every field."
         elif validate_person_names(form["first_name"], form["last_name"]):
             error = validate_person_names(form["first_name"], form["last_name"])
-        elif form["course"] not in dict(COURSE_CHOICES) or form["year_level"] not in dict(YEAR_LEVEL_CHOICES):
+        elif form["course"] not in dict(get_courses()) or form["year_level"] not in dict(YEAR_LEVEL_CHOICES):
             error = "Please choose a valid course and year level."
         else:
             try:
@@ -337,9 +338,9 @@ def complete_profile(request):
         "form": form,
         "error": error,
         "email": request.user.email,
-        "courses": COURSES,
-        "course_groups": COURSE_GROUPS,
-        "course_choices": COURSE_CHOICES,
+        "courses": get_courses(),
+        "course_groups": get_course_groups(),
+        "course_choices": get_courses(),
         "year_level_choices": YEAR_LEVEL_CHOICES,
     })
 
@@ -482,8 +483,8 @@ class _CodeGone(Exception):
 
 
 def _register_page(request, **extra):
-    ctx = {"courses": COURSES,
-           "course_groups": COURSE_GROUPS,
+    ctx = {"courses": get_courses(),
+           "course_groups": get_course_groups(),
            "year_levels": YEAR_LEVELS,
            "code_ok": regcodes.session_code(request) is not None,
            "closed": not SiteSettings.get().registration_open}
@@ -549,7 +550,7 @@ def register(request):
             messages.error(request, name_problem)
             return _register_page(request)
 
-        if course not in dict(COURSES) or year_level not in dict(YEAR_LEVEL_CHOICES):
+        if course not in dict(get_courses()) or year_level not in dict(YEAR_LEVEL_CHOICES):
             messages.error(request, "Please choose a valid course and year level.")
             return _register_page(request)
 
@@ -1786,7 +1787,7 @@ def _clean_profile_settings(post, profile):
     A field the form didn't send is left alone. A value is only checked when it differs from what is
     already saved, so an older account with a value from before these rules can still save the page."""
     values = {}
-    for field, choices, label in (("course", COURSES, "course"), ("year_level", YEAR_LEVELS, "year level")):
+    for field, choices, label in (("course", get_courses(), "course"), ("year_level", YEAR_LEVELS, "year level")):
         if field not in post:
             continue
         value = (post.get(field) or "").strip()
@@ -1877,7 +1878,7 @@ def account_settings(request):
 
     return render(request, 'core/account-settings.html', {
         'my_avatar_url': _avatar_url(request.user),
-        'profile': profile, 'courses': COURSES, 'course_groups': COURSE_GROUPS, 'year_levels': YEAR_LEVELS,
+        'profile': profile, 'courses': get_courses(), 'course_groups': get_course_groups(), 'year_levels': YEAR_LEVELS,
         'has_password': request.user.has_usable_password(),
     })
 
@@ -3056,7 +3057,7 @@ def _student_info(student):
     profile = getattr(student, 'profile', None)
     assessment = getattr(student, 'assessment', None)
     info = {
-        "course": dict(COURSES).get(profile.course, profile.course) if profile and profile.course else "",
+        "course": dict(get_courses()).get(profile.course, profile.course) if profile and profile.course else "",
         "year": dict(YEAR_LEVEL_CHOICES).get(profile.year_level, "") if profile else "",
         "shared": False,
         "conditions": [],
@@ -3735,7 +3736,7 @@ def staff_students_list(request):
     data.sort(key=lambda s: order[s["risk"]])
     return JsonResponse({
     "students": data,
-    "courses": [{"code": c, "label": l} for c, l in COURSES],
+    "courses": [{"code": c, "label": l} for c, l in get_courses()],
     "years": [{"code": c, "label": l} for c, l in YEAR_LEVELS],
 })
 
@@ -3815,7 +3816,7 @@ def staff_flags(request):
                 "severity": risk,
             })
     suggested.sort(key=lambda s: 0 if s["severity"] == "urgent" else 1)
-    return JsonResponse({"flags": flag_data, "suggested": suggested, "courses": [{"code": c, "label": l} for c, l in COURSES]})
+    return JsonResponse({"flags": flag_data, "suggested": suggested, "courses": [{"code": c, "label": l} for c, l in get_courses()]})
 
 
 @login_required(login_url='login')
@@ -4123,7 +4124,7 @@ def staff_assessments(request):
             "history": history,
         })
     data.sort(key=lambda s: (s["done"], s["name"].lower()))   # not done first
-    return JsonResponse({"students": data, "courses": [{"code": c, "label": l} for c, l in COURSES]})
+    return JsonResponse({"students": data, "courses": [{"code": c, "label": l} for c, l in get_courses()]})
 
 
 @login_required(login_url='login')
@@ -4350,7 +4351,7 @@ def staff_summary(request):
 
     data.sort(key=lambda s: (s["chat_status"] != "awaiting",
                              s["avg_mood_7d"] if s["avg_mood_7d"] is not None else 99))
-    return JsonResponse({"students": data, "courses": [{"code": c, "label": l} for c, l in COURSES]})
+    return JsonResponse({"students": data, "courses": [{"code": c, "label": l} for c, l in get_courses()]})
 
 
 def _console_unread(user):

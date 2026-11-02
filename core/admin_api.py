@@ -22,10 +22,11 @@ from django.views.decorators.http import require_POST
 
 from .name_validation import validate_person_names
 from .net import client_ip
-from .models import (COURSES, SERVICES, STATUS_REASONS, StaffProfile, StaffSubclass, GuidanceThread, GuidanceMessage,
+from .models import (College, Course, SERVICES, STATUS_REASONS, StaffProfile, StaffSubclass, GuidanceThread, GuidanceMessage,
                      StudentFlag, StudentNote, Appointment, AccessLog, StudentStatusLog, LoginThrottle,
                     MoodEntry, ChatConversation, SiteSettings, AuditEvent, Semester, EnrolledStudent,
                     UserProfile, SignInFailure, DataRequest)
+from .courses import get_course_labels
 from .permissions import BOOL_FIELDS, PERMISSION_FIELDS, SERVICE_FIELDS, SERVICE_KEYS, subclass_json
 from .hotlines import DEFAULT_HOTLINES, MAX_HOTLINES, NUMBER_RE, NOTE_RE, get_hotlines, saved_hotlines
 
@@ -536,7 +537,7 @@ def students_list(request):
     keys = [_throttle_key(u.username) for u in page]
     locked = set(LoginThrottle.objects.filter(
         username_key__in=keys, locked_until__gt=timezone.now()).values_list("username_key", flat=True))
-    course_names = dict(COURSES)
+    course_names = get_course_labels()
 
     rows = []
     for u in page:
@@ -567,7 +568,7 @@ def students_list(request):
     return JsonResponse({
         "students": rows, "counts": counts, "page": page.number,
         "pages": paginator.num_pages, "total": paginator.count,
-        "courses": [{"code": c, "label": l} for c, l in COURSES],
+        "courses": [{"code": c, "label": l} for c, l in get_course_labels().items()],
     })
 
 
@@ -1192,3 +1193,159 @@ def data_request_close(request, pk):
     r.save(update_fields=["status", "outcome", "handled_at"])
     _log_admin(request, f"Marked data request #{r.id} as {r.get_status_display().lower()}")
     return JsonResponse({"request": _dr_row(r)})
+
+
+# ---------------------------------------------------------------- Colleges and courses
+COURSE_CODE_RE = re.compile(r"^[A-Z0-9][A-Z0-9._-]{1,29}$")
+
+
+def _clean_text(value, label, low=2, high=100):
+    text = " ".join(str(value or "").split())
+    if not low <= len(text) <= high:
+        return None, "%s must be %d\u2013%d characters." % (label, low, high)
+    return text, None
+
+
+def _courses_payload():
+    used = {r["course"]: r["n"] for r in
+            UserProfile.objects.exclude(course="").values("course").annotate(n=Count("id"))}
+    colleges = []
+    for col in College.objects.prefetch_related("courses"):
+        colleges.append({
+            "id": col.id, "name": col.name, "is_active": col.is_active,
+            "courses": [{"id": c.id, "code": c.code, "name": c.name, "is_active": c.is_active,
+                         "students": used.get(c.code, 0)} for c in col.courses.all()],
+        })
+    return {"colleges": colleges}
+
+
+def _course_in_use(code):
+    return (UserProfile.objects.filter(course=code).count()
+            + EnrolledStudent.objects.filter(course=code).count())
+
+
+@_admin
+def courses_list(request):
+    return JsonResponse(_courses_payload())
+
+
+@_admin
+@require_POST
+def college_create(request):
+    data = _body(request)
+    if data is None:
+        return JsonResponse({"error": "Invalid request."}, status=400)
+    name, error = _clean_text(data.get("name"), "College name", 2, 150)
+    if error:
+        return JsonResponse({"error": error}, status=400)
+    if College.objects.filter(name__iexact=name).exists():
+        return JsonResponse({"error": "That college already exists."}, status=409)
+    last = College.objects.order_by("-sort_order").first()
+    College.objects.create(name=name, sort_order=(last.sort_order + 1) if last else 0)
+    _log_admin(request, "Courses: added college %s" % name)
+    return JsonResponse(_courses_payload(), status=201)
+
+
+@_admin
+@require_POST
+def college_update(request, college_id):
+    college = get_object_or_404(College, id=college_id)
+    data = _body(request)
+    if data is None:
+        return JsonResponse({"error": "Invalid request."}, status=400)
+    if "name" in data:
+        name, error = _clean_text(data.get("name"), "College name", 2, 150)
+        if error:
+            return JsonResponse({"error": error}, status=400)
+        if College.objects.filter(name__iexact=name).exclude(id=college.id).exists():
+            return JsonResponse({"error": "That college already exists."}, status=409)
+        college.name = name
+    if "is_active" in data:
+        college.is_active = bool(data["is_active"])
+    college.save()
+    _log_admin(request, "Courses: updated college %s%s" % (
+        college.name, "" if college.is_active else " (hidden)"))
+    return JsonResponse(_courses_payload())
+
+
+@_admin
+@require_POST
+def college_delete(request, college_id):
+    college = get_object_or_404(College, id=college_id)
+    n = college.courses.count()
+    if n:
+        return JsonResponse({"error": "%s still has %d course%s. Delete or move them first, or hide the college instead."
+                                      % (college.name, n, "" if n == 1 else "s")}, status=409)
+    name = college.name
+    college.delete()
+    _log_admin(request, "Courses: deleted college %s" % name)
+    return JsonResponse(_courses_payload())
+
+
+@_admin
+@require_POST
+def course_create(request):
+    data = _body(request)
+    if data is None:
+        return JsonResponse({"error": "Invalid request."}, status=400)
+    try:
+        college = College.objects.filter(id=int(data.get("college_id"))).first()
+    except (TypeError, ValueError):
+        college = None
+    if not college:
+        return JsonResponse({"error": "Pick a college."}, status=400)
+    code = str(data.get("code") or "").strip().upper()
+    if not COURSE_CODE_RE.match(code):
+        return JsonResponse({"error": "Code must be 2\u201330 characters: letters, numbers, dots, dashes (example: BSIT)."}, status=400)
+    name, error = _clean_text(data.get("name"), "Course name", 2, 150)
+    if error:
+        return JsonResponse({"error": error}, status=400)
+    if Course.objects.filter(code__iexact=code).exists():
+        return JsonResponse({"error": "That course code already exists."}, status=409)
+    last = college.courses.order_by("-sort_order").first()
+    Course.objects.create(college=college, code=code, name=name,
+                          sort_order=(last.sort_order + 1) if last else 0)
+    _log_admin(request, "Courses: added %s - %s under %s" % (code, name, college.name))
+    return JsonResponse(_courses_payload(), status=201)
+
+
+@_admin
+@require_POST
+def course_update(request, course_id):
+    """The code can't change (students already have it saved). Name, college and hidden/shown can."""
+    course = get_object_or_404(Course, id=course_id)
+    data = _body(request)
+    if data is None:
+        return JsonResponse({"error": "Invalid request."}, status=400)
+    if "name" in data:
+        name, error = _clean_text(data.get("name"), "Course name", 2, 150)
+        if error:
+            return JsonResponse({"error": error}, status=400)
+        course.name = name
+    if "college_id" in data:
+        try:
+            college = College.objects.filter(id=int(data.get("college_id"))).first()
+        except (TypeError, ValueError):
+            college = None
+        if not college:
+            return JsonResponse({"error": "Pick a college."}, status=400)
+        course.college = college
+    if "is_active" in data:
+        course.is_active = bool(data["is_active"])
+    course.save()
+    _log_admin(request, "Courses: updated %s%s" % (course.code, "" if course.is_active else " (hidden)"))
+    return JsonResponse(_courses_payload())
+
+
+@_admin
+@require_POST
+def course_delete(request, course_id):
+    course = get_object_or_404(Course, id=course_id)
+    n = _course_in_use(course.code)
+    if n:
+        return JsonResponse({"error": "%d student record%s use %s. Hide it instead so their records stay correct."
+                                      % (n, "" if n == 1 else "s", course.code)}, status=409)
+    label = "%s - %s" % (course.code, course.name)
+    course.delete()
+    _log_admin(request, "Courses: deleted %s" % label)
+    return JsonResponse(_courses_payload())

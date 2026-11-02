@@ -18,13 +18,13 @@ from django.utils import timezone
 from django.utils.dateparse import parse_date
 from django.views.decorators.http import require_POST
 
-from .models import Activity, Appointment, StudentFlag, StudentNote, Semester, MoodEntry, ExerciseSession, DailyQuest, COURSES, SERVICES
+from .models import Activity, Appointment, StudentFlag, StudentNote, Semester, MoodEntry, ExerciseSession, DailyQuest, SERVICES
+from .courses import get_course_labels
 from .permissions import can, require_perm, staff_permissions
 from .verification import visible_students
 
 staff_only = user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
 SERVICE_KEYS = [k for k, _ in SERVICES]
-COURSE_LABELS = dict(COURSES)
 MAX_DAYS = 366
 
 EXERCISE_LABELS = {
@@ -103,6 +103,7 @@ def semesters(request):
 @staff_only
 @require_perm('view_students')
 def service_report(request):
+    COURSE_LABELS = get_course_labels()
     start, end = _period(request)
     course = (request.GET.get("course") or "").strip()
     year = (request.GET.get("year") or "").strip()
@@ -402,6 +403,7 @@ def exercise_stats(request):
 @require_perm('view_students')
 @require_perm('export_records')
 def period_report(request):
+    COURSE_LABELS = get_course_labels()
     """Everything the Analytics Excel/PDF needs for one period, except service sessions
     (those come from service_report). No notes, diary text, chats or assessment answers."""
     from .views import _student_risk          # imported late: views imports a lot
