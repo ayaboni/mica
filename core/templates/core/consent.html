@@ -67,7 +67,11 @@
 
       <article class="info-card" style="--card-bg: var(--card-pink);">
         <h3>Please remember</h3>
-        <p>Mica is not a doctor or an emergency service. If you are in danger or thinking of hurting yourself, call the NCMH Crisis Hotline at 1553 or 0917-899-8727, or Hopeline PH at 2919, or go to the nearest hospital.</p>
+        <p>Mica is not a doctor or an emergency service. If you are in danger or thinking of hurting yourself, please contact someone right now:</p>
+        <ul>
+          {% for h in hotlines %}<li>{{ h.name }}{% if h.note %} ({{ h.note }}){% endif %}: {{ h.number }}</li>{% endfor %}
+          <li>In immediate danger: call 911 or go to the nearest hospital</li>
+        </ul>
       </article>
 
       <article class="info-card" style="--card-bg: var(--card-blue);">
