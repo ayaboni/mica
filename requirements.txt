@@ -42,3 +42,8 @@ redis>=5.0,<7
 
 # Production web server (start command e.g.:  gunicorn mica_project.wsgi)
 gunicorn>=22
+
+# Cloud storage for avatars
+
+cloudinary
+django-cloudinary-storage

@@ -34,6 +34,15 @@ logger = logging.getLogger(__name__)
 admin_only = [login_required(login_url='login'), user_passes_test(lambda u: u.is_superuser, login_url='login')]
 
 
+def _avatar_of(user):
+    """Picture URL of a user, or '' if none."""
+    profile = getattr(user, "profile", None)
+    try:
+        return profile.avatar.url if profile and profile.avatar else ""
+    except Exception:
+        return ""
+
+
 def _admin(view):
     for deco in reversed(admin_only):
         view = deco(view)
@@ -205,6 +214,7 @@ def _staff_json(user):
     return {
         "id": user.id,
         "name": user.get_full_name() or user.username,
+        "avatar": _avatar_of(user), 
         "email": user.email,
         "username": user.username,
         "subclass_id": sub.id if sub else None,
@@ -219,7 +229,7 @@ def _staff_json(user):
 @_admin
 def staff_accounts(request):
     users = (User.objects.filter(is_staff=True, is_superuser=False)
-             .select_related("staff_profile", "staff_profile__subclass").order_by("-date_joined"))
+             .select_related("staff_profile", "staff_profile__subclass", "profile").order_by("-date_joined"))
     return JsonResponse({"staff": [_staff_json(u) for u in users]})
 
 
@@ -535,6 +545,7 @@ def students_list(request):
         rows.append({
             "id": u.id,
             "name": u.get_full_name() or u.username,
+            "avatar": _avatar_of(u),
             "username": u.username,
             "email": u.email,
             "student_number": p.student_number if p and p.student_number else "No ID",

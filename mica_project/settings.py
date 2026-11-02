@@ -94,6 +94,10 @@ INSTALLED_APPS = [
     'core',
 ]
 
+CLOUDINARY_ON = bool(os.getenv("CLOUDINARY_URL"))
+if CLOUDINARY_ON:
+    INSTALLED_APPS += ['cloudinary_storage', 'cloudinary']
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -192,14 +196,18 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'      # python manage.py collectstatic puts everything here
-if PRODUCTION:
-    STORAGES = {
-        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
-        # Compressed, but no hashed file names, so a template pointing at a missing file can't crash a page.
-        "staticfiles": {"BACKEND": "whitenoise.storage.CompressedStaticFilesStorage"},
-    }
 MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+}
+if PRODUCTION:
+    # Compressed, but no hashed file names, so a template pointing at a missing file can't crash a page.
+    STORAGES["staticfiles"] = {"BACKEND": "whitenoise.storage.CompressedStaticFilesStorage"}
+if CLOUDINARY_ON:
+    STORAGES["default"] = {"BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage"}
 
 
 # Email

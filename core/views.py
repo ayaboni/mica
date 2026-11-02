@@ -2884,6 +2884,15 @@ def _avatar_url(user):
         return ''
 
 
+def _avatar_of(user):
+    """Picture URL of a user whose profile is already loaded, or '' if none."""
+    profile = getattr(user, 'profile', None)
+    try:
+        return profile.avatar.url if profile and profile.avatar else ''
+    except Exception:
+        return ''
+
+
 # ---------------------------------------------------------------------------
 # Who may open which conversation
 #
@@ -3020,6 +3029,7 @@ def staff_guidance_inbox(request):
             "id": t.id,
             "student_id": t.student_id,
             "student_name": t.student.get_full_name() or t.student.username,
+            "student_avatar": _avatar_of(t.student),
             "claimed": t.counselor_id is not None,
             "mine": mine,
             "counselor_role": _staff_role(t.counselor) if t.counselor else "",
@@ -3091,6 +3101,7 @@ def staff_guidance_thread(request, thread_id):
     } for n in thread.notes.select_related('counselor')]
     return JsonResponse({
         "student_name": thread.student.get_full_name() or thread.student.username,
+        "student_avatar": _avatar_of(thread.student),
         "student_info": _student_info_for(request.user, thread.student),
         "messages": msgs,
         "notes": notes,
@@ -3705,6 +3716,7 @@ def staff_students_list(request):
             "id": u.id,
             "flagged": u.id in flagged_ids,
             "name": u.get_full_name() or u.username,
+            "avatar": _avatar_of(u),
             "student_number": (profile.student_number if profile and profile.student_number else "No ID"),
             "program": (profile.course if profile and profile.course else "Not set"),
             "year": (profile.year_level if profile and profile.year_level else ""),

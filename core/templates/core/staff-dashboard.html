@@ -485,6 +485,12 @@
   body.no-students #noAccessNotice{display:block;}
   .note-badge{display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px; background:#F6E3C2; color:#8A5A12; margin-left:6px;}
   .note-badge.ok{background:#DDEBDD; color:#4F7A58;}
+
+  .thread-item .avatar, .stu-cell .avatar, .tmsg-row .avatar { position: relative; overflow: hidden; }
+  .avatar .av-pic { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .tmsg-row.student { align-items: flex-end; gap: 8px; }
+  .tmsg-row .avatar { width: 28px; height: 28px; font-size: 11px; }
+
 </style>
 </head>
 <body>
@@ -1877,6 +1883,11 @@ function initials(name){
   return escapeHtmlStaff(String(name || '').split(' ').filter(Boolean).map(w=>w[0]).join('').slice(0,2).toUpperCase() || '?');
 }
 
+function avatarHtml(name, url){
+  const pic = url ? `<img class="av-pic" src="${escapeHtmlStaff(url)}" alt="" onerror="this.remove()">` : '';
+  return `<div class="avatar">${escapeHtmlStaff(initials(name))}${pic}</div>`;
+}
+
 function pollReferrals(){
   fetch("{% url 'staff_referral_inbox' %}").then(r => r.json()).then(d => {
     referralsList = d.referrals || [];
@@ -2080,7 +2091,7 @@ function loadGuidanceInbox(){
           const owner = !t.claimed ? 'Unclaimed' : (t.mine ? 'Claimed by you' : 'Claimed by ' + escapeHtmlStaff(t.counselor_name) + ' · ' + escapeHtmlStaff(t.counselor_role));
           return `
           <div class="thread-item ${t.id===activeThreadId?'active':''}" data-id="${Number(t.id)}">
-            <div class="avatar">${initials(t.student_name)}</div>
+            ${avatarHtml(t.student_name, t.student_avatar)}
             <div class="t-info">
               <div class="t-name">${escapeHtmlStaff(t.student_name)}${t.archived ? '<span class="archived-tag">Archived</span>' : ''} ${t.awaiting_reply && t.id !== activeThreadId ? '<span style="background:var(--alert); color:#fff; font-size:10px; padding:2px 7px; border-radius:999px; margin-left:6px;">New</span>' : ''}</div>
               <div class="t-preview">${escapeHtmlStaff(t.last_message || 'No messages yet')}</div>
@@ -2193,6 +2204,7 @@ function fetchThreadMessages(){
       if(!container) return; // panel may have changed since the fetch started
       container.innerHTML = data.messages.map(m => `
         <div class="tmsg-row ${m.sender}">
+          ${m.sender === 'student' ? avatarHtml(data.student_name, data.student_avatar) : ''}
           <div class="tmsg-bubble">${escapeHtmlStaff(m.content.replace(/\s*\[appointment:\d+\]/g, ''))}</div>
         </div>
       `).join('');
@@ -2987,7 +2999,7 @@ function renderSummary(){
           ? '<div class="tag-row" style="margin-top:0;">' + s.topics.map(t => `<span class="tag">${escapeHtmlStaff(t)}</span>`).join('') + '</div>'
           : '<span style="color:var(--ink-soft); font-size:12px;">No topics yet</span>');
     return `<tr onclick="openStudentModal('${s.code}')">
-      <td><div class="stu-cell"><div class="avatar">${initials(s.name)}</div><div><div class="code">${escapeHtmlStaff(s.name)}</div><div class="prog">${escapeHtmlStaff(courseLabel(s.course) || 'Not set')}</div></div></div></td>
+      <td><div class="stu-cell">${avatarHtml(s.name, s.avatar)}<div><div class="code">${escapeHtmlStaff(s.name)}</div><div class="prog">${escapeHtmlStaff(courseLabel(s.course) || 'Not set')}</div></div></div></td>
       <td><div style="display:flex; align-items:center; gap:10px;"><span class="mono-cell">${s.avg_mood_7d === null ? '-' : s.avg_mood_7d + ' / 5'}</span>${spark}</div></td>
       <td class="mono-cell">${s.checkins_7d} / 7 days${s.last_checkin ? '<br>last: ' + escapeHtmlStaff(s.last_checkin) : ''}</td>
       <td>${topicCell}</td>
