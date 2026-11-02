@@ -5,9 +5,9 @@
 {% endcomment %}
 {% if part == 'button' %}
 <button type="button" class="demo-help" id="demoOpen" aria-haspopup="dialog" aria-controls="demoDialog"
-        aria-label="New here? See how registration works">
+        aria-label="New here? See how registration works, with a password or with Google">
   <span aria-hidden="true">?</span>
-  <span class="demo-tip" role="tooltip">New here? See how to register</span>
+  <span class="demo-tip" role="tooltip">New here? See how to register (password or Google)</span>
 </button>
 
 {% elif part == 'dialog' %}
@@ -113,6 +113,42 @@
   @keyframes demoTap{50%{transform:scale(.82);}}
   @media (prefers-reduced-motion:reduce){.m-cursor{display:none;}}
 
+  /* method switch (password / Google) */
+  .demo-tabs{display:flex;gap:6px;margin:12px 22px 0;padding:4px;border-radius:999px;background:var(--card-green);}
+  .demo-tab{
+    flex:1;border:none;border-radius:999px;padding:8px 10px;background:transparent;color:var(--ink-soft);
+    font:700 .8rem var(--font-body);cursor:pointer;transition:background .15s ease,color .15s ease;
+  }
+  .demo-tab:hover{color:var(--ink);}
+  .demo-tab[aria-selected="true"]{background:var(--brown);color:#fff;}
+  .demo-tab:focus-visible{outline:3px solid var(--brown-dark);outline-offset:2px;}
+
+  /* google mocks */
+  .m-or{display:flex;align-items:center;gap:8px;font-size:.72rem;color:var(--ink-soft);margin:8px 0;}
+  .m-or::before,.m-or::after{content:"";flex:1;height:1px;background:var(--field-border);}
+  .m-gbtn{
+    display:flex;align-items:center;justify-content:center;gap:8px;background:var(--white);color:var(--ink);
+    border:1.5px solid var(--field-border);border-radius:999px;padding:9px;font-weight:700;font-size:.82rem;
+    transition:transform .2s ease,border-color .2s ease,box-shadow .2s ease;
+  }
+  .m-gbtn svg{width:16px;height:16px;flex:none;}
+  .m-gbtn.press{transform:scale(.96);border-color:var(--brown);box-shadow:0 0 0 3px rgba(140,111,82,.22);}
+  .m-dim{opacity:.45;}
+  .m-gcard{background:var(--white);border:1.5px solid var(--field-border);border-radius:14px;padding:12px;}
+  .m-gh{font:600 .92rem var(--font-display);color:var(--ink);margin:0;}
+  .m-gs{font-size:.74rem;color:var(--ink-soft);margin:2px 0 10px;}
+  .m-acct{
+    display:flex;align-items:center;gap:10px;padding:8px;border-radius:10px;border:1.5px solid transparent;
+    font-size:.8rem;color:var(--ink);transition:border-color .2s ease,background .2s ease;
+  }
+  .m-acct small{display:block;font-size:.72rem;color:var(--ink-soft);}
+  .m-acct.hot{border-color:var(--brown);background:rgba(140,111,82,.12);}
+  .m-av{
+    width:28px;height:28px;border-radius:50%;flex:none;background:var(--brown);color:#fff;
+    display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:.8rem;
+  }
+  .m-av.alt{background:transparent;color:var(--ink-soft);border:1.5px dashed var(--field-border);}
+
   /* footer */
   .demo-foot{padding:14px 22px 20px;}
   .demo-dots{display:flex;gap:6px;justify-content:center;margin:0 0 14px;}
@@ -137,6 +173,11 @@
   <div class="demo-top">
     <span class="demo-badge" id="demoStepLabel">Step 1 of 4</span>
     <button type="button" class="demo-close" id="demoClose" aria-label="Close demo">&times;</button>
+  </div>
+
+  <div class="demo-tabs" role="tablist" aria-label="Registration method">
+    <button type="button" class="demo-tab" role="tab" id="demoTabPw" data-flow="password" aria-selected="true">With a password</button>
+    <button type="button" class="demo-tab" role="tab" id="demoTabGoogle" data-flow="google" aria-selected="false">With Google</button>
   </div>
 
   <div class="demo-stage">
@@ -217,8 +258,10 @@
     })();
   }
 
-  var steps = [
-    { title: 'Get a registration code',
+  var GLOGO = '<svg viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20.4H24v7.2h11.3c-1.6 4.6-6 8-11.3 8-6.9 0-12.5-5.6-12.5-12.5S17.1 10.6 24 10.6c3.2 0 6.1 1.2 8.3 3.2l5.1-5.1C34.3 5.6 29.4 3.6 24 3.6 12.7 3.6 3.6 12.7 3.6 24S12.7 44.4 24 44.4 44.4 35.3 44.4 24c0-1.2-.1-2.4-.3-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l5.9 4.3C13.8 15.6 18.5 12.6 24 12.6c3.2 0 6.1 1.2 8.3 3.2l5.1-5.1C34.3 7.6 29.4 5.6 24 5.6c-7.4 0-13.8 4.2-17.7 10.1z"/><path fill="#4CAF50" d="M24 44.4c5.3 0 10.1-1.8 13.8-5l-6.4-5.4c-2 1.5-4.6 2.4-7.4 2.4-5.3 0-9.7-3.4-11.3-8.1l-6.1 4.7c3.8 6 10.2 10.4 17.4 10.4z"/><path fill="#1976D2" d="M43.6 20.5H42V20.4H24v7.2h11.3c-.8 2.2-2.2 4.1-4 5.4l6.4 5.4c-.5.4 6.8-5 6.8-14.4 0-1.2-.1-2.4-.3-3.5z"/></svg>';
+
+  var codeStep = {
+    title: 'Get a registration code',
       text: 'Registration is by code. Students get theirs from the Guidance Office, and staff get theirs from the System Admin.',
       mock: function(){
         return '<p class="m-title">Create an account</p>' +
@@ -242,7 +285,10 @@
           } },
           { id: 'mBtn', act: function(el){ press(el); } }
         ]);
-      } },
+      } };
+
+  var pwSteps = [
+    codeStep,
     { title: 'Fill in your details',
       text: 'Add your name, student number, course, year level and email, then pick a username. Staff are asked for a name, username and email instead.',
       mock: function(){
@@ -292,7 +338,90 @@
       } }
   ];
 
-  elDots.innerHTML = steps.map(function(){ return '<span class="demo-dot"></span>'; }).join('');
+  var googleSteps = [
+    codeStep,
+    { title: 'Choose Google',
+      text: 'On the register page, press Continue with Google instead of filling in the form. Google sign-up is for students only; staff register with the form.',
+      mock: function(){
+        return '<p class="m-title">Create an account</p>' +
+          '<div class="m-field ph m-dim">First Name</div>' +
+          '<div class="m-field ph m-dim">Email</div>' +
+          '<div class="m-btn m-dim">Register</div>' +
+          '<div class="m-or">or</div>' +
+          '<div class="m-gbtn" id="gBtn">' + GLOGO + 'Continue with Google</div>';
+      },
+      run: function(){
+        play([{ id: 'gBtn', act: function(el){ press(el); } }]);
+      } },
+    { title: 'Pick your Google account',
+      text: 'A Google window opens. Choose the account you want to use. It needs a verified email, and it becomes the email on your MICA account.',
+      mock: function(){
+        return '<div class="m-gcard">' +
+          '<p class="m-gh">Choose an account</p><p class="m-gs">to continue to MICA</p>' +
+          '<div class="m-acct" id="gA1"><span class="m-av">J</span><span>Juan Dela Cruz<small>juan@email.com</small></span></div>' +
+          '<div class="m-acct" id="gA2"><span class="m-av alt">+</span><span>Use another account</span></div>' +
+          '</div>';
+      },
+      run: function(){
+        play([{ id: 'gA1', act: function(el){ el.classList.add('hot'); } }]);
+      } },
+    { title: 'Confirm with an email code',
+      text: 'We email a code to confirm it is you. Paste it in and press Sign in. You may skip this on a browser you chose to remember.',
+      mock: function(){
+        return '<p class="m-title">Enter your code</p>' +
+          '<p class="m-note">We sent a code to ju***@email.com. It works once and expires soon.</p>' +
+          '<div class="m-field code ph" id="gCode">Code</div>' +
+          '<div class="m-btn" id="mBtn">Sign in</div>';
+      },
+      run: function(){
+        var code = 'K7Q2M9';
+        play([
+          { id: 'gCode', act: function(el){
+              focusField(el, '');
+              if (reduce) { el.textContent = code; return 0; }
+              el.classList.add('m-caret');
+              var n = 0;
+              (function type(){
+                if (n <= code.length) { el.textContent = code.slice(0, n++); later(type, 130); }
+                else el.classList.remove('m-caret');
+              })();
+              return code.length * 130 + 200;
+          } },
+          { id: 'mBtn', act: function(el){ press(el); } }
+        ]);
+      } },
+    { title: 'Finish your details',
+      text: 'One last step: confirm your name, student number, course and year level, and pick a username. There is no password to make. Next time, just press Sign In with Google on the login page.',
+      mock: function(){
+        return '<p class="m-title">One last step</p>' +
+          '<div class="m-row"><div class="m-field ph" id="d1">First Name</div><div class="m-field ph" id="d2">Last Name</div></div>' +
+          '<div class="m-field ph" id="d3">Student Number</div>' +
+          '<div class="m-row"><div class="m-field ph" id="d4">Select Course &#9662;</div><div class="m-field ph" id="d5">Year Level &#9662;</div></div>' +
+          '<div class="m-field ph" id="d6">Username</div>' +
+          '<div class="m-btn" id="mBtn">Continue</div>';
+      },
+      run: function(){
+        var vals = { d1:'Juan', d2:'Dela Cruz', d3:'000-0000', d4:'Your course', d5:'Your year', d6:'juan.dc' };
+        var list = ['d1','d2','d3','d4','d5','d6'].map(function(id){
+          return { id: id, act: function(el){ focusField(el, vals[id]); } };
+        });
+        list.push({ id: 'mBtn', act: function(el){ press(el); } });
+        play(list);
+      } }
+  ];
+
+  var flows = { password: pwSteps, google: googleSteps };
+  var steps = pwSteps;
+
+
+  var tabs = Array.prototype.slice.call(document.querySelectorAll('.demo-tab'));
+  function setFlow(name){
+    steps = flows[name];
+    tabs.forEach(function(t){ t.setAttribute('aria-selected', String(t.getAttribute('data-flow') === name)); t.tabIndex = t.getAttribute('data-flow') === name ? 0 : -1; });
+    elDots.innerHTML = steps.map(function(){ return '<span class="demo-dot"></span>'; }).join('');
+    btnGo.textContent = 'Go to Register';
+  }
+  setFlow('password');
 
   function later(fn, ms){ timers.push(setTimeout(fn, ms)); }
   function clearTimers(){ timers.forEach(clearTimeout); timers = []; }
@@ -322,12 +451,22 @@
 
   function open(){
     if (typeof dlg.showModal !== 'function') { window.location.href = "{% url 'register' %}"; return; }
+    setFlow('password');
     dlg.showModal();      /* open first so the cursor can measure real positions */
     show(0);
     btnNext.focus();
   }
   function close(){ clearTimers(); dlg.close(); }
 
+  tabs.forEach(function(t){
+    t.addEventListener('click', function(){ setFlow(t.getAttribute('data-flow')); show(0); });
+    t.addEventListener('keydown', function(e){
+      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+      e.preventDefault(); e.stopPropagation();
+      var other = tabs[tabs.indexOf(t) === 0 ? 1 : 0];
+      other.focus(); other.click();
+    });
+  });
   openBtn.addEventListener('click', open);
   document.getElementById('demoClose').addEventListener('click', close);
   document.getElementById('demoSkip').addEventListener('click', close);
