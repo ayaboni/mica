@@ -55,7 +55,7 @@
           </div>
 
           <div class="two-col">
-            <div class="auth-field"><input type="text" id="studentNumber" name="student_number" placeholder="Student Number" required></div>
+            <div class="auth-field"><input type="text" id="studentNumber" name="student_number" placeholder="Student Number" inputmode="numeric" maxlength="15" pattern="[0-9\-]+" title="Numbers and dashes only" oninput="this.value=this.value.replace(/[^0-9-]/g,'')" autocomplete="off" required></div>
             <div class="auth-field"><input type="text" id="username" name="username" placeholder="Username" autocomplete="username" title="3–30 characters: English letters, numbers, dots, dashes or underscores" maxlength="30" pattern="[A-Za-z0-9][A-Za-z0-9._\-]{2,29}" required></div>
           </div>
 

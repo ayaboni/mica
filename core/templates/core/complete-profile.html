@@ -29,7 +29,7 @@
           <div class="auth-field"><input type="text" name="last_name" placeholder="Last Name" value="{{ form.last_name }}" required></div>
         </div>
 
-        <div class="auth-field"><input type="text" name="student_number" placeholder="Student Number" value="{{ form.student_number }}" required></div>
+        <div class="auth-field"><input type="text" name="student_number" placeholder="Student Number" value="{{ form.student_number }}" inputmode="numeric" maxlength="15" pattern="[0-9\-]+" title="Numbers and dashes only" oninput="this.value=this.value.replace(/[^0-9-]/g,'')" autocomplete="off" required></div>
 
         {% include 'core/_course_picker.html' with selected_course=form.course %}
 

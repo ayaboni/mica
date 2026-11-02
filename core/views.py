@@ -40,6 +40,7 @@ from .models import LoginVerification
 from .models import PasswordResetRequest
 from .models import SiteSettings
 from .models import EnrolledStudent
+from .student_number import student_number_problem
 from .reports import EXERCISE_LABELS
 from . import registration_codes as regcodes
 from . import verification
@@ -301,6 +302,10 @@ def complete_profile(request):
             error = "Please fill in every field."
         elif validate_person_names(form["first_name"], form["last_name"]):
             error = validate_person_names(form["first_name"], form["last_name"])
+        elif validate_person_names(form["first_name"], form["last_name"]):
+            error = validate_person_names(form["first_name"], form["last_name"])
+        elif student_number_problem(form["student_number"]):
+            error = student_number_problem(form["student_number"])
         elif form["course"] not in dict(get_courses()) or form["year_level"] not in dict(YEAR_LEVEL_CHOICES):
             error = "Please choose a valid course and year level."
         else:
@@ -543,6 +548,11 @@ def register(request):
 
         if not username or not student_number:
             messages.error(request, "Username and student number are required.")
+            return _register_page(request)
+
+        number_problem = student_number_problem(student_number)
+        if number_problem:
+            messages.error(request, number_problem)
             return _register_page(request)
 
         name_problem = validate_person_names(first_name, last_name)
