@@ -99,6 +99,24 @@
       </div>
       <p class="set-note" style="margin-top:-6px;">Only authorized Guidance staff can see this, and only when it's needed.</p>
 
+      {% if profile.verification_status == 'unverified' or profile.verification_status == 'verified' %}
+      <div class="sub-card" id="verificationCard">
+        <div class="sub-card-head">
+          <h3>Account verification</h3>
+          {% if profile.verification_status == 'verified' %}
+            <span class="status-pill status-done">Verified</span>
+          {% else %}
+            <span class="status-pill status-pending">Unverified</span>
+          {% endif %}
+        </div>
+        {% if profile.verification_status == 'verified' %}
+          <p>Your account is confirmed{% if profile.verified_at %} (since {{ profile.verified_at|date:"F j, Y" }}){% endif %}. The Guidance Office can see the information you chose to share with them.</p>
+        {% else %}
+          <p>You signed up with a shared registration code, so the Guidance Office hasn't confirmed your account yet. You can keep using MICA, but Guidance can't see your information or messages, and Mica's daily chat limit is smaller. Visit the Guidance Office to get verified.</p>
+        {% endif %}
+      </div>
+      {% endif %}
+
       <div class="sub-card">
         <div class="sub-card-head">
           <h3>Student Profile Data Sheet</h3>

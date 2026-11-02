@@ -544,3 +544,31 @@ class MicaCapTests(TestCase):
         self.assertEqual(self.chat(ugo).status_code, 429)
         UserProfile.objects.filter(user=ugo).update(verification_status='verified')
         self.assertEqual(self.chat(ugo).status_code, 200)
+
+
+# -- Verified / Unverified label in account settings ---------------------------------------------
+
+class AccountSettingsVerificationLabelTests(TestCase):
+    def _settings_html(self, user):
+        self.client.force_login(user)
+        return self.client.get(reverse('account_settings')).content.decode()
+
+    def test_shared_code_account_is_labelled_unverified(self):
+        html = self._settings_html(make_student('shared1', status='unverified'))
+        self.assertIn('id="verificationCard"', html)
+        self.assertIn('>Unverified<', html)
+        self.assertNotIn('>Verified<', html)
+
+    def test_single_or_batch_code_account_is_labelled_verified(self):
+        html = self._settings_html(make_student('single1', status='verified'))
+        self.assertIn('>Verified<', html)
+        self.assertNotIn('>Unverified<', html)
+
+    def test_label_flips_once_staff_approve_the_account(self):
+        user = make_student('shared2', status='unverified')
+        self.assertIn('>Unverified<', self._settings_html(user))
+        UserProfile.objects.filter(user=user).update(
+            verification_status='verified', verified_at=timezone.now())
+        html = self._settings_html(user)
+        self.assertIn('>Verified<', html)
+        self.assertNotIn('>Unverified<', html)
