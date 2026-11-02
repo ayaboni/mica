@@ -49,6 +49,14 @@
   @keyframes pulseDot{0%,100%{transform:scale(1); opacity:1;} 50%{transform:scale(1.7); opacity:.35;}}
   @media (prefers-reduced-motion: reduce){ .badge .dot.pulse{animation:none;} }
 
+  /* Courses tab */
+  #tab-courses.active, #courseList{display:flex; flex-direction:column; gap:24px;}
+  #tab-courses .card{margin:0;}
+  .course-table{table-layout:fixed; width:100%; min-width:760px;}
+  .course-table td{word-break:break-word;}
+  .course-table td.course-actions{white-space:nowrap; text-align:right;}
+  .course-table th:last-child{text-align:right;}
+
   .pill-btn{
     font-family:'Baloo 2',sans-serif;
     border:none; background:var(--peach); color:var(--peach-text);
@@ -2436,7 +2444,10 @@ function renderCourses(){
         </div>
       </div>
       <div style="overflow-x:auto;">
-        <table>
+        <table class="course-table">
+          <colgroup>
+            <col style="width:130px"><col><col style="width:100px"><col style="width:130px"><col style="width:270px">
+          </colgroup>
           <thead><tr><th>Code</th><th>Course</th><th>Students</th><th>Status</th><th></th></tr></thead>
           <tbody>${col.courses.length ? col.courses.map(c=>`
             <tr>
@@ -2444,7 +2455,7 @@ function renderCourses(){
               <td>${esc(c.name)}</td>
               <td>${c.students}</td>
               <td><span class="badge ${c.is_active ? 'stable' : 'neutral'}"><span class="dot"></span>${c.is_active ? 'Shown' : 'Hidden'}</span></td>
-              <td style="white-space:nowrap;">
+              <td class="course-actions">
                 <button class="pill-btn ghost sm" onclick="renameCourse(${c.id})">Rename</button>
                 <button class="pill-btn ghost sm" onclick="toggleCourse(${c.id})">${c.is_active ? 'Hide' : 'Show'}</button>
                 <button class="pill-btn ghost sm" onclick="deleteCourse(${c.id})">Delete</button>
