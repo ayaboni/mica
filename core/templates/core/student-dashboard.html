@@ -456,8 +456,22 @@ html.dyslexia body{line-height:1.7;}
   }
   #view-breathe{ --doodle-scale:.6; }               /* calmer behind the breathing exercise */
   .guidance-who{ background:var(--content-bg); }    /* keep the counselor's name clear of the pattern */
-  .guidance-note{padding:9px 30px; font-size:12px; line-height:1.5; font-weight:600; color:var(--text-mute); background:var(--bubble-bg); border-bottom:1px solid rgba(0,0,0,.07);}
-  body.dark-mode .guidance-note{border-bottom-color:rgba(255,255,255,.08);}
+    .guidance-note{
+    flex-shrink:0;
+    align-self:center;
+    width:calc(100% - 48px);
+    max-width:var(--chat-w);
+    margin:12px 0 0;
+    padding:10px 16px;
+    border-radius:var(--radius-md);
+    background:var(--card-bg);
+    border:1px solid rgba(142,174,136,.45);
+    color:var(--text-mute);
+    font-size:12.5px;
+    line-height:1.5;
+    font-weight:600;
+    text-align:center;
+  }
   @media (max-width:640px){
     .view::before{ -webkit-mask-size:460px 460px; mask-size:460px 460px; }
   }
@@ -1644,6 +1658,8 @@ input:checked + .toggle-slider::before {
   .sidebar.is-collapsed ~ .content .mobile-menu-btn {
     display:inline-flex !important;
   }
+
+  body.dark-mode .msg-avatar[src*="guidance_icon"]{ background:#CFE5CA; }
 </style>
 <script>
 if(localStorage.getItem('dyslexia')==='1') document.documentElement.classList.add('dyslexia');
@@ -2948,7 +2964,7 @@ document.getElementById('btn-guidance').addEventListener('click', ()=>{
               const confirmedHtml = m.appointment.status === 'confirmed'
                 ? `<div style="margin-top:8px; color:#3c763d; font-weight:700;">✅ Confirmed</div>`
                 : `<div style="margin-top:10px;"><button onclick="confirmAppointment(${m.appointment.id})" style="background:#8B6F4E; color:#fff; border:none; padding:8px 18px; border-radius:999px; font-weight:700; cursor:pointer; display:block;">Confirm</button></div>`;
-              row.innerHTML = `<div class="msg-bubble">📅 <strong>${escapeHtml(m.content)}</strong><br>${m.appointment.scheduled_time}${confirmedHtml}</div>`;
+              row.innerHTML = `<div class="msg-bubble"><strong>${escapeHtml(m.content)}</strong>${confirmedHtml}</div>`;
               container.appendChild(row);
             } else {
               addMessage('guidance-messages', escapeHtml(m.content).replace(/\n/g, '<br>'), m.sender === 'user' ? 'user' : 'bot', 'LEAF');
@@ -2996,7 +3012,7 @@ function reloadGuidanceMessages() {
           const confirmedHtml = m.appointment.status === 'confirmed'
             ? `<div style="margin-top:8px; color:#3c763d; font-weight:700;">✅ Confirmed</div>`
             : `<div style="margin-top:10px;"><button onclick="confirmAppointment(${m.appointment.id})" style="background:#8B6F4E; color:#fff; border:none; padding:8px 18px; border-radius:999px; font-weight:700; cursor:pointer; display:block;">Confirm</button></div>`;
-          row.innerHTML = `<div class="msg-bubble">📅 <strong>${escapeHtml(m.content)}</strong><br>${m.appointment.scheduled_time}${confirmedHtml}</div>`;
+          row.innerHTML = `<div class="msg-bubble"><strong>${escapeHtml(m.content)}</strong>${confirmedHtml}</div>`;
           container.appendChild(row);
         } else {
           addMessage('guidance-messages', escapeHtml(m.content).replace(/\n/g, '<br>'), m.sender === 'user' ? 'user' : 'bot', 'LEAF');
