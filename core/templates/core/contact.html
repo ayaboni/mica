@@ -114,9 +114,11 @@ html[data-theme="dark"] .form-note.error { color: #ffb4b0; }
 
 .info-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 24px 40px;
 }
+.info-item > div { min-width: 0; }
+.info-item p, .info-item a { overflow-wrap: anywhere; }
 .info-item { display: flex; gap: 14px; align-items: flex-start; }
 .info-icon {
   flex-shrink: 0;
@@ -142,11 +144,11 @@ html[data-theme="dark"] .form-note.error { color: #ffb4b0; }
 }
 
 @media (max-width: 860px) {
-  .contact-grid { grid-template-columns: 1fr; }
+  .contact-grid { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 560px) {
-  .form-grid { grid-template-columns: 1fr; }
-  .info-grid { grid-template-columns: 1fr; }
+  .form-grid { grid-template-columns: minmax(0, 1fr); }
+  .info-grid { grid-template-columns: minmax(0, 1fr); }
 }
 </style>
 {% endblock %}

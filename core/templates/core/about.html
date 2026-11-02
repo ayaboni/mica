@@ -10,7 +10,7 @@
 
 .team-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 26px;
   margin-top: 26px;
 }
@@ -35,13 +35,13 @@
 .team-card .role { font-size: 0.85rem; color: var(--ink-soft); font-weight: 600; margin: 0; }
 
 @media (max-width: 860px) {
-  .team-grid { grid-template-columns: 1fr; max-width: 320px; margin-inline: auto; }
+  .team-grid { grid-template-columns: minmax(0, 1fr); max-width: 320px; margin-inline: auto; }
 }
 
 /* ---------- What Mica offers ---------- */
 .offers-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 24px;
   margin-top: 26px;
 }
@@ -100,7 +100,7 @@
   padding: clamp(24px, 4vw, 44px);
   margin-top: 26px;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: clamp(24px, 5vw, 56px);
 }
 .isnt-box h3 { font-size: 1.2rem; margin-bottom: 14px; }
@@ -143,8 +143,8 @@
 .about-cta p { color: var(--ink); margin-bottom: 24px; }
 
 @media (max-width: 700px) {
-  .offers-grid { grid-template-columns: 1fr; }
-  .isnt-box { grid-template-columns: 1fr; }
+  .offers-grid { grid-template-columns: minmax(0, 1fr); }
+  .isnt-box { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 640px) {
   .about-cta { flex-direction: column; text-align: center; }
