@@ -456,6 +456,8 @@ html.dyslexia body{line-height:1.7;}
   }
   #view-breathe{ --doodle-scale:.6; }               /* calmer behind the breathing exercise */
   .guidance-who{ background:var(--content-bg); }    /* keep the counselor's name clear of the pattern */
+  .guidance-note{padding:9px 30px; font-size:12px; line-height:1.5; font-weight:600; color:var(--text-mute); background:var(--bubble-bg); border-bottom:1px solid rgba(0,0,0,.07);}
+  body.dark-mode .guidance-note{border-bottom-color:rgba(255,255,255,.08);}
   @media (max-width:640px){
     .view::before{ -webkit-mask-size:460px 460px; mask-size:460px 460px; }
   }
@@ -1780,6 +1782,8 @@ function toggleDyslexia(){
     <section class="view" id="view-guidance">
       <div class="chat-view-inner">
         <div class="guidance-who" id="guidance-who">Guidance Office</div>
+        <div class="guidance-who" id="guidance-who">Guidance Office</div>
+        <div class="guidance-note">Heads up: the Guidance staff can read what you send here. Please keep your messages respectful. If you need help right now, contact a hotline or someone you trust.</div>
         <div class="messages" id="guidance-messages"></div>
         <div class="composer">
           <div class="composer-box">
@@ -2934,7 +2938,7 @@ document.getElementById('btn-guidance').addEventListener('click', ()=>{
         setGuidanceWho(data.counselor_name);
         const container = document.getElementById('guidance-messages');
         container.innerHTML = '';
-        if(data.length === 0){
+        if(data.messages.length === 0){
           addMessage('guidance-messages', "Hi! Send a message here whenever you're ready to talk to someone from the Guidance Office. A counselor will get back to you as soon as they can.", 'bot', 'LEAF');
         } else {
           data.messages.forEach(m => {

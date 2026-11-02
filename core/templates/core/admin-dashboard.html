@@ -1335,7 +1335,7 @@ function renderAccounts(){
   const badgeClass = s => s === 'Active' ? 'stable' : (s === 'Suspended' ? 'urgent' : 'watch');
   document.getElementById('acctTbody').innerHTML = list.length ? list.map(a=>`
     <tr>
-      <td><div class="u-cell"><div class="avatar" style="background:var(--sage);">${esc(initials(a.name))}${picHtml(a.avatar)}</div>${esc(initials(a.name))}</div>
+      <td><div class="u-cell"><div class="avatar" style="background:var(--sage);">${esc(initials(a.name))}${picHtml(a.avatar)}</div>
         <div><div class="name">${esc(a.name)}</div><div class="email">${esc(a.email)}</div></div></div></td>
       <td><span class="badge neutral">${esc(a.detail)}</span></td>
       <td><span class="badge ${badgeClass(a.status)}"><span class="dot"></span>${esc(a.status)}</span></td>
@@ -1656,7 +1656,7 @@ function renderStudentCards(d){
     const initials = s.name.split(/\s+/).filter(Boolean).map(w=>w[0]).slice(0,2).join('').toUpperCase() || '?';
     return `<div class="card stu-card">
       <div class="stu-top">
-        <div class="avatar" style="background:var(--sky-pale); color:var(--sky-deep);">${esc(initials)}${picHtml(s.avatar)}</div>${esc(initials)}</div>
+        <div class="avatar" style="background:var(--sky-pale); color:var(--sky-deep);">${esc(initials)}${picHtml(s.avatar)}</div>
         <div style="min-width:0;"><div class="stu-name">${esc(s.name)}</div><div class="stu-sub">@${esc(s.username)} · ${esc(s.student_number)}</div></div>
       </div>
       <div class="stu-meta">
