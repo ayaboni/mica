@@ -481,7 +481,7 @@ def dashboard_stats(request):
         key=lambda r: -r["sessions"])
 
     return JsonResponse({
-        "accounts": {"total": User.objects.count(), "students": n_students, "staff": staff.count(),
+        "accounts": {"total": n_students + staff.count(), "students": n_students, "staff": staff.count(),
                      "new_week": User.objects.filter(is_superuser=False, date_joined__gte=now - timedelta(days=7)).count()},
         "consent": {"on_current": on_consent, "students": n_students,
                     "rate": round(100 * on_consent / n_students) if n_students else None},
