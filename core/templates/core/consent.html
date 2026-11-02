@@ -1,6 +1,11 @@
 {% extends 'core/site_base.html' %}
 
 {% block title %}Privacy and Consent | MICA{% endblock %}
+{% block extra_css %}
+<style>
+  .info-grid-2 + .form-card { margin-top: clamp(20px, 3vw, 32px); }
+</style>
+{% endblock %}
 {% block footer %}{% endblock %}
 
 {% block navbar %}

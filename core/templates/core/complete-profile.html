@@ -31,14 +31,7 @@
 
         <div class="auth-field"><input type="text" name="student_number" placeholder="Student Number" value="{{ form.student_number }}" required></div>
 
-        <div class="auth-field">
-          <select name="course" required>
-            <option value="" disabled {% if not form.course %}selected{% endif %} hidden>Select Course</option>
-            {% for value, label in course_choices %}
-              <option value="{{ value }}" {% if form.course == value %}selected{% endif %}>{{ label }}</option>
-            {% endfor %}
-          </select>
-        </div>
+        {% include 'core/_course_picker.html' with selected_course=form.course %}
 
         <div class="auth-field">
           <select name="year_level" required>

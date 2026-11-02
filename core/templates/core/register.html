@@ -59,26 +59,17 @@
             <div class="auth-field"><input type="text" id="username" name="username" placeholder="Username" autocomplete="username" title="3–30 characters: English letters, numbers, dots, dashes or underscores" maxlength="30" pattern="[A-Za-z0-9][A-Za-z0-9._\-]{2,29}" required></div>
           </div>
 
-  <!-- Course Dropdown -->
-  <div class="auth-field">
-    <select id="course" name="course" required>
-      <option value="" disabled selected hidden>Select Course</option>
-      {% for code, label in courses %}
-      <option value="{{ code }}">{{ label }}</option>
-      {% endfor %}
-    </select>
-  </div>
+          {% include 'core/_course_picker.html' %}
 
-  <!-- Year Level Dropdown -->
-  <div class="auth-field">
-    <select id="yearLevel" name="year_level" required>
-      <option value="" disabled selected hidden>Select Year Level</option>
-      {% for code, label in year_levels %}
-        <option value="{{ code }}">{{ label }}</option>
-      {% endfor %}
-    </select>
-  </div>
-
+          <!-- Year Level Dropdown -->
+          <div class="auth-field">
+            <select id="yearLevel" name="year_level" required>
+              <option value="" disabled selected hidden>Select Year Level</option>
+              {% for code, label in year_levels %}
+                <option value="{{ code }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
 
           <div class="auth-field">
             <input type="email" id="regEmail" name="email" placeholder="Email" required>

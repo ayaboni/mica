@@ -324,6 +324,7 @@ body, .navbar, .site-footer { transition: background-color .3s ease, color .3s e
 html[data-theme="dark"] { --doodle-color: #7FD1BE; --doodle-opacity: .27; }
 
 .doodle-bg { position: relative; isolation: isolate; }
+.auth-wrap { --doodle-scale: .75; }
 .doodle-bg::before {
   content: "";
   position: absolute;
@@ -332,7 +333,6 @@ html[data-theme="dark"] { --doodle-color: #7FD1BE; --doodle-opacity: .27; }
   pointer-events: none;
   background-color: var(--doodle-color);
   opacity: calc(var(--doodle-opacity) * var(--doodle-scale, 1));
-  .auth-wrap { --doodle-scale: .75; }
   -webkit-mask-image: url("../images/chat-doodles.png");
           mask-image: url("../images/chat-doodles.png");
   -webkit-mask-size: 600px 600px;
@@ -533,7 +533,12 @@ html[data-theme="dark"] .auth-field select {
 /* ---------- onboarding pages (consent, assessment) ---------- */
 .nav-right { display: flex; align-items: center; gap: 8px; }
 
-.onboard { padding: 40px 20px 72px; --doodle-scale: .75; }
+.onboard {
+  padding: 40px 20px 72px;
+  --doodle-scale: .75;
+  min-height: calc(100vh - 80px);
+  min-height: calc(100dvh - 80px);
+}
 .onboard-inner { max-width: 860px; margin: 0 auto; }
 .onboard-head { background: color-mix(in srgb, var(--bg) 85%, transparent); border-radius: 20px; padding: 1rem 1.5rem; }
 .onboard-head h1 { font-size: clamp(1.7rem, 4vw, 2.3rem); margin-bottom: 10px; }

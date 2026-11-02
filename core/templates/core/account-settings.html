@@ -71,23 +71,15 @@
         <input type="text" id="student_number" value="{{ profile.student_number }}" disabled>
       </div>
 
-      <div class="two-col">
-        <div class="auth-field">
-          <label class="set-label" for="course">Course</label>
-          <select id="course" name="course">
-            {% for code, label in courses %}
-              <option value="{{ code }}" {% if profile.course == code %}selected{% endif %}>{{ label }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="auth-field">
-          <label class="set-label" for="year_level">Year level</label>
-          <select id="year_level" name="year_level">
-            {% for code, label in year_levels %}
-              <option value="{{ code }}" {% if profile.year_level == code %}selected{% endif %}>{{ label }}</option>
-            {% endfor %}
-          </select>
-        </div>
+      {% include 'core/_course_picker.html' with selected_course=profile.course labels=True %}
+
+      <div class="auth-field">
+        <label class="set-label" for="year_level">Year level</label>
+        <select id="year_level" name="year_level">
+          {% for code, label in year_levels %}
+            <option value="{{ code }}" {% if profile.year_level == code %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
       </div>
 
       <div class="auth-field">

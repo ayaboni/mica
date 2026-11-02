@@ -34,15 +34,68 @@ SERVICES = [
     ("referral", "Referral"),
 ]
 
-COURSES = [
-    ("BSCS-DS", "BS Computer Science - Data Science"),
-    ("BSIT", "BS Information Technology - Game Development"),
-    ("BSME", "BS Mechanical Engineering"),
-    ("BSEE", "BS Electrical Engineering"),
-    ("BAPSY", "BA Psychology"),
-    ("BSBA", "BS Business Administration"),
-    ("BSN", "BS Nursing"),
+COURSE_GROUPS = [
+    ("College of Arts, Sciences, and Education", [
+        ("BAMASSCOM", "Mass Communication"),
+        ("BAPOLSCI", "Political Science"),
+        ("BAPSY", "Psychology"),
+        ("BECED", "Early Childhood Education"),
+        ("BEED", "Elementary Education"),
+        ("BSED", "Secondary Education"),
+        ("BPED", "Physical Education"),
+        ("BSNED", "Special Needs Education"),
+    ]),
+    ("College of Computer Studies", [
+        ("BSCS-DS", "Computer Science (Data Science)"),
+        ("BSIT", "Information Technology (Game Development)"),
+        ("BSLIS", "Library and Information Science"),
+    ]),
+    ("College of Engineering and Architecture", [
+        ("BSARCH", "Architecture"),
+        ("BSCE", "Civil Engineering"),
+        ("BSCPE", "Computer Engineering"),
+        ("BSEE", "Electrical Engineering"),
+        ("BSECE", "Electronics and Communications Engineering"),
+        ("BSIE", "Industrial Engineering"),
+        ("BSME", "Mechanical Engineering"),
+    ]),
+    ("College of Business Administration and Accountancy", [
+        ("BSA", "Accountancy"),
+        ("BSBA", "Business Administration"),
+        ("BSENT", "Entrepreneurship"),
+        ("BSMGT", "Management"),
+    ]),
+    ("Medical and Allied Health Sciences", [
+        ("BSN", "Nursing"),
+        ("DENT", "Dentistry"),
+        ("MD", "Medicine"),
+        ("BSMEDTECH", "Medical Technology"),
+        ("BSOT", "Occupational Therapy"),
+        ("BSPT", "Physical Therapy"),
+        ("BSPHARM", "Pharmacy"),
+        ("BSRT", "Radiologic Technology"),
+        ("BSRESP", "Respiratory Therapy"),
+    ]),
+    ("College of International Tourism and Hospitality Management", [
+        ("BSHRM", "Hotel and Restaurant Management"),
+        ("BSTM", "Tourism Management"),
+    ]),
+    ("College of Criminology", [
+        ("BSCRIM", "Criminology"),
+    ]),
+    ("College of Aviation", [
+        ("BSAMT", "Aircraft Maintenance Technology"),
+        ("BSAVE", "Aviation Electronics Technology"),
+    ]),
+    ("College of Maritime Education", [
+        ("BSMARE", "Marine Engineering"),
+        ("BSMARTR", "Marine Transportation"),
+        ("BSNAME", "Naval Architecture and Marine Engineering"),
+    ]),
 ]
+
+# Flat list built from the groups. Everything else in the app keeps using COURSES.
+COURSES = [course for _college, items in COURSE_GROUPS for course in items]
 
 YEAR_LEVELS = [
     ("1", "1st Year"), ("2", "2nd Year"), ("3", "3rd Year"),

@@ -25,7 +25,7 @@ from .models import BreatheSession, Affirmation, ExerciseSession, Quest, DailyQu
 from .models import Appointment
 from .models import Notification
 from .models import StudentFlag
-from .models import COURSES, YEAR_LEVELS, SERVICES
+from .models import COURSES, COURSE_GROUPS, YEAR_LEVELS, SERVICES
 from .models import LoginThrottle
 from .models import AccessLog
 from .models import ConsoleNotification
@@ -338,6 +338,7 @@ def complete_profile(request):
         "error": error,
         "email": request.user.email,
         "courses": COURSES,
+        "course_groups": COURSE_GROUPS,
         "course_choices": COURSE_CHOICES,
         "year_level_choices": YEAR_LEVEL_CHOICES,
     })
@@ -482,6 +483,7 @@ class _CodeGone(Exception):
 
 def _register_page(request, **extra):
     ctx = {"courses": COURSES,
+           "course_groups": COURSE_GROUPS,
            "year_levels": YEAR_LEVELS,
            "code_ok": regcodes.session_code(request) is not None,
            "closed": not SiteSettings.get().registration_open}
@@ -1875,7 +1877,7 @@ def account_settings(request):
 
     return render(request, 'core/account-settings.html', {
         'my_avatar_url': _avatar_url(request.user),
-        'profile': profile, 'courses': COURSES, 'year_levels': YEAR_LEVELS,
+        'profile': profile, 'courses': COURSES, 'course_groups': COURSE_GROUPS, 'year_levels': YEAR_LEVELS,
         'has_password': request.user.has_usable_password(),
     })
 

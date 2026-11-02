@@ -1,0 +1,52 @@
+{# Use: {% include 'core/_course_picker.html' with selected_course=profile.course labels=True %} #}
+{{ course_groups|json_script:"course-groups-data" }}
+
+<div class="auth-field">
+  {% if labels %}<label class="set-label" for="college">College</label>{% endif %}
+  <select id="college" required aria-label="College">
+    <option value="" disabled selected hidden>Select College</option>
+    {% for college, items in course_groups %}
+      <option value="{{ forloop.counter0 }}">{{ college }}</option>
+    {% endfor %}
+  </select>
+</div>
+
+<div class="auth-field">
+  {% if labels %}<label class="set-label" for="course">Course</label>{% endif %}
+  <select id="course" name="course" required aria-label="Course">
+    <option value="" disabled selected hidden>Select Course</option>
+  </select>
+</div>
+
+<script>
+(function () {
+  var groups = JSON.parse(document.getElementById('course-groups-data').textContent);
+  var current = "{{ selected_course|default:''|escapejs }}";
+  var college = document.getElementById('college');
+  var course = document.getElementById('course');
+
+  function fill(idx, keep) {
+    course.length = 1;                       /* keep the placeholder option */
+    var items = groups[idx] ? groups[idx][1] : [];
+    var found = false;
+    items.forEach(function (c) {
+      var opt = new Option(c[1], c[0]);
+      if (c[0] === keep) { opt.selected = true; found = true; }
+      course.add(opt);
+    });
+    if (!found) course.selectedIndex = 0;
+  }
+
+  college.addEventListener('change', function () { fill(college.value, ''); });
+
+  /* edit pages: preselect the saved course and its college */
+  if (current) {
+    groups.forEach(function (g, i) {
+      if (g[1].some(function (c) { return c[0] === current; })) {
+        college.value = String(i);
+        fill(i, current);
+      }
+    });
+  }
+})();
+</script>
