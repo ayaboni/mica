@@ -21,7 +21,10 @@
     </aside>
 
     <div class="booklet-main">
-      <h2>Log in</h2>
+      <div class="login-head">
+        <h2>Log in</h2>
+        {% include 'core/_register_demo.html' with part='button' %}
+      </div>
 
       <form method="POST" action="{% url 'login' %}">
         {% csrf_token %}
@@ -93,7 +96,15 @@
 </section>
 {% endblock %}
 
+{% block extra_css %}
+<style>
+  .login-head { display: flex; align-items: center; gap: 10px; margin-bottom: 22px; }
+  .login-head h2 { margin-bottom: 0; }
+</style>
+{% endblock %}
+
 {% block extra_js %}
+{% include 'core/_register_demo.html' with part='dialog' %}
 <script>
 /* Lockout countdown */
 (function(){

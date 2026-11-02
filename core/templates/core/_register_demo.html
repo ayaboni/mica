@@ -1,0 +1,344 @@
+{% comment %}
+  "?" tooltip button + registration walkthrough dialog for the login page.
+  Include once; put {% include 'core/_register_demo.html' with part='button' %} next to the
+  heading and {% include 'core/_register_demo.html' with part='dialog' %} anywhere on the page.
+{% endcomment %}
+{% if part == 'button' %}
+<button type="button" class="demo-help" id="demoOpen" aria-haspopup="dialog" aria-controls="demoDialog"
+        aria-label="New here? See how registration works">
+  <span aria-hidden="true">?</span>
+  <span class="demo-tip" role="tooltip">New here? See how to register</span>
+</button>
+
+{% elif part == 'dialog' %}
+<style>
+  /* ---- trigger + tooltip ---- */
+  .demo-help{
+    position:relative;flex:none;width:30px;height:30px;border-radius:50%;
+    border:1.5px solid var(--brown);background:var(--white);color:var(--brown);
+    font:700 .95rem/1 var(--font-display);cursor:pointer;
+    display:inline-flex;align-items:center;justify-content:center;
+    transition:background .15s ease,color .15s ease,transform .15s ease;
+  }
+  .demo-help:hover,.demo-help:focus-visible{background:var(--brown);color:#fff;transform:translateY(-1px);}
+  .demo-help:focus-visible{outline:3px solid var(--brown-dark);outline-offset:2px;}
+  html[data-theme="dark"] .demo-help{border-color:var(--green-deep);color:var(--green-deep);}
+  html[data-theme="dark"] .demo-help:hover,
+  html[data-theme="dark"] .demo-help:focus-visible{background:var(--green-deep);color:#1a1e1a;}
+  .demo-tip{
+    position:absolute;left:50%;bottom:calc(100% + 10px);transform:translate(-50%,4px);
+    background:var(--ink);color:var(--cream-bg);font:600 .78rem/1.3 var(--font-body);
+    padding:8px 12px;border-radius:10px;white-space:nowrap;pointer-events:none;
+    opacity:0;visibility:hidden;transition:opacity .15s ease,transform .15s ease;z-index:5;
+  }
+  .demo-tip::after{
+    content:"";position:absolute;top:100%;left:50%;margin-left:-5px;
+    border:5px solid transparent;border-top-color:var(--ink);
+  }
+  .demo-help:hover .demo-tip,.demo-help:focus-visible .demo-tip{opacity:1;visibility:visible;transform:translate(-50%,0);}
+  @media (max-width:560px){ .demo-tip{left:0;transform:translate(0,4px);} .demo-tip::after{left:15px;margin-left:0;}
+    .demo-help:hover .demo-tip,.demo-help:focus-visible .demo-tip{transform:translate(0,0);} }
+
+  /* ---- dialog ---- */
+  .demo-dialog{
+    --field-border:#DECBAE;--placeholder:#A79E88;
+    border:none;padding:0;width:min(480px,calc(100vw - 24px));max-height:calc(100vh - 24px);
+    border-radius:var(--radius-lg);background:var(--cream-card);color:var(--ink);
+    box-shadow:0 24px 70px rgba(20,16,10,.4);overflow:hidden;
+  }
+  html[data-theme="dark"] .demo-dialog{--field-border:#4d6149;--placeholder:#798a78;}
+  .demo-dialog::backdrop{background:rgba(20,16,10,.6);}
+  .demo-dialog[open]{display:flex;flex-direction:column;animation:demoIn .22s ease;}
+  @keyframes demoIn{from{opacity:0;transform:translateY(10px) scale(.98);}to{opacity:1;transform:none;}}
+
+  .demo-top{display:flex;align-items:center;justify-content:space-between;padding:18px 22px 0;}
+  .demo-badge{font:700 .72rem/1 var(--font-body);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-soft);}
+  .demo-close{
+    width:32px;height:32px;border-radius:50%;border:none;background:transparent;color:var(--ink-soft);
+    font-size:1.4rem;line-height:1;cursor:pointer;
+  }
+  .demo-close:hover{background:rgba(127,127,127,.15);color:var(--ink);}
+  .demo-close:focus-visible,.demo-btn:focus-visible,.demo-link:focus-visible{outline:3px solid var(--brown-dark);outline-offset:2px;}
+
+  .demo-stage{padding:6px 22px 0;overflow-y:auto;}
+  .demo-stage h2{font-size:1.3rem;margin:6px 0 6px;}
+  .demo-stage .demo-text{font-size:.9rem;margin:0 0 14px;}
+
+  /* fake form preview */
+  .demo-mock{
+    background:var(--card-green);border-radius:var(--radius-md);padding:16px;margin-bottom:6px;
+    pointer-events:none;user-select:none;min-height:196px;
+  }
+  .demo-mock .m-title{font:600 .95rem var(--font-display);color:var(--ink);margin:0 0 10px;}
+  .m-field{
+    background:var(--white);border:1.5px solid var(--field-border);border-radius:14px;
+    padding:9px 13px;font-size:.82rem;color:var(--ink);margin-bottom:8px;min-height:36px;
+    display:flex;align-items:center;transition:border-color .2s ease,box-shadow .2s ease;
+  }
+  .m-field.ph{color:var(--placeholder);}
+  .m-field.hot{border-color:var(--brown);box-shadow:0 0 0 3px rgba(140,111,82,.22);}
+  .m-field.code{justify-content:center;letter-spacing:.3em;font-weight:700;font-size:1rem;text-transform:uppercase;}
+  .m-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .m-caret::after{content:"";display:inline-block;width:2px;height:1em;background:var(--ink);margin-left:2px;animation:demoBlink 1s steps(1) infinite;}
+  @keyframes demoBlink{50%{opacity:0;}}
+  .m-btn{
+    background:var(--brown);color:#fff;border-radius:999px;text-align:center;
+    font-weight:700;font-size:.84rem;padding:10px;margin-top:4px;transition:transform .2s ease,background .2s ease;
+  }
+  .m-btn.press{transform:scale(.96);background:var(--brown-dark);}
+  .m-msg{
+    margin:10px 0 0;padding:9px 12px;border-radius:12px;font-size:.78rem;font-weight:600;
+    background:#DCE8D6;color:#2F4535;opacity:0;transform:translateY(4px);transition:opacity .3s ease,transform .3s ease;
+  }
+  html[data-theme="dark"] .m-msg{background:#2F4535;color:#bfe0b8;}
+  .m-msg.show{opacity:1;transform:none;}
+  .m-note{font-size:.74rem;color:var(--ink-soft);margin:2px 2px 8px;line-height:1.4;}
+  .m-field.code.ph{letter-spacing:.02em;font-size:.82rem;font-weight:400;text-transform:none;}
+
+  /* animated pointer that shows where to click */
+  .demo-mock{position:relative;overflow:hidden;}
+  .m-cursor{
+    position:absolute;top:0;left:0;z-index:3;pointer-events:none;
+    transition:transform .65s cubic-bezier(.45,.05,.25,1);will-change:transform;
+  }
+  .m-cursor svg{display:block;width:24px;height:24px;margin:-2px 0 0 -3px;
+    fill:var(--ink);stroke:var(--cream-card);stroke-width:1.6;stroke-linejoin:round;
+    filter:drop-shadow(0 2px 3px rgba(0,0,0,.35));transform-origin:3px 2px;}
+  .m-cursor .m-ring{position:absolute;left:-11px;top:-11px;width:22px;height:22px;border-radius:50%;
+    border:2.5px solid var(--brown);opacity:0;}
+  html[data-theme="dark"] .m-cursor .m-ring{border-color:var(--green-deep);}
+  .m-cursor.click .m-ring{animation:demoRing .55s ease-out;}
+  .m-cursor.click svg{animation:demoTap .25s ease;}
+  @keyframes demoRing{0%{opacity:.95;transform:scale(.3);}100%{opacity:0;transform:scale(2.3);}}
+  @keyframes demoTap{50%{transform:scale(.82);}}
+  @media (prefers-reduced-motion:reduce){.m-cursor{display:none;}}
+
+  /* footer */
+  .demo-foot{padding:14px 22px 20px;}
+  .demo-dots{display:flex;gap:6px;justify-content:center;margin:0 0 14px;}
+  .demo-dot{width:8px;height:8px;border-radius:50%;background:var(--field-border);transition:background .2s ease,transform .2s ease;}
+  .demo-dot.on{background:var(--brown);transform:scale(1.25);}
+  .demo-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+  .demo-link{background:none;border:none;font:700 .82rem var(--font-body);color:var(--ink-soft);text-decoration:underline;text-underline-offset:3px;cursor:pointer;padding:8px 4px;}
+  .demo-link:hover{color:var(--ink);}
+  .demo-nav{display:flex;gap:8px;}
+  .demo-btn{
+    border:none;border-radius:999px;padding:10px 20px;font:700 .88rem var(--font-body);cursor:pointer;
+    background:var(--white);color:var(--ink);border:1.5px solid var(--field-border);
+  }
+  .demo-btn:hover{filter:brightness(.97);}
+  .demo-btn.primary{background:var(--brown);border-color:var(--brown);color:#fff;text-decoration:none;display:inline-flex;align-items:center;}
+  .demo-btn.primary:hover{background:var(--brown-dark);filter:none;}
+  .demo-btn[hidden]{display:none;}
+  @media (prefers-reduced-motion:reduce){.demo-dialog[open]{animation:none;}.m-caret::after{animation:none;}}
+</style>
+
+<dialog class="demo-dialog" id="demoDialog" aria-labelledby="demoTitle">
+  <div class="demo-top">
+    <span class="demo-badge" id="demoStepLabel">Step 1 of 4</span>
+    <button type="button" class="demo-close" id="demoClose" aria-label="Close demo">&times;</button>
+  </div>
+
+  <div class="demo-stage">
+    <h2 id="demoTitle"></h2>
+    <p class="demo-text" id="demoText" aria-live="polite"></p>
+    <div class="demo-mock" id="demoMock" aria-hidden="true"></div>
+  </div>
+
+  <div class="demo-foot">
+    <div class="demo-dots" id="demoDots" aria-hidden="true"></div>
+    <div class="demo-actions">
+      <button type="button" class="demo-link" id="demoSkip">Close demo</button>
+      <div class="demo-nav">
+        <button type="button" class="demo-btn" id="demoBack">Back</button>
+        <button type="button" class="demo-btn primary" id="demoNext">Next</button>
+        <a class="demo-btn primary" id="demoGo" href="{% url 'register' %}" hidden>Go to Register</a>
+      </div>
+    </div>
+  </div>
+</dialog>
+
+<script>
+(function(){
+  var dlg = document.getElementById('demoDialog');
+  var openBtn = document.getElementById('demoOpen');
+  if (!dlg || !openBtn) return;
+
+  var elTitle = document.getElementById('demoTitle'),
+      elText  = document.getElementById('demoText'),
+      elMock  = document.getElementById('demoMock'),
+      elLabel = document.getElementById('demoStepLabel'),
+      elDots  = document.getElementById('demoDots'),
+      btnBack = document.getElementById('demoBack'),
+      btnNext = document.getElementById('demoNext'),
+      btnGo   = document.getElementById('demoGo');
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var timers = [], idx = 0;
+
+  var elMockEl = elMock, cursor = null;
+  var DOTS = '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022';
+
+  function $(id){ return document.getElementById(id); }
+  function focusField(el, val){
+    Array.prototype.forEach.call(elMockEl.querySelectorAll('.m-field.hot'), function(f){ f.classList.remove('hot'); });
+    el.classList.remove('ph'); el.classList.add('hot');
+    if (val != null) el.textContent = val;
+  }
+  function press(el){ el.classList.add('press'); }
+
+  /* cursor helpers */
+  function cursorPoint(el){
+    var m = elMockEl.getBoundingClientRect(), r = el.getBoundingClientRect();
+    return { x: r.left - m.left + Math.min(r.width / 2, 46), y: r.top - m.top + r.height / 2 };
+  }
+  function placeCursor(el, instant){
+    if (!cursor) return;
+    var p = el ? cursorPoint(el) : { x: elMockEl.clientWidth - 40, y: elMockEl.clientHeight - 24 };
+    if (instant) cursor.style.transition = 'none';
+    cursor.style.transform = 'translate(' + Math.round(p.x) + 'px,' + Math.round(p.y) + 'px)';
+    if (instant) { void cursor.offsetWidth; cursor.style.transition = ''; }
+  }
+  function clickFx(){
+    if (!cursor) return;
+    cursor.classList.remove('click'); void cursor.offsetWidth; cursor.classList.add('click');
+  }
+  /* list = [{id, act(el) -> optional extra ms to wait}] ; cursor visits each in turn, clicks, then runs act */
+  function play(list){
+    if (reduce) { list.forEach(function(s){ s.act($(s.id)); }); return; }
+    var i = 0;
+    (function nxt(){
+      if (i >= list.length) return;
+      var s = list[i++], el = $(s.id);
+      placeCursor(el);
+      later(function(){
+        clickFx();
+        later(function(){ var wait = s.act(el) || 0; later(nxt, 380 + wait); }, 120);
+      }, 750);
+    })();
+  }
+
+  var steps = [
+    { title: 'Get a registration code',
+      text: 'Registration is by code. Students get theirs from the Guidance Office, and staff get theirs from the System Admin.',
+      mock: function(){
+        return '<p class="m-title">Create an account</p>' +
+          '<p class="m-note">Enter your registration code to continue.</p>' +
+          '<div class="m-field code ph" id="mCode">Registration code</div>' +
+          '<div class="m-btn" id="mBtn">Continue</div>';
+      },
+      run: function(){
+        var code = 'MICA7K2Q';
+        play([
+          { id: 'mCode', act: function(el){
+              focusField(el, '');
+              if (reduce) { el.textContent = code; return 0; }
+              el.classList.add('m-caret');
+              var n = 0;
+              (function type(){
+                if (n <= code.length) { el.textContent = code.slice(0, n++); later(type, 130); }
+                else el.classList.remove('m-caret');
+              })();
+              return code.length * 130 + 200;
+          } },
+          { id: 'mBtn', act: function(el){ press(el); } }
+        ]);
+      } },
+    { title: 'Fill in your details',
+      text: 'Add your name, student number, course, year level and email, then pick a username. Staff are asked for a name, username and email instead.',
+      mock: function(){
+        return '<div class="m-row"><div class="m-field ph" id="f1">First Name</div><div class="m-field ph" id="f2">Last Name</div></div>' +
+          '<div class="m-row"><div class="m-field ph" id="f3">Student Number</div><div class="m-field ph" id="f4">Username</div></div>' +
+          '<div class="m-field ph" id="f5">Select College &#9662;</div>' +
+          '<div class="m-field ph" id="f6">Select Year Level &#9662;</div>' +
+          '<div class="m-field ph" id="f7">Email</div>';
+      },
+      run: function(){
+        var vals = { f1:'Juan', f2:'Dela Cruz', f3:'000-0000', f4:'juan.dc', f5:'Your college', f6:'Your year level', f7:'juan@email.com' };
+        play(['f1','f2','f3','f4','f5','f6','f7'].map(function(id){
+          return { id: id, act: function(el){ focusField(el, vals[id]); } };
+        }));
+      } },
+    { title: 'Create your password',
+      text: 'Use at least 8 characters with 1 uppercase letter and 1 number or symbol. Then press Register.',
+      mock: function(){
+        return '<div class="m-row"><div class="m-field ph" id="p1">Password</div>' +
+          '<div class="m-field ph" id="p2">Confirm Password</div></div>' +
+          '<p class="m-note">At least 8 characters, with 1 uppercase letter and 1 number or symbol.</p>' +
+          '<div class="m-btn" id="mBtn">Register</div>' +
+          '<p class="m-msg" id="mMsg">Account created! You can log in now.</p>';
+      },
+      run: function(){
+        play([
+          { id: 'p1', act: function(el){ focusField(el, DOTS); } },
+          { id: 'p2', act: function(el){ focusField(el, DOTS); } },
+          { id: 'mBtn', act: function(el){ press(el); later(function(){ $('mMsg').classList.add('show'); }, reduce ? 0 : 250); if (reduce) $('mMsg').classList.add('show'); } }
+        ]);
+      } },
+    { title: 'Log in',
+      text: 'You land back here on the login page. Sign in with your username and password, and we email you a code to confirm. Student accounts may wait for the Guidance Office to confirm enrollment.',
+      mock: function(){
+        return '<p class="m-title">Log in</p>' +
+          '<div class="m-field ph" id="l1">Username</div>' +
+          '<div class="m-field ph" id="l2">Password</div>' +
+          '<div class="m-btn" id="mBtn">Log In</div>' +
+          '<p class="m-msg" id="mMsg">We emailed you a code to confirm your sign-in.</p>';
+      },
+      run: function(){
+        play([
+          { id: 'l1', act: function(el){ focusField(el, 'juan.dc'); } },
+          { id: 'l2', act: function(el){ focusField(el, DOTS); } },
+          { id: 'mBtn', act: function(el){ press(el); later(function(){ $('mMsg').classList.add('show'); }, reduce ? 0 : 250); if (reduce) $('mMsg').classList.add('show'); } }
+        ]);
+      } }
+  ];
+
+  elDots.innerHTML = steps.map(function(){ return '<span class="demo-dot"></span>'; }).join('');
+
+  function later(fn, ms){ timers.push(setTimeout(fn, ms)); }
+  function clearTimers(){ timers.forEach(clearTimeout); timers = []; }
+
+  function show(i){
+    clearTimers();
+    idx = i;
+    var s = steps[i], last = i === steps.length - 1;
+    elLabel.textContent = 'Step ' + (i + 1) + ' of ' + steps.length;
+    elTitle.textContent = s.title;
+    elText.textContent = s.text;
+    elMock.innerHTML = s.mock();
+    cursor = null;
+    if (!reduce) {
+      cursor = document.createElement('div');
+      cursor.className = 'm-cursor';
+      cursor.innerHTML = '<span class="m-ring"></span><svg viewBox="0 0 24 24"><path d="M3 2l7.5 19 2.6-7.9L21 10.5z"/></svg>';
+      elMock.appendChild(cursor);
+      placeCursor(null, true);
+    }
+    Array.prototype.forEach.call(elDots.children, function(d, n){ d.classList.toggle('on', n === i); });
+    btnBack.hidden = i === 0;
+    btnNext.hidden = last;
+    btnGo.hidden = !last;
+    s.run();
+  }
+
+  function open(){
+    if (typeof dlg.showModal !== 'function') { window.location.href = "{% url 'register' %}"; return; }
+    dlg.showModal();      /* open first so the cursor can measure real positions */
+    show(0);
+    btnNext.focus();
+  }
+  function close(){ clearTimers(); dlg.close(); }
+
+  openBtn.addEventListener('click', open);
+  document.getElementById('demoClose').addEventListener('click', close);
+  document.getElementById('demoSkip').addEventListener('click', close);
+  btnNext.addEventListener('click', function(){ if (idx < steps.length - 1) show(idx + 1); });
+  btnBack.addEventListener('click', function(){ if (idx > 0) show(idx - 1); });
+  dlg.addEventListener('close', function(){ clearTimers(); openBtn.focus(); });
+  dlg.addEventListener('click', function(e){ if (e.target === dlg) close(); });   // click on the backdrop
+  dlg.addEventListener('keydown', function(e){
+    if (e.key === 'ArrowRight' && idx < steps.length - 1) { e.preventDefault(); show(idx + 1); }
+    else if (e.key === 'ArrowLeft' && idx > 0) { e.preventDefault(); show(idx - 1); }
+  });
+})();
+</script>
+{% endif %}
