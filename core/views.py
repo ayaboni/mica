@@ -307,7 +307,8 @@ def complete_profile(request):
             error = "Please fill in every field."
         elif validate_person_names(form["first_name"], form["last_name"]):
             error = validate_person_names(form["first_name"], form["last_name"])
-        e    msg = GuidanceMessage.objects.create(thread=thread, sender=request.user, content=content)lif student_number_problem(form["student_number"]):
+            msg = GuidanceMessage.objects.create(thread=thread, sender=request.user, content=content)
+        elif student_number_problem(form["student_number"]):
             error = student_number_problem(form["student_number"])
         elif form["course"] not in dict(get_courses()) or form["year_level"] not in dict(YEAR_LEVEL_CHOICES):
             error = "Please choose a valid course and year level."
