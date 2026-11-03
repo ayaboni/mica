@@ -210,7 +210,13 @@
       }
     } catch (error) {
       console.error(error);
-      alert(error.message);
+      // Closing the Google window isn't an error worth shouting about; anything else gets a plain message.
+      var code = (error && error.code) || '';
+      if (code !== 'auth/popup-closed-by-user' && code !== 'auth/cancelled-popup-request') {
+        alert(code === 'auth/network-request-failed'
+          ? "Can't reach Google. Check your connection and try again."
+          : "Google sign-in didn't work. Please try again.");
+      }
     } finally {
       signingIn = false;
       btn.disabled = false;

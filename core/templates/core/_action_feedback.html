@@ -1,0 +1,60 @@
+{% comment %}
+  Safety net so the site never fails silently. Include once per page, before the page's own scripts.
+
+  When something the person did (save, send, delete, ...) can't be completed, this shows one short, plain
+  message through the page's own showToast(). Any message the page shows itself for the same failure
+  replaces it, so pages stay free to be more specific. Quiet background calls are never announced.
+{% endcomment %}
+<script>
+(function(){
+  if (window.__micaFeedback) return;
+  window.__micaFeedback = true;
+  var realFetch = window.fetch;
+  if (!realFetch) return;
+
+  // Background calls and calls whose pages already explain failures in their own way.
+  var QUIET = /\/api\/(keepalive|preferences\/dark-mode|exercises\/log|notifications\/mark-read|console\/notifications\/read|chatbot|speech-to-text|tutorial)|\/auth\/google|\/api\/staff\/students\/\d+\/access\//;
+
+  var lastPoll = 0;
+  function say(msg, poll){
+    if (poll){ var now = Date.now(); if (now - lastPoll < 30000) return; lastPoll = now; }
+    if (typeof window.showToast === 'function') window.showToast(msg);
+  }
+
+  function messageFor(status, serverText){
+    if (status === 401) return 'Your session has expired. Please sign in again.';
+    if (status === 403) return serverText || "You don't have permission to do that.";
+    if (status === 413) return 'That file is too large.';
+    if (status === 429) return 'Too many tries. Please wait a moment and try again.';
+    if (status >= 500) return 'Something went wrong on our side. Please try again.';
+    return serverText || "That didn't work. Please try again.";
+  }
+
+  window.fetch = function(input, init){
+    var url = typeof input === 'string' ? input : (input && input.url) || '';
+    var method = String((init && init.method) || (input && input.method) || 'GET').toUpperCase();
+    var isGet = method === 'GET' || method === 'HEAD';
+    var sameOrigin = url.charAt(0) === '/' || url.indexOf(location.origin) === 0;
+    if (!sameOrigin || QUIET.test(url)) return realFetch.apply(this, arguments);
+
+    return realFetch.apply(this, arguments).then(function(res){
+      var path = ''; try { path = new URL(res.url).pathname; } catch (e) {}
+      if (res.redirected && /^\/(login|signin)/.test(path)){          // signed out in the background
+        say(messageFor(401), false);
+        return res;
+      }
+      if (res.ok) return res;
+      if (isGet && res.status < 500) return res;                       // reads: only announce server trouble
+      res.clone().json().then(function(d){
+        var text = d && typeof d.error === 'string' && d.error.length < 140 ? d.error : '';
+        if (d && d.needs_confirm) return;                             // an expected "are you sure?" step
+        say(messageFor(res.status, text), isGet);
+      }).catch(function(){ say(messageFor(res.status, ''), isGet); });
+      return res;
+    }, function(err){
+      say(isGet ? "Can't reach the server. Check your connection." : "Can't reach the server. Check your connection and try again.", isGet);
+      throw err;
+    });
+  };
+})();
+</script>
