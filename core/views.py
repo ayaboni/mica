@@ -35,7 +35,7 @@ from .net import client_ip
 from .name_validation import (EMERGENCY_NAME_MAX_LENGTH, NAME_MAX_LENGTH, NICKNAME_MAX_LENGTH, normalize_name,
                               sanitize_person_name,
                               validate_person_name, validate_person_names, validate_phone_number,
-                              validate_username, has_blocked_term)
+                              validate_username, has_blocked_term, validate_email_wording)
 from .models import LoginVerification
 from .models import PasswordResetRequest
 from .models import SiteSettings
@@ -153,6 +153,8 @@ def google_register(request):
     )
 
     full_name = sanitize_person_name(idinfo.get("name", ""))
+    if has_blocked_term(full_name):
+        full_name = ""       # not copied into the new account; the student is asked for their real name
     first_name = full_name.split(" ")[0][:NAME_MAX_LENGTH] if full_name else ""
     last_name = " ".join(full_name.split(" ")[1:])[:NAME_MAX_LENGTH] if full_name else ""
 
@@ -205,6 +207,10 @@ def google_register(request):
                 else:
                     if not SiteSettings.get().registration_open:
                         return JsonResponse({"error": "Registration is closed right now. Please contact the Guidance Office."}, status=403)
+                    # An offensive Google email can't start a new MICA account. (Existing accounts are left alone.)
+                    if validate_email_wording(email):
+                        return JsonResponse({"error": "This Google account's email address can't be used to register. "
+                                                      "Please use a different Google account."}, status=403)
                     # A brand-new account needs the code a staff member gave the student.
                     reg_code = regcodes.session_code(request, lock=True)
                     if reg_code is None:
@@ -307,7 +313,6 @@ def complete_profile(request):
             error = "Please fill in every field."
         elif validate_person_names(form["first_name"], form["last_name"]):
             error = validate_person_names(form["first_name"], form["last_name"])
-            msg = GuidanceMessage.objects.create(thread=thread, sender=request.user, content=content)
         elif student_number_problem(form["student_number"]):
             error = student_number_problem(form["student_number"])
         elif form["course"] not in dict(get_courses()) or form["year_level"] not in dict(YEAR_LEVEL_CHOICES):
@@ -555,6 +560,9 @@ def _register_staff(request):
         validate_email(email)
     except ValidationError:
         return fail("Please enter a valid email address.")
+    email_problem = validate_email_wording(email)
+    if email_problem:
+        return fail(email_problem)
     if User.objects.filter(email__iexact=email).exists():
         return fail("Email is already registered.")
     try:
@@ -650,6 +658,10 @@ def register(request):
         username_problem = validate_username(username)
         if username_problem:
             return fail(username_problem)
+
+        email_problem = validate_email_wording(email)
+        if email_problem:
+            return fail(email_problem)
 
         if _username_taken(username):
             return fail("Username is already registered.")
@@ -1725,6 +1737,8 @@ def _email_change_problem(email, user):
         validate_email(email)
     except ValidationError:
         return "Please enter a valid email address."
+    if validate_email_wording(email):
+        return "Please use a different email address."
     if email == (user.email or "").strip().lower():
         return "That is already your email address."
     if _email_taken(email, exclude_user=user):
@@ -2344,17 +2358,38 @@ def tutorial_reset(request):
     return redirect('student_dashboard')
 
 
+def _unverified_guidance_response():
+    """403 for a student the Guidance Office hasn't confirmed yet: staff can't see their messages."""
+    hl = get_hotlines()[0]
+    return JsonResponse({
+        "error": "The Guidance Office hasn't confirmed your account yet, so they can't see messages from you. "
+                 "Please visit the Guidance Office to get confirmed. If you need someone to talk to right now, "
+                 "call %s: %s." % (hl["name"], hl["number"]),
+        "unverified": True,
+    }, status=403)
+
+
+def _notify_staff_of_student_message(student, thread):
+    """Tell the right staff that `student` has written to Guidance (shared by a typed message and the
+    TALK TO GUIDANCE button)."""
+    student_name = student.get_full_name() or student.username
+    if thread.counselor_id:
+        # Someone already handles this student: only they get told, with the name.
+        notify([thread.counselor], 'message', f"{student_name} messaged you",
+               section='messages', student_ref=student.id, ref_id=thread.id,
+               urgent=True, collapse_unread=True)
+    else:
+        # Unclaimed: everyone who can chat is told, without the name.
+        notify(staff_with('chat_students'), 'message', "A student messaged the guidance",
+               section='messages', student_ref=student.id, ref_id=thread.id,
+               urgent=True, collapse_unread=True)
+
+
 @login_required(login_url='login')
 @require_POST
 def guidance_send(request):
     if verification.is_unverified(request.user):
-        hl = get_hotlines()[0]
-        return JsonResponse({
-            "error": "The Guidance Office hasn't confirmed your account yet, so they can't see messages from you. "
-                     "Please visit the Guidance Office to get confirmed. If you need someone to talk to right now, "
-                     "call %s: %s." % (hl["name"], hl["number"]),
-            "unverified": True,
-        }, status=403)
+        return _unverified_guidance_response()
     data = _json_body(request)
     if data is None:
         return _bad_request()
@@ -2368,18 +2403,37 @@ def guidance_send(request):
     msg = GuidanceMessage.objects.create(thread=thread, sender=request.user, content=content)
     thread.save()  # bumps updated_at
 
-    student_name = request.user.get_full_name() or request.user.username
-    if thread.counselor_id:
-        # Someone already handles this student: only they get told, with the name.
-        notify([thread.counselor], 'message', f"{student_name} messaged you",
-               section='messages', student_ref=request.user.id, ref_id=thread.id,
-               urgent=True, collapse_unread=True)
-    else:
-        # Unclaimed: everyone who can chat is told, without the name.
-        notify(staff_with('chat_students'), 'message', "A student messaged the guidance",
-               section='messages', student_ref=request.user.id, ref_id=thread.id,
-               urgent=True, collapse_unread=True)
+    _notify_staff_of_student_message(request.user, thread)
     return JsonResponse({"status": "ok", "thread_id": thread.id, "message_id": msg.id})
+
+
+GUIDANCE_REQUEST_TEXT = "Hi, I'd like to talk to someone from the Guidance Office."
+
+
+@login_required(login_url='login')
+@require_POST
+def guidance_request(request):
+    """The TALK TO GUIDANCE button: alert staff the moment the student presses it, without them typing.
+
+    A short automatic message goes into the thread so the request shows up in the staff inbox
+    (waiting banner, sound, bell) exactly like a typed message. If the student's last message is
+    still unanswered, no second message is added; staff are just re-notified (collapsed while an
+    earlier notification is unread), so pressing the button repeatedly doesn't fill the chat.
+    """
+    if verification.is_unverified(request.user):
+        return _unverified_guidance_response()
+    if _rate_limited(request, "guidance_request", GUIDANCE_RATE_PER_MINUTE):
+        return _rate_limit_response()
+
+    thread, _ = GuidanceThread.objects.get_or_create(student=request.user)
+    last = thread.messages.last()
+    created = not (last and last.sender_id == request.user.id)
+    if created:
+        GuidanceMessage.objects.create(thread=thread, sender=request.user, content=GUIDANCE_REQUEST_TEXT)
+        thread.save()  # bumps updated_at
+
+    _notify_staff_of_student_message(request.user, thread)
+    return JsonResponse({"status": "ok", "thread_id": thread.id, "created": created})
 
 
 @login_required(login_url='login')

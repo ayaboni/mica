@@ -1666,6 +1666,92 @@ input:checked + .toggle-slider::before {
   }
 
   body.dark-mode .msg-avatar[src*="guidance_icon"]{ background:#CFE5CA; }
+
+  /* ---------- TALK TO GUIDANCE hover tooltip (animated demo) ---------- */
+  .gtip{
+    position:fixed; z-index:9000; width:272px; padding:12px 12px 14px;
+    background:var(--card-bg); color:var(--text-dark);
+    border:1px solid rgba(0,0,0,.07); border-radius:16px;
+    box-shadow:0 14px 40px rgba(20,16,10,.28);
+    pointer-events:none; opacity:0; transform:translateX(-6px);
+    transition:opacity .15s ease, transform .15s ease;
+    --arrow-y:24px;
+  }
+  .gtip[hidden]{display:none;}
+  .gtip.show{opacity:1; transform:none;}
+  .gtip::before{                                   /* arrow pointing back at the button */
+    content:""; position:absolute; left:-6px; top:calc(var(--arrow-y) - 6px);
+    width:12px; height:12px; background:var(--card-bg);
+    border-left:1px solid rgba(0,0,0,.07); border-bottom:1px solid rgba(0,0,0,.07);
+    transform:rotate(45deg);
+  }
+  .gtip.below::before{display:none;}
+  body.dark-mode .gtip{border-color:rgba(255,255,255,.1);}
+  body.dark-mode .gtip::before{border-color:rgba(255,255,255,.1);}
+  .gtip-title{font-family:'Quicksand',sans-serif; font-size:15px; font-weight:700; margin:12px 2px 4px;}
+  .gtip-body{font-size:12.5px; line-height:1.45; color:var(--text-mute); margin:0 2px;}
+
+  .gtip-demo{position:relative; height:132px; border-radius:12px; overflow:hidden; background:var(--sidebar-bg);}
+  .gd-btn{
+    position:absolute; left:14px; right:14px; top:12px; height:30px; border-radius:999px;
+    display:flex; align-items:center; justify-content:center;
+    background:var(--btn-bg); color:var(--text-dark);
+    font-size:10.5px; font-weight:800; letter-spacing:.2px;
+    animation:gdPress 7s ease-in-out infinite;
+  }
+  .gd-bubble{
+    position:absolute; right:12px; top:54px; max-width:76%;
+    background:var(--bubble-bg); color:var(--text-dark);
+    border-radius:14px 14px 4px 14px; padding:7px 10px;
+    font-size:10.5px; line-height:1.35; opacity:0;
+    animation:gdBubble 7s ease-in-out infinite;
+  }
+  .gd-notif{
+    position:absolute; left:12px; right:12px; bottom:10px;
+    display:flex; align-items:center; gap:7px; padding:7px 10px; border-radius:10px;
+    background:var(--card-bg); color:var(--text-dark);
+    font-size:10.5px; font-weight:800; opacity:0;
+    box-shadow:0 2px 8px rgba(0,0,0,.14);
+    animation:gdNotif 7s ease-in-out infinite;
+  }
+  .gd-notif i{font-style:normal; font-size:12px; display:inline-block; animation:gdRing 7s ease-in-out infinite;}
+  .gd-cursor{
+    position:absolute; width:18px; height:18px; opacity:0; left:80%; top:104px;
+    filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.4));
+    animation:gdCursor 7s ease-in-out infinite;
+  }
+  @keyframes gdCursor{
+    0%,6%{opacity:0; left:80%; top:104px;}
+    12%{opacity:1; left:80%; top:104px;}
+    24%,31%{opacity:1; left:52%; top:26px;}
+    40%,100%{opacity:0; left:52%; top:26px;}
+  }
+  @keyframes gdPress{
+    0%,26%{background:var(--btn-bg); transform:none;}
+    29%{background:var(--btn-active); transform:scale(.96);}
+    35%,92%{background:var(--btn-active); transform:none;}
+    100%{background:var(--btn-bg); transform:none;}
+  }
+  @keyframes gdBubble{
+    0%,33%{opacity:0; transform:translateY(6px);}
+    40%,92%{opacity:1; transform:none;}
+    98%,100%{opacity:0; transform:none;}
+  }
+  @keyframes gdNotif{
+    0%,48%{opacity:0; transform:translateY(8px) scale(.96);}
+    56%,92%{opacity:1; transform:none;}
+    98%,100%{opacity:0; transform:none;}
+  }
+  @keyframes gdRing{
+    0%,56%{transform:rotate(0);}
+    59%{transform:rotate(-16deg);} 62%{transform:rotate(14deg);} 65%{transform:rotate(-10deg);} 68%,100%{transform:rotate(0);}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .gtip,.gtip *{animation:none !important; transition:none !important;}
+    .gd-btn{background:var(--btn-active);}
+    .gd-bubble,.gd-notif{opacity:1;}
+    .gd-cursor{display:none;}
+  }
 </style>
 <script>
 if(localStorage.getItem('dyslexia')==='1') document.documentElement.classList.add('dyslexia');
@@ -1681,6 +1767,17 @@ function toggleDyslexia(){
 
 
 <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
+<div class="gtip" id="guidance-tip" role="tooltip" hidden>
+  <div class="gtip-demo" aria-hidden="true">
+    <div class="gd-btn">TALK TO GUIDANCE</div>
+    <div class="gd-bubble">Hi, I'd like to talk to someone from the Guidance Office.</div>
+    <div class="gd-notif"><i>🔔</i> Guidance staff notified</div>
+    <svg class="gd-cursor" viewBox="0 0 24 24"><path d="M4 2l15 9-6.6 1.8L9.6 20z" fill="#fff" stroke="#3E3226" stroke-width="1.6" stroke-linejoin="round"/></svg>
+  </div>
+  <p class="gtip-title">Talk to Guidance</p>
+  <p class="gtip-body">Press it once and the Guidance staff are notified right away. No need to write a message first. Your chat with them opens so you can add more details.</p>
+</div>
 
 <div class="app">
 
@@ -2986,38 +3083,76 @@ function setGuidanceWho(role){
   if(el) el.textContent = role ? `You're talking with: ${role}` : 'Guidance Office · a staff member will reply soon';
 }
 
-// Guidance view wiring — loads and saves real messages now
+// Guidance view wiring: pressing the button alerts staff right away, then loads the real messages
 let guidanceLoaded = false;
+
+// Tells the Guidance staff this student wants to talk. Resolves to true when it added a message to the chat
+// (false when one was already waiting, the account isn't confirmed yet, or the request failed).
+function requestGuidance(){
+  return fetch("{% url 'guidance_request' %}", {
+    method: "POST",
+    headers: {"Content-Type": "application/json", "X-CSRFToken": getCookie("csrftoken")},
+    body: "{}",
+  }).then(r => r.json().then(d => !!(r.ok && d.created)))
+    .catch(() => false);
+}
+
 document.getElementById('btn-guidance').addEventListener('click', ()=>{
   fetch("{% url 'mark_notifications_read' %}", {method: "POST", headers: {"X-CSRFToken": getCookie("csrftoken")}});
-  if(!guidanceLoaded){
-    fetch("{% url 'guidance_messages' %}")
-      .then(r => r.json())
-      .then(data => {
-        setGuidanceWho(data.counselor_name);
-        const container = document.getElementById('guidance-messages');
-        container.innerHTML = '';
-        if(data.messages.length === 0){
-          addMessage('guidance-messages', escapeHtml(m.content).replace(/\n/g, '<br>'), m.sender === 'user' ? 'user' : 'bot', 'LEAF', m.id);
-        } else {
-          data.messages.forEach(m => {
-            if (m.appointment) {
-              const row = document.createElement('div');
-              row.className = 'msg-row ' + (m.sender === 'user' ? 'user' : 'bot');
-              const confirmedHtml = m.appointment.status === 'confirmed'
-                ? `<div style="margin-top:8px; color:#3c763d; font-weight:700;">✅ Confirmed</div>`
-                : `<div style="margin-top:10px;"><button onclick="confirmAppointment(${m.appointment.id})" style="background:#8B6F4E; color:#fff; border:none; padding:8px 18px; border-radius:999px; font-weight:700; cursor:pointer; display:block;">Confirm</button></div>`;
-              row.innerHTML = `<div class="msg-bubble"><strong>${escapeHtml(m.content)}</strong>${confirmedHtml}</div>`;
-              container.appendChild(row);
-            } else {
-              addMessage('guidance-messages', escapeHtml(m.content).replace(/\n/g, '<br>'), m.sender === 'user' ? 'user' : 'bot', 'LEAF');
-            }
-          });
-        }
-      });
-    guidanceLoaded = true;
-  }
+  requestGuidance().then(added => {
+    if(added || !guidanceLoaded){
+      guidanceLoaded = true;
+      reloadGuidanceMessages();
+    }
+  });
 });
+
+/* ---------- TALK TO GUIDANCE tooltip: shows what the button does on hover / keyboard focus ---------- */
+(function(){
+  const btn = document.getElementById('btn-guidance');
+  const tip = document.getElementById('guidance-tip');
+  if(!btn || !tip) return;
+  btn.setAttribute('aria-describedby', 'guidance-tip');
+  const hoverCapable = window.matchMedia('(hover: hover)').matches;   // touch screens have no hover
+  let timer = null;
+
+  function place(){
+    const r = btn.getBoundingClientRect();
+    const w = tip.offsetWidth, h = tip.offsetHeight;
+    let left = r.right + 14, top = r.top + r.height / 2 - h / 2;
+    const below = left + w > window.innerWidth - 8;                  // no room beside the button: go under it
+    if(below){ left = Math.max(8, Math.min(r.left, window.innerWidth - w - 8)); top = r.bottom + 10; }
+    top = Math.max(8, Math.min(top, window.innerHeight - h - 8));
+    tip.classList.toggle('below', below);
+    tip.style.left = left + 'px';
+    tip.style.top = top + 'px';
+    tip.style.setProperty('--arrow-y', Math.max(14, Math.min(h - 14, r.top + r.height / 2 - top)) + 'px');
+  }
+  function show(){
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      if(!btn.offsetParent) return;                                  // sidebar is collapsed or hidden
+      tip.hidden = false;                                            // un-hiding restarts the demo animation
+      place();
+      requestAnimationFrame(() => tip.classList.add('show'));
+    }, 250);                                                         // short delay so sweeping past doesn't flash it
+  }
+  function hide(){
+    clearTimeout(timer);
+    tip.classList.remove('show');
+    tip.hidden = true;
+  }
+
+  if(hoverCapable){
+    btn.addEventListener('mouseenter', show);
+    btn.addEventListener('mouseleave', hide);
+  }
+  btn.addEventListener('focus', () => { if(btn.matches(':focus-visible')) show(); });
+  btn.addEventListener('blur', hide);
+  btn.addEventListener('click', hide);
+  document.addEventListener('keydown', e => { if(e.key === 'Escape') hide(); });
+  window.addEventListener('resize', hide);
+})();
 
 function sendGuidanceMessage(){
   const text = guidanceInput.value.trim();
@@ -3046,7 +3181,7 @@ function reloadGuidanceMessages() {
       if (!container) return;
       container.innerHTML = '';
       if(data.messages.length === 0){
-          addMessage('guidance-messages', escapeHtml(m.content).replace(/\n/g, '<br>'), m.sender === 'user' ? 'user' : 'bot', 'LEAF', m.id);
+        addMessage('guidance-messages', "Hi! Send a message here and a Guidance staff member will reply when they can.", 'bot', 'LEAF');
         return;
       }
       data.messages.forEach(m => {
@@ -3105,8 +3240,7 @@ function confirmAppointment(appointmentId){
     method: "POST",
     headers: {"X-CSRFToken": getCookie("csrftoken")},
   }).then(() => {
-    guidanceLoaded = false;
-    document.getElementById('btn-guidance').click();
+    reloadGuidanceMessages();
   });
 }
 

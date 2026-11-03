@@ -96,15 +96,35 @@ def validate_username(value):
 
 
 # -- Blocked words ------------------------------------------------------------
-# Fill these in yourself (English + Tagalog). Keep each word in lowercase letters only.
+# Used for names, nicknames, usernames and email addresses. Keep each word in lowercase letters only.
+#
+# BLOCKED_ANYWHERE: blocked even when buried inside a longer run of letters (so "xxfuckxx" or "f.u.c.k" are caught).
+#   Only put words here that never appear inside a real name or word.
+# BLOCKED_WHOLE: blocked only as a separate word ("Shit" is blocked, "Shitara" and "Essex" are not).
+#   Use this for anything that can sit inside a real name (Chinkee, Fukuda, Kikuchi...).
+#   Note: doubled letters are collapsed before matching, so never add a word like "ass" (it would become "as").
 BLOCKED_ANYWHERE = [
-    "fuck", "bitch", "asshole", "motherfucker", "bullshit", "whore",
-    "putangina", "tangina", "pakyu", "pakshet", "bwisit", "tarantado",
-    "kantot", "jakol", "pekpek", "pokpok", "hitler",
+    # profanity (English)
+    "fuck", "bitch", "asshole", "motherfucker", "bullshit", "whore", "dumbass", "jackass", "cocksucker",
+    "blowjob", "dickhead", "shithead", "shitty", "pedophile", "paedophile", "killyourself",
+    # profanity (Tagalog)
+    "putangina", "tangina", "pakyu", "pakshet", "bwisit", "buwisit", "tarantado", "kantot", "jakol", "pekpek",
+    "pokpok", "punyeta", "hinayupak", "potangina", "kupal", "gunggong",
+    # racist, homophobic, ableist and hateful slurs
+    "nigger", "nigga", "faggot", "wetback", "towelhead", "raghead", "chingchong", "whitetrash", "retarded",
+    # hate figures
+    "hitler",
 ]
 BLOCKED_WHOLE = [
+    # profanity
     "shit", "dick", "cock", "cunt", "pussy", "slut", "penis", "vagina", "dildo", "nazi", "rape", "rapist", "porn", "sex",
+    "fuk", "fuq", "fvck", "fck", "fcuk", "phuck", "phuk", "fuking", "kys", "bastard", "wanker", "twat", "tits", "horny", "milf",
+    "hentai", "orgasm", "masturbate", "molester", "pedo", "anus", "boner", "handjob", "nude", "nudes",
     "gago", "bobo", "tanga", "ulol", "engot", "puta", "puki", "burat", "bayag", "tamod", "hindot", "hayop", "demonyo", "bastos",
+    "pota", "iyot", "ungas",
+    # racist, homophobic, ableist and hateful slurs
+    "fag", "fags", "faggy", "retard", "tranny", "chink", "chinks", "gook", "gooks", "spic", "spick", "kike", "kikes",
+    "paki", "pakis", "beaner", "beaners", "darkie", "darky", "intsik", "bumbay", "heil", "terrorist",
 ]
 
 try:    # optional: pip install better-profanity (test it against real surnames first)
@@ -117,17 +137,22 @@ _LEET = str.maketrans({"0": "o", "1": "i", "3": "e", "4": "a", "5": "s",
                        "7": "t", "8": "b", "9": "g", "@": "a", "$": "s", "!": "i", "+": "t"})
 
 
-def _fold(value):
+def _plain(value):
+    """Lowercase, accents removed."""
     text = unicodedata.normalize("NFKD", str(value or "")).lower()
-    text = "".join(ch for ch in text if not unicodedata.combining(ch))
-    return text.translate(_LEET)
+    return "".join(ch for ch in text if not unicodedata.combining(ch))
+
+
+def _fold(value):
+    """Like _plain, and swaps look-alike symbols for letters (f4ck -> fack, $hit -> shit)."""
+    return _plain(value).translate(_LEET)
 
 
 def _collapse(word):
     return re.sub(r"(.)\1+", r"\1", word)
 
 
-# "n+i+g+..." so stretched spellings (niiigger) are caught too
+# "n+i+g+...", so stretched spellings (niiigger) are caught too
 _ANYWHERE = [re.compile("".join(re.escape(c) + "+" for c in w)) for w in BLOCKED_ANYWHERE]
 _WHOLE = {_collapse(w) for w in BLOCKED_WHOLE}
 
@@ -135,9 +160,31 @@ _WHOLE = {_collapse(w) for w in BLOCKED_WHOLE}
 def has_blocked_term(value):
     """True if the text contains an offensive word, even with symbols, spaces or repeated letters."""
     words = re.findall(r"[a-z]+", _fold(value))
+    # The same words read without the symbol swaps, so "dick123" or "sex!" are still seen as "dick" and "sex"
+    # (the swaps would turn them into "dicki" and "sexi").
+    plain_words = re.findall(r"[a-z]+", _plain(value))
     joined = "".join(words)
     if any(p.search(joined) for p in _ANYWHERE):
         return True
-    if any(_collapse(w) in _WHOLE for w in words):
+    if any(_collapse(w) in _WHOLE for w in words + plain_words):
         return True
     return bool(_profanity and _profanity.contains_profanity(" ".join(words)))
+
+
+# -- Email addresses ------------------------------------------------------------
+EMAIL_BLOCKED_MESSAGE = "Please use a different email address."
+
+
+def email_has_blocked_term(email):
+    """True if an email address contains an offensive word, in the part before the @ or in the domain."""
+    text = str(email or "").strip()
+    local, at, domain = text.rpartition("@")
+    if not at:
+        local, domain = text, ""
+    return has_blocked_term(local) or has_blocked_term(domain)
+
+
+def validate_email_wording(email):
+    """Return an error message if the email address contains offensive wording, otherwise None.
+    (Whether the address is well formed is checked separately, with Django's validate_email.)"""
+    return EMAIL_BLOCKED_MESSAGE if email_has_blocked_term(email) else None
