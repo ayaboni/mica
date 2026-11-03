@@ -82,10 +82,9 @@
   object-fit: contain;
 }
 
-html[data-theme="dark"] .intro-gif {
-  filter: invert(1) hue-rotate(180deg) brightness(1.15);
-  mix-blend-mode: lighten;
-}
+.intro-gif--dark{display:none;}
+html[data-theme="dark"] .intro-gif--light{display:none;}
+html[data-theme="dark"] .intro-gif--dark{display:block;}
 
 .intro-title {
   font-size: clamp(1.6rem, 3.6vw, 2.4rem);
@@ -318,7 +317,8 @@ html[data-theme="dark"] .features-dot:not(.is-active) { background: var(--line);
 <!-- ============================= INTRO TEXT ============================= -->
 <section class="intro">
   <div class="container intro-inner reveal">
-    <img src="{% static 'core/images/mental-health.gif' %}" alt="Mental health icon" class="intro-gif">
+    <img src="{% static 'core/images/mental-health.gif' %}" alt="Mental health icon" class="intro-gif intro-gif--light">
+    <img src="{% static 'core/images/mental-health-dark.gif' %}" alt="" aria-hidden="true" class="intro-gif intro-gif--dark">
     <h2 class="intro-title">An AI Powered Website for Monitoring Mental Health of College Students</h2>
   </div>
 </section>
