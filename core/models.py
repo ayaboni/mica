@@ -170,6 +170,8 @@ class UserProfile(models.Model):
     course = models.CharField(max_length=50, blank=True)
     year_level = models.CharField(max_length=10, blank=True)
     nickname = models.CharField(max_length=50, blank=True, null=True)
+    # Optional. Students can add it at registration or later in account settings.
+    birthday = models.DateField(null=True, blank=True)
     contact_number = models.CharField(max_length=20, blank=True, null=True)
     emergency_contact_name = models.CharField(max_length=100, blank=True, null=True)
     emergency_contact_number = models.CharField(max_length=20, blank=True, null=True)

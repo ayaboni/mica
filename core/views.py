@@ -35,7 +35,8 @@ from .net import client_ip
 from .name_validation import (EMERGENCY_NAME_MAX_LENGTH, NAME_MAX_LENGTH, NICKNAME_MAX_LENGTH, normalize_name,
                               sanitize_person_name,
                               validate_person_name, validate_person_names, validate_phone_number,
-                              validate_username, has_blocked_term, validate_email_wording)
+                              validate_username, has_blocked_term, validate_email_wording,
+                              validate_birthday, birthday_bounds)
 from .models import LoginVerification
 from .models import PasswordResetRequest
 from .models import SiteSettings
@@ -284,6 +285,12 @@ def google_register(request):
 YEAR_LEVEL_CHOICES = YEAR_LEVELS
 
 
+def _birthday_picker_bounds():
+    """ISO min/max for the birthday date pickers (the server re-checks; this only guides the browser)."""
+    earliest, latest = birthday_bounds(timezone.localdate())
+    return earliest.isoformat(), latest.isoformat()
+
+
 def _needs_profile_setup(user):
     return UserProfile.objects.filter(user=user, needs_profile_setup=True).exists()
 
@@ -302,11 +309,14 @@ def complete_profile(request):
         "year_level": profile.year_level,
         "username": "",
     }
+    birthday_text = profile.birthday.isoformat() if profile.birthday else ""   # optional, so not in `form`
     error = None
 
     if request.method == "POST":
         for key in form:
             form[key] = request.POST.get(key, "").strip()
+        birthday_text = request.POST.get("birthday", "").strip()
+        birthday, birthday_problem = validate_birthday(birthday_text, timezone.localdate())
         form["first_name"] = normalize_name(form["first_name"])
         form["last_name"] = normalize_name(form["last_name"])
 
@@ -318,6 +328,8 @@ def complete_profile(request):
             error = student_number_problem(form["student_number"])
         elif form["course"] not in dict(get_courses()) or form["year_level"] not in dict(YEAR_LEVEL_CHOICES):
             error = "Please choose a valid course and year level."
+        elif birthday_problem:
+            error = birthday_problem
         else:
             error = validate_username(form["username"])
             if error is None:
@@ -339,6 +351,7 @@ def complete_profile(request):
                     profile.student_number = form["student_number"]
                     profile.course = form["course"]
                     profile.year_level = form["year_level"]
+                    profile.birthday = birthday
                     profile.needs_profile_setup = False
                     profile.save()
             except IntegrityError:
@@ -346,8 +359,10 @@ def complete_profile(request):
             else:
                 return redirect('assessment')
 
+    birthday_min, birthday_max = _birthday_picker_bounds()
     return render(request, 'core/complete-profile.html', {
-        "form": form,
+        "form": {**form, "birthday": birthday_text},
+        "birthday_min": birthday_min, "birthday_max": birthday_max,
         "error": error,
         "email": request.user.email,
         "courses": get_courses(),
@@ -496,9 +511,11 @@ class _CodeGone(Exception):
 
 def _register_page(request, **extra):
     code = regcodes.session_code(request)
+    birthday_min, birthday_max = _birthday_picker_bounds()
     ctx = {"courses": get_courses(),
            "course_groups": get_course_groups(),
            "year_levels": YEAR_LEVELS,
+           "birthday_min": birthday_min, "birthday_max": birthday_max,
            "code_ok": code is not None,
            "code_audience": code.audience if code else "",
            "staff_role": regcodes.staff_role_name(code) if code and code.audience == "staff" else "",
@@ -625,10 +642,12 @@ def register(request):
         email = request.POST.get("email", "").strip()
         password = request.POST.get("password")
         confirm_password = request.POST.get("confirm_password")
+        birthday_text = request.POST.get("birthday", "").strip()      # optional
 
         # Everything except the passwords is sent back to the form after an error.
         form = {"first_name": first_name, "last_name": last_name, "student_number": student_number,
-                "course": course or "", "year_level": year_level or "", "username": username, "email": email}
+                "course": course or "", "year_level": year_level or "", "username": username, "email": email,
+                "birthday": birthday_text}
 
         def fail(text):
             messages.error(request, text)
@@ -651,6 +670,10 @@ def register(request):
 
         if course not in dict(get_courses()) or year_level not in dict(YEAR_LEVEL_CHOICES):
             return fail("Please choose a valid course and year level.")
+
+        birthday, birthday_problem = validate_birthday(birthday_text, timezone.localdate())
+        if birthday_problem:
+            return fail(birthday_problem)
 
         problem = _enrollment_check(student_number, last_name)
         if problem:
@@ -688,6 +711,7 @@ def register(request):
                     student_number=student_number,
                     course=course,
                     year_level=year_level,
+                    birthday=birthday,
                     **regcodes.profile_fields(reg_code),
                 )
                 needs_confirmation = reg_code.kind == "shared"
@@ -1906,6 +1930,14 @@ def _clean_profile_settings(post, profile):
         if value != (getattr(profile, field) or "") and check(value):
             return None, check(value)
         values[field] = value
+
+    if "birthday" in post:
+        # Optional; blank clears it. Like the fields above, a value that is already saved is never
+        # re-judged, so only a changed birthday has to pass the range check.
+        birthday, problem = validate_birthday(post.get("birthday"), timezone.localdate())
+        if problem and (birthday is None or birthday != profile.birthday):
+            return None, problem
+        values["birthday"] = birthday
     return values, None
 
 
@@ -1973,11 +2005,13 @@ def account_settings(request):
         messages.success(request, "Your settings have been updated.")
         return redirect('account_settings')
 
+    birthday_min, birthday_max = _birthday_picker_bounds()
     return render(request, 'core/account-settings.html', {
         'my_avatar_url': _avatar_url(request.user),
         'avatar_locked': not can_set_avatar(request.user),
         'profile': profile, 'courses': get_courses(), 'course_groups': get_course_groups(), 'year_levels': YEAR_LEVELS,
         'has_password': request.user.has_usable_password(),
+        'birthday_min': birthday_min, 'birthday_max': birthday_max,
     })
 
 

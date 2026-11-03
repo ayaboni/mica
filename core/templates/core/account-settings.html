@@ -38,67 +38,89 @@
 
       {% include 'core/_my_photo_field.html' %}
 
-      <div class="two-col">
-        <div class="auth-field">
-          <label class="set-label" for="first_name">First name</label>
-          <input type="text" id="first_name" name="first_name" value="{{ request.user.first_name }}">
+      <section class="set-section set-section--first">
+        <h3 class="set-title">About you</h3>
+        <p class="set-sub">How you appear in MICA, and how Mica greets you.</p>
+        <div class="set-grid">
+          <div class="auth-field">
+            <label class="set-label" for="first_name">First name</label>
+            <input type="text" id="first_name" name="first_name" value="{{ request.user.first_name }}">
+          </div>
+          <div class="auth-field">
+            <label class="set-label" for="last_name">Last name</label>
+            <input type="text" id="last_name" name="last_name" value="{{ request.user.last_name }}">
+          </div>
+          <div class="auth-field">
+            <label class="set-label" for="nickname">Nickname</label>
+            <input type="text" id="nickname" name="nickname" maxlength="50" value="{{ profile.nickname|default:'' }}" placeholder="What should Mica call you?">
+          </div>
+          <div class="auth-field">
+            <label class="set-label" for="birthday">Birthday <span class="set-optional">(optional)</span></label>
+            <input type="date" id="birthday" name="birthday" value="{{ profile.birthday|date:'Y-m-d' }}" min="{{ birthday_min }}" max="{{ birthday_max }}" autocomplete="bday">
+          </div>
         </div>
-        <div class="auth-field">
-          <label class="set-label" for="last_name">Last name</label>
-          <input type="text" id="last_name" name="last_name" value="{{ request.user.last_name }}">
+      </section>
+
+      <section class="set-section">
+        <h3 class="set-title">Sign-in</h3>
+        <div class="set-grid">
+          <div class="auth-field">
+            <label class="set-label" for="username">Username</label>
+            <input type="text" id="username" name="username" value="{{ request.user.username }}">
+          </div>
+          <div class="auth-field">
+            <label class="set-label" for="email">Email</label>
+            <input type="email" id="email" value="{{ request.user.email }}" disabled>
+            <a class="text-link" href="{% url 'change_email' %}">Change email</a>
+          </div>
         </div>
-      </div>
+      </section>
 
-      <div class="auth-field">
-        <label class="set-label" for="nickname">Nickname</label>
-        <input type="text" id="nickname" name="nickname" maxlength="50" value="{{ profile.nickname|default:'' }}" placeholder="What should Mica call you?">
-      </div>
-
-      <div class="two-col">
-        <div class="auth-field">
-          <label class="set-label" for="username">Username</label>
-          <input type="text" id="username" name="username" value="{{ request.user.username }}">
+      <section class="set-section">
+        <h3 class="set-title">School</h3>
+        <div class="set-grid">
+          <div class="auth-field">
+            <label class="set-label" for="student_number">Student number</label>
+            <input type="text" id="student_number" value="{{ profile.student_number }}" disabled>
+          </div>
+          <div class="auth-field">
+            <label class="set-label" for="year_level">Year level</label>
+            <select id="year_level" name="year_level">
+              {% for code, label in year_levels %}
+                <option value="{{ code }}" {% if profile.year_level == code %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
         </div>
-        <div class="auth-field">
-          <label class="set-label" for="email">Email</label>
-          <input type="email" id="email" value="{{ request.user.email }}" disabled>
-          <a class="text-link" href="{% url 'change_email' %}">Change email</a>
+        <div class="set-grid set-grid--stack">
+          {% include 'core/_course_picker.html' with selected_course=profile.course labels=True %}
         </div>
-      </div>
+      </section>
 
-      <div class="auth-field">
-        <label class="set-label" for="student_number">Student number</label>
-        <input type="text" id="student_number" value="{{ profile.student_number }}" disabled>
-      </div>
-
-      {% include 'core/_course_picker.html' with selected_course=profile.course labels=True %}
-
-      <div class="auth-field">
-        <label class="set-label" for="year_level">Year level</label>
-        <select id="year_level" name="year_level">
-          {% for code, label in year_levels %}
-            <option value="{{ code }}" {% if profile.year_level == code %}selected{% endif %}>{{ label }}</option>
-          {% endfor %}
-        </select>
-      </div>
-
-      <div class="auth-field">
-        <label class="set-label" for="contact_number">Contact number</label>
-        <input type="text" id="contact_number" name="contact_number" maxlength="20" value="{{ profile.contact_number|default:'' }}">
-      </div>
-
-      <div class="two-col">
-        <div class="auth-field">
-          <label class="set-label" for="ec_name">Emergency contact name</label>
-          <input type="text" id="ec_name" name="emergency_contact_name" maxlength="100" value="{{ profile.emergency_contact_name|default:'' }}">
+      <section class="set-section">
+        <h3 class="set-title">Contact</h3>
+        <div class="set-grid">
+          <div class="auth-field">
+            <label class="set-label" for="contact_number">Contact number</label>
+            <input type="text" id="contact_number" name="contact_number" maxlength="20" value="{{ profile.contact_number|default:'' }}">
+          </div>
         </div>
-        <div class="auth-field">
-          <label class="set-label" for="ec_number">Emergency contact number</label>
-          <input type="text" id="ec_number" name="emergency_contact_number" maxlength="20" value="{{ profile.emergency_contact_number|default:'' }}">
+        <h4 class="set-subtitle">Emergency contact</h4>
+        <div class="set-grid">
+          <div class="auth-field">
+            <label class="set-label" for="ec_name">Name</label>
+            <input type="text" id="ec_name" name="emergency_contact_name" maxlength="100" value="{{ profile.emergency_contact_name|default:'' }}">
+          </div>
+          <div class="auth-field">
+            <label class="set-label" for="ec_number">Number</label>
+            <input type="text" id="ec_number" name="emergency_contact_number" maxlength="20" value="{{ profile.emergency_contact_number|default:'' }}">
+          </div>
         </div>
-      </div>
-      <p class="set-note" style="margin-top:-6px;">Only authorized Guidance staff can see this, and only when it's needed.</p>
+        <p class="set-note">Only authorized Guidance staff can see this, and only when it's needed.</p>
+      </section>
 
+      <section class="set-section">
+      <h3 class="set-title">Your account</h3>
       {% if profile.verification_status == 'unverified' or profile.verification_status == 'verified' %}
       <div class="sub-card" id="verificationCard">
         <div class="sub-card-head">
@@ -141,16 +163,19 @@
         <p>Want a refresher? Replay the quick tour of your dashboard. The Mood Diary tour will play again the next time you open it.</p>
         <button type="submit" form="tutorialResetForm" class="btn btn-brown btn-sm">Replay tutorial</button>
       </div>
+      </section>
 
-      <h3>Sharing with Guidance (optional)</h3>
-      <label class="check-row">
-        <input type="checkbox" name="share_mica_topics" {% if profile.share_mica_topics %}checked{% endif %}>
-        <span>Share short topic tags from my chats with Mica. Guidance never sees my messages.</span>
-      </label>
-      <a class="text-link" href="{% url 'consent_review' %}">Read the privacy and consent form again</a>
+      <section class="set-section">
+        <h3 class="set-title">Sharing with Guidance <span class="set-optional">(optional)</span></h3>
+        <label class="check-row">
+          <input type="checkbox" name="share_mica_topics" {% if profile.share_mica_topics %}checked{% endif %}>
+          <span>Share short topic tags from my chats with Mica. Guidance never sees my messages.</span>
+        </label>
+        <a class="text-link" href="{% url 'consent_review' %}">Read the privacy and consent form again</a>
+      </section>
 
       {% if not has_password %}
-        <p class="set-note" style="margin-top:22px;">You sign in with Google. Create a password too, so you can sign in with your username (<strong>{{ request.user.username }}</strong>) and password if your Google account can't be reached.</p>
+        <p class="set-note set-note--block">You sign in with Google. Create a password too, so you can sign in with your username (<strong>{{ request.user.username }}</strong>) and password if your Google account can't be reached.</p>
       {% endif %}
 
       <div class="form-actions">
@@ -161,7 +186,7 @@
 
     <form id="tutorialResetForm" method="post" action="{% url 'tutorial_reset' %}">{% csrf_token %}</form>
 
-    <div class="form-card" id="deactivateCard" style="margin-top:20px;">
+    <div class="form-card form-card--spaced" id="deactivateCard">
       <div class="sub-card-head">
         <h3>Deactivate my account</h3>
       </div>

@@ -105,6 +105,11 @@
             <input type="email" id="regEmail" name="email" placeholder="Email" value="{{ form.email }}" required>
           </div>
 
+          <div class="auth-field auth-field--date">
+            <label class="field-hint" for="birthday">Birthday <span>(optional)</span></label>
+            <input type="date" id="birthday" name="birthday" value="{{ form.birthday }}" min="{{ birthday_min }}" max="{{ birthday_max }}" autocomplete="bday">
+          </div>
+
           <div class="two-col">
             <div class="auth-field"><input type="password" id="regPassword" name="password" placeholder="Password" autocomplete="new-password" required></div>
             <div class="auth-field"><input type="password" id="confirmPassword" name="confirm_password" placeholder="Confirm Password" autocomplete="new-password" required></div>

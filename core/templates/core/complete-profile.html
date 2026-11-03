@@ -42,6 +42,11 @@
           </select>
         </div>
 
+        <div class="auth-field auth-field--date">
+          <label class="field-hint" for="birthday">Birthday <span>(optional)</span></label>
+          <input type="date" id="birthday" name="birthday" value="{{ form.birthday }}" min="{{ birthday_min }}" max="{{ birthday_max }}" autocomplete="bday">
+        </div>
+
         <div class="auth-field"><input type="text" name="username" placeholder="Username" title="3–30 characters: English letters, numbers, dots, dashes or underscores" maxlength="30" pattern="[A-Za-z0-9][A-Za-z0-9._\-]{2,29}" value="{{ form.username }}" autocomplete="username" autofocus required></div>
 
         <button type="submit" class="btn btn-brown btn-block">Continue</button>

@@ -8,6 +8,7 @@ It deliberately rejects < > " & / \\ ` { } digits, emoji, control and zero-width
 This is defence in depth: the dashboards also escape names when rendering.
 No Django imports on purpose, so it can be unit-tested on its own.
 """
+import datetime
 import re
 import unicodedata
 
@@ -68,6 +69,46 @@ def validate_phone_number(value, label="phone number", required=False, max_lengt
     if sum(ch.isdigit() for ch in text) < 7:
         return "Your %s looks too short." % label
     return None
+
+
+# -- Birthdays ---------------------------------------------------------------
+# Optional everywhere. The browser's date picker sends YYYY-MM-DD; that is the only format accepted.
+BIRTHDAY_MIN_AGE = 10          # younger than this is almost certainly a typo
+BIRTHDAY_MAX_AGE = 100
+_BIRTHDAY_FORMAT = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+BIRTHDAY_PROBLEM = "Please check your birthday: that date doesn't look right."
+
+
+def _years_before(day, years):
+    try:
+        return day.replace(year=day.year - years)
+    except ValueError:              # 29 February in a non-leap year
+        return day.replace(year=day.year - years, day=28)
+
+
+def birthday_bounds(today=None):
+    """(earliest, latest) allowed birthdays as dates, for the date picker's min/max and the checks."""
+    today = today or datetime.date.today()
+    return _years_before(today, BIRTHDAY_MAX_AGE), _years_before(today, BIRTHDAY_MIN_AGE)
+
+
+def validate_birthday(value, today=None):
+    """Return (date, None) for a good birthday, (None, None) for blank (it is optional), or
+    (date_or_None, message) for a bad one. The date is only filled in when the text was a real date
+    that is out of range, so a caller can let an already-saved old value through unchanged."""
+    text = str(value or "").strip()
+    if not text:
+        return None, None
+    if not _BIRTHDAY_FORMAT.match(text):
+        return None, BIRTHDAY_PROBLEM
+    try:
+        day = datetime.date.fromisoformat(text)
+    except ValueError:
+        return None, BIRTHDAY_PROBLEM
+    earliest, latest = birthday_bounds(today)
+    if day < earliest or day > latest:
+        return day, BIRTHDAY_PROBLEM
+    return day, None
 
 
 def sanitize_person_name(value):

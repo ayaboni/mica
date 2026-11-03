@@ -660,7 +660,7 @@ html.dyslexia .code-input { letter-spacing: .35em; }
 .nav-tools { display: flex; align-items: center; gap: 4px; }
 
 /* ---------- account settings ---------- */
-.onboard-inner--narrow { max-width: 680px; }
+.onboard-inner--narrow { max-width: 720px; }
 
 .set-label { display: block; font-weight: 700; font-size: .88rem; color: var(--ink); margin: 0 0 6px; }
 .set-note  { font-size: .82rem; line-height: 1.5; margin: 6px 0 0; }
@@ -737,4 +737,38 @@ html[data-theme="dark"] .flash.error   { background: #4D3033; color: #ffb4b0; }
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+/* ---------- birthday (date inputs) ---------- */
+.field-hint { display: block; font-size: .78rem; font-weight: 600; color: var(--ink-soft); margin: 0 0 5px 4px; }
+.field-hint span, .set-optional { font-weight: 400; opacity: .75; }
+.auth-field input[type="date"] {
+  appearance: none; -webkit-appearance: none;
+  min-height: 46px; text-align: left;
+}
+.auth-field input[type="date"]::-webkit-date-and-time-value { text-align: left; }
+.auth-field input[type="date"]::-webkit-calendar-picker-indicator { cursor: pointer; opacity: .65; }
+.auth-field input[type="date"]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
+html[data-theme="dark"] .auth-field input[type="date"] { color-scheme: dark; }
+.booklet--compact .auth-field input[type="date"] { min-height: 42px; }
+
+/* ---------- account settings: roomier, grouped layout ---------- */
+.form-card--spaced { margin-top: 24px; }
+.set-section { margin-top: 34px; padding-top: 26px; border-top: 1px solid rgba(127,127,127,.22); }
+.set-section--first { margin-top: 8px; padding-top: 0; border-top: 0; }
+.form-card .set-title { font-size: 1.12rem; margin: 0 0 4px; }
+.form-card .set-title:not(:first-child) { margin-top: 0; }
+.form-card .set-sub { font-size: .86rem; line-height: 1.5; margin: 0 0 16px; opacity: .85; }
+.set-section > .set-title + .set-grid { margin-top: 14px; }
+.set-subtitle { font-size: .92rem; font-weight: 700; margin: 22px 0 12px; color: var(--ink); }
+.set-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 20px; align-items: start; }
+.set-grid .auth-field { margin-bottom: 0; min-width: 0; }
+.set-grid--stack { grid-template-columns: 1fr; margin-top: 18px; }
+.set-note--block { margin-top: 26px; }
+.form-card .set-note { font-size: .82rem; }
+.set-section .set-note { margin-top: 14px; }
+.form-card .form-actions { margin-top: 34px; padding-top: 22px; border-top: 1px solid rgba(127,127,127,.22); }
+@media (max-width: 560px) {
+  .set-grid { grid-template-columns: 1fr; gap: 16px; }
+  .set-section { margin-top: 28px; padding-top: 22px; }
 }
