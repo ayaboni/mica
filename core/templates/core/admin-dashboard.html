@@ -2889,7 +2889,7 @@ function notifItemHtml(n){
       <button class="notif-item ${n.read ? '' : 'unread'}" onclick="openNotif(${Number(n.id)})">
         <span class="notif-ico">${NOTIF_ICON[n.kind] || '🔔'}</span>
         <span class="notif-body">
-          <span class="notif-text">${esc(.text)}</span>
+          <span class="notif-text">${esc(n.text)}</span>
           <span class="notif-time">${notifAgo(n.created_at)}</span>
         </span>
         <span class="notif-dot"></span>
