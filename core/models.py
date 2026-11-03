@@ -19,6 +19,8 @@ STATUS_REASONS = [
     ("transferred", "Transferred"),
     ("graduated", "Graduated"),
     ("other", "Other"),
+    # Never offered to staff: only set when a student deactivates their own account.
+    ("self_deactivated", "Deactivated by the student"),
 ]
 
 VERIFICATION_STATUS = [
@@ -194,6 +196,10 @@ class UserProfile(models.Model):
     account_status = models.CharField(max_length=10, choices=ACCOUNT_STATUS, default='active', db_index=True)
     status_reason = models.CharField(max_length=20, choices=STATUS_REASONS, blank=True)
     status_changed_at = models.DateTimeField(null=True, blank=True)
+    # True only while the account is archived because the STUDENT deactivated it themselves (and
+    # staff haven't touched it since). That is the one kind of archive a sign-in undoes. Every
+    # staff archive/reactivate clears it, so a staff archive can never be undone by signing in.
+    self_deactivated = models.BooleanField(default=False)
     affirmations_seeded = models.BooleanField(default=False)
     dark_mode = models.BooleanField(default=False)
     # Accounts made with a shared term code start "unverified": the student can use MICA, but is

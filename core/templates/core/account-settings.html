@@ -161,6 +161,34 @@
 
     <form id="tutorialResetForm" method="post" action="{% url 'tutorial_reset' %}">{% csrf_token %}</form>
 
+    <div class="form-card" id="deactivateCard" style="margin-top:20px;">
+      <div class="sub-card-head">
+        <h3>Deactivate my account</h3>
+      </div>
+      <p class="set-note">Taking a break from MICA? Deactivating signs you out and archives your account. Nothing is deleted, and your upcoming Guidance appointments are cancelled. Sign in again whenever you like and your account comes back right away.</p>
+      <details>
+        <summary class="text-link" style="cursor:pointer;">I want to deactivate my account</summary>
+        <form method="post" action="{% url 'account_deactivate' %}" style="margin-top:14px;"
+              onsubmit="return confirm('Deactivate your account? You will be signed out.');">
+          {% csrf_token %}
+          {% if has_password %}
+          <div class="auth-field">
+            <label class="set-label" for="deactivate_password">Enter your password to confirm</label>
+            <input type="password" id="deactivate_password" name="password" autocomplete="current-password" required>
+          </div>
+          {% else %}
+          <div class="auth-field">
+            <label class="set-label" for="deactivate_text">Type DEACTIVATE to confirm</label>
+            <input type="text" id="deactivate_text" name="confirm_text" autocomplete="off" required>
+          </div>
+          {% endif %}
+          <div class="form-actions">
+            <button type="submit" class="btn btn-outline">Deactivate my account</button>
+          </div>
+        </form>
+      </details>
+    </div>
+
   </div>
 </section>
 

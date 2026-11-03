@@ -37,6 +37,7 @@ urlpatterns = [
     path('consent/review/', views.consent_review, name='consent_review'),
     path('assessment/', views.assessment_questionnaire, name='assessment'),
     path('account/settings/', views.account_settings, name='account_settings'),
+    path('account/deactivate/', views.account_deactivate, name='account_deactivate'),
     path('account/email/', views.change_email, name='change_email'),
     path('api/mood/', views.api_mood_month, name='api_mood_month'),
     path('api/mood/save/', views.api_mood_save, name='api_mood_save'),

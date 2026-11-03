@@ -48,6 +48,7 @@ from .verification import visible_students, all_students, can_set_avatar, AVATAR
 from .models import SignInFailure
 from . import firebase_reset
 from . import twofactor
+from . import self_deactivation
 from urllib.parse import urlencode
 from .models import StaffProfile, StaffSubclass, AuditEvent
 from .permissions import can, require_perm, staff_permissions, SERVICE_KEYS
@@ -249,7 +250,7 @@ def google_register(request):
     if user.is_staff or user.is_superuser:
         return JsonResponse({"error": "Google sign-in is not available for this account."}, status=403)
 
-    if profile.account_status != "active":
+    if self_deactivation.blocks_sign_in(profile):
         hl = get_hotlines()[0]
         return JsonResponse({
             "error": "This account is archived. Please visit the Guidance Office to reactivate it. "
@@ -1219,7 +1220,7 @@ def login(request):
         if user is not None:
             LoginThrottle.objects.filter(username_key=throttle_key).delete()
             profile = UserProfile.objects.filter(user=user).first()
-            if (profile and profile.account_status != "active"
+            if (self_deactivation.blocks_sign_in(profile)
                     and not (user.is_staff or user.is_superuser)):
                 messages.error(request, "This account is archived. Please visit the Guidance Office to reactivate it.")
                 return render(request, 'core/login.html', {'archived_blocked': True}, status=403)
@@ -1279,7 +1280,8 @@ def archived(request):
     profile = get_profile(request.user)
     if request.user.is_staff or request.user.is_superuser or profile.account_status == "active":
         return redirect('student_dashboard')
-    return render(request, 'core/archived.html')
+    return render(request, 'core/archived.html',
+                  {'self_deactivated': self_deactivation.is_self_deactivated(profile)})
 
 
 CONSENT_VERSION = "1.2"
@@ -1977,6 +1979,38 @@ def account_settings(request):
         'profile': profile, 'courses': get_courses(), 'course_groups': get_course_groups(), 'year_levels': YEAR_LEVELS,
         'has_password': request.user.has_usable_password(),
     })
+
+
+@never_cache
+@login_required(login_url='login')
+@require_POST
+def account_deactivate(request):
+    """A student deactivates their own account. It becomes archived (staff see it as archived,
+    reason "Deactivated by the student"); signing in again reactivates it. See
+    core/self_deactivation.py for the rules that keep this from bypassing a staff archive."""
+    if request.user.is_staff or request.user.is_superuser:
+        return redirect('account_settings')
+
+    # Confirm it's really them: the password, or for Google-only accounts the word DEACTIVATE.
+    if request.user.has_usable_password():
+        if not request.user.check_password(request.POST.get('password') or ''):
+            messages.error(request, "That password isn't right, so your account was not deactivated.")
+            return redirect('account_settings')
+    elif (request.POST.get('confirm_text') or '').strip().upper() != 'DEACTIVATE':
+        messages.error(request, "Type DEACTIVATE to confirm. Your account was not deactivated.")
+        return redirect('account_settings')
+
+    result = self_deactivation.deactivate(request.user)
+    if result == self_deactivation.OPEN_ALERT:
+        messages.error(request, "We can't deactivate your account right now. Please talk to the "
+                                "Guidance Office first, they will help you with what is open.")
+        return redirect('account_settings')
+    if result != self_deactivation.OK:
+        return redirect('account_settings')
+
+    auth_logout(request)
+    messages.success(request, "Your account is deactivated. Sign in again whenever you want to come back.")
+    return redirect('login')
 
 
 # ---- Chatbot safety layer ----
@@ -4335,7 +4369,7 @@ def staff_student_status(request, student_id):
         reason = "graduated"
     elif new_status == "active":
         reason = ""
-    elif reason not in dict(STATUS_REASONS) or reason == "graduated":
+    elif reason not in dict(STATUS_REASONS) or reason in ("graduated", "self_deactivated"):
         return JsonResponse({"error": "Please choose a reason."}, status=400)
     if reason == "other" and not note:
         return JsonResponse({"error": "Please describe the reason."}, status=400)
@@ -4371,7 +4405,10 @@ def staff_student_status(request, student_id):
         profile.account_status = new_status
         profile.status_reason = reason
         profile.status_changed_at = timezone.now()
-        profile.save(update_fields=["account_status", "status_reason", "status_changed_at"])
+        # Whatever staff decide, the account is now theirs: signing in must not undo it.
+        profile.self_deactivated = False
+        profile.save(update_fields=["account_status", "status_reason", "status_changed_at",
+                                    "self_deactivated"])
         StudentStatusLog.objects.create(
             student=student, changed_by=request.user,
             old_status=old_status, new_status=new_status, reason=reason,

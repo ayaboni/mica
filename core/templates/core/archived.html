@@ -13,8 +13,13 @@
   <div class="onboard-inner onboard-inner--narrow">
 
     <header class="onboard-head">
+      {% if self_deactivated %}
+      <h1>Your MICA account is deactivated</h1>
+      <p>You deactivated this account. Your records are kept safe. To come back, sign out and then sign in again, your account will be reactivated right away.</p>
+      {% else %}
       <h1>Your MICA account is archived</h1>
       <p>Your records are kept safe. To use MICA again, please visit the Guidance Office so they can reactivate your account.</p>
+      {% endif %}
     </header>
 
     <article class="info-card" style="--card-bg: var(--card-pink);">

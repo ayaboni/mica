@@ -599,6 +599,8 @@ def _audit_role(u):
         return "-"
     if u.is_superuser:
         return "System Admin"
+    if not u.is_staff:
+        return "Student"      # e.g. a student deactivating, or reactivating, their own account
     sp = getattr(u, "staff_profile", None)
     return sp.role_label if sp else "Guidance Staff"
 
