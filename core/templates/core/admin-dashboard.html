@@ -82,10 +82,10 @@
   .field input:focus, .field select:focus{outline:none; border-color:var(--sage-deep);}
 
   /* ---------- Shell ---------- */
-  #adminShell{display:flex; min-height:100vh; overflow:hidden;}
+  #adminShell{display:flex; min-height:100vh; min-height:100dvh; overflow:hidden;}
   .sidebar{
   width:264px; flex-shrink:0; background:var(--sage); color:var(--brown-deep);
-  display:flex; flex-direction:column; height:100vh; overflow-y:auto; overflow-x:hidden;
+  display:flex; flex-direction:column; height:100vh; height:100dvh; overflow-y:auto; overflow-x:hidden;
   transition:width .25s ease, opacity .25s ease;
   }
   body.dark .sidebar{background:#233024;}
@@ -135,7 +135,7 @@
   body.dark .admin-chip{ background:rgba(255,255,255,.1); }
   body.dark .logout-btn:hover{ background:rgba(255,255,255,.14); }
 
-  .main{flex:1; min-width:0; height:100vh; overflow-y:auto; display:flex; flex-direction:column;}
+  .main{flex:1; min-width:0; height:100vh; height:100dvh; overflow-y:auto; display:flex; flex-direction:column;}
   .topbar{
     display:flex; align-items:center; justify-content:space-between; padding:18px 34px;
     background:var(--sage-deep); flex-shrink:0; z-index:20;
@@ -610,6 +610,7 @@
                 <option value="inactive">Archived</option>
                 <option value="graduated">Graduated</option>
                 <option value="unverified">Unverified (awaiting Guidance)</option>
+                <option value="rejected">Invalid / deactivated</option>
               </select>
               <select class="filter-select" id="stuCourse" onchange="stuFiltersChanged()"><option value="">All courses</option></select>
             </div>
@@ -1159,6 +1160,9 @@
         <button class="pill-btn ghost sm" id="stuUnlockBtn" onclick="unlockStudent()">Unlock login</button>
       </div>
       <p id="stuSignInNote" style="font-size:12px; color:var(--ink-soft); margin-top:10px;"></p>
+      <h3 style="font-size:14px; margin:26px 0 10px;">Account validity</h3>
+      <p id="stuInvalidNote" style="font-size:12px; color:var(--ink-soft); margin-bottom:10px;"></p>
+      <button class="pill-btn ghost sm" id="stuInvalidBtn" onclick="toggleStudentInvalid()">Mark as invalid</button>
     </div>
   </div>
 </div>
@@ -1768,6 +1772,11 @@ function openStudentModal(id){
     !s.has_password ? 'This student signs in with Google, so there is no password to reset.'
     : (s.locked ? 'This login is locked after too many wrong passwords.' : '');
   document.getElementById('stuModalOverlay').classList.add('active');
+  const bad = s.verification === 'rejected';
+  document.getElementById('stuInvalidBtn').textContent = bad ? 'Restore account' : 'Mark as invalid';
+  document.getElementById('stuInvalidNote').textContent = bad
+    ? 'This account is invalid: the student cannot sign in and Guidance cannot see them.'
+    : 'For fake or troll accounts. Blocks sign-in and hides the student from Guidance. Their data is kept.';
 }
 
 function syncStuAction(){
@@ -1817,6 +1826,17 @@ function resetStudentPassword(){
   const s = activeStu;
   api('/api/admin/students/' + s.id + '/reset-password/', {}).then(r=>{
     showToast(r.ok ? 'Reset link sent to ' + s.email : (r.data.error || 'Could not send the link'));
+  });
+}
+
+function toggleStudentInvalid(){
+  const s = activeStu, bad = s.verification === 'rejected';
+  if(!bad && !confirm('Mark ' + s.name + ' as invalid? They will be blocked from signing in.')) return;
+  api('/api/admin/students/' + s.id + '/invalid/', {invalid: !bad}).then(r=>{
+    if(!r.ok){ showToast(r.data.error || 'Could not update the account'); return; }
+    showToast(bad ? s.name + ' restored' : s.name + ' marked invalid');
+    closeModal('stuModalOverlay');
+    loadStudentsPage(stuPage);
   });
 }
 

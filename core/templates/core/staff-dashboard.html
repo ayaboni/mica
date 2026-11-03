@@ -78,7 +78,7 @@
   .offset-card > .offset-inner{position:relative; z-index:1; background:var(--paper); border-radius:var(--radius); border:1px solid var(--line); box-shadow:var(--shadow);}
 
   /* ---------- Login ---------- */
-  #loginScreen{min-height:100vh; display:flex; flex-direction:column;}
+  #loginScreen{min-height:100vh; min-height:100dvh; display:flex; flex-direction:column;}
   .login-nav{background:var(--sage); border-bottom:3px solid var(--sky); padding:18px 40px; display:flex; justify-content:space-between; align-items:center;}
   .login-nav .logo-mark span{color:#0f130f;}
   .login-wrap{flex:1; display:flex; align-items:center; justify-content:center; padding:40px 20px;}
@@ -100,10 +100,10 @@
   .demo-note{margin-top:18px; padding:12px 14px; background:var(--peach); border-radius:14px; font-size:12.5px; color:var(--peach-text); line-height:1.5;}
 
   /* ---------- Shell ---------- */
-  #adminShell{display:flex; min-height:100vh; overflow:hidden;}
+  #adminShell{display:flex; min-height:100vh; min-height:100dvh; overflow:hidden;}
   .sidebar{
     width:264px; flex-shrink:0; background:var(--sage); color:var(--brown-deep);
-    display:flex; flex-direction:column; height:100vh; overflow-y:auto;
+    display:flex; flex-direction:column; height:100vh; height:100dvh; overflow-y:auto;
   }.sidebar{transition:width .25s ease, opacity .25s ease; overflow-x:hidden;}
   body.dark .sidebar{background:#233024;}
   .sidebar.is-collapsed{width:0; opacity:0; overflow:hidden; pointer-events:none;}
@@ -158,7 +158,7 @@
   body.dark .admin-chip{ background:rgba(255,255,255,.1); }
   body.dark .logout-btn:hover{ background:rgba(255,255,255,.14); }
 
-  .main{flex:1; min-width:0; height:100vh; overflow-y:auto; display:flex; flex-direction:column;}
+  .main{flex:1; min-width:0; height:100vh; height:100dvh; overflow-y:auto; display:flex; flex-direction:column;}
   .topbar{
     display:flex; align-items:center; justify-content:space-between; padding:18px 34px;
     background:var(--sage-deep); flex-shrink:0; z-index:20;
@@ -294,6 +294,7 @@
 
 /* ---------- Student Messages (Talk to Guidance inbox) ---------- */
 .messages-layout{display:flex; gap:18px; height:calc(100vh - 170px); min-height:420px;}
+.messages-layout{height:calc(100dvh - 170px);}
 .thread-list-panel{width:300px; flex-shrink:0; display:flex; flex-direction:column; overflow:hidden;}
 .thread-list-head{padding:16px 18px; border-bottom:1px solid var(--line); font-weight:700; font-size:13.5px;}
 .thread-list{flex:1; overflow-y:auto;}

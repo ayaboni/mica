@@ -39,6 +39,8 @@ def validate_person_name(value, label="name", required=True, max_length=NAME_MAX
         return "Your %s must contain at least one letter." % label
     if not all(_char_allowed(ch) for ch in text):
         return "Your %s can only contain letters, spaces and . , ' -" % label
+    if has_blocked_term(text):
+        return "Please use your real %s." % label
     return None
 
 
@@ -88,4 +90,54 @@ def validate_username(value):
     """Return an error message, or None if `value` is an acceptable new username."""
     if not USERNAME_PATTERN.fullmatch(value or ""):
         return USERNAME_RULES_MESSAGE
+    if has_blocked_term(value):
+        return "Please choose a different username."
     return None
+
+
+# -- Blocked words ------------------------------------------------------------
+# Fill these in yourself (English + Tagalog). Keep each word in lowercase letters only.
+BLOCKED_ANYWHERE = [
+    "fuck", "bitch", "asshole", "motherfucker", "bullshit", "whore",
+    "putangina", "tangina", "pakyu", "pakshet", "bwisit", "tarantado",
+    "kantot", "jakol", "pekpek", "pokpok", "hitler",
+]
+BLOCKED_WHOLE = [
+    "shit", "dick", "cock", "cunt", "pussy", "slut", "penis", "vagina", "dildo", "nazi", "rape", "rapist", "porn", "sex",
+    "gago", "bobo", "tanga", "ulol", "engot", "puta", "puki", "burat", "bayag", "tamod", "hindot", "hayop", "demonyo", "bastos",
+]
+
+try:    # optional: pip install better-profanity (test it against real surnames first)
+    from better_profanity import profanity as _profanity
+    _profanity.load_censor_words()
+except ImportError:
+    _profanity = None
+
+_LEET = str.maketrans({"0": "o", "1": "i", "3": "e", "4": "a", "5": "s",
+                       "7": "t", "8": "b", "9": "g", "@": "a", "$": "s", "!": "i", "+": "t"})
+
+
+def _fold(value):
+    text = unicodedata.normalize("NFKD", str(value or "")).lower()
+    text = "".join(ch for ch in text if not unicodedata.combining(ch))
+    return text.translate(_LEET)
+
+
+def _collapse(word):
+    return re.sub(r"(.)\1+", r"\1", word)
+
+
+# "n+i+g+..." so stretched spellings (niiigger) are caught too
+_ANYWHERE = [re.compile("".join(re.escape(c) + "+" for c in w)) for w in BLOCKED_ANYWHERE]
+_WHOLE = {_collapse(w) for w in BLOCKED_WHOLE}
+
+
+def has_blocked_term(value):
+    """True if the text contains an offensive word, even with symbols, spaces or repeated letters."""
+    words = re.findall(r"[a-z]+", _fold(value))
+    joined = "".join(words)
+    if any(p.search(joined) for p in _ANYWHERE):
+        return True
+    if any(_collapse(w) in _WHOLE for w in words):
+        return True
+    return bool(_profanity and _profanity.contains_profanity(" ".join(words)))

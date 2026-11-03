@@ -473,6 +473,8 @@ def students_list(request):
     elif status == "unverified":
         qs = qs.filter(profile__verification_status="unverified")
     course = request.GET.get("course", "").strip()
+    elif status == "rejected":
+        qs = qs.filter(profile__verification_status="rejected")
     if course:
         qs = qs.filter(profile__course=course)
     for token in request.GET.get("q", "").split()[:5]:      # "juan cruz" must match both words
@@ -1298,3 +1300,22 @@ def course_delete(request, course_id):
     course.delete()
     _log_admin(request, "Courses: deleted %s" % label)
     return JsonResponse(_courses_payload())
+
+
+@_admin
+@require_POST
+def student_set_invalid(request, user_id):
+    """Mark a student invalid (fake/troll): blocks sign-in and hides them from Guidance. Data is kept."""
+    user = get_object_or_404(User, id=user_id, is_staff=False, is_superuser=False)
+    profile = getattr(user, "profile", None)
+    if profile is None:
+        return JsonResponse({"error": "This account has no profile."}, status=400)
+    invalid = bool((_body(request) or {}).get("invalid", True))
+    profile.verification_status = "rejected" if invalid else "verified"
+    profile.verified_by = request.user
+    profile.verified_at = timezone.now()
+    profile.save(update_fields=["verification_status", "verified_by", "verified_at"])
+    user.is_active = not invalid
+    user.save(update_fields=["is_active"])
+    _log_admin(request, "Students: %s %s" % ("marked INVALID" if invalid else "restored", _label(user)))
+    return JsonResponse({"status": "ok", "invalid": invalid})

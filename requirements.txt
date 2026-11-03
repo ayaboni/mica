@@ -47,3 +47,7 @@ gunicorn>=22
 
 cloudinary
 django-cloudinary-storage
+
+# Detecting profanity for name validation
+
+better-profanity

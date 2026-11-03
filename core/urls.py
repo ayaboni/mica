@@ -131,6 +131,7 @@ urlpatterns = [
     path('api/admin/settings/registration/', admin_api.registration_set, name='admin_registration_set'),
     path('api/admin/students/<int:user_id>/unlock/', admin_api.student_unlock, name='admin_student_unlock'),
     path('api/admin/students/<int:user_id>/reset-password/', admin_api.student_reset_password, name='admin_student_reset_password'),
+    path('api/admin/students/<int:user_id>/invalid/', admin_api.student_set_invalid, name='admin_student_invalid'),
     path('api/admin/audit/', admin_api.audit_logs, name='admin_audit'),
     path('api/admin/audit/export/', admin_api.audit_logs_csv, name='admin_audit_csv'),
     path('api/admin/hotlines/', admin_api.hotlines_list, name='admin_hotlines'),
