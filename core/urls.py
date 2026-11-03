@@ -65,6 +65,7 @@ urlpatterns = [
     path('api/notifications/settings/save/', views.save_notification_settings, name='save_notification_settings'),
     path('api/guidance/send/', views.guidance_send, name='guidance_send'),
     path('api/guidance/messages/', views.guidance_messages, name='guidance_messages'),
+    path('api/guidance/hide/', views.guidance_hide, name='guidance_hide'),
     path('api/staff/dashboard-stats/', views.staff_dashboard_stats, name='staff_dashboard_stats'),
     path('api/staff/assessments/', views.staff_assessments, name='staff_assessments'),
     path('api/staff/guidance/', views.staff_guidance_inbox, name='staff_guidance_inbox'),

@@ -542,6 +542,9 @@ html.dyslexia body{line-height:1.7;}
   .msg-row.user:not(.is-latest) .msg-act[data-act="edit"],
   .msg-row.user:not(.is-latest) .msg-act[data-act="retry"]{display:none;}
 
+  .guidance-clear{background:none; border:none; color:var(--text-mute); font:inherit; font-size:12px; font-weight:700; text-decoration:underline; cursor:pointer;}
+  #guidance-messages .msg-row:not([data-id]) .msg-act[data-act="delete"]{display:none;}  /* unsaved / system messages can't be deleted */
+
   /* editing a message */
   .msg-row.user.editing{width:80%;}
   .msg-row.user.editing .msg-col{flex:1; width:100%;}
@@ -1800,8 +1803,10 @@ function toggleDyslexia(){
     <!-- ---------- TALK TO GUIDANCE ---------- -->
     <section class="view" id="view-guidance">
       <div class="chat-view-inner">
-        <div class="guidance-who" id="guidance-who">Guidance Office</div>
-        <div class="guidance-who" id="guidance-who">Guidance Office</div>
+        <div class="guidance-who" style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+          <span id="guidance-who">Guidance Office</span>
+          <button type="button" class="guidance-clear" onclick="clearGuidanceChat()">Clear chat</button>
+        </div>
         <div class="guidance-note">Heads up: the Guidance staff can read what you send here. Please keep your messages respectful. If you need help right now, contact a hotline or someone you trust.</div>
         <div class="messages" id="guidance-messages"></div>
         <div class="composer">
@@ -2471,10 +2476,11 @@ const MSG_ACTIONS_HTML = `
     <button class="msg-act" data-act="retry" title="Try again" aria-label="Try again"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg></button>
   </div>`;
 
-function addMessage(containerId, text, sender, avatarLabel){
+function addMessage(containerId, text, sender, avatarLabel, msgId){
   const container = document.getElementById(containerId);
   const row = document.createElement('div');
   row.className = 'msg-row ' + sender;
+  if(msgId) row.dataset.id = msgId;
   let avatarSrc;
   let avatarHtml;
   if (sender === 'user') {
@@ -2491,16 +2497,25 @@ function addMessage(containerId, text, sender, avatarLabel){
   // Mica's replies in the AI chat get the copy / like / dislike / retry buttons
   const withButtons = sender === 'bot' && containerId === 'chat-messages' && avatarLabel === 'MASCOT';
   const withUserButtons = sender === 'user' && containerId === 'chat-messages';
+  const withGuidanceCopy = containerId === 'guidance-messages';
   row.innerHTML = withButtons
     ? `${avatarHtml}<div class="msg-col">${bubble}${MSG_ACTIONS_HTML}</div>`
     : withUserButtons
       ? `${avatarHtml}<div class="msg-col">${bubble}${USER_ACTIONS_HTML}</div>`
-      : `${avatarHtml}${bubble}`;
+      : withGuidanceCopy
+        ? `${avatarHtml}<div class="msg-col">${bubble}${COPY_ONLY_HTML}</div>`
+        : `${avatarHtml}${bubble}`;
   container.appendChild(row);
   if(containerId === 'chat-messages') syncUserActions();
   container.scrollTop = container.scrollHeight;
   return row;
 }
+
+const COPY_ONLY_HTML = `
+  <div class="msg-actions">
+    <button class="msg-act" data-act="copy" title="Copy" aria-label="Copy message"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg></button>
+    <button class="msg-act" data-act="delete" title="Remove from my screen" aria-label="Remove message"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 14h10l1-14"/></svg></button>
+  </div>`;
 
 const USER_ACTIONS_HTML = `
   <div class="msg-actions">
@@ -2764,6 +2779,31 @@ function startEditMessage(row){
   });
 }
 
+document.getElementById('guidance-messages').addEventListener('click', e => {
+  const btn = e.target.closest('.msg-act');
+  if(!btn) return;
+  const row = btn.closest('.msg-row');
+  if(btn.dataset.act === 'copy') copyReply(row, btn);
+  else if(btn.dataset.act === 'delete' && row.dataset.id){
+    if(!confirm('Remove this message from your screen? The Guidance Office keeps its record of the conversation.')) return;
+    row.remove();
+    postGuidanceHide({ids: [row.dataset.id]});
+  }
+});
+
+function postGuidanceHide(body){
+  return fetch("{% url 'guidance_hide' %}", {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken')},
+    body: JSON.stringify(body)
+  }).catch(() => {});
+}
+
+function clearGuidanceChat(){
+  if(!confirm('Clear this chat from your screen? The Guidance Office keeps its record of the conversation.')) return;
+  postGuidanceHide({all: true}).then(() => reloadGuidanceMessages());
+}
+
 document.getElementById('chat-messages').addEventListener('click', e => {
   const btn = e.target.closest('.msg-act');
   if(!btn) return;
@@ -2958,7 +2998,7 @@ document.getElementById('btn-guidance').addEventListener('click', ()=>{
         const container = document.getElementById('guidance-messages');
         container.innerHTML = '';
         if(data.messages.length === 0){
-          addMessage('guidance-messages', "Hi! Send a message here whenever you're ready to talk to someone from the Guidance Office. A counselor will get back to you as soon as they can.", 'bot', 'LEAF');
+          addMessage('guidance-messages', escapeHtml(m.content).replace(/\n/g, '<br>'), m.sender === 'user' ? 'user' : 'bot', 'LEAF', m.id);
         } else {
           data.messages.forEach(m => {
             if (m.appointment) {
@@ -2982,7 +3022,7 @@ document.getElementById('btn-guidance').addEventListener('click', ()=>{
 function sendGuidanceMessage(){
   const text = guidanceInput.value.trim();
   if(!text) return;
-  addMessage('guidance-messages', escapeHtml(text), 'user');
+  const row = addMessage('guidance-messages', escapeHtml(text), 'user');
   guidanceInput.value = '';
   autoGrow(guidanceInput);
 
@@ -2990,7 +3030,8 @@ function sendGuidanceMessage(){
     method: "POST",
     headers: {"Content-Type": "application/json", "X-CSRFToken": getCookie("csrftoken")},
     body: JSON.stringify({message: text}),
-  }).then(r => r.ok ? null : r.json().then(d => {
+  }).then(r => r.json().then(d => {
+    if(r.ok){ if(d.message_id) row.dataset.id = d.message_id; return; }
     // e.g. an account Guidance hasn't confirmed yet: say so instead of letting it look delivered
     addMessage('guidance-messages', escapeHtml(d.error || "Your message couldn't be sent. Please try again."), 'bot', 'LEAF');
   })).catch(() => {});
@@ -3005,7 +3046,7 @@ function reloadGuidanceMessages() {
       if (!container) return;
       container.innerHTML = '';
       if(data.messages.length === 0){
-        addMessage('guidance-messages', "Hi! Send a message here whenever you're ready to talk to someone from the Guidance Office. A counselor will get back to you as soon as they can.", 'bot', 'LEAF');
+          addMessage('guidance-messages', escapeHtml(m.content).replace(/\n/g, '<br>'), m.sender === 'user' ? 'user' : 'bot', 'LEAF', m.id);
         return;
       }
       data.messages.forEach(m => {

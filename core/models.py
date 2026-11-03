@@ -394,6 +394,7 @@ class GuidanceMessage(models.Model):
     sender = models.ForeignKey(User, on_delete=models.CASCADE)
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
+    hidden_for_student = models.BooleanField(default=False)
 
     class Meta:
         ordering = ['created_at']

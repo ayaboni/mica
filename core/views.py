@@ -307,7 +307,7 @@ def complete_profile(request):
             error = "Please fill in every field."
         elif validate_person_names(form["first_name"], form["last_name"]):
             error = validate_person_names(form["first_name"], form["last_name"])
-        elif student_number_problem(form["student_number"]):
+        e    msg = GuidanceMessage.objects.create(thread=thread, sender=request.user, content=content)lif student_number_problem(form["student_number"]):
             error = student_number_problem(form["student_number"])
         elif form["course"] not in dict(get_courses()) or form["year_level"] not in dict(YEAR_LEVEL_CHOICES):
             error = "Please choose a valid course and year level."
@@ -2364,7 +2364,7 @@ def guidance_send(request):
         return _rate_limit_response()
 
     thread, _ = GuidanceThread.objects.get_or_create(student=request.user)
-    GuidanceMessage.objects.create(thread=thread, sender=request.user, content=content)
+    msg = GuidanceMessage.objects.create(thread=thread, sender=request.user, content=content)
     thread.save()  # bumps updated_at
 
     student_name = request.user.get_full_name() or request.user.username
@@ -2378,7 +2378,7 @@ def guidance_send(request):
         notify(staff_with('chat_students'), 'message', "A student messaged the guidance",
                section='messages', student_ref=request.user.id, ref_id=thread.id,
                urgent=True, collapse_unread=True)
-    return JsonResponse({"status": "ok", "thread_id": thread.id})
+    return JsonResponse({"status": "ok", "thread_id": thread.id, "message_id": msg.id})
 
 
 @login_required(login_url='login')
@@ -2406,6 +2406,22 @@ def guidance_messages(request):
         "messages": msgs,
         "counselor_name": _staff_role(thread.counselor) if thread.counselor else None,
     })
+
+
+@login_required(login_url='login')
+@require_POST
+def guidance_hide(request):
+    data = _json_body(request)
+    if data is None:
+        return _bad_request()
+    thread = GuidanceThread.objects.filter(student=request.user).first()
+    if not thread:
+        return JsonResponse({"hidden": 0})
+    qs = thread.messages.filter(hidden_for_student=False).exclude(content__contains="[appointment:")
+    if not data.get("all"):
+        ids = [int(i) for i in data.get("ids", []) if str(i).isdigit()]
+        qs = qs.filter(id__in=ids)
+    return JsonResponse({"hidden": qs.update(hidden_for_student=True)})
 
 
 @login_required(login_url='login')

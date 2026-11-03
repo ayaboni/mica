@@ -317,6 +317,10 @@
 .tmsg-row{display:flex;}
 .tmsg-row.counselor{justify-content:flex-end;}
 .tmsg-bubble{max-width:65%; padding:10px 14px; border-radius:16px; font-size:13.5px; line-height:1.5;}
+.tmsg-copy{align-self:center; width:28px; height:28px; border:none; border-radius:50%; background:none; color:var(--ink-soft); display:flex; align-items:center; justify-content:center; opacity:0; cursor:pointer; flex:none;}
+.tmsg-row:hover .tmsg-copy, .tmsg-copy:focus-visible{opacity:1;}
+.tmsg-copy:hover{background:var(--line);}
+@media (hover:none){ .tmsg-copy{opacity:.55;} }
 .tmsg-row.student .tmsg-bubble{background:var(--peach); color:var(--ink); border-bottom-left-radius:4px;}
 .tmsg-row.counselor .tmsg-bubble{background:var(--sky-deep); color:#fff; border-bottom-right-radius:4px;}
 .archived-tag{background:var(--line); color:var(--ink-soft); font-size:10px; font-weight:700; padding:2px 7px; border-radius:999px; margin-left:6px; vertical-align:middle;}
@@ -2219,12 +2223,17 @@ function fetchThreadMessages(){
       if(!data.messages) return;   // locked / error response
       const container = document.getElementById('threadMessages');
       if(!container) return; // panel may have changed since the fetch started
-      container.innerHTML = data.messages.map(m => `
-        <div class="tmsg-row ${m.sender}">
-          ${m.sender === 'student' ? avatarHtml(data.student_name, data.student_avatar) : ''}
-          <div class="tmsg-bubble">${escapeHtmlStaff(m.content.replace(/\s*\[appointment:\d+\]/g, ''))}</div>
-        </div>
-      `).join('');
+      const COPY_ICON = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg>';
+      container.innerHTML = data.messages.map(m => {
+        const text = m.content.replace(/\s*\[appointment:\d+\]/g, '');
+        const bubble = `<div class="tmsg-bubble">${escapeHtmlStaff(text)}</div>`;
+        const copy = `<button class="tmsg-copy" title="Copy" aria-label="Copy message" onclick="copyThreadMsg(this)">${COPY_ICON}</button>`;
+        return `
+          <div class="tmsg-row ${m.sender}">
+            ${m.sender === 'student' ? avatarHtml(data.student_name, data.student_avatar) : ''}
+            ${m.sender === 'student' ? bubble + copy : copy + bubble}
+          </div>`;
+      }).join('');
       container.scrollTop = container.scrollHeight;
       const i = data.student_info;
       const sub = document.getElementById('threadStudentSub');
@@ -2236,6 +2245,10 @@ function fetchThreadMessages(){
         else infoBox.innerHTML = '<div class="tag-row" style="margin-top:0;">' + i.conditions.map(c => `<span class="tag">${escapeHtmlStaff(c)}</span>`).join('') + '</div>';
       }
     });
+}
+
+function copyThreadMsg(btn){
+  copyText(btn.parentElement.querySelector('.tmsg-bubble').innerText, 'Copied');
 }
 
 function sendStaffGuidanceMessage(){
