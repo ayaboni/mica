@@ -160,4 +160,5 @@ urlpatterns = [
     path("api/admin/data-requests/<int:pk>/close/", admin_api.data_request_close, name="admin_data_request_close"),
     path('api/console/notifications/', views.api_notifications, name='console_notifications'),
     path('api/console/notifications/read/', views.api_notifications_read, name='console_notifications_read'),
+    path('api/console/notifications/delete/', views.api_notifications_delete, name='console_notifications_delete'),
 ]

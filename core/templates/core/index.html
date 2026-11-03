@@ -82,6 +82,11 @@
   object-fit: contain;
 }
 
+html[data-theme="dark"] .intro-gif {
+  filter: invert(1) hue-rotate(180deg) brightness(1.15);
+  mix-blend-mode: lighten;
+}
+
 .intro-title {
   font-size: clamp(1.6rem, 3.6vw, 2.4rem);
   max-width: 640px;

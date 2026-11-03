@@ -4452,14 +4452,14 @@ def staff_summary(request):
 
 
 def _console_unread(user):
-    return ConsoleNotification.objects.filter(recipient=user, read_at__isnull=True).count()
+    return ConsoleNotification.objects.filter(recipient=user, read_at__isnull=True, dismissed_at__isnull=True).count()
 
 
 @login_required(login_url='login')
 @user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
 def api_notifications(request):
     refresh_derived(request.user)
-    qs = ConsoleNotification.objects.filter(recipient=request.user)
+    qs = ConsoleNotification.objects.filter(recipient=request.user, dismissed_at__isnull=True)
     if request.GET.get('unread') == '1':
         qs = qs.filter(read_at__isnull=True)
     kind = request.GET.get('kind')
@@ -4503,6 +4503,22 @@ def api_notifications_read(request):
         ids = [int(i) for i in body.get('ids', []) if str(i).isdigit()]
         qs = qs.filter(id__in=ids)
     qs.update(read_at=timezone.now())
+    return JsonResponse({'unread': _console_unread(request.user)})
+
+
+@login_required(login_url='login')
+@user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
+@require_POST
+def api_notifications_delete(request):
+    body = _json_body(request) or {}
+    qs = ConsoleNotification.objects.filter(recipient=request.user, dismissed_at__isnull=True)
+    if body.get('all_read'):
+        qs = qs.filter(read_at__isnull=False)
+    else:
+        ids = [int(i) for i in body.get('ids', []) if str(i).isdigit()]
+        qs = qs.filter(id__in=ids)
+    now = timezone.now()
+    qs.update(dismissed_at=now, read_at=now)
     return JsonResponse({'unread': _console_unread(request.user)})
 
 

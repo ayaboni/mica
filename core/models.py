@@ -762,6 +762,7 @@ class ConsoleNotification(models.Model):
     dedupe_key = models.CharField(max_length=80, blank=True)
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     read_at = models.DateTimeField(null=True, blank=True)
+    dismissed_at = models.DateTimeField(null=True, blank=True)   # "deleted" by the user; row kept so auto-created ones don't come back
 
     class Meta:
         ordering = ['-created_at', '-id']
