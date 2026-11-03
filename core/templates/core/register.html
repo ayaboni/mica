@@ -81,29 +81,28 @@
           {% csrf_token %}
 
           <div class="two-col">
-            <div class="auth-field"><input type="text" id="firstName" name="first_name" placeholder="First Name" required></div>
-            <div class="auth-field"><input type="text" id="lastName" name="last_name" placeholder="Last Name" required></div>
+            <div class="auth-field"><input type="text" id="firstName" name="first_name" placeholder="First Name" value="{{ form.first_name }}" required></div>
+            <div class="auth-field"><input type="text" id="lastName" name="last_name" placeholder="Last Name" value="{{ form.last_name }}" required></div>
           </div>
 
           <div class="two-col">
-            <div class="auth-field"><input type="text" id="studentNumber" name="student_number" placeholder="Student Number (000-0000 or 00-0000-000)" inputmode="numeric" maxlength="11" pattern="[0-9]{3}-[0-9]{4}|[0-9]{2}-[0-9]{4}-[0-9]{3}" title="Use 000-0000 or 00-0000-000" oninput="this.value=this.value.replace(/[^0-9-]/g,'')" onblur="fmtStudentNo(this)" autocomplete="off" required></div>
-            <div class="auth-field"><input type="text" id="username" name="username" placeholder="Username" autocomplete="username" title="3–30 characters: English letters, numbers, dots, dashes or underscores" maxlength="30" pattern="[A-Za-z0-9][A-Za-z0-9._\-]{2,29}" required></div>
+            <div class="auth-field"><input type="text" id="studentNumber" name="student_number" placeholder="Student Number (000-0000 or 00-0000-000)" value="{{ form.student_number }}" inputmode="numeric" maxlength="11" pattern="[0-9]{3}-[0-9]{4}|[0-9]{2}-[0-9]{4}-[0-9]{3}" title="Use 000-0000 or 00-0000-000" oninput="this.value=this.value.replace(/[^0-9-]/g,'')" onblur="fmtStudentNo(this)" autocomplete="off" required></div>
+            <div class="auth-field"><input type="text" id="username" name="username" placeholder="Username" value="{{ form.username }}" autocomplete="username" title="3–30 characters: English letters, numbers, dots, dashes or underscores" maxlength="30" pattern="[A-Za-z0-9][A-Za-z0-9._\-]{2,29}" required></div>
           </div>
 
-          {% include 'core/_course_picker.html' %}
+          {% include 'core/_course_picker.html' with selected_course=form.course %}
 
-          <!-- Year Level Dropdown -->
           <div class="auth-field">
             <select id="yearLevel" name="year_level" required>
-              <option value="" disabled selected hidden>Select Year Level</option>
+              <option value="" disabled {% if not form.year_level %}selected{% endif %} hidden>Select Year Level</option>
               {% for code, label in year_levels %}
-                <option value="{{ code }}">{{ label }}</option>
+                <option value="{{ code }}" {% if form.year_level == code %}selected{% endif %}>{{ label }}</option>
               {% endfor %}
             </select>
           </div>
 
           <div class="auth-field">
-            <input type="email" id="regEmail" name="email" placeholder="Email" required>
+            <input type="email" id="regEmail" name="email" placeholder="Email" value="{{ form.email }}" required>
           </div>
 
           <div class="two-col">

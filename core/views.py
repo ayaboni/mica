@@ -307,18 +307,13 @@ def complete_profile(request):
             error = "Please fill in every field."
         elif validate_person_names(form["first_name"], form["last_name"]):
             error = validate_person_names(form["first_name"], form["last_name"])
-        elif validate_person_names(form["first_name"], form["last_name"]):
-            error = validate_person_names(form["first_name"], form["last_name"])
         elif student_number_problem(form["student_number"]):
             error = student_number_problem(form["student_number"])
         elif form["course"] not in dict(get_courses()) or form["year_level"] not in dict(YEAR_LEVEL_CHOICES):
             error = "Please choose a valid course and year level."
         else:
-            try:
-                User._meta.get_field("username").run_validators(form["username"])
-            except ValidationError:
-                error = "Username may only contain letters, numbers and @/./+/-/_ (150 characters max)."
-            else:
+            error = validate_username(form["username"])
+            if error is None:
                 if _username_taken(form["username"], exclude_user=request.user):
                     error = "Username is already registered."
                 elif _student_number_taken(form["student_number"], exclude_user=request.user):
@@ -621,54 +616,46 @@ def register(request):
         password = request.POST.get("password")
         confirm_password = request.POST.get("confirm_password")
 
+        # Everything except the passwords is sent back to the form after an error.
+        form = {"first_name": first_name, "last_name": last_name, "student_number": student_number,
+                "course": course or "", "year_level": year_level or "", "username": username, "email": email}
+
+        def fail(text):
+            messages.error(request, text)
+            return _register_page(request, form=form)
+
         if password != confirm_password:
-            messages.error(request, "Passwords do not match.")
-            return _register_page(request)
-
+            return fail("Passwords do not match.")
         if not _password_meets_rules(password or ""):
-            messages.error(request, PASSWORD_RULES_MESSAGE)
-            return _register_page(request)
-
+            return fail(PASSWORD_RULES_MESSAGE)
         if not username or not student_number:
-            messages.error(request, "Username and student number are required.")
-            return _register_page(request)
+            return fail("Username and student number are required.")
 
         number_problem = student_number_problem(student_number)
         if number_problem:
-            messages.error(request, number_problem)
-            return _register_page(request)
+            return fail(number_problem)
 
         name_problem = validate_person_names(first_name, last_name)
         if name_problem:
-            messages.error(request, name_problem)
-            return _register_page(request)
+            return fail(name_problem)
 
         if course not in dict(get_courses()) or year_level not in dict(YEAR_LEVEL_CHOICES):
-            messages.error(request, "Please choose a valid course and year level.")
-            return _register_page(request)
+            return fail("Please choose a valid course and year level.")
 
         problem = _enrollment_check(student_number, last_name)
         if problem:
-            messages.error(request, problem)
-            return _register_page(request)
+            return fail(problem)
 
-        try:
-            User._meta.get_field("username").run_validators(username)
-        except ValidationError:
-            messages.error(request, "Username may only contain letters, numbers and @/./+/-/_ (150 characters max).")
-            return _register_page(request)
+        username_problem = validate_username(username)
+        if username_problem:
+            return fail(username_problem)
 
         if _username_taken(username):
-            messages.error(request, "Username is already registered.")
-            return _register_page(request)
-
+            return fail("Username is already registered.")
         if _student_number_taken(student_number):
-            messages.error(request, "Student number is already registered.")
-            return _register_page(request)
-
+            return fail("Student number is already registered.")
         if User.objects.filter(email__iexact=email).exclude(profile__verification_status='rejected').exists():
-            messages.error(request, "Email is already registered.")
-            return _register_page(request)
+            return fail("Email is already registered.")
 
         try:
             with transaction.atomic():
@@ -693,11 +680,11 @@ def register(request):
                 regcodes.use_code(request, reg_code, user)
         except _CodeGone:
             messages.error(request, "Your registration code is no longer valid. Please ask the Guidance Office for a new one.")
-            return _register_page(request)
+            return _register_page(request, form=form)
         except IntegrityError as e:
             print("REGISTER IntegrityError:", repr(e))
             messages.error(request, "Username or student number is already registered.")
-            return _register_page(request)
+            return _register_page(request, form=form)
 
         if needs_confirmation:
             messages.success(request, "Account created! You can log in now. The Guidance Office still has to confirm "
