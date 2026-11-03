@@ -472,9 +472,9 @@ def students_list(request):
         qs = qs.filter(profile__account_status=status)
     elif status == "unverified":
         qs = qs.filter(profile__verification_status="unverified")
-    course = request.GET.get("course", "").strip()
     elif status == "rejected":
         qs = qs.filter(profile__verification_status="rejected")
+    course = request.GET.get("course", "").strip()
     if course:
         qs = qs.filter(profile__course=course)
     for token in request.GET.get("q", "").split()[:5]:      # "juan cruz" must match both words

@@ -776,3 +776,26 @@ class ConsoleNotification(models.Model):
 
     def __str__(self):
         return f'{self.recipient_id}: {self.text}'
+
+
+class SignInLog(models.Model):
+    """One successful sign-in, so first/last/all logins can be looked up."""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sign_ins')
+    ip = models.GenericIPAddressField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+
+from django.contrib.auth.signals import user_logged_in
+from django.dispatch import receiver
+
+
+@receiver(user_logged_in)
+def _record_sign_in(sender, request, user, **kwargs):
+    from .net import client_ip
+    try:
+        SignInLog.objects.create(user=user, ip=client_ip(request) if request else None)
+    except Exception:
+        pass    # never block a login over logging
