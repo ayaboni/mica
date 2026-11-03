@@ -177,6 +177,7 @@
   .notif-wrap{position:relative;}
   .notif-panel{position:absolute; top:calc(100% + 12px); right:0; width:370px; max-width:calc(100vw - 24px); background:var(--paper); color:var(--ink); border:1px solid var(--line); border-radius:18px; box-shadow:var(--shadow); z-index:90; overflow:hidden; animation:fadeIn .2s ease;}
   .notif-panel[hidden]{display:none;}
+  #modalAvatarBtn[hidden]{display:none;}
   .notif-head{display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-bottom:1px solid var(--line); font-family:'Baloo 2',sans-serif; font-size:15px; font-weight:700;}
   .notif-link{background:none; border:none; color:var(--sky-deep); font-size:12.5px; font-weight:600; font-family:inherit; padding:4px 8px; border-radius:8px;}
   .notif-link:hover{background:var(--line);}
@@ -470,6 +471,7 @@
   body.no-students .nav-item[data-section="alerts"],
   body.no-assess .nav-item[data-section="assessments"],
   body.no-codes .nav-item[data-section="regcodes"],
+  body.no-clear-avatar #modalAvatarBtn,
   body.no-verify .nav-item[data-section="pending"],
   body.no-chat .thread-composer,
   body.no-flag [onclick*="flagCurrentStudent"],
@@ -1415,6 +1417,7 @@
       <button class="pill-btn ghost sm" onclick="openStudentChat(true)">Schedule appointment</button>
       <button class="pill-btn ghost sm" onclick="openNotesPanel()">Notes</button>
       <button class="ec-link" id="modalEcBtn" onclick="openEmergencyContact()">Emergency contact</button>
+      <button class="pill-btn ghost sm" id="modalAvatarBtn" onclick="clearStudentAvatar()" hidden>Remove photo</button>
       <button class="pill-btn ghost sm" id="modalStatusBtn" onclick="openStatusDialog()">Archive student</button>
     </div>
   </div>
@@ -1640,6 +1643,7 @@ function applyPermissions(){
     'no-export':     !PERMS.export_records,
     'no-codes':      !PERMS.generate_codes,
     'no-verify':     !PERMS.verify_students,
+    'no-clear-avatar': !PERMS.clear_avatars,
     'no-schedule':   !(PERMS.schedule_services || []).length,
     'no-writenotes': !(PERMS.write_note_services || []).length,
   };
@@ -2568,6 +2572,7 @@ function openStudentModal(code){
   sb.textContent = s.account_status !== 'active' ? 'Reactivate student'
                  : (blocked ? 'Resolve alert to archive' : 'Archive student');
   logRecordAccess(s.id, 'view_profile');
+  document.getElementById('modalAvatarBtn').hidden = !(PERMS.clear_avatars && s.avatar);
 
   if(PERMS.view_assessments){
     loadAssessmentPanel(s);
@@ -2634,6 +2639,22 @@ function loadAssessmentPanel(s){
       console.error('assessment load failed', err);
       box.textContent = 'Could not load the assessment.';
     });
+}
+
+function clearStudentAvatar(){
+  const s = studentsReal.find(x=>x.code===currentStudentCode);
+  if(!s || !PERMS.clear_avatars) return denied();
+  if(!confirm('Remove ' + s.name + '\u2019s profile photo? They will go back to their initials.')) return;
+  fetch(`/api/staff/students/${s.id}/avatar/clear/`, {method:'POST', credentials:'same-origin', headers:{'X-CSRFToken':getCookie('csrftoken')}})
+    .then(r => r.json().catch(()=>({})).then(d => ({ok:r.ok, d})))
+    .then(res => {
+      if(!res.ok){ showToast(res.d.error || 'Could not remove the photo.'); return; }
+      s.avatar = '';
+      document.getElementById('modalAvatarBtn').hidden = true;
+      renderStudents();
+      showToast('Profile photo removed');
+    })
+    .catch(() => showToast('Could not reach the server.'));
 }
 
 function closeModal(){document.getElementById('studentModal').classList.remove('active');}

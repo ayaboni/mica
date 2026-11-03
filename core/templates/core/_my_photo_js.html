@@ -28,6 +28,7 @@
   var G = window.MicaGuard, C = window.MicaCropper;
 
   window.MY_AVATAR_URL = "{{ my_avatar_url|escapejs }}";
+  var LOCKED = {% if avatar_locked %}true{% else %}false{% endif %};   // unverified student: may remove a photo, not add or change one
   window.MY_INITIALS = "{% filter escapejs %}{% include 'core/_initials.html' with u=request.user %}{% endfilter %}".trim();
 
   var pending = null;        // { blob, url } - a cropped photo that is not saved yet
@@ -49,7 +50,8 @@
     document.querySelectorAll('.me-pic').forEach(function(el){ paint(el, pending ? pending.url : window.MY_AVATAR_URL); });
     var has = !!window.MY_AVATAR_URL, any = has || !!pending;
     $('myPicBtn') && ($('myPicBtn').textContent = any ? 'Change photo' : 'Add photo');
-    $('myPicAdjust') && ($('myPicAdjust').hidden = !any);
+    $('myPicBtn') && ($('myPicBtn').hidden = LOCKED);
+    $('myPicAdjust') && ($('myPicAdjust').hidden = !any || LOCKED);
     $('myPicRemove') && ($('myPicRemove').hidden = !any);
     $('myPicPending') && ($('myPicPending').hidden = !pending);
   };

@@ -1169,6 +1169,9 @@
       <h3 style="font-size:14px; margin:26px 0 10px;">Account validity</h3>
       <p id="stuInvalidNote" style="font-size:12px; color:var(--ink-soft); margin-bottom:10px;"></p>
       <button class="pill-btn ghost sm" id="stuInvalidBtn" onclick="toggleStudentInvalid()">Mark as invalid</button>
+      <h3 style="font-size:14px; margin:26px 0 10px;">Profile photo</h3>
+      <p style="font-size:12px; color:var(--ink-soft); margin-bottom:10px;">Use this if a student's photo is inappropriate. They go back to their initials.</p>
+      <button class="pill-btn ghost sm" id="stuAvatarBtn" onclick="clearStudentAvatar()">Remove photo</button>
     </div>
   </div>
 </div>
@@ -1778,6 +1781,7 @@ function openStudentModal(id){
     !s.has_password ? 'This student signs in with Google, so there is no password to reset.'
     : (s.locked ? 'This login is locked after too many wrong passwords.' : '');
   document.getElementById('stuModalOverlay').classList.add('active');
+  document.getElementById('stuAvatarBtn').disabled = !s.avatar;
   const bad = s.verification === 'rejected';
   document.getElementById('stuInvalidBtn').textContent = bad ? 'Restore account' : 'Mark as invalid';
   document.getElementById('stuInvalidNote').textContent = bad
@@ -1832,6 +1836,17 @@ function resetStudentPassword(){
   const s = activeStu;
   api('/api/admin/students/' + s.id + '/reset-password/', {}).then(r=>{
     showToast(r.ok ? 'Reset link sent to ' + s.email : (r.data.error || 'Could not send the link'));
+  });
+}
+
+function clearStudentAvatar(){
+  const s = activeStu;
+  if(!s || !s.avatar || !confirm('Remove ' + s.name + '\u2019s profile photo? They will go back to their initials.')) return;
+  api('/api/staff/students/' + s.id + '/avatar/clear/', {}).then(r=>{
+    if(!r.ok){ showToast(r.data.error || 'Could not remove the photo'); return; }
+    showToast('Profile photo removed');
+    closeModal('stuModalOverlay');
+    loadStudentsPage(stuPage);
   });
 }
 

@@ -47,6 +47,21 @@ def is_unverified(user):
     return bool(profile and profile.verification_status == UNVERIFIED)
 
 
+def can_set_avatar(user):
+    """Only verified students may add or change a profile photo (staff and admins always may).
+
+    Unverified and rejected students can still *remove* their own photo. A student with no profile
+    row (very old accounts) counts as verified, like everywhere else."""
+    if user.is_staff or user.is_superuser:
+        return True
+    profile = getattr(user, "profile", None)
+    return not profile or profile.verification_status == "verified"
+
+
+AVATAR_LOCKED_MESSAGE = ("Profile photos unlock once the Guidance Office has verified your account. "
+                         "Until then your initials are shown.")
+
+
 def pending_students():
     return all_students().filter(profile__verification_status=UNVERIFIED, is_active=True)
 

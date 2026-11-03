@@ -342,6 +342,7 @@ class StaffSubclass(models.Model):
     export_records = models.BooleanField(default=False)
     generate_codes = models.BooleanField(default=False)       # make student registration codes
     verify_students = models.BooleanField(default=False)      # approve / deactivate unverified student accounts
+    clear_avatars = models.BooleanField(default=False)        # remove a student's profile photo (e.g. an inappropriate one)
 
     created_at = models.DateTimeField(auto_now_add=True)
 

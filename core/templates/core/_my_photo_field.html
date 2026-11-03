@@ -3,10 +3,14 @@
   <div class="me-pic" id="myPicPreview" aria-label="Your profile photo">{% if my_avatar_url %}<img src="{{ my_avatar_url }}" alt="">{% else %}{% include 'core/_initials.html' with u=request.user %}{% endif %}</div>
   <div class="pf-photo-body">
     <div class="pf-photo-title">Profile photo</div>
+    {% if avatar_locked %}
+    <div class="pf-photo-sub">Profile photos unlock once the Guidance Office has verified your account. Until then your initials are shown.</div>
+    {% else %}
     <div class="pf-photo-sub">JPG, PNG, WebP or GIF, up to 5 MB. You can crop and rotate it before saving.</div>
+    {% endif %}
     <div class="pf-photo-btns">
-      <button type="button" class="pill-btn solid sm" id="myPicBtn" onclick="document.getElementById('myPicInput').click()">{% if my_avatar_url %}Change photo{% else %}Add photo{% endif %}</button>
-      <button type="button" class="pill-btn ghost sm" id="myPicAdjust" onclick="adjustMyPhoto()"{% if not my_avatar_url %} hidden{% endif %}>Adjust</button>
+      <button type="button" class="pill-btn solid sm" id="myPicBtn"{% if avatar_locked %} hidden{% endif %} onclick="document.getElementById('myPicInput').click()">{% if my_avatar_url %}Change photo{% else %}Add photo{% endif %}</button>
+      <button type="button" class="pill-btn ghost sm" id="myPicAdjust" onclick="adjustMyPhoto()"{% if not my_avatar_url or avatar_locked %} hidden{% endif %}>Adjust</button>
       <button type="button" class="pill-btn ghost sm" id="myPicRemove" onclick="removeMyPhoto()"{% if not my_avatar_url %} hidden{% endif %}>Remove</button>
     </div>
     <div class="pf-photo-pending" id="myPicPending" hidden>

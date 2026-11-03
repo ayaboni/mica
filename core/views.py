@@ -44,7 +44,7 @@ from .student_number import student_number_problem
 from .reports import EXERCISE_LABELS
 from . import registration_codes as regcodes
 from . import verification
-from .verification import visible_students
+from .verification import visible_students, all_students, can_set_avatar, AVATAR_LOCKED_MESSAGE
 from .models import SignInFailure
 from . import firebase_reset
 from . import twofactor
@@ -1954,7 +1954,7 @@ def account_settings(request):
                 request.user.conversations.update(topics=[], topics_updated_at=None)
             new_avatar = request.FILES.get('avatar')
             if new_avatar:
-                err = _avatar_error(new_avatar)
+                err = AVATAR_LOCKED_MESSAGE if not can_set_avatar(request.user) else _avatar_error(new_avatar)
                 if err:
                     messages.error(request, err)
                 else:
@@ -1973,6 +1973,7 @@ def account_settings(request):
 
     return render(request, 'core/account-settings.html', {
         'my_avatar_url': _avatar_url(request.user),
+        'avatar_locked': not can_set_avatar(request.user),
         'profile': profile, 'courses': get_courses(), 'course_groups': get_course_groups(), 'year_levels': YEAR_LEVELS,
         'has_password': request.user.has_usable_password(),
     })
@@ -4285,6 +4286,26 @@ def staff_assessments(request):
 @login_required(login_url='login')
 @user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
 @require_POST
+@require_perm('clear_avatars')
+def staff_student_avatar_clear(request, student_id):
+    """Clear a student's profile photo (e.g. an inappropriate one). They go back to their initials."""
+    pool = all_students() if request.user.is_superuser else visible_students()
+    student = get_object_or_404(pool, id=student_id)
+    profile = UserProfile.objects.filter(user=student).first()
+    if not profile or not profile.avatar:
+        return JsonResponse({"status": "ok", "cleared": False})
+    profile.avatar.delete(save=False)
+    profile.avatar = None
+    profile.save(update_fields=["avatar"])
+    AuditEvent.objects.create(actor=request.user, event="avatar_cleared",
+                              detail=f"Cleared the profile photo of student #{student.id}",
+                              ip=client_ip(request))
+    return JsonResponse({"status": "ok", "cleared": True})
+
+
+@login_required(login_url='login')
+@user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
+@require_POST
 @require_perm('archive_students')
 def staff_student_status(request, student_id):
     student = get_object_or_404(visible_students(), id=student_id)
@@ -4416,6 +4437,9 @@ def staff_avatar_update(request):
         profile.avatar = None
         profile.save(update_fields=["avatar"])
         return JsonResponse({"status": "ok", "avatar_url": ""})
+
+    if not can_set_avatar(request.user):
+        return JsonResponse({"error": AVATAR_LOCKED_MESSAGE}, status=403)
 
     f = request.FILES.get("avatar")
     if not f:
