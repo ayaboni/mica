@@ -22,10 +22,10 @@
     '@keyframes dgPlus{from{opacity:1;transform:translate(-50%,0)}to{opacity:0;transform:translate(-50%,22px)}}' +
     '@media (max-width:600px){.dg-badge{padding:5px 10px;font-size:12.5px;margin-right:8px}}' +
     /* panel */
-    '.dg-panel{position:fixed;z-index:200;width:min(290px,calc(100vw - 16px));background:#fff;color:#3E3226;border-radius:16px;padding:14px 16px;box-shadow:0 8px 24px rgba(0,0,0,.2);font-family:Nunito,sans-serif}' +
-    '.dg-panel{transform-origin:top right;opacity:0;visibility:hidden;pointer-events:none;transform:translateY(-12px) scale(.92);transition:opacity .22s ease,transform .38s cubic-bezier(.2,1.2,.3,1),visibility 0s linear .38s}' +
+    '.dg-panel{position:fixed;z-index:200;width:min(290px,calc(100vw - 16px));background:#fff;color:#3E3226;border-radius:16px;padding:14px 16px;box-shadow:0 8px 24px rgba(0,0,0,.2);font-family:Nunito,sans-serif;box-sizing:border-box}' +
+    '.dg-panel{opacity:0;visibility:hidden;pointer-events:none;transform:translateY(-12px) scale(.92);transition:opacity .22s ease,transform .38s cubic-bezier(.2,1.2,.3,1),visibility 0s linear .38s}' +
     '.dg-panel.dg-open{opacity:1;visibility:visible;pointer-events:auto;transform:none;transition:opacity .22s ease,transform .38s cubic-bezier(.2,1.2,.3,1),visibility 0s}' +
-    '.dg-panel::before{content:"";position:absolute;top:-6px;right:var(--dg-arrow,22px);width:14px;height:14px;background:inherit;transform:rotate(45deg);border-radius:3px}' +
+    '.dg-panel::before{content:"";position:absolute;top:-6px;left:var(--dg-arrow,22px);width:14px;height:14px;background:inherit;transform:rotate(45deg);border-radius:3px}' +
     '.dg-panel .dg-task,.dg-panel h4,.dg-panel p{opacity:0;transform:translateY(-6px);transition:opacity .25s ease,transform .3s ease}' +
     '.dg-panel.dg-open .dg-task,.dg-panel.dg-open h4,.dg-panel.dg-open p{opacity:1;transform:none;transition-delay:calc(70ms + var(--i,0) * 45ms)}' +
     '.dg-panel:not(.dg-open) .dg-bar i{width:0 !important;transition:none}' +
@@ -74,12 +74,23 @@
   }
 
   function placePanel() {
+    // Keep the whole panel inside the screen: pick its width from the viewport, line its right edge
+    // up with the badge, then slide it back in if that would push it off either side.
+    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
     var r = badge.getBoundingClientRect();
-    var right = Math.max(8, Math.round(window.innerWidth - r.right));
-    panel.style.top = Math.round(r.bottom + 10) + 'px';
-    panel.style.right = right + 'px';
-    // point the little arrow at the middle of the badge
-    panel.style.setProperty('--dg-arrow', Math.max(12, Math.round(window.innerWidth - right - (r.left + r.width / 2)) - 7) + 'px');
+    var w = Math.min(290, vw - 16);
+    var left = Math.min(Math.max(8, r.right - w), vw - w - 8);
+    var top = Math.round(r.bottom + 10);
+    var center = r.left + r.width / 2;
+    panel.style.width = w + 'px';
+    panel.style.left = Math.round(left) + 'px';
+    panel.style.right = 'auto';
+    panel.style.top = top + 'px';
+    panel.style.maxHeight = Math.max(160, vh - top - 12) + 'px';
+    panel.style.overflowY = panel.scrollHeight > vh - top - 12 ? 'auto' : '';   // only scroll if it can't fit
+    panel.style.transformOrigin = Math.round(center - left) + 'px top';
+    // the little arrow keeps pointing at the badge, even after the panel was slid sideways
+    panel.style.setProperty('--dg-arrow', Math.round(Math.min(Math.max(12, center - left - 7), w - 26)) + 'px');
   }
   function isOpen() { return panel.classList.contains('dg-open'); }
   function setOpen(open) {
