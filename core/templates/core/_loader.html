@@ -8,76 +8,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<div id="micaLoader" class="mica-loader" role="status" aria-live="polite">
-  <div class="mica-loader-inner">
-    <div class="mica-loader-brand">MICA</div>
-    <div class="mica-loader-track" id="micaLoaderTrack">
-      <div class="mica-loader-fill" id="micaLoaderFill"></div>
-      <div class="mica-loader-walker" id="micaLoaderWalker">
-        <img src="{% static 'core/images/mica_walker.gif' %}" alt="">
-      </div>
-    </div>
-    <div class="mica-loader-meta">
-      <span class="mica-loader-label" id="micaLoaderLabel">Getting things ready…</span>
-      <span class="mica-loader-pct" id="micaLoaderPct">0%</span>
-    </div>
-  </div>
-</div>
-
-<script>
-/* The loader mirrors the app's own theme (NOT the device/system theme):
-   dark interface (body.dark / body.dark-mode) -> dark loader, otherwise light loader.
-
-   Cross-page transition: every page records the theme it is showing (sessionStorage 'mica_last_theme').
-   On the next page, the loader first appears in the theme of the page you LEFT, then animates to the
-   theme of the page you ARRIVED at, and only then reveals the page. This works however you navigate
-   (links, form posts, redirects, JS redirects) - e.g. login (light) -> student dashboard (dark),
-   and student dashboard (dark) -> login (light) after logging out. */
-(function(){
-  var KEY = 'mica_last_theme';
-  var el = document.getElementById('micaLoader');
-  if (!el) return;
-
-  function isDark(){
-    if (document.documentElement.getAttribute('data-theme') === 'dark') return true;
-    var b = document.body;
-    return !!(b && (b.classList.contains('dark') || b.classList.contains('dark-mode')));
-  }
-  function actual(){ return isDark() ? 'dark' : 'light'; }
-  function remember(t){ try { sessionStorage.setItem(KEY, t); } catch (e) {} }
-
-  // Theme of the page we came from
-  var from = null;
-  try {
-    var v = sessionStorage.getItem(KEY);
-    if (v === 'dark' || v === 'light') from = v;
-  } catch (e) {}
-
-  var target = actual();
-  remember(target);                                    // this page is now the "previous page" for the next one
-
-  if (from && from !== target) {
-    el.setAttribute('data-theme', from);              // start in the old page's theme
-    window.__micaLoaderMinMs = 1200;                  // keep the loader up long enough to show the change
-    setTimeout(function(){ el.setAttribute('data-theme', actual()); }, 350);  // then animate to the new theme
-  } else {
-    el.setAttribute('data-theme', target);
-  }
-
-  // Live sync if the user toggles the theme while a page is open
-  try {
-    new MutationObserver(function(){
-      var t = actual();
-      remember(t);
-      el.setAttribute('data-theme', t);
-    }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
-      new MutationObserver(function(){
-        var t = actual(); remember(t); el.setAttribute('data-theme', t);
-        }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
-  } catch (e) {}
-})();
-</script>
-
+<!-- Styles must come BEFORE the markup: otherwise the browser can paint the walker GIF at its
+     natural (giant) size for a split second before this CSS is parsed. -->
 <style>
   /* ---- Loader theme tokens (light default) ---- */
   .mica-loader{
@@ -193,6 +125,76 @@
     .mica-loader, .mica-loader-fill, .mica-loader-walker{ transition: none !important; }
   }
 </style>
+<div id="micaLoader" class="mica-loader" role="status" aria-live="polite">
+  <div class="mica-loader-inner">
+    <div class="mica-loader-brand">MICA</div>
+    <div class="mica-loader-track" id="micaLoaderTrack">
+      <div class="mica-loader-fill" id="micaLoaderFill"></div>
+      <div class="mica-loader-walker" id="micaLoaderWalker" style="width:64px;">
+        <img src="{% static 'core/images/mica_walker.gif' %}" alt="" width="64" style="width:100%;height:auto;display:block;">
+      </div>
+    </div>
+    <div class="mica-loader-meta">
+      <span class="mica-loader-label" id="micaLoaderLabel">Getting things ready…</span>
+      <span class="mica-loader-pct" id="micaLoaderPct">0%</span>
+    </div>
+  </div>
+</div>
+
+<script>
+/* The loader mirrors the app's own theme (NOT the device/system theme):
+   dark interface (body.dark / body.dark-mode) -> dark loader, otherwise light loader.
+
+   Cross-page transition: every page records the theme it is showing (sessionStorage 'mica_last_theme').
+   On the next page, the loader first appears in the theme of the page you LEFT, then animates to the
+   theme of the page you ARRIVED at, and only then reveals the page. This works however you navigate
+   (links, form posts, redirects, JS redirects) - e.g. login (light) -> student dashboard (dark),
+   and student dashboard (dark) -> login (light) after logging out. */
+(function(){
+  var KEY = 'mica_last_theme';
+  var el = document.getElementById('micaLoader');
+  if (!el) return;
+
+  function isDark(){
+    if (document.documentElement.getAttribute('data-theme') === 'dark') return true;
+    var b = document.body;
+    return !!(b && (b.classList.contains('dark') || b.classList.contains('dark-mode')));
+  }
+  function actual(){ return isDark() ? 'dark' : 'light'; }
+  function remember(t){ try { sessionStorage.setItem(KEY, t); } catch (e) {} }
+
+  // Theme of the page we came from
+  var from = null;
+  try {
+    var v = sessionStorage.getItem(KEY);
+    if (v === 'dark' || v === 'light') from = v;
+  } catch (e) {}
+
+  var target = actual();
+  remember(target);                                    // this page is now the "previous page" for the next one
+
+  if (from && from !== target) {
+    el.setAttribute('data-theme', from);              // start in the old page's theme
+    window.__micaLoaderMinMs = 1200;                  // keep the loader up long enough to show the change
+    setTimeout(function(){ el.setAttribute('data-theme', actual()); }, 350);  // then animate to the new theme
+  } else {
+    el.setAttribute('data-theme', target);
+  }
+
+  // Live sync if the user toggles the theme while a page is open
+  try {
+    new MutationObserver(function(){
+      var t = actual();
+      remember(t);
+      el.setAttribute('data-theme', t);
+    }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+      new MutationObserver(function(){
+        var t = actual(); remember(t); el.setAttribute('data-theme', t);
+        }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  } catch (e) {}
+})();
+</script>
+
 
 <script>
 (function(){
