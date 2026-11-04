@@ -1,0 +1,45 @@
+{% comment %} "System" tab body for the staff and admin dashboards (Settings -> System).
+   Expects `sysinfo` from core.system_info.system_info(request). The "In this browser" rows are
+   filled in by core/js/system-info.js and are never sent to the server. {% endcomment %}
+{% load static %}
+<style>
+  .sysinfo-list { margin: 0; }
+  .sysinfo-row { display: flex; justify-content: space-between; gap: 16px; padding: 10px 0;
+                 border-bottom: 1px solid var(--line, rgba(0,0,0,.08)); font-size: 13.5px; }
+  .sysinfo-row:last-child { border-bottom: 0; }
+  .sysinfo-row dt { color: var(--ink-soft); margin: 0; flex: 0 0 40%; }
+  .sysinfo-row dd { margin: 0; font-weight: 600; text-align: right; word-break: break-word; }
+  .sysinfo-ua { font-size: 11.5px; color: var(--ink-soft); word-break: break-all; margin-top: 10px; }
+  @media (max-width: 520px) { .sysinfo-row { flex-direction: column; gap: 2px; }
+                              .sysinfo-row dd { text-align: left; } }
+</style>
+<div class="card panel">
+  <div class="panel-head"><div><h3>System information</h3>
+    <div class="sub">About this device and your sign-in. Only you can see this page.</div></div></div>
+</div>
+{% for section in sysinfo.sections %}
+<div class="card panel">
+  <div class="panel-head"><div><h3>{{ section.title }}</h3></div></div>
+  <dl class="sysinfo-list">
+    {% for label, value in section.rows %}
+    <div class="sysinfo-row"><dt>{{ label }}</dt><dd>{{ value }}</dd></div>
+    {% endfor %}
+  </dl>
+  {% if section.title == "This device" and sysinfo.user_agent %}
+  <div class="sysinfo-ua">{{ sysinfo.user_agent }}</div>
+  {% endif %}
+</div>
+{% endfor %}
+<div class="card panel">
+  <div class="panel-head"><div><h3>In this browser</h3>
+    <div class="sub">Read by your browser; not sent to the server.</div></div></div>
+  <dl class="sysinfo-list" id="sysinfoClient">
+    <div class="sysinfo-row"><dt>Screen</dt><dd data-sys="screen">&mdash;</dd></div>
+    <div class="sysinfo-row"><dt>Window</dt><dd data-sys="window">&mdash;</dd></div>
+    <div class="sysinfo-row"><dt>Language</dt><dd data-sys="language">&mdash;</dd></div>
+    <div class="sysinfo-row"><dt>Time zone</dt><dd data-sys="timezone">&mdash;</dd></div>
+    <div class="sysinfo-row"><dt>Connection</dt><dd data-sys="online">&mdash;</dd></div>
+    <div class="sysinfo-row"><dt>Cookies</dt><dd data-sys="cookies">&mdash;</dd></div>
+  </dl>
+</div>
+<script src="{% static 'core/js/system-info.js' %}"></script>

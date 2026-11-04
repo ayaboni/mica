@@ -27,6 +27,7 @@ from .models import Notification
 from .models import StudentFlag
 from .models import YEAR_LEVELS, SERVICES
 from .courses import get_courses, get_course_groups
+from .system_info import system_info
 from .models import LoginThrottle
 from .models import AccessLog
 from .models import ConsoleNotification
@@ -3235,6 +3236,7 @@ def staff_dashboard(request):
         'referral_chat': bool(_valid_grants(request.user, claimable=True)),
         # First-visit tour for staff (not for the system admin, who has their own dashboard).
         'show_staff_tutorial': not request.user.is_superuser and not (sp and sp.has_seen_tutorial),
+        'sysinfo': system_info(request),
     })
 
 
@@ -4740,7 +4742,10 @@ def api_notifications_delete(request):
 @login_required(login_url='login')
 @user_passes_test(lambda u: u.is_superuser, login_url='login')
 def admin_dashboard(request):
-    return render(request, 'core/admin-dashboard.html', {'my_avatar_url': _avatar_url(request.user)})
+    return render(request, 'core/admin-dashboard.html', {
+        'my_avatar_url': _avatar_url(request.user),
+        'sysinfo': system_info(request),
+    })
 
 
 # -- Logout --

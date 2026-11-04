@@ -1258,6 +1258,7 @@
           <button class="tab-btn active" data-tab="profile" onclick="showTab('profile', this)">My Profile</button>
           <button class="tab-btn" data-tab="thresholds" onclick="showTab('thresholds', this)">Monitoring Thresholds</button>
           <button class="tab-btn" data-tab="accounts" onclick="showTab('accounts', this)">Care Team</button>
+          <button class="tab-btn" data-tab="system" onclick="showTab('system', this)">System</button>
           <button class="tab-btn" data-tab="appearance" onclick="showTab('appearance', this)">Appearance</button>
         </div>
 
@@ -1338,6 +1339,10 @@
               <tbody id="adminsTbody"></tbody>
             </table>
           </div>
+        </div>
+
+        <div class="subpanel" id="tab-system">
+          {% include 'core/_system_info.html' %}
         </div>
 
         <div class="subpanel" id="tab-appearance">

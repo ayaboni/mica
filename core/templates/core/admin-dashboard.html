@@ -912,6 +912,7 @@
           <button class="tab-btn" data-tab="semesters" onclick="goTab('semesters')">Semesters</button>
           <button class="tab-btn" data-tab="courses" onclick="goTab('courses')">Courses</button>
           <button class="tab-btn" data-tab="account" onclick="goTab('account')">My Account</button>
+          <button class="tab-btn" data-tab="system" onclick="goTab('system')">System</button>
           <button class="tab-btn" data-tab="appearance" onclick="goTab('appearance')">Appearance</button>
       </div>
 
@@ -937,6 +938,10 @@
             <div class="panel-head"><div><h3>Password</h3><div class="sub">We'll email you a code first to confirm it's you.</div></div></div>
             <a class="pill-btn ghost sm" href="{% url 'change_password' %}">Change password</a>
           </div>
+        </div>
+
+        <div class="subpanel" id="tab-system">
+          {% include 'core/_system_info.html' %}
         </div>
 
         <div class="subpanel" id="tab-appearance">
