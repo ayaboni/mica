@@ -372,6 +372,57 @@
 
 .u-cell .avatar, .stu-top .avatar { position: relative; overflow: hidden; }
 .avatar .av-pic { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+
+/* ---------- Mobile / vertical phone fixes ---------- */
+html, body{ overflow-x:hidden; }
+.main{ overflow-x:hidden; }
+.content, .section, .card, .panel{ min-width:0; }
+.stat-grid > *, .grid-2 > *{ min-width:0; }
+.card canvas{ max-width:100%; }
+
+/* inline grid-template-columns was beating this rule */
+@media (max-width:1080px){
+  .grid-2, .grid-2.even{ grid-template-columns:minmax(0,1fr) !important; }
+}
+
+@media (max-width:860px){
+  /* staff: Student Messages stacks instead of side by side */
+  .messages-layout{ flex-direction:column; height:auto; min-height:0; }
+  .thread-list-panel{ width:100%; max-height:240px; }
+  .thread-view-panel{ min-height:70dvh; }
+  .tmsg-bubble{ max-width:85%; }
+}
+
+@media (max-width:760px){
+  /* topbar: title + icons on row 1, search on row 2 */
+  .topbar{ flex-wrap:wrap; gap:10px 8px; padding:12px 14px; }
+  .topbar .titlewrap{ flex:1; min-width:0; margin-right:0; }
+  .topbar h2{ font-size:18px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .topbar-actions{ display:contents; }
+  .icon-btn.menu-btn{ margin-right:0; }
+  .icon-btn{ width:36px; height:36px; }
+  .searchbox{ order:10; flex:1 1 100%; min-width:0; }
+  .searchbox input{ min-width:0; }
+  .notif-panel{ top:112px; }
+
+  .content{ padding:16px 12px 50px; }
+
+  /* tab rows scroll sideways instead of overflowing the page */
+  .tab-row{ overflow-x:auto; flex-wrap:nowrap; }
+  .tab-btn, .rtab-btn, .mtab-btn{ white-space:nowrap; flex:none; }
+
+  /* modals */
+  .modal-overlay{ padding:16px 10px; }
+  .modal-head, .modal-body, .modal-foot{ padding-left:18px; padding-right:18px; }
+
+  .alert-card .top-row{ flex-wrap:wrap; }
+  .waiting-banner-floating{ left:12px; right:12px; bottom:12px; max-width:none; }
+
+  /* admin card grids (minmax was wider than a small phone) */
+  .subclass-grid{ grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr)); }
+  .stu-grid{ grid-template-columns:repeat(auto-fill,minmax(min(270px,100%),1fr)); }
+}
+
 </style>
 </head>
 <body>
