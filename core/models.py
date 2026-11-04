@@ -203,6 +203,8 @@ class UserProfile(models.Model):
     # staff archive/reactivate clears it, so a staff archive can never be undone by signing in.
     self_deactivated = models.BooleanField(default=False)
     affirmations_seeded = models.BooleanField(default=False)
+    # Set once the "you hit your daily goal 2 days" evaluation-form pop-up has been shown and closed.
+    goal_reward_shown_at = models.DateTimeField(null=True, blank=True)
     dark_mode = models.BooleanField(default=False)
     # Accounts made with a shared term code start "unverified": the student can use MICA, but is
     # invisible to Guidance until a staff member approves them. "rejected" = deactivated as junk.
@@ -290,6 +292,20 @@ class DailyQuest(models.Model):
         ordering = ['id']
         constraints = [models.UniqueConstraint(fields=['user', 'date', 'text'], name='uniq_daily_quest')]
         indexes = [models.Index(fields=['date'])]
+
+class DailyGoalPoint(models.Model):
+    """One point a student earned on one day (the daily goal).
+
+    `key` is a feature: 'chat', 'mood', 'guidance' or 'ex:<exercise>'. The unique constraint is what
+    caps every task at ONE point per day, however many times it is repeated."""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='goal_points')
+    date = models.DateField(db_index=True)
+    key = models.CharField(max_length=40)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['user', 'date', 'key'], name='uniq_goal_point')]
+
 
 class ChatConversation(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='conversations')

@@ -2401,6 +2401,16 @@ function toggleDyslexia(){
 {% include 'core/_action_feedback.html' %}
 
 <script src="{% static 'core/js/poller.js' %}"></script>
+{% if show_daily_goal %}
+<script>
+window.MICA_DAILY_GOAL = {
+  url: "{% url 'api_daily_goal' %}",
+  seenUrl: "{% url 'api_daily_goal_reward_seen' %}",
+  mascot: "{% static 'core/images/mascot_happy.png' %}"
+};
+</script>
+<script src="{% static 'core/js/daily-goal.js' %}"></script>
+{% endif %}
 <script>
 /* ============================================================
    PLACEHOLDER IMAGE GENERATOR

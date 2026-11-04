@@ -44,6 +44,7 @@ from .models import SiteSettings
 from .models import EnrolledStudent
 from .student_number import student_number_problem
 from .reports import EXERCISE_LABELS
+from . import daily_goal
 from . import registration_codes as regcodes
 from . import verification
 from .verification import visible_students, all_students, can_set_avatar, AVATAR_LOCKED_MESSAGE
@@ -2190,6 +2191,7 @@ def chatbot_reply(request):
         conversation = ChatConversation.objects.create(user=request.user)
 
     ChatMessage.objects.create(conversation=conversation, sender='user', content=user_message)
+    daily_goal.award(request.user, "chat")
     safety = _safety_reply(user_message)
     if safety:
         ChatMessage.objects.create(conversation=conversation, sender='bot', content=safety)
@@ -2390,6 +2392,7 @@ def student_dashboard(request):
         'show_tutorial': is_student and not profile.has_seen_tutorial,
         'show_mood_tutorial': is_student and not profile.has_seen_mood_tutorial,
         'account_unverified': is_student and profile.verification_status == 'unverified',
+        'show_daily_goal': is_student,
     })
 
 
@@ -2489,6 +2492,7 @@ def guidance_send(request):
     thread, _ = GuidanceThread.objects.get_or_create(student=request.user)
     msg = GuidanceMessage.objects.create(thread=thread, sender=request.user, content=content)
     thread.save()  # bumps updated_at
+    daily_goal.award(request.user, "guidance")
 
     _notify_staff_of_student_message(request.user, thread)
     return JsonResponse({"status": "ok", "thread_id": thread.id, "message_id": msg.id})
@@ -2519,6 +2523,7 @@ def guidance_request(request):
         GuidanceMessage.objects.create(thread=thread, sender=request.user, content=GUIDANCE_REQUEST_TEXT)
         thread.save()  # bumps updated_at
 
+    daily_goal.award(request.user, "guidance")
     _notify_staff_of_student_message(request.user, thread)
     return JsonResponse({"status": "ok", "thread_id": thread.id, "created": created})
 
@@ -2626,6 +2631,8 @@ def api_mood_save(request):
         user=request.user, date=entry_date,
         defaults=defaults
     )
+    if entry_date == timezone.localdate():      # back-filling an old day doesn't count
+        daily_goal.award(request.user, "mood")
     return JsonResponse({"status": "ok"})
 
 
@@ -2655,6 +2662,8 @@ def api_breathe_save(request):
     if not 0 <= seconds <= 6 * 3600:          # a breathing session is never longer than a few hours
         return _bad_request()
     BreatheSession.objects.create(user=request.user, duration_seconds=seconds)
+    if seconds >= 3:
+        daily_goal.award(request.user, "ex:breathing")
     return JsonResponse({"status": "ok"})
 
 
@@ -2843,6 +2852,7 @@ def api_exercise_log(request):
         return JsonResponse({"status": "skipped"})
     ExerciseSession.objects.create(
         user=request.user, exercise=exercise, duration_seconds=seconds, count=count)
+    daily_goal.award(request.user, "ex:" + exercise)     # one point per exercise per day
     return JsonResponse({"status": "ok"})
 
 
@@ -2862,6 +2872,27 @@ def api_exercise_history(request):
         } for s in qs[:30]],
         "week": {"sessions": week.count(), "minutes": round(week_secs / 60, 1)},
     })
+
+
+@login_required(login_url='login')
+def api_daily_goal(request):
+    """Today's points, the task checklist, and whether the evaluation-form pop-up is due."""
+    if request.user.is_staff or request.user.is_superuser:
+        return JsonResponse({"error": "Students only."}, status=403)
+    return JsonResponse(daily_goal.summary(request.user))
+
+
+@login_required(login_url='login')
+@require_POST
+def api_daily_goal_reward_seen(request):
+    """The student closed (or clicked) the pop-up: don't show it again."""
+    if request.user.is_staff or request.user.is_superuser:
+        return JsonResponse({"error": "Students only."}, status=403)
+    profile = get_profile(request.user)
+    if profile.goal_reward_shown_at is None:
+        profile.goal_reward_shown_at = timezone.now()
+        profile.save(update_fields=['goal_reward_shown_at'])
+    return JsonResponse({"status": "ok"})
 
 
 QUESTS_PER_DAY = 4
