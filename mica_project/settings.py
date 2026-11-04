@@ -156,6 +156,13 @@ DATABASES = {
         'PORT': os.getenv('DB_PORT', '5432'),
         'OPTIONS': {'sslmode': 'require', 'keepalives': 1, 'keepalives_idle': 30,
                    'keepalives_interval': 10, 'keepalives_count': 5},
+        # Keep each thread's database connection open between requests instead of opening a fresh
+        # SSL connection for every request (the dashboards poll often). CONN_HEALTH_CHECKS drops a
+        # dead connection (e.g. after a database restart) instead of failing the next request.
+        # Each gunicorn thread holds one connection, so workers x threads must stay under the
+        # database plan's connection limit. Set DB_CONN_MAX_AGE=0 to turn this off.
+        'CONN_MAX_AGE': int(os.getenv('DB_CONN_MAX_AGE', '60')),
+        'CONN_HEALTH_CHECKS': True,
     }
 }
 

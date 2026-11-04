@@ -10,7 +10,7 @@ from django.utils.html import escape
 from django.db import models
 from django.db import connection
 from django.db import IntegrityError, transaction
-from django.db.models import Prefetch, Q
+from django.db.models import OuterRef, Prefetch, Q, Subquery
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.urls import reverse
@@ -2505,15 +2505,32 @@ def guidance_request(request):
     return JsonResponse({"status": "ok", "thread_id": thread.id, "created": created})
 
 
+def _after_id(request):
+    """?after=<message id> for incremental chat polling. Anything that isn't a plain positive
+    integer counts as 0, which means "send the whole conversation"."""
+    raw = request.GET.get('after', '')
+    return int(raw) if raw.isascii() and raw.isdigit() and len(raw) <= 12 else 0
+
+
 @login_required(login_url='login')
 def guidance_messages(request):
-    thread = GuidanceThread.objects.filter(student=request.user).first()
+    thread = (GuidanceThread.objects.filter(student=request.user)
+              .select_related('counselor', 'counselor__staff_profile').first())
     if not thread:
-        return JsonResponse({"messages": [], "counselor_name": None})
+        return JsonResponse({"messages": [], "counselor_name": None, "last_id": 0})
+
+    # ?after=<id> returns only newer messages, so the chat can poll cheaply every few seconds.
+    after = _after_id(request)
+    # Messages the student cleared from their own screen (guidance_hide) stay cleared; staff keep them.
+    qs = thread.messages.filter(hidden_for_student=False).order_by('created_at', 'id')
+    if after:
+        qs = qs.filter(id__gt=after)
 
     msgs = []
-    for m in thread.messages.all():
-        entry = {"sender": "user" if m.sender_id == request.user.id else "counselor", "content": m.content}
+    last_id = after
+    for m in qs:
+        last_id = max(last_id, m.id)
+        entry = {"id": m.id, "sender": "user" if m.sender_id == request.user.id else "counselor", "content": m.content}
         match = re.search(r"\[appointment:(\d+)\]", m.content)
         if match:
             appt = Appointment.objects.filter(id=match.group(1)).first()
@@ -2529,6 +2546,7 @@ def guidance_messages(request):
     return JsonResponse({
         "messages": msgs,
         "counselor_name": _staff_role(thread.counselor) if thread.counselor else None,
+        "last_id": last_id,
     })
 
 
@@ -3230,15 +3248,18 @@ def release_thread(request, thread_id):
     return JsonResponse({"status": "ok"})
 
 
-@login_required(login_url='login')
-@user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
-@chat_or_referral
-def staff_guidance_inbox(request):
-    me = request.user
+def _guidance_inbox_payload(me):
+    """The conversation list for staff member `me`. Used by staff_guidance_inbox and staff_pulse so
+    both apply exactly the same visibility rules."""
     chat_ok = can(me, 'chat_students')
     grants = _valid_grants(me)
+    # Latest message of each thread fetched inside the same query (was one extra query per thread).
+    latest = GuidanceMessage.objects.filter(thread=OuterRef('pk')).order_by('-created_at', '-id')
     threads = (GuidanceThread.objects.filter(student__in=visible_students())
-               .select_related('student', 'student__profile', 'counselor', 'counselor__staff_profile'))
+               .select_related('student', 'student__profile', 'counselor', 'counselor__staff_profile')
+               .annotate(last_msg_id=Subquery(latest.values('id')[:1]),
+                         last_msg_content=Subquery(latest.values('content')[:1]),
+                         last_msg_sender=Subquery(latest.values('sender_id')[:1])))
     data = []
     for t in threads:
         mine = t.counselor_id == me.id
@@ -3248,7 +3269,7 @@ def staff_guidance_inbox(request):
         if not chat_ok and t.student_id not in grants:
             continue            # a role that can't chat only sees the students it accepted a referral for
         visible = mine or unclaimed
-        last = t.messages.last()
+        has_last = t.last_msg_id is not None
         archived = _student_archived(t.student)
         data.append({
             "id": t.id,
@@ -3259,12 +3280,19 @@ def staff_guidance_inbox(request):
             "mine": mine,
             "counselor_role": _staff_role(t.counselor) if t.counselor else "",
             "counselor_name": (t.counselor.get_full_name() or t.counselor.username) if t.counselor else "",
-            "last_message": (last.content if last else "") if visible else "🔒 Private conversation",
-            "last_message_id": last.id if last and visible else 0,
-            "awaiting_reply": bool(last) and last.sender_id == t.student_id and visible and not archived,
+            "last_message": (t.last_msg_content or "") if visible else "🔒 Private conversation",
+            "last_message_id": t.last_msg_id if has_last and visible else 0,
+            "awaiting_reply": has_last and t.last_msg_sender == t.student_id and visible and not archived,
             "archived": archived,
         })
-    return JsonResponse({"threads": data})
+    return {"threads": data}
+
+
+@login_required(login_url='login')
+@user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
+@chat_or_referral
+def staff_guidance_inbox(request):
+    return JsonResponse(_guidance_inbox_payload(request.user))
 
 
 CONDITION_LABELS = {
@@ -3313,10 +3341,20 @@ def staff_guidance_thread(request, thread_id):
     ConsoleNotification.objects.filter(
         recipient=request.user, kind='message', ref_id=thread.id, read_at__isnull=True
     ).update(read_at=timezone.now())
+    # ?after=<id> returns only newer messages. The access check and audit log above still run on
+    # every poll; only the header, notes and assessment info (sent once, when the chat opens) are skipped.
+    after = _after_id(request)
+    qs = thread.messages.order_by('created_at', 'id')
+    if after:
+        qs = qs.filter(id__gt=after)
+    rows = list(qs)
     msgs = [
-        {"sender": "student" if m.sender_id == thread.student_id else "counselor", "content": m.content}
-        for m in thread.messages.all()
+        {"id": m.id, "sender": "student" if m.sender_id == thread.student_id else "counselor", "content": m.content}
+        for m in rows
     ]
+    last_id = max([after] + [m.id for m in rows])
+    if after:
+        return JsonResponse({"incremental": True, "messages": msgs, "last_id": last_id})
     notes = [] if not can(request.user, 'read_note_services') else [{
         "id": n.id,
         "author": n.counselor.get_full_name() or n.counselor.username,
@@ -3329,6 +3367,7 @@ def staff_guidance_thread(request, thread_id):
         "student_avatar": _avatar_of(thread.student),
         "student_info": _student_info_for(request.user, thread.student),
         "messages": msgs,
+        "last_id": last_id,
         "notes": notes,
     })
 
@@ -3581,22 +3620,20 @@ def staff_note_review(request, note_id):
     return JsonResponse({"note": _note_json(note, request.user)})
 
 
-@login_required(login_url='login')
-@user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
-def staff_referral_inbox(request):
+def _referral_inbox_payload(me):
     """Referrals waiting for this staff member's answer, plus answers to the referrals they made."""
     def who(u):
         return (u.get_full_name() or u.username) if u else "Former staff"
 
-    waiting = (StudentNote.objects.filter(referred_to=request.user, service='referral', referral_status='pending')
+    waiting = (StudentNote.objects.filter(referred_to=me, service='referral', referral_status='pending')
                .select_related('student', 'author').order_by('-created_at'))
-    if not can(request.user, 'referrals'):      # a role without the referrals switch isn't asked to answer any
+    if not can(me, 'referrals'):      # a role without the referrals switch isn't asked to answer any
         waiting = waiting.none()
-    answered = (StudentNote.objects.filter(author=request.user, service='referral', referred_to__isnull=False,
+    answered = (StudentNote.objects.filter(author=me, service='referral', referred_to__isnull=False,
                                            referral_response_seen=False)
                 .exclude(referral_status='pending')
                 .select_related('student', 'referred_to').order_by('-referral_responded_at'))
-    return JsonResponse({
+    return {
         "referrals": [{
             "note_id": n.id,
             "student_code": f"MC-{1000 + n.student_id}",
@@ -3619,8 +3656,30 @@ def staff_referral_inbox(request):
             "reason": n.referral_decline_reason,
             "date": timezone.localtime(n.referral_responded_at).strftime("%b %d, %I:%M %p") if n.referral_responded_at else "",
         } for n in answered],
-        "chats": _referral_chats(request.user, who),
-        "chat_access": bool(_valid_grants(request.user, claimable=True)),
+        "chats": _referral_chats(me, who),
+        "chat_access": bool(_valid_grants(me, claimable=True)),
+    }
+
+
+@login_required(login_url='login')
+@user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
+def staff_referral_inbox(request):
+    return JsonResponse(_referral_inbox_payload(request.user))
+
+
+@login_required(login_url='login')
+@user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
+@require_http_methods(["GET"])
+def staff_pulse(request):
+    """One poll for the staff dashboard instead of two. It returns the same payloads, built by the
+    same functions and under the same access rules, as staff_referral_inbox and staff_guidance_inbox.
+    A role with no chat access (and no accepted referral) gets `inbox: null`, like the 403 it would
+    have got from the inbox endpoint. GET under /api/, so it never extends an idle session."""
+    me = request.user
+    can_chat = can(me, 'chat_students') or bool(_valid_grants(me))
+    return JsonResponse({
+        "referrals": _referral_inbox_payload(me),
+        "inbox": _guidance_inbox_payload(me) if can_chat else None,
     })
 
 

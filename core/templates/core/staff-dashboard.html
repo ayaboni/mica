@@ -1601,6 +1601,7 @@
 </div>
 
 {{ staff_perms|json_script:"staff-perms" }}
+<script src="{% static 'core/js/poller.js' %}"></script>
 <script>
 (function(){
   const _fetch = window.fetch;
@@ -1733,12 +1734,11 @@ function goTo(section){
   if(section==='messages'){
     setTimeout(loadGuidanceInbox,10);
     if(activeThreadId){
-      fetchThreadMessages();
-      clearInterval(threadPollTimer);
-      threadPollTimer = setInterval(fetchThreadMessages, 4000);
+      refreshThread();
+      startThreadPoll();
     }
   } else {
-    clearInterval(threadPollTimer);
+    stopThreadPoll();
   }
   if(section==='mood') setTimeout(refreshMonitoring,10);
   if(section==='summary') loadSummary();
@@ -1893,7 +1893,18 @@ const THREAD_URL = "{% url 'staff_guidance_thread' 0 %}";   // -> "/api/staff/gu
 const SEND_URL    = "{% url 'staff_guidance_send' 0 %}";    // -> "/api/staff/guidance/0/send/"
 
 let activeThreadId = null;
-let threadPollTimer = null;
+let threadPollTimer = null;      // MicaPoll handle while a conversation is open
+let threadHead = {name: '', avatar: ''};   // header details of the open conversation, for incremental renders
+
+// Open conversation: look for new messages every 2.5 s while the tab is visible (20 s in the background).
+function startThreadPoll(){
+  stopThreadPoll();
+  threadPollTimer = MicaPoll.every(fetchThreadMessages, {active: 2500, hidden: 20000, enabled: () => !!activeThreadId});
+}
+function stopThreadPoll(){
+  if(threadPollTimer){ threadPollTimer.stop(); threadPollTimer = null; }
+}
+function refreshThread(){ return fetchThreadMessages().catch(() => {}); }   // one-off refresh; failures are ignored
 let panelArchived = false;
 let scheduleSubmitting = false;
 let seenLastMsg = {};
@@ -1914,8 +1925,7 @@ function avatarHtml(name, url){
   return `<div class="avatar">${escapeHtmlStaff(initials(name))}${pic}</div>`;
 }
 
-function pollReferrals(){
-  fetch("{% url 'staff_referral_inbox' %}").then(r => r.json()).then(d => {
+function applyReferrals(d){
     referralsList = d.referrals || [];
     responsesList = d.responses || [];
     chatsList = d.chats || [];
@@ -1928,10 +1938,12 @@ function pollReferrals(){
     refChat = !!d.chat_access;
     if(chatAllowed() !== hadChat){ applyPermissions(); pollStaffNotifications(); }
     if(document.getElementById('referralModal').classList.contains('active')) renderReferrals();
-  }).catch(() => {});
 }
-setInterval(pollReferrals, 10000);
-pollReferrals();
+
+// On-demand refresh (after answering a referral, etc.). The regular polling goes through the pulse below.
+function pollReferrals(){
+  return fetch("{% url 'staff_referral_inbox' %}").then(r => r.json()).then(applyReferrals).catch(() => {});
+}
 
 function renderReferrals(){
   const row = 'padding:12px 4px; border-bottom:1px solid var(--line);';
@@ -2058,12 +2070,8 @@ function openReferral(code){
   setTimeout(pollReferrals, 800);
 }
 
-function pollStaffNotifications(){
-  if(!chatAllowed()) return;
-  fetch("{% url 'staff_guidance_inbox' %}")
-    .then(r => r.json())
-    .then(data => {
-      if(!data.threads) return;
+function applyInbox(data){
+      if(!data || !data.threads) return;
       const waiting = data.threads.filter(t => t.awaiting_reply).length;
       const fresh = data.threads.filter(t => t.awaiting_reply && t.last_message_id > (seenLastMsg[t.id] || 0));
       if(staffNotifInitialized && fresh.length){
@@ -2087,21 +2095,34 @@ function pollStaffNotifications(){
 
       const messagesSection = document.getElementById('sec-messages');
       if(messagesSection && messagesSection.classList.contains('active')){
-        loadGuidanceInbox();
+        renderGuidanceInbox(data);      // same data: no second request for the list
       }
 
       document.title = waiting ? `(${waiting}) Student waiting | MICA` : 'MICA | Staff Dashboard';
-    });
 }
 
-setInterval(pollStaffNotifications, 10000);
-pollStaffNotifications();
+// On-demand refresh. The regular polling goes through the pulse below.
+function pollStaffNotifications(){
+  if(!chatAllowed()) return Promise.resolve();
+  return fetch("{% url 'staff_guidance_inbox' %}").then(r => r.json()).then(applyInbox).catch(() => {});
+}
+
+// One request brings both lists: every 10 s while the tab is visible, every 20 s in the background
+// (never paused, so a waiting student still gets noticed). Same payloads and access rules as the
+// referral and conversation endpoints.
+MicaPoll.every(() => MicaPoll.json("{% url 'staff_pulse' %}").then(p => {
+  if(p.referrals) applyReferrals(p.referrals);
+  if(p.inbox && chatAllowed()) applyInbox(p.inbox);
+}), {active: 10000, hidden: 20000, immediate: true});
 
 function loadGuidanceInbox(){
   return fetch("{% url 'staff_guidance_inbox' %}")
     .then(r=>r.json())
-    .then(data=>{
-      if(!data.threads) return;
+    .then(renderGuidanceInbox);
+}
+
+function renderGuidanceInbox(data){
+      if(!data || !data.threads) return;
       data.threads.sort((a,b) => Number(a.archived) - Number(b.archived));
       threadsById = Object.fromEntries(data.threads.map(t => [t.id, t]));
       const cur = threadsById[activeThreadId];
@@ -2134,7 +2155,6 @@ function loadGuidanceInbox(){
       }
       const waitingCount = data.threads.filter(t => t.awaiting_reply).length;
       document.getElementById('guidanceNavCount').textContent = waitingCount;
-    });
 }
 
 function openGuidanceThread(threadId, studentName){
@@ -2148,7 +2168,7 @@ function openGuidanceThread(threadId, studentName){
 
   // Locked: claimed by another counselor
   if (t && t.claimed && !t.mine) {
-    clearInterval(threadPollTimer);
+    stopThreadPoll();
     document.getElementById('threadViewPanel').innerHTML = `
       <div class="thread-view-head">${studentName}</div>
       <div class="thread-empty" style="flex:1; display:flex; flex-direction:column; gap:12px; text-align:center; padding:24px;">
@@ -2184,9 +2204,8 @@ function openGuidanceThread(threadId, studentName){
     if(e.key==='Enter') sendStaffGuidanceMessage();
   });
 
-  fetchThreadMessages();
-  clearInterval(threadPollTimer);
-  threadPollTimer = setInterval(fetchThreadMessages, 4000);
+  refreshThread();
+  startThreadPoll();
 }
 
 function claimThread(threadId, takeover){
@@ -2220,36 +2239,59 @@ function releaseThread(threadId){
   });
 }
 
-function fetchThreadMessages(){
-  if(!activeThreadId) return;
-  fetch(THREAD_URL.replace('0', activeThreadId))
-    .then(r=>r.json())
-    .then(data=>{
-      if(!data.messages) return;   // locked / error response
-      const container = document.getElementById('threadMessages');
-      if(!container) return; // panel may have changed since the fetch started
-      const COPY_ICON = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg>';
-      container.innerHTML = data.messages.map(m => {
-        const text = m.content.replace(/\s*\[appointment:\d+\]/g, '');
-        const bubble = `<div class="tmsg-bubble">${escapeHtmlStaff(text)}</div>`;
-        const copy = `<button class="tmsg-copy" title="Copy" aria-label="Copy message" onclick="copyThreadMsg(this)">${COPY_ICON}</button>`;
-        return `
+const COPY_ICON = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg>';
+
+function threadMsgHtml(m){
+  const text = m.content.replace(/\s*\[appointment:\d+\]/g, '');
+  const bubble = `<div class="tmsg-bubble">${escapeHtmlStaff(text)}</div>`;
+  const copy = `<button class="tmsg-copy" title="Copy" aria-label="Copy message" onclick="copyThreadMsg(this)">${COPY_ICON}</button>`;
+  return `
           <div class="tmsg-row ${m.sender}">
-            ${m.sender === 'student' ? avatarHtml(data.student_name, data.student_avatar) : ''}
+            ${m.sender === 'student' ? avatarHtml(threadHead.name, threadHead.avatar) : ''}
             ${m.sender === 'student' ? bubble + copy : copy + bubble}
           </div>`;
-      }).join('');
-      container.scrollTop = container.scrollHeight;
-      const i = data.student_info;
-      const sub = document.getElementById('threadStudentSub');
-      if(sub && i) sub.textContent = [i.course, i.year].filter(Boolean).join(' · ');
-      const infoBox = document.getElementById('threadStudentInfo');
-      if(infoBox && i){
-        if(!i.shared) infoBox.textContent = 'Check-in conditions: not shared by the student';
-        else if(!i.conditions.length) infoBox.textContent = 'Student shared their check-in: no conditions ticked';
-        else infoBox.innerHTML = '<div class="tag-row" style="margin-top:0;">' + i.conditions.map(c => `<span class="tag">${escapeHtmlStaff(c)}</span>`).join('') + '</div>';
-      }
-    });
+}
+
+// First call for a conversation downloads it whole; after that only messages newer than the last one
+// shown are requested (?after=), appended without redrawing, and the scroll position is left alone
+// unless the counselor was already at the bottom.
+function fetchThreadMessages(){
+  const tid = activeThreadId;
+  if(!tid) return Promise.resolve();
+  const box = document.getElementById('threadMessages');
+  const after = (box && box.dataset.tid === String(tid)) ? (parseInt(box.dataset.lastId, 10) || 0) : 0;
+  return MicaPoll.json(THREAD_URL.replace('0', tid) + (after ? '?after=' + after : '')).then(data => {
+    if(tid !== activeThreadId || !data.messages) return;   // switched conversation meanwhile / locked response
+    const container = document.getElementById('threadMessages');
+    if(!container) return;                                  // panel may have changed since the fetch started
+
+    if(data.incremental){
+      if(container.dataset.tid !== String(tid)) return;     // panel was rebuilt: the next poll fetches it whole
+      const have = parseInt(container.dataset.lastId, 10) || 0;
+      const fresh = data.messages.filter(m => m.id > have);   // two overlapping fetches never double a message
+      if(!fresh.length) return;
+      const nearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 80;
+      container.insertAdjacentHTML('beforeend', fresh.map(threadMsgHtml).join(''));
+      container.dataset.lastId = String(data.last_id || have);
+      if(nearBottom) container.scrollTop = container.scrollHeight;
+      return;
+    }
+
+    threadHead = {name: data.student_name, avatar: data.student_avatar};
+    container.innerHTML = data.messages.map(threadMsgHtml).join('');
+    container.dataset.tid = String(tid);
+    container.dataset.lastId = String(data.last_id || 0);
+    container.scrollTop = container.scrollHeight;
+    const i = data.student_info;
+    const sub = document.getElementById('threadStudentSub');
+    if(sub && i) sub.textContent = [i.course, i.year].filter(Boolean).join(' · ');
+    const infoBox = document.getElementById('threadStudentInfo');
+    if(infoBox && i){
+      if(!i.shared) infoBox.textContent = 'Check-in conditions: not shared by the student';
+      else if(!i.conditions.length) infoBox.textContent = 'Student shared their check-in: no conditions ticked';
+      else infoBox.innerHTML = '<div class="tag-row" style="margin-top:0;">' + i.conditions.map(c => `<span class="tag">${escapeHtmlStaff(c)}</span>`).join('') + '</div>';
+    }
+  });
 }
 
 function copyThreadMsg(btn){
@@ -2269,7 +2311,7 @@ function sendStaffGuidanceMessage(){
     headers: {"Content-Type": "application/json", "X-CSRFToken": getCookie("csrftoken")},
     body: JSON.stringify({message: text}),
   }).then(r => {
-    if(r.ok) return fetchThreadMessages();
+    if(r.ok) return refreshThread();
     // Too long or too fast: put the text back so nothing the counselor typed is lost.
     input.value = text;
     return r.json().then(d => denied(d.error || "Your message couldn't be sent."), () => denied("Your message couldn't be sent."));

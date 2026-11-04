@@ -2331,6 +2331,7 @@ function toggleDyslexia(){
 <div class="toast" id="toast"></div>
 {% include 'core/_action_feedback.html' %}
 
+<script src="{% static 'core/js/poller.js' %}"></script>
 <script>
 /* ============================================================
    PLACEHOLDER IMAGE GENERATOR
@@ -3173,41 +3174,68 @@ function sendGuidanceMessage(){
   })).catch(() => {});
 }
 
+let guidanceLastId = 0;     // id of the newest message on screen; the poll only asks for newer ones
+
+function renderGuidanceMessage(m){
+  const container = document.getElementById('guidance-messages');
+  let row;
+  if (m.appointment) {
+    row = document.createElement('div');
+    row.className = 'msg-row ' + (m.sender === 'user' ? 'user' : 'bot');
+    const confirmedHtml = m.appointment.status === 'confirmed'
+      ? `<div style="margin-top:8px; color:#3c763d; font-weight:700;">✅ Confirmed</div>`
+      : `<div style="margin-top:10px;"><button onclick="confirmAppointment(${m.appointment.id})" style="background:#8B6F4E; color:#fff; border:none; padding:8px 18px; border-radius:999px; font-weight:700; cursor:pointer; display:block;">Confirm</button></div>`;
+    row.innerHTML = `<div class="msg-bubble"><strong>${escapeHtml(m.content)}</strong>${confirmedHtml}</div>`;
+    container.appendChild(row);
+  } else {
+    row = addMessage('guidance-messages', escapeHtml(m.content).replace(/\n/g, '<br>'), m.sender === 'user' ? 'user' : 'bot', 'LEAF');
+  }
+  if (row && m.id) row.dataset.id = m.id;      // lets "remove from my screen" work on messages loaded from the server
+  return row;
+}
+
 function reloadGuidanceMessages() {
-  fetch("{% url 'guidance_messages' %}")
+  return fetch("{% url 'guidance_messages' %}")
     .then(r => r.json())
     .then(data => {
       setGuidanceWho(data.counselor_name);
       const container = document.getElementById('guidance-messages');
       if (!container) return;
       container.innerHTML = '';
+      guidanceLastId = data.last_id || 0;
       if(data.messages.length === 0){
         addMessage('guidance-messages', "Hi! Send a message here and a Guidance staff member will reply when they can.", 'bot', 'LEAF');
         return;
       }
-      data.messages.forEach(m => {
-        if (m.appointment) {
-          const row = document.createElement('div');
-          row.className = 'msg-row ' + (m.sender === 'user' ? 'user' : 'bot');
-          const confirmedHtml = m.appointment.status === 'confirmed'
-            ? `<div style="margin-top:8px; color:#3c763d; font-weight:700;">✅ Confirmed</div>`
-            : `<div style="margin-top:10px;"><button onclick="confirmAppointment(${m.appointment.id})" style="background:#8B6F4E; color:#fff; border:none; padding:8px 18px; border-radius:999px; font-weight:700; cursor:pointer; display:block;">Confirm</button></div>`;
-          row.innerHTML = `<div class="msg-bubble"><strong>${escapeHtml(m.content)}</strong>${confirmedHtml}</div>`;
-          container.appendChild(row);
-        } else {
-          addMessage('guidance-messages', escapeHtml(m.content).replace(/\n/g, '<br>'), m.sender === 'user' ? 'user' : 'bot', 'LEAF');
-        }
-      });
+      data.messages.forEach(renderGuidanceMessage);
     });
 }
 
+// While the Talk to Guidance view is open: ask only for messages newer than the last one on screen.
+function pollGuidanceNew(){
+  return MicaPoll.json("{% url 'guidance_messages' %}?after=" + guidanceLastId).then(data => {
+    setGuidanceWho(data.counselor_name);
+    if(!data.messages.length) return;
+    if(!guidanceLastId) return reloadGuidanceMessages();     // only the greeting is showing: redraw the conversation
+    const container = document.getElementById('guidance-messages');
+    if(!container) return;
+    data.messages.forEach(m => {
+      if(m.sender === 'user') return;                         // your own messages are already on screen
+      if(container.querySelector('[data-id="' + Number(m.id) + '"]')) return;
+      renderGuidanceMessage(m);
+    });
+    guidanceLastId = Math.max(guidanceLastId, data.last_id || 0);
+  });
+}
+
 function refreshGuidanceWho(){
-  fetch("{% url 'guidance_messages' %}").then(r => r.json()).then(d => setGuidanceWho(d.counselor_name));
+  fetch("{% url 'guidance_messages' %}?after=" + guidanceLastId).then(r => r.json()).then(d => setGuidanceWho(d.counselor_name));
 }
 document.getElementById('btn-guidance').addEventListener('click', refreshGuidanceWho);
-setInterval(() => {
-  if (document.getElementById('view-guidance').classList.contains('active')) refreshGuidanceWho();
-}, 10000);
+// Replies show up within ~3 s while the view is open (15 s if the tab is in the background). This also
+// keeps the "You're talking with" label fresh, so it replaces the old 10 s label refresh.
+MicaPoll.every(pollGuidanceNew, {active: 3000, hidden: 15000,
+  enabled: () => guidanceLoaded && document.getElementById('view-guidance').classList.contains('active')});
 
 const guidanceInput = document.getElementById('guidance-input');
 document.getElementById('guidance-send').addEventListener('click', sendGuidanceMessage);
@@ -4911,8 +4939,7 @@ document.addEventListener('click', function(e){
 });
 
 function pollNotifications(){
-  fetch("{% url 'get_notifications' %}")
-    .then(r => r.json())
+  return MicaPoll.json("{% url 'get_notifications' %}")
     .then(data => {
       const newest = data.notifications.length ? data.notifications[0] : null;
       const newestId = newest ? newest.id : 0;
@@ -4935,8 +4962,8 @@ function pollNotifications(){
     });
 }
 
-setInterval(pollNotifications, 10000);
-pollNotifications();
+// Every 10 s while the tab is visible, every 20 s in the background; backs off if the server is struggling.
+MicaPoll.every(pollNotifications, {active: 10000, hidden: 20000, immediate: true});
 
 /* ============================================================
    LOGIN & MASCOT GREETING
