@@ -29,7 +29,7 @@
           <div class="auth-field"><input type="text" name="last_name" placeholder="Last Name" value="{{ form.last_name }}" required></div>
         </div>
 
-        <div class="auth-field"><input type="text" name="student_number" placeholder="Student Number (000-0000 or 00-0000-000)" value="{{ form.student_number }}" inputmode="numeric" maxlength="11" pattern="[0-9]{3}-[0-9]{4}|[0-9]{2}-[0-9]{4}-[0-9]{3}" title="Use 000-0000 or 00-0000-000" oninput="this.value=this.value.replace(/[^0-9-]/g,'')" onblur="fmtStudentNo(this)" autocomplete="off" required></div>
+        <div class="auth-field"><input type="text" name="student_number" placeholder="Student Number (numbers only)" value="{{ form.student_number }}" inputmode="numeric" maxlength="11" pattern="[0-9]{7}|[0-9]{9}|[0-9]{3}-[0-9]{4}|[0-9]{2}-[0-9]{4}-[0-9]{3}" title="Type your 7 or 9 digit student number. The dashes are added for you (000-0000 or 00-0000-000)." oninput="this.value=this.value.replace(/[^0-9-]/g,'')" onblur="fmtStudentNo(this)" onchange="fmtStudentNo(this)" autocomplete="off" required></div>
 
         {% include 'core/_course_picker.html' with selected_course=form.course %}
 
@@ -56,10 +56,17 @@
   </div>
 </section>
 <script>
+  // iPhone number pads have no "-" key, so students type digits only. Add the dashes when they leave the
+  // field, and again just before the form is sent: iOS Safari does not blur a field when you tap a button
+  // or press Go, so the blur alone is not enough. (The server also accepts digits only.)
   function fmtStudentNo(el){
-    var d = el.value.replace(/\D/g, '');
+    var d = el.value.replace(/[^0-9]/g, '');
     if (d.length === 7) el.value = d.slice(0,3) + '-' + d.slice(3);
     else if (d.length === 9) el.value = d.slice(0,2) + '-' + d.slice(2,6) + '-' + d.slice(6);
   }
+  (function(){
+    var el = document.querySelector('input[name="student_number"]');
+    if (el && el.form) el.form.addEventListener('submit', function(){ fmtStudentNo(el); });
+  })();
 </script>
 {% endblock %}
