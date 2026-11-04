@@ -31,7 +31,7 @@
 
       <p class="auth-intro">We sent a {{ code_length }}-character code to <strong>{{ masked_email }}</strong>. Enter it below to finish signing in. It works once and expires in {{ ttl_minutes }} minutes.</p>
 
-      <form method="post" action="{% url 'login_verify' %}" id="codeForm" autocomplete="off">
+      <form method="post" action="{% url 'login_verify' %}" id="codeForm" autocomplete="off" data-no-resubmit>
         {% csrf_token %}
         <div class="auth-field">
           <input type="text" name="code" id="codeInput" class="code-input" placeholder="••••••"
@@ -54,6 +54,7 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="{% static 'core/js/no-resubmit.js' %}"></script>
 <script>
 (function(){
   var LEN = {{ code_length }};

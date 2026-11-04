@@ -1069,6 +1069,22 @@ def _password_login_target(user):
     return reverse("student_dashboard")
 
 
+def own_dashboard_only(role):
+    """Dashboard pages are per account type ('student', 'staff' or 'admin'). Someone who opens
+    another type's dashboard is sent to their own instead of seeing an error or the login page.
+    Use under @login_required, so signed-out visitors still go to the login page."""
+    def decorator(view):
+        @wraps(view)
+        def wrapped(request, *args, **kwargs):
+            user = request.user
+            mine = 'admin' if user.is_superuser else 'staff' if user.is_staff else 'student'
+            if mine != role:
+                return redirect(_password_login_target(user))
+            return view(request, *args, **kwargs)
+        return wrapped
+    return decorator
+
+
 def _google_login_target(user):
     profile, _ = UserProfile.objects.get_or_create(user=user)
     if profile.needs_profile_setup:
@@ -2355,6 +2371,7 @@ def api_chat_undo_last(request, conversation_id):
 
 @ensure_csrf_cookie
 @login_required(login_url='login')
+@own_dashboard_only('student')
 def student_dashboard(request):
     if _needs_profile_setup(request.user):
         return redirect('complete_profile')
@@ -3225,7 +3242,7 @@ def chat_or_referral(view):
 
 @ensure_csrf_cookie
 @login_required(login_url='login')
-@user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
+@own_dashboard_only('staff')
 def staff_dashboard(request):
     sp = getattr(request.user, 'staff_profile', None)
     return render(request, 'core/staff-dashboard.html', {
@@ -4740,7 +4757,7 @@ def api_notifications_delete(request):
 
 @ensure_csrf_cookie
 @login_required(login_url='login')
-@user_passes_test(lambda u: u.is_superuser, login_url='login')
+@own_dashboard_only('admin')
 def admin_dashboard(request):
     return render(request, 'core/admin-dashboard.html', {
         'my_avatar_url': _avatar_url(request.user),

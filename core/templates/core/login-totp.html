@@ -35,7 +35,7 @@
 
       <p class="auth-intro">Open your authenticator app and type the 6-digit code it shows for MICA. The code changes every {{ step_seconds|default:30 }} seconds.</p>
 
-      <form method="post" action="{% url 'login_totp' %}" id="totpForm" autocomplete="off">
+      <form method="post" action="{% url 'login_totp' %}" id="totpForm" autocomplete="off" data-no-resubmit>
         {% csrf_token %}
         <div class="auth-field">
           <input type="text" name="code" id="totpInput" class="code-input" placeholder="000000"
@@ -53,6 +53,7 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="{% static 'core/js/no-resubmit.js' %}"></script>
 <script>
 (function(){
   var form = document.getElementById('totpForm');
