@@ -25,6 +25,7 @@ from .models import BreatheSession, Affirmation, ExerciseSession, Quest, DailyQu
 from .models import Appointment
 from .models import Notification
 from .models import StudentFlag
+from .models import CHAT_THEMES
 from .models import YEAR_LEVELS, SERVICES
 from .courses import get_courses, get_course_groups
 from .system_info import system_info
@@ -2018,6 +2019,9 @@ def account_settings(request):
                 if profile.avatar:
                     profile.avatar.delete(save=False)
                 profile.avatar = None
+            chosen_theme = request.POST.get('chat_theme')
+            if chosen_theme in dict(CHAT_THEMES):
+                profile.chat_theme = chosen_theme            
             profile.save()
 
         messages.success(request, "Your settings have been updated.")
@@ -2030,6 +2034,7 @@ def account_settings(request):
         'profile': profile, 'courses': get_courses(), 'course_groups': get_course_groups(), 'year_levels': YEAR_LEVELS,
         'has_password': request.user.has_usable_password(),
         'birthday_min': birthday_min, 'birthday_max': birthday_max,
+        'chat_themes': CHAT_THEMES,
     })
 
 

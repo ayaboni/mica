@@ -164,6 +164,13 @@ class AssessmentHistory(models.Model):
     class Meta:
         ordering = ['-taken_at']
 
+
+CHAT_THEMES = [
+    ("mix", "Mix"), ("love", "Love"), ("acads", "Acads"), ("food", "Food"),
+    ("cats", "Cats"), ("dogs", "Dogs"), ("flowers", "Flowers"),
+]
+
+
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     student_number = models.CharField(max_length=50, blank=True)
@@ -206,6 +213,7 @@ class UserProfile(models.Model):
     # Set once the "you hit your daily goal 2 days" evaluation-form pop-up has been shown and closed.
     goal_reward_shown_at = models.DateTimeField(null=True, blank=True)
     dark_mode = models.BooleanField(default=False)
+    chat_theme = models.CharField(max_length=10, choices=CHAT_THEMES, default='mix')
     # Accounts made with a shared term code start "unverified": the student can use MICA, but is
     # invisible to Guidance until a staff member approves them. "rejected" = deactivated as junk.
     # Everyone else (single-use codes, admin-made, accounts from before this existed) is "verified".

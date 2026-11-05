@@ -439,6 +439,13 @@ html.dyslexia body{line-height:1.7;}
      everything and doesn't scroll with the content. Make it fainter/stronger with --doodle-opacity (or per
      screen with --doodle-scale); the tile is made by scripts/chat_doodles/make_chat_doodles.py. */
   :root{ --doodle-color:#7F9F79; --doodle-opacity:.34; }
+  :root{ --doodle-img:url("{% static 'core/images/chat-doodles.png' %}"); }
+  body[data-chat-theme="love"]{    --doodle-img:url("{% static 'core/images/chat-doodles-love.png' %}"); }
+  body[data-chat-theme="acads"]{   --doodle-img:url("{% static 'core/images/chat-doodles-acads.png' %}"); }
+  body[data-chat-theme="food"]{    --doodle-img:url("{% static 'core/images/chat-doodles-food.png' %}"); }
+  body[data-chat-theme="cats"]{    --doodle-img:url("{% static 'core/images/chat-doodles-cats.png' %}"); }
+  body[data-chat-theme="dogs"]{    --doodle-img:url("{% static 'core/images/chat-doodles-dogs.png' %}"); }
+  body[data-chat-theme="flowers"]{ --doodle-img:url("{% static 'core/images/chat-doodles-flowers.png' %}"); }
   body.dark-mode{ --doodle-color:#7FD1BE; --doodle-opacity:.27; }
   .view{ position:relative; isolation:isolate; }
   .view::before{
@@ -449,8 +456,8 @@ html.dyslexia body{line-height:1.7;}
     pointer-events:none;
     background-color:var(--doodle-color);
     opacity:calc(var(--doodle-opacity) * var(--doodle-scale, 1));
-    -webkit-mask-image:url("{% static 'core/images/chat-doodles.png' %}");
-            mask-image:url("{% static 'core/images/chat-doodles.png' %}");
+    -webkit-mask-image:var(--doodle-img);
+            mask-image:var(--doodle-img);
     -webkit-mask-size:600px 600px;
             mask-size:600px 600px;
     -webkit-mask-repeat:repeat;
@@ -1820,7 +1827,7 @@ function toggleDyslexia(){
 </script>
 </head>
 <body>
-<script>(function(){ var d = {{ profile.dark_mode|yesno:"true,false" }}; if(d) document.body.classList.add('dark-mode'); try{ localStorage.setItem('mica_dark', d ? '1' : '0'); }catch(e){} })();</script>
+<script><body data-chat-theme="{{ profile.chat_theme }}"></script>
   {% include 'core/_loader.html' %}
 
 
