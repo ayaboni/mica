@@ -166,7 +166,7 @@ class AssessmentHistory(models.Model):
 
 
 CHAT_THEMES = [
-    ("mix", "Mix"), ("love", "Love"), ("acads", "Acads"), ("food", "Food"),
+    ("mix", "Original"), ("love", "Love"), ("acads", "Acads"), ("food", "Food"),
     ("cats", "Cats"), ("dogs", "Dogs"), ("flowers", "Flowers"),
 ]
 
