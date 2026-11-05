@@ -192,12 +192,55 @@ class ReferralHandoverTests(TestCase):
         self.assertEqual(self.post(self.alice, reverse("staff_guidance_claim", args=[thread.id]),
                                    {"takeover": True}).status_code, 403)
 
-        # Staff 2 owns it, with the history, even though their role can't chat.
+        # Staff 2 owns it with a fresh chat (no history), even though their role can't chat.
         view = self.get(self.bob, reverse("staff_guidance_thread", args=[thread.id]))
         self.assertEqual(view.status_code, 200, view.content)
-        self.assertEqual(len(view.json()["messages"]), 2)
+        self.assertEqual(len(view.json()["messages"]), 0)
         self.assertEqual(self.post(self.bob, reverse("staff_guidance_send", args=[thread.id]),
                                    {"message": "Hello, I'm Bob"}).status_code, 200)
+        view = self.get(self.bob, reverse("staff_guidance_thread", args=[thread.id]))
+        self.assertEqual([m["content"] for m in view.json()["messages"]], ["Hello, I'm Bob"])
+
+    def test_chat_history_does_not_carry_over_to_the_new_staff_member(self):
+        thread = self.alice_thread()
+        self.accept(self.refer())
+        # Bob's inbox preview doesn't leak the old messages either.
+        row = [t for t in self.get(self.bob, reverse("staff_guidance_inbox")).json()["threads"] if t["id"] == thread.id][0]
+        self.assertEqual(row["last_message"], "")
+        self.assertFalse(row["awaiting_reply"])
+        # The student's screen starts fresh too, and what the old messages said stays on record.
+        self.client.force_login(self.student)
+        self.assertEqual(self.client.get(reverse("guidance_messages")).json()["messages"], [])
+        self.assertEqual(thread.messages.count(), 2)
+        # A new message from the student is the first thing Bob sees.
+        GuidanceMessage.objects.create(thread=thread, sender=self.student, content="hi Bob")
+        view = self.get(self.bob, reverse("staff_guidance_thread", args=[thread.id]))
+        self.assertEqual([m["content"] for m in view.json()["messages"]], ["hi Bob"])
+
+    def test_pressing_talk_to_guidance_after_a_handover_alerts_the_new_staff_member(self):
+        thread = self.alice_thread()           # the student's last message is already "private worry"-era history
+        self.accept(self.refer())
+        self.client.force_login(self.student)
+        r = self.client.post(reverse("guidance_request"), "{}", content_type="application/json")
+        self.assertEqual(r.json()["created"], True)
+        view = self.get(self.bob, reverse("staff_guidance_thread", args=[thread.id]))
+        self.assertEqual(len(view.json()["messages"]), 1)
+
+    def test_start_chat_for_an_older_accepted_referral_also_starts_fresh(self):
+        thread = self.alice_thread()
+        note = self.accept(self.refer())
+        # Simulate a referral accepted before handovers were automatic: Alice still holds the thread.
+        thread.counselor = self.alice; thread.history_start_id = 0; thread.save()
+        self.assertEqual(self.start_chat(note).status_code, 200)
+        view = self.get(self.bob, reverse("staff_guidance_thread", args=[thread.id]))
+        self.assertEqual(view.json()["messages"], [])
+
+    def test_the_system_admin_still_sees_the_full_history(self):
+        thread = self.alice_thread()
+        self.accept(self.refer())
+        admin = User.objects.create_superuser("root", password="Admin-pass-123!")
+        view = self.get(admin, reverse("staff_guidance_thread", args=[thread.id]))
+        self.assertEqual(len(view.json()["messages"]), 2)
 
     def test_accepting_does_not_take_a_conversation_from_a_third_counselor(self):
         thread = GuidanceThread.objects.create(student=self.student, counselor=self.carol)

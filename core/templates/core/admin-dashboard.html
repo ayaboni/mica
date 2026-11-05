@@ -297,17 +297,121 @@
   .sc-head{display:flex; justify-content:space-between; align-items:flex-end; gap:16px; flex-wrap:wrap; margin:34px 0 16px;}
   .sc-head h3{font-size:17px; font-weight:700;}
   .sc-head p{font-size:13px; color:var(--ink-soft); max-width:620px; margin-top:4px;}
-  .subclass-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:18px;}
-  .sc-card{padding:20px 22px; display:flex; flex-direction:column; gap:12px;}
-  .sc-card .sc-title{font-size:15.5px; font-weight:700;}
-  .sc-card .sc-desc{font-size:12.5px; color:var(--ink-soft); min-height:18px;}
-  .sc-list{display:flex; flex-direction:column; gap:7px; font-size:12.5px;}
-  .sc-line{display:flex; justify-content:space-between; gap:10px; align-items:baseline;}
-  .sc-line .sc-k{color:var(--ink-soft);}
-  .sc-line .sc-v{font-weight:600; text-align:right;}
-  .sc-line .sc-v.no{color:var(--ink-soft); font-weight:500;}
-  .sc-actions{display:flex; gap:8px; margin-top:auto; padding-top:6px;}
+  /* ---- RBAC: role list + detail ---- */
+  .rb{display:grid; grid-template-columns:minmax(260px,320px) minmax(0,1fr); gap:20px; align-items:start;}
+  .rb-side{padding:14px; position:sticky; top:12px; display:flex; flex-direction:column; gap:10px; min-width:0;}
+  .rb-search{display:flex; align-items:center; gap:8px; padding:0 12px; border:1.5px solid var(--line); border-radius:12px; background:var(--cream); color:var(--ink-soft);}
+  .rb-search:focus-within{border-color:var(--sage-deep);}
+  .rb-search input{flex:1; min-width:0; border:none; outline:none; background:none; padding:10px 0; font-size:13.5px; color:var(--ink); font-family:inherit;}
+  .rb-count{font-size:11.5px; font-weight:600; letter-spacing:.05em; text-transform:uppercase; color:var(--ink-soft); padding:2px 4px;}
+  .rb-list{display:flex; flex-direction:column; gap:2px; max-height:min(62vh,560px); overflow-y:auto; margin:0 -4px; padding:0 4px;}
+  .rb-item{all:unset; box-sizing:border-box; display:flex; align-items:center; gap:11px; padding:10px 12px; border-radius:12px; cursor:pointer; position:relative; min-width:0;}
+  .rb-item:hover{background:var(--peach);}
+  .rb-item:focus-visible{outline:2px solid var(--sky-deep); outline-offset:-2px;}
+  .rb-item[aria-current="true"]{background:color-mix(in srgb, var(--sage) 24%, var(--paper));}
+  .rb-item[aria-current="true"]::before{content:""; position:absolute; left:0; top:10px; bottom:10px; width:3px; border-radius:3px; background:var(--sage-deep);}
+  .rb-mark{width:34px; height:34px; border-radius:10px; background:var(--sage); color:#0f130f; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:12px; flex-shrink:0;}
+  .rb-item .rb-txt{min-width:0; flex:1;}
+  .rb-item .rb-name{font-size:14px; font-weight:600; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .rb-item .rb-meta{font-size:12px; color:var(--ink-soft); margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .rb-none{padding:22px 10px; text-align:center; font-size:13px; color:var(--ink-soft);}
+  .rb-main{padding:0; min-width:0; overflow:hidden;}
+  .rb-top{display:flex; gap:16px; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; padding:24px 26px 20px; border-bottom:1px solid var(--line);}
+  .rb-id{display:flex; gap:14px; align-items:flex-start; min-width:0; flex:1 1 320px;}
+  .rb-id .rb-mark{width:46px; height:46px; border-radius:14px; font-size:15px;}
+  .rb-id h3{font-size:19px; font-weight:700; line-height:1.25; overflow-wrap:anywhere;}
+  .rb-id p{font-size:13px; color:var(--ink-soft); margin-top:3px; overflow-wrap:anywhere;}
+  .rb-stats{display:flex; flex-wrap:wrap; gap:6px 16px; margin-top:10px; font-size:12.5px; color:var(--ink-soft);}
+  .rb-stats b{color:var(--ink); font-weight:600;}
+  .rb-meter{height:5px; width:100%; max-width:220px; border-radius:99px; background:var(--line); overflow:hidden; margin-top:10px;}
+  .rb-meter > span{display:block; height:100%; background:var(--sage-deep); border-radius:99px;}
+  .rb-acts{display:flex; gap:8px; flex-wrap:wrap;}
+  .rb-groups{padding:6px 26px 14px;}
+  .rb-group{padding:18px 0 6px;}
+  .rb-group + .rb-group{border-top:1px solid var(--line);}
+  .rb-group h4{font-family:'Inter',sans-serif; font-size:11.5px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--ink-soft); margin-bottom:6px;}
+  .rb-rows{list-style:none;}
+  .rb-row{display:flex; align-items:flex-start; justify-content:space-between; gap:18px; padding:9px 0; font-size:13.5px;}
+  .rb-row .rb-k{flex:1 1 0; min-width:0; overflow-wrap:anywhere; color:var(--ink);}
+  .rb-row.off .rb-k{color:var(--ink-soft);}
+  .rb-v{display:inline-flex; align-items:center; gap:7px; flex:0 1 auto; max-width:55%; font-size:13px; font-weight:600; justify-content:flex-end; flex-wrap:wrap; text-align:right;}
+  .rb-v.off{color:var(--ink-soft); font-weight:500;}
+  .rb-ic{width:18px; height:18px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0;}
+  .rb-ic.yes{background:var(--sage); color:#10200f;}
+  .rb-ic.no{background:var(--line); color:var(--ink-soft);}
+  .rb-tag{padding:3px 10px; border-radius:999px; background:color-mix(in srgb, var(--sage) 24%, var(--paper)); color:var(--ink); font-size:12px; font-weight:600;}
+  .rb-empty{padding:56px 24px; text-align:center; color:var(--ink-soft); font-size:14px;}
+  .rb-empty .pill-btn{margin-top:14px;}
+  .sc-head{display:flex; justify-content:space-between; align-items:flex-end; gap:16px; flex-wrap:wrap; margin:30px 0 16px;}
+  .sc-head h3{font-size:17px; font-weight:700;}
+  .sc-head p{font-size:13px; color:var(--ink-soft); max-width:620px; margin-top:4px;}
   .sc-empty{padding:26px; text-align:center; color:var(--ink-soft); font-size:13.5px;}
+  .rb-sr{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap;}
+  .switch:focus-visible, .svc-chip:focus-visible, .rb-main button:focus-visible{outline:2px solid var(--sky-deep); outline-offset:2px;}
+  @media (max-width:900px){
+    .rb{grid-template-columns:1fr;}
+    .rb-side{position:static;}
+    .rb-list{max-height:240px;}
+    .rb-top{padding:20px 18px 16px;}
+    .rb-groups{padding:4px 18px 12px;}
+    .rb-v{max-width:60%;}
+  }
+
+  /* ---- RBAC: view switch + roles x permissions matrix ---- */
+  .rb[hidden], .mx-card[hidden]{display:none;}
+  .rb-views{display:inline-flex; padding:3px; border:1.5px solid var(--line); border-radius:999px; background:var(--cream); gap:2px;}
+  .rb-views button{border:none; background:none; font:inherit; font-size:13px; font-weight:600; color:var(--ink-soft); padding:6px 16px; border-radius:999px; cursor:pointer;}
+  .rb-views button:hover{color:var(--ink);}
+  .rb-views button[aria-pressed="true"]{background:var(--sage-deep); color:#fff;}
+  .rb-views button:focus-visible{outline:2px solid var(--sky-deep); outline-offset:2px;}
+  .sc-tools{display:flex; gap:12px; align-items:center; flex-wrap:wrap;}
+  .mx-card{padding:0; overflow:hidden; min-width:0;}
+  .mx-bar{display:flex; align-items:center; gap:14px 18px; flex-wrap:wrap; padding:14px 18px; border-bottom:1px solid var(--line);}
+  .mx-bar .rb-search{flex:1 1 220px; max-width:340px;}
+  .mx-opt{display:inline-flex; align-items:center; gap:8px; font-size:13px; color:var(--ink); cursor:pointer;}
+  .mx-opt input{width:16px; height:16px; accent-color:var(--sage-deep);}
+  .mx-opt.dis{color:var(--ink-soft); cursor:default;}
+  .mx-sum{margin-left:auto; font-size:12px; font-weight:600; letter-spacing:.05em; text-transform:uppercase; color:var(--ink-soft);}
+  .mx-scroll{position:relative; overflow:auto; max-height:min(72vh,720px); overscroll-behavior:contain;}
+  .mx-scroll:focus-visible{outline:2px solid var(--sky-deep); outline-offset:-2px;}
+  table.mx{border-collapse:separate; border-spacing:0; width:max-content; min-width:100%; font-size:13px;}
+  .mx th, .mx td{border-bottom:1px solid var(--line); background:var(--paper);}
+  .mx thead th{position:sticky; top:0; z-index:3; vertical-align:bottom; padding:12px 8px 11px; min-width:116px; max-width:150px; width:132px; text-align:center; font-weight:400; border-bottom:1.5px solid var(--line);}
+  .mx thead th.mx-corner{left:0; z-index:5; min-width:210px; width:240px; max-width:280px; text-align:left; padding-left:18px; font-size:11.5px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--ink-soft); border-right:1px solid var(--line);}
+  .mx tbody th[scope="row"]{position:sticky; left:0; z-index:2; text-align:left; font-weight:500; padding:10px 14px 10px 18px; min-width:210px; max-width:280px; color:var(--ink); border-right:1px solid var(--line); overflow-wrap:anywhere;}
+  .mx td{text-align:center; padding:9px 8px; height:42px;}
+  .mx tbody tr:hover th, .mx tbody tr:hover td{background:color-mix(in srgb, var(--sage) 14%, var(--paper));}
+  .mx tr.mx-grp th{position:static; background:var(--cream); border-bottom:1px solid var(--line); padding:0; text-align:left;}
+  .mx tr.mx-grp span{position:sticky; left:18px; display:inline-block; padding:8px 0; font-size:11.5px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--ink-soft);}
+  .mx tr.mx-grp:hover th{background:var(--cream);}
+  .mx tr.diff th[scope="row"]{padding-right:28px;}
+  .mx tr.diff th[scope="row"]::after{content:""; position:absolute; right:12px; top:50%; width:6px; height:6px; margin-top:-3px; border-radius:50%; background:var(--sage-deep);}
+  .mx-key{display:inline-flex; align-items:center; gap:7px; font-size:12px; color:var(--ink-soft);}
+  .mx-key i{width:6px; height:6px; border-radius:50%; background:var(--sage-deep); display:inline-block;}
+  .mx-head{display:flex; flex-direction:column; align-items:center; gap:3px; width:100%; border:none; background:none; font:inherit; color:inherit; cursor:pointer; padding:4px 2px; border-radius:10px;}
+  .mx-head:hover{background:var(--peach);}
+  .mx-head:focus-visible{outline:2px solid var(--sky-deep); outline-offset:1px;}
+  .mx-head .rb-mark{width:30px; height:30px; border-radius:9px; font-size:11px;}
+  .mx-name{font-size:13px; font-weight:600; color:var(--ink); line-height:1.25; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; overflow-wrap:anywhere; max-width:100%;}
+  .mx-sub{font-size:11.5px; color:var(--ink-soft); font-weight:500;}
+  .mx .rb-meter{height:4px; max-width:84px; margin:4px auto 0;}
+  .mx-yes, .mx-no{display:inline-flex; align-items:center; justify-content:center;}
+  .mx-no .rb-ic{opacity:.75;}
+  .mx-part{display:inline-block; padding:3px 10px; border-radius:999px; background:color-mix(in srgb, var(--sage) 24%, var(--paper)); color:var(--ink); font-size:12px; font-weight:600; cursor:help;}
+  .mx-all{display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600;}
+  .mx-none{padding:34px 20px; text-align:center; font-size:13.5px; color:var(--ink-soft);}
+  @media (max-width:900px){
+    .mx-bar{padding:12px 14px;}
+    .mx-sum{margin-left:0; width:100%;}
+    .mx thead th.mx-corner, .mx tbody th[scope="row"]{min-width:150px; width:150px; padding-left:12px;}
+    .mx tr.mx-grp span{left:12px;}
+    .mx thead th{min-width:104px; width:110px;}
+  }
+  @media (prefers-reduced-motion:no-preference){ .mx-head{transition:background .12s;} }
+  /* modal: grouped permissions */
+  .pg-title{font-size:11.5px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--ink-soft); margin:20px 0 2px;}
+  .pg-title:first-child{margin-top:4px;}
+  .pg-sum{font-size:12.5px; color:var(--ink-soft); margin-top:10px;}
   .svc-chips{display:flex; flex-wrap:wrap; gap:6px;}
   .svc-chip{padding:6px 12px; border-radius:999px; border:1.5px solid var(--line); background:transparent; font-size:12.5px; font-weight:600; color:var(--ink-soft); font-family:inherit; cursor:pointer;}
   .svc-chip.on{background:var(--sage-deep); border-color:var(--sage-deep); color:#fff;}
@@ -319,19 +423,6 @@
   #subclassModalOverlay .modal-body{max-height:62vh; overflow-y:auto;}
   .form-error{color:var(--alert); font-size:13px; margin-top:12px; min-height:16px;}
 
-  /* Long role names wrap instead of overflowing */
-  .sc-card{min-width:0;}
-  .sc-card .rp-head{display:flex; align-items:center; gap:12px; margin-bottom:0;}
-  .sc-card .rp-head .avatar{width:40px; height:40px; font-size:13px; flex-shrink:0;}
-  .sc-card .sc-title{font-size:15.5px; font-weight:700; line-height:1.3; color:var(--ink);}
-  .sc-card .rp-sub{font-size:12px; color:var(--ink-soft); margin-top:2px; font-weight:500;}
-  .sc-card .rp-head > div:last-child{min-width:0; flex:1;}
-  .sc-card .sc-title, .sc-card .sc-desc, .sc-line .sc-k, .sc-line .sc-v{overflow-wrap:anywhere; word-break:normal;}
-  .sc-card .sc-title{line-height:1.3;}
-  .sc-line .sc-k{flex:1 1 0; min-width:0;}
-  .sc-line .sc-v{flex:0 1 auto; max-width:45%; min-width:0; text-align:right;}
-  .sc-line{align-items:flex-start; gap:14px;}
-  .sc-actions{flex-wrap:wrap;}
   .modal-head > div:first-child{min-width:0; padding-right:12px;}
   .modal-head h2, .modal-head .sub{overflow-wrap:anywhere;}
   .field select{text-overflow:ellipsis;}
@@ -420,7 +511,6 @@ html, body{ overflow-x:hidden; }
   .waiting-banner-floating{ left:12px; right:12px; bottom:12px; max-width:none; }
 
   /* admin card grids (minmax was wider than a small phone) */
-  .subclass-grid{ grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr)); }
   .stu-grid{ grid-template-columns:repeat(auto-fill,minmax(min(270px,100%),1fr)); }
 }
 
@@ -693,9 +783,39 @@ html, body{ overflow-x:hidden; }
                the staff member loads a page.
             </p>
           </div>
-          <button class="pill-btn solid" onclick="openSubclassModal()">+ New staff role</button>
+          <div class="sc-tools">
+            <div class="rb-views" role="group" aria-label="Staff roles view">
+              <button type="button" id="rvList" aria-pressed="true" onclick="setRoleView('list')">Roles</button>
+              <button type="button" id="rvMatrix" aria-pressed="false" onclick="setRoleView('matrix')">Compare</button>
+            </div>
+            <button class="pill-btn solid" onclick="openSubclassModal()">+ New staff role</button>
+          </div>
         </div>
-        <div class="subclass-grid" id="subclassGrid"><div class="sc-empty">Loading staff roles…</div></div>
+        <div class="card mx-card" id="roleMatrix" hidden>
+          <div class="mx-bar">
+            <label class="rb-search">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+              <span class="rb-sr">Filter roles in comparison</span>
+              <input id="matrixSearch" type="search" placeholder="Filter roles" autocomplete="off" oninput="roleSearchChanged(this.value)">
+            </label>
+            <label class="mx-opt" id="mxDiffWrap"><input type="checkbox" id="mxDiff" onchange="matrixDiffChanged(this.checked)"> Show differences only</label>
+            <span class="mx-key" id="mxKey" aria-hidden="true"><i></i>differs between roles</span>
+            <div class="mx-sum" id="mxSum" aria-live="polite"></div>
+          </div>
+          <div class="mx-scroll" id="mxScroll" tabindex="0" role="region" aria-label="Roles and permissions comparison, scrolls in both directions"></div>
+        </div>
+        <div class="rb" id="roleSplit">
+          <aside class="card rb-side" aria-label="Staff roles">
+            <label class="rb-search">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+              <span class="rb-sr">Search staff roles</span>
+              <input id="roleSearch" type="search" placeholder="Search roles" autocomplete="off" oninput="roleSearchChanged(this.value)">
+            </label>
+            <div class="rb-count" id="roleCount" aria-live="polite"></div>
+            <nav class="rb-list" id="roleList" aria-label="Staff role list"><div class="sc-empty">Loading staff roles…</div></nav>
+          </aside>
+          <div class="card rb-main" id="roleDetail"></div>
+        </div>
       </section>
 
       <!-- ============ NOTIFICATIONS ============ -->
@@ -1964,7 +2084,7 @@ let scDraft = {};
 function loadSubclasses(){
   return api('/api/admin/subclasses/').then(r=>{
     if(!r.ok){
-      document.getElementById('subclassGrid').innerHTML = '<div class="sc-empty">Could not load staff roles. Refresh the page to try again.</div>';
+      document.getElementById('roleList').innerHTML = '<div class="sc-empty">Could not load staff roles. Refresh the page to try again.</div>';
       return;
     }
     subclassList = r.data.subclasses || [];
@@ -1980,30 +2100,185 @@ function svcSummary(list){
   return '<span class="sc-v">'+esc(list.map(svcLabel).join(', '))+'</span>';
 }
 
+/* Presentation only: how the existing permission fields are grouped on screen.
+   Any field the server sends that is not listed here still shows, under "Other". */
+const PERM_GROUPS = [
+  {title:'Student access',        keys:['view_students','view_assessments','chat_students']},
+  {title:'Cases & flags',         keys:['flag_students','take_cases','resolve_flags','referrals']},
+  {title:'Notes & appointments',  keys:['schedule_services','write_note_services','read_note_services','notes_need_review','review_notes']},
+  {title:'Administration',        keys:['archive_students','export_records','generate_codes','verify_students','clear_avatars']}
+];
+function groupedFields(){
+  const used = new Set(), out = [];
+  PERM_GROUPS.forEach(g=>{
+    const fields = g.keys.map(k=>scMeta.fields.find(f=>f.key===k)).filter(Boolean);
+    fields.forEach(f=>used.add(f.key));
+    if(fields.length) out.push({title:g.title, fields});
+  });
+  const rest = scMeta.fields.filter(f=>!used.has(f.key));
+  if(rest.length) out.push({title:'Other', fields:rest});
+  return out;
+}
+function permOn(sc, f){ return f.kind==='services' ? !!(sc[f.key] && sc[f.key].length) : !!sc[f.key]; }
+function permCount(sc){ return scMeta.fields.filter(f=>permOn(sc,f)).length; }
+
+const IC_CHECK = '<span class="rb-ic yes" aria-hidden="true"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>';
+const IC_DASH  = '<span class="rb-ic no" aria-hidden="true"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"><path d="M6 12h12"/></svg></span>';
+
+let selectedRoleId = null, roleQuery = '';
+const roleInitials = name => name.split(/\s+/).filter(Boolean).map(w=>w[0]).slice(0,2).join('').toUpperCase() || '?';
+
+function roleSearchChanged(v){
+  roleQuery = (v||'').trim().toLowerCase();
+  ['roleSearch','matrixSearch'].forEach(id=>{ const el = document.getElementById(id); if(el && el.value !== v) el.value = v; });
+  renderRoleList(); renderMatrix();
+}
+function selectRole(id, focusDetail){
+  selectedRoleId = id;
+  renderRoleList(); renderRoleDetail();
+  if(focusDetail && window.matchMedia('(max-width:900px)').matches){
+    document.getElementById('roleDetail').scrollIntoView({behavior:'smooth', block:'start'});
+  }
+}
+
 function renderSubclasses(){
-  const grid = document.getElementById('subclassGrid');
-  if(!subclassList.length){
-    grid.innerHTML = '<div class="sc-empty">No staff roles yet. Create one to start assigning it to staff accounts.</div>';
+  if(!subclassList.some(x=>x.id===selectedRoleId)) selectedRoleId = subclassList.length ? subclassList[0].id : null;
+  renderRoleList();
+  renderRoleDetail();
+  renderMatrix();
+}
+
+/* ---- Compare view: roles as columns, permissions as rows ---- */
+let roleView = 'list', matrixDiffOnly = false;
+function setRoleView(v){
+  roleView = v === 'matrix' ? 'matrix' : 'list';
+  document.getElementById('roleSplit').hidden = roleView === 'matrix';
+  document.getElementById('roleMatrix').hidden = roleView !== 'matrix';
+  document.getElementById('rvList').setAttribute('aria-pressed', roleView === 'list');
+  document.getElementById('rvMatrix').setAttribute('aria-pressed', roleView === 'matrix');
+  if(roleView === 'matrix') renderMatrix();
+}
+function matrixDiffChanged(on){ matrixDiffOnly = !!on; renderMatrix(); }
+function openRoleFromMatrix(id){ setRoleView('list'); selectRole(id, true); }
+function permSig(sc, f){
+  return f.kind === 'services' ? (sc[f.key] || []).slice().sort().join('|') : (sc[f.key] ? '1' : '0');
+}
+function matrixCellHtml(sc, f){
+  const v = sc[f.key];
+  if(f.kind === 'services'){
+    if(!v || !v.length) return '<span class="mx-no">'+IC_DASH+'<span class="rb-sr">None</span></span>';
+    if(v.length === scMeta.services.length) return '<span class="mx-all">'+IC_CHECK+'All</span>';
+    const names = v.map(svcLabel).join(', ');
+    return '<span class="mx-part" title="'+esc(names)+'">'+v.length+' of '+scMeta.services.length+'</span><span class="rb-sr"> ('+esc(names)+')</span>';
+  }
+  return v ? '<span class="mx-yes">'+IC_CHECK+'<span class="rb-sr">Yes</span></span>' : '<span class="mx-no">'+IC_DASH+'<span class="rb-sr">No</span></span>';
+}
+function renderMatrix(){
+  const box = document.getElementById('mxScroll'), sum = document.getElementById('mxSum');
+  if(!box) return;
+  const total = scMeta.fields.length;
+  const cols = subclassList.filter(sc=>!roleQuery || (sc.name+' '+(sc.description||'')).toLowerCase().includes(roleQuery));
+  const diffBox = document.getElementById('mxDiff'), diffWrap = document.getElementById('mxDiffWrap');
+  const canDiff = cols.length > 1;
+  diffBox.disabled = !canDiff; diffBox.checked = matrixDiffOnly && canDiff;
+  diffWrap.classList.toggle('dis', !canDiff);
+  document.getElementById('mxKey').hidden = !canDiff;
+  if(!subclassList.length){ sum.textContent = ''; box.innerHTML = '<div class="mx-none">No staff roles yet. Create one to start comparing.</div>'; return; }
+  if(!cols.length){ sum.textContent = '0 of '+subclassList.length+' roles'; box.innerHTML = '<div class="mx-none">No roles match “'+esc(roleQuery)+'”.</div>'; return; }
+  const useDiff = matrixDiffOnly && canDiff;
+  let shownRows = 0, diffRows = 0, body = '';
+  groupedFields().forEach(g=>{
+    let rows = '';
+    g.fields.forEach(f=>{
+      const differs = new Set(cols.map(sc=>permSig(sc,f))).size > 1;
+      if(differs) diffRows++;
+      if(useDiff && !differs) return;
+      shownRows++;
+      rows += '<tr'+(differs && canDiff ? ' class="diff"' : '')+'><th scope="row">'+esc(f.label)+(differs && canDiff ? '<span class="rb-sr"> (differs between roles)</span>' : '')+'</th>'+
+        cols.map(sc=>'<td>'+matrixCellHtml(sc,f)+'</td>').join('')+'</tr>';
+    });
+    if(rows) body += '<tr class="mx-grp"><th scope="colgroup" colspan="'+(cols.length+1)+'"><span>'+esc(g.title)+'</span></th></tr>'+rows;
+  });
+  sum.textContent = (cols.length === subclassList.length ? cols.length+(cols.length===1?' role':' roles') : cols.length+' of '+subclassList.length+' roles')+
+    ' · '+(useDiff ? diffRows+' differing' : total)+' permissions';
+  if(!body) body = '<tr><td colspan="'+(cols.length+1)+'" class="mx-none" style="text-align:center">These roles have identical permissions.</td></tr>';
+  const head = cols.map(sc=>{
+    const on = permCount(sc);
+    return '<th scope="col"><button type="button" class="mx-head" onclick="openRoleFromMatrix('+sc.id+')" title="Open '+esc(sc.name)+'">'+
+      '<span class="rb-mark" aria-hidden="true">'+esc(roleInitials(sc.name))+'</span>'+
+      '<span class="mx-name">'+esc(sc.name)+'</span>'+
+      '<span class="mx-sub">'+sc.members+' staff · '+on+'/'+total+'</span>'+
+      '<span class="rb-meter" aria-hidden="true"><span style="width:'+(total?Math.round(on/total*100):0)+'%"></span></span>'+
+    '</button></th>';
+  }).join('');
+  box.innerHTML = '<table class="mx"><caption class="rb-sr">Permissions by staff role. Roles are columns, permissions are rows.</caption>'+
+    '<thead><tr><th scope="col" class="mx-corner">Permission</th>'+head+'</tr></thead><tbody>'+body+'</tbody></table>';
+}
+
+function renderRoleList(){
+  const list = document.getElementById('roleList'), count = document.getElementById('roleCount');
+  const total = scMeta.fields.length;
+  const shown = subclassList.filter(sc=>!roleQuery || (sc.name+' '+(sc.description||'')).toLowerCase().includes(roleQuery));
+  count.textContent = subclassList.length
+    ? (roleQuery ? shown.length+' of '+subclassList.length+' roles' : subclassList.length+(subclassList.length===1?' role':' roles'))
+    : '';
+  if(!subclassList.length){ list.innerHTML = '<div class="rb-none">No roles yet.</div>'; return; }
+  if(!shown.length){ list.innerHTML = '<div class="rb-none">No roles match “'+esc(roleQuery)+'”.</div>'; return; }
+  list.innerHTML = shown.map(sc=>
+    '<button type="button" class="rb-item" data-id="'+sc.id+'" aria-current="'+(sc.id===selectedRoleId)+'" onclick="selectRole('+sc.id+', true)">'+
+      '<span class="rb-mark" aria-hidden="true">'+esc(roleInitials(sc.name))+'</span>'+
+      '<span class="rb-txt"><div class="rb-name">'+esc(sc.name)+'</div>'+
+      '<div class="rb-meta">'+sc.members+' staff · '+permCount(sc)+'/'+total+' permissions</div></span>'+
+    '</button>').join('');
+}
+
+function permValueHtml(sc, f){
+  const v = sc[f.key];
+  if(f.kind==='services'){
+    if(!v || !v.length) return '<span class="rb-v off">'+IC_DASH+'None</span>';
+    if(v.length === scMeta.services.length) return '<span class="rb-v">'+IC_CHECK+'All services</span>';
+    return '<span class="rb-v">'+v.map(k=>'<span class="rb-tag">'+esc(svcLabel(k))+'</span>').join('')+'</span>';
+  }
+  return v ? '<span class="rb-v">'+IC_CHECK+'Yes</span>' : '<span class="rb-v off">'+IC_DASH+'No</span>';
+}
+
+function renderRoleDetail(){
+  const box = document.getElementById('roleDetail');
+  const sc = subclassList.find(x=>x.id===selectedRoleId);
+  if(!sc){
+    box.innerHTML = '<div class="rb-empty">'+(subclassList.length ? 'Select a role to see what it can do.' :
+      'No staff roles yet. Create one to start assigning it to staff accounts.<br><button class="pill-btn solid" onclick="openSubclassModal()">+ New staff role</button>')+'</div>';
     return;
   }
-  grid.innerHTML = subclassList.map(sc=>{
-    const lines = scMeta.fields.map(f=>{
-      const v = sc[f.key];
-      const val = f.kind==='services' ? svcSummary(v) : (v ? '<span class="sc-v">Yes</span>' : '<span class="sc-v no">No</span>');
-      return '<div class="sc-line"><span class="sc-k">'+esc(f.label)+'</span>'+val+'</div>';
-    }).join('');
-    const initials = sc.name.split(/\s+/).filter(Boolean).map(w=>w[0]).slice(0,2).join('').toUpperCase() || '?';
-    return '<div class="card sc-card">'+
-      '<div class="rp-head"><div class="avatar" style="background:var(--sage);">'+esc(initials)+'</div>'+
-      '<div><div class="sc-title">'+esc(sc.name)+'</div><div class="rp-sub">'+sc.members+' staff account'+(sc.members===1?'':'s')+'</div></div></div>'+
-      '<div class="sc-desc">'+esc(sc.description)+'</div>'+
-      '<div class="sc-list">'+lines+'</div>'+
-      '<div class="sc-actions">'+
-        '<button class="pill-btn ghost sm" onclick="openSubclassModal('+sc.id+')">Edit permissions</button>'+
-        '<button class="pill-btn danger sm" onclick="deleteSubclass('+sc.id+')">Delete</button>'+
-      '</div></div>';
-  }).join('');
+  const total = scMeta.fields.length, on = permCount(sc);
+  const groups = groupedFields().map(g=>
+    '<section class="rb-group" aria-labelledby="rbg-'+esc(g.title.replace(/\W+/g,''))+'"><h4 id="rbg-'+esc(g.title.replace(/\W+/g,''))+'">'+esc(g.title)+'</h4><ul class="rb-rows">'+
+    g.fields.map(f=>'<li class="rb-row'+(permOn(sc,f)?'':' off')+'"><span class="rb-k">'+esc(f.label)+'</span>'+permValueHtml(sc,f)+'</li>').join('')+
+    '</ul></section>').join('');
+  box.innerHTML =
+    '<div class="rb-top">'+
+      '<div class="rb-id"><div class="rb-mark" aria-hidden="true">'+esc(roleInitials(sc.name))+'</div><div style="min-width:0">'+
+        '<h3>'+esc(sc.name)+'</h3>'+
+        (sc.description ? '<p>'+esc(sc.description)+'</p>' : '')+
+        '<div class="rb-stats"><span><b>'+sc.members+'</b> staff account'+(sc.members===1?'':'s')+'</span><span><b>'+on+'</b> of '+total+' permissions on</span></div>'+
+        '<div class="rb-meter" role="img" aria-label="'+on+' of '+total+' permissions enabled"><span style="width:'+(total?Math.round(on/total*100):0)+'%"></span></div>'+
+      '</div></div>'+
+      '<div class="rb-acts">'+
+        '<button type="button" class="pill-btn ghost sm" onclick="openSubclassModal('+sc.id+')">Edit permissions</button>'+
+        '<button type="button" class="pill-btn danger sm" onclick="deleteSubclass('+sc.id+')">Delete</button>'+
+      '</div>'+
+    '</div>'+
+    '<div class="rb-groups">'+groups+'</div>';
 }
+
+/* Arrow keys move through the role list. */
+document.addEventListener('keydown', e=>{
+  if(!e.target.classList || !e.target.classList.contains('rb-item')) return;
+  if(e.key!=='ArrowDown' && e.key!=='ArrowUp') return;
+  const items = [...document.querySelectorAll('#roleList .rb-item')];
+  const i = items.indexOf(e.target), n = items[i + (e.key==='ArrowDown' ? 1 : -1)];
+  if(n){ e.preventDefault(); n.focus(); }
+});
 
 function defaultDraft(){
   const d = {name:'', description:''};
@@ -2014,15 +2289,21 @@ function defaultDraft(){
 }
 
 function renderPermControls(){
-  document.getElementById('scPerms').innerHTML = scMeta.fields.map(f=>{
+  const row = f=>{
     if(f.kind==='services'){
-      const chips = scMeta.services.map(s=>
-        '<button type="button" class="svc-chip '+(scDraft[f.key].includes(s.key)?'on':'')+'" onclick="toggleSvc(\''+f.key+'\',\''+s.key+'\')">'+esc(s.label)+'</button>').join('');
+      const chips = scMeta.services.map(s=>{
+        const on = scDraft[f.key].includes(s.key);
+        return '<button type="button" class="svc-chip '+(on?'on':'')+'" aria-pressed="'+on+'" onclick="toggleSvc(\''+f.key+'\',\''+s.key+'\')">'+esc(s.label)+'</button>';
+      }).join('');
       return '<div class="perm-svc"><div class="t-label">'+esc(f.label)+'</div><div class="svc-chips">'+chips+'</div></div>';
     }
     return '<div class="toggle-row" style="padding:11px 0;"><div class="t-label" style="font-size:13px;">'+esc(f.label)+'</div>'+
-           '<button type="button" class="switch '+(scDraft[f.key]?'on':'')+'" onclick="togglePerm(\''+f.key+'\')"><span class="knob"></span></button></div>';
-  }).join('');
+           '<button type="button" role="switch" aria-checked="'+(!!scDraft[f.key])+'" aria-label="'+esc(f.label)+'" class="switch '+(scDraft[f.key]?'on':'')+'" onclick="togglePerm(\''+f.key+'\')"><span class="knob"></span></button></div>';
+  };
+  const on = scMeta.fields.filter(f=>permOn(scDraft,f)).length;
+  document.getElementById('scPerms').innerHTML =
+    groupedFields().map(g=>'<div class="pg-title">'+esc(g.title)+'</div>'+g.fields.map(row).join('')).join('')+
+    '<div class="pg-sum">'+on+' of '+scMeta.fields.length+' permissions on</div>';
 }
 function togglePerm(key){ scDraft[key] = !scDraft[key]; renderPermControls(); }
 function toggleSvc(key, svc){
@@ -2063,6 +2344,7 @@ function saveSubclass(){
     btn.disabled = false;
     if(!r.ok){ document.getElementById('scError').textContent = r.data.error || 'Could not save this role.'; return; }
     closeModal('subclassModalOverlay');
+    if(r.data.subclass && r.data.subclass.id) selectedRoleId = r.data.subclass.id;
     showToast(editingSubclassId ? 'Role updated' : 'Role “'+r.data.subclass.name+'” created');
     loadSubclasses().then(loadStaffAccounts);
   });

@@ -481,6 +481,13 @@ body[data-chat-theme="flowers"]{ --doodle-img:url("{% static 'core/images/backgr
     font-weight:600;
     text-align:center;
   }
+  .guidance-note .guidance-afterhours{
+    margin-top:8px;
+    padding-top:8px;
+    border-top:1px dashed rgba(142,174,136,.6);
+    color:var(--text-dark);
+  }
+  .guidance-note .guidance-afterhours[hidden]{ display:none; }
   @media (max-width:640px){
     .view::before{ -webkit-mask-size:460px 460px; mask-size:460px 460px; }
   }
@@ -1980,7 +1987,11 @@ function toggleDyslexia(){
           <span id="guidance-who">Guidance Office</span>
           <button type="button" class="guidance-clear" onclick="clearGuidanceChat()">Clear chat</button>
         </div>
-        <div class="guidance-note">Heads up: the Guidance staff can read what you send here. Please keep your messages respectful. If you need help right now, contact a hotline or someone you trust.</div>
+        <div class="guidance-note">Heads up: the Guidance staff can read what you send here. Please keep your messages respectful. If you need help right now, contact a hotline or someone you trust.
+          <div class="guidance-afterhours" id="guidance-afterhours" role="status" hidden>
+            🌙 The Guidance staff are not available right now. They will respond during their working hours, 7:00 AM to 6:00 PM.
+          </div>
+        </div>
         <div class="messages" id="guidance-messages"></div>
         <div class="composer">
           <div class="composer-box">
@@ -3172,6 +3183,24 @@ function setGuidanceWho(role){
   if(el) el.textContent = role ? `You're talking with: ${role}` : 'Guidance Office · a staff member will reply soon';
 }
 
+// After-hours advisory: shown from 6:00 PM to 6:59 AM (Philippine time, same as the server's TIME_ZONE),
+// since the Guidance staff only work 7:00 AM - 6:00 PM. Uses Asia/Manila explicitly so it doesn't depend on the device's clock zone.
+function isGuidanceAfterHours(){
+  let hour;
+  try{
+    hour = parseInt(new Intl.DateTimeFormat('en-US', {timeZone:'Asia/Manila', hour:'numeric', hourCycle:'h23'}).format(new Date()), 10);
+  }catch(e){
+    hour = new Date().getHours();
+  }
+  return hour >= 18 || hour < 7;
+}
+function updateGuidanceAvailability(){
+  const el = document.getElementById('guidance-afterhours');
+  if(el) el.hidden = !isGuidanceAfterHours();
+}
+updateGuidanceAvailability();
+setInterval(updateGuidanceAvailability, 60000);   // flips on its own at 6 PM / 7 AM without a reload
+
 // Guidance view wiring: pressing the button alerts staff right away, then loads the real messages
 let guidanceLoaded = false;
 
@@ -3187,6 +3216,7 @@ function requestGuidance(){
 }
 
 document.getElementById('btn-guidance').addEventListener('click', ()=>{
+  updateGuidanceAvailability();
   fetch("{% url 'mark_notifications_read' %}", {method: "POST", headers: {"X-CSRFToken": getCookie("csrftoken")}});
   requestGuidance().then(added => {
     if(added || !guidanceLoaded){

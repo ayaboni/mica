@@ -2522,7 +2522,7 @@ def guidance_request(request):
         return _rate_limit_response()
 
     thread, _ = GuidanceThread.objects.get_or_create(student=request.user)
-    last = thread.messages.last()
+    last = thread.messages.filter(id__gt=thread.history_start_id).last()   # earlier history belongs to the previous counselor
     created = not (last and last.sender_id == request.user.id)
     if created:
         GuidanceMessage.objects.create(thread=thread, sender=request.user, content=GUIDANCE_REQUEST_TEXT)
@@ -3309,7 +3309,9 @@ def _guidance_inbox_payload(me):
     chat_ok = can(me, 'chat_students')
     grants = _valid_grants(me)
     # Latest message of each thread fetched inside the same query (was one extra query per thread).
-    latest = GuidanceMessage.objects.filter(thread=OuterRef('pk')).order_by('-created_at', '-id')
+    latest = (GuidanceMessage.objects
+              .filter(thread=OuterRef('pk'), id__gt=OuterRef('history_start_id'))
+              .order_by('-created_at', '-id'))
     threads = (GuidanceThread.objects.filter(student__in=visible_students())
                .select_related('student', 'student__profile', 'counselor', 'counselor__staff_profile')
                .annotate(last_msg_id=Subquery(latest.values('id')[:1]),
@@ -3400,6 +3402,8 @@ def staff_guidance_thread(request, thread_id):
     # every poll; only the header, notes and assessment info (sent once, when the chat opens) are skipped.
     after = _after_id(request)
     qs = thread.messages.order_by('created_at', 'id')
+    if not request.user.is_superuser:
+        qs = qs.filter(id__gt=thread.history_start_id)      # a referral starts the chat fresh
     if after:
         qs = qs.filter(id__gt=after)
     rows = list(qs)
@@ -3791,7 +3795,16 @@ def staff_referral_start_chat(request, note_id):
 
 
 def _hand_conversation_to(thread, staff):
-    """Make `staff` the counselor of the thread, moving the student's upcoming appointments with it."""
+    """Make `staff` the counselor of the thread, moving the student's upcoming appointments with it.
+
+    The chat starts fresh: the earlier messages stay on record but the new counselor never sees
+    them (history_start_id) and they're cleared from the student's screen too. Appointment
+    cards stay on the student's screen, same as "Clear chat"."""
+    last = thread.messages.order_by('-id').first()
+    if last:
+        thread.history_start_id = last.id
+        thread.messages.filter(hidden_for_student=False).exclude(content__contains="[appointment:") \
+            .update(hidden_for_student=True)
     thread.counselor = staff
     thread.save()
     thread.appointments.filter(

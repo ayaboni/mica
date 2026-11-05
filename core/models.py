@@ -418,6 +418,9 @@ class GuidanceThread(models.Model):
     counselor = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='assigned_threads')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    # Messages with an id up to this are a previous staff member's history. When a student is referred
+    # to someone else the chat starts fresh: the new counselor never sees those messages (0 = show all).
+    history_start_id = models.PositiveBigIntegerField(default=0)
 
     class Meta:
         ordering = ['-updated_at']
