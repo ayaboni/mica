@@ -9,9 +9,7 @@
   .theme-picker{ display:grid; grid-template-columns:repeat(auto-fill,minmax(96px,1fr)); gap:10px; margin-top:10px; }
   .theme-opt input{ position:absolute; opacity:0; pointer-events:none; }
   .theme-card{ display:block; border:2px solid rgba(127,127,127,.3); border-radius:12px; overflow:hidden; cursor:pointer; text-align:center; }
-  .theme-swatch{ display:block; height:72px; background-color:#7F9F79;
-    -webkit-mask-image:none; }
-  .theme-swatch{ display:block; height:84px; position:relative; overflow:hidden; }
+  .theme-swatch{ display:block; height:84px; position:relative; overflow:hidden; background:none; }
   .theme-swatch::before{ content:""; position:absolute; inset:0; background-color:#7F9F79;
     -webkit-mask-image:var(--tile); mask-image:var(--tile);
     -webkit-mask-size:210px 210px; mask-size:210px 210px;
@@ -196,7 +194,7 @@
         <p class="set-sub">Pick the doodles behind your screens. You'll see it change right away, but it only saves when you press Save changes.</p>
         <div class="theme-picker">
           {% for key, label in chat_themes %}
-            {% if key == 'mix' %}{% static 'core/images/chat-doodles.png' as tile_url %}{% else %}{% static 'core/images/chat-doodles-'|add:key|add:'.png' as tile_url %}{% endif %}
+            {% if key == 'mix' %}{% static 'core/images/backgrounds/chat-doodles.png' as tile_url %}{% else %}{% static 'core/images/backgrounds/chat-doodles-'|add:key|add:'.png' as tile_url %}{% endif %}
             <label class="theme-opt">
               <input type="radio" name="chat_theme" value="{{ key }}" data-tile="{{ tile_url }}" {% if profile.chat_theme == key %}checked{% endif %}>
               <span class="theme-card">

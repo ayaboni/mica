@@ -15,13 +15,17 @@
         {% if request.user.is_superuser %}{% url 'admin_dashboard' as me_url %}
         {% elif request.user.is_staff %}{% url 'staff_dashboard' as me_url %}
         {% else %}{% url 'student_dashboard' as me_url %}{% endif %}
-        <li>
-          <a href="{{ me_url }}" class="nav-avatar" title="Go to your dashboard" aria-label="Go to your dashboard">
+        <li class="nav-user">
+          <button type="button" class="nav-avatar" id="navUserBtn" aria-haspopup="true" aria-expanded="false" aria-label="Account menu" title="Account menu">
             <span class="nav-avatar-initials">{% include 'core/_initials.html' with u=request.user %}</span>
             {% if request.user.profile.avatar %}
               <img src="{{ request.user.profile.avatar.url }}" alt="" onerror="this.remove()">
             {% endif %}
-          </a>
+          </button>
+          <div class="nav-menu" id="navUserMenu" role="menu" hidden>
+            <a href="{{ me_url }}" role="menuitem">Dashboard</a>
+            <a href="{% url 'logout' %}" role="menuitem" class="nav-menu-logout">Log out</a>
+          </div>
         </li>
         {% else %}
           <li><a href="{% url 'login' %}" class="btn btn-pill {% if page == 'login' %}is-active{% endif %}">Log In</a></li>
@@ -37,3 +41,19 @@
     </ul>
   </div>
 </header>
+<script>
+(function(){
+  var btn = document.getElementById('navUserBtn');
+  var menu = document.getElementById('navUserMenu');
+  if(!btn || !menu) return;
+  function close(){ menu.hidden = true; btn.setAttribute('aria-expanded', 'false'); }
+  btn.addEventListener('click', function(e){
+    e.stopPropagation();
+    var opening = menu.hidden;
+    menu.hidden = !opening;
+    btn.setAttribute('aria-expanded', opening ? 'true' : 'false');
+  });
+  document.addEventListener('click', function(e){ if(!menu.contains(e.target)) close(); });
+  document.addEventListener('keydown', function(e){ if(e.key === 'Escape') close(); });
+})();
+</script>
