@@ -4455,6 +4455,7 @@ def staff_assessments(request):
             "id": u.id,
             "code": f"MC-{1000 + u.id}",
             "name": u.get_full_name() or u.username,
+            "avatar": _avatar_of(u),
             "student_number": profile.student_number if profile and profile.student_number else "No ID",
             "course": profile.course if profile and profile.course else "",
             "year": profile.year_level if profile else "",
@@ -4570,13 +4571,14 @@ def staff_student_status(request, student_id):
 @user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
 def staff_care_team(request):
     members = (User.objects.filter(is_staff=True, is_superuser=False)
-               .select_related('staff_profile').order_by('first_name', 'username'))
+               .select_related('staff_profile', 'profile').order_by('first_name', 'username'))
     return JsonResponse({"members": [{
         "id": m.id,
         "name": m.get_full_name() or m.username,
+        "avatar": _avatar_of(m),
         "email": m.email,
         "role": _staff_role(m),
-                "status": "Active" if m.is_active else "Suspended",
+        "status": "Active" if m.is_active else "Suspended",
         "last_active": _time_ago(m.last_login),
         "me": m.id == request.user.id,
         "can_receive_referrals": can(m, 'referrals'),
@@ -4700,6 +4702,7 @@ def staff_summary(request):
         data.append({
             "code": f"MC-{1000 + u.id}",
             "name": u.get_full_name() or u.username,
+            "avatar": _avatar_of(u), 
             "course": profile.course if profile and profile.course else "",
             "checkins_7d": len(u.week_entries),
             "last_checkin": u.week_entries[0].date.strftime("%b %d") if u.week_entries else None,

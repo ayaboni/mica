@@ -11,12 +11,12 @@
   .theme-card{ display:block; border:2px solid rgba(127,127,127,.3); border-radius:12px; overflow:hidden; cursor:pointer; text-align:center; }
   .theme-swatch{ display:block; height:72px; background-color:#7F9F79;
     -webkit-mask-image:none; }
-  .theme-swatch{ position:relative; background:none; }
+  .theme-swatch{ display:block; height:84px; position:relative; overflow:hidden; }
   .theme-swatch::before{ content:""; position:absolute; inset:0; background-color:#7F9F79;
     -webkit-mask-image:var(--tile); mask-image:var(--tile);
-    -webkit-mask-size:300px 300px; mask-size:300px 300px; }
-  .theme-name{ display:block; padding:6px 0 8px; font-size:13px; font-weight:600; }
-  .theme-opt input:checked + .theme-card{ border-color:#7F9F79; box-shadow:0 0 0 2px rgba(127,159,121,.35); }
+    -webkit-mask-size:210px 210px; mask-size:210px 210px;
+    -webkit-mask-position:center; mask-position:center; }
+  .theme-name{ position:relative; z-index:1; display:block; padding:7px 0 9px; font-size:13px; font-weight:600; }  .theme-opt input:checked + .theme-card{ border-color:#7F9F79; box-shadow:0 0 0 2px rgba(127,159,121,.35); }
   .theme-opt input:focus-visible + .theme-card{ outline:2px solid #7F9F79; outline-offset:2px; }
 
   .doodle-bg.themed{ background-image:none !important; position:relative; isolation:isolate; }
