@@ -333,8 +333,8 @@ html[data-theme="dark"] { --doodle-color: #7FD1BE; --doodle-opacity: .27; }
   pointer-events: none;
   background-color: var(--doodle-color);
   opacity: calc(var(--doodle-opacity) * var(--doodle-scale, 1));
-  -webkit-mask-image: url("../images/backgrounds/chat-doodles.png.png");
-          mask-image: url("../images/backgrounds/chat-doodles.png.png");
+  -webkit-mask-image: url("../images/backgrounds/chat-doodles.png");
+          mask-image: url("../images/backgrounds/chat-doodles.png");
   -webkit-mask-size: 600px 600px;
           mask-size: 600px 600px;
   -webkit-mask-repeat: repeat;
