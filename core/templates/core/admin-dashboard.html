@@ -231,6 +231,7 @@
   .u-cell .avatar{width:32px; height:32px; font-size:12px;}
   .u-cell .name{font-weight:600; font-size:13.5px;}
   .u-cell .email{font-size:11.5px; color:var(--ink-soft);}
+  #acctTbody td:first-child{min-width:240px;}
   .mono-cell{font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:var(--ink-soft);}
   .row-actions{display:flex; gap:8px;}
 
@@ -632,7 +633,7 @@ html, body{ overflow-x:hidden; }
             <button class="pill-btn solid" onclick="openStaffCodeModal()">+ Generate staff code</button>
           </div>
           <div class="card" style="overflow-x:auto;">
-            <table>
+            <table style="min-width:820px;">
               <thead><tr><th>Staff</th><th>Role</th><th>Status</th><th>Last Login</th><th>Action</th></tr></thead>
               <tbody id="acctTbody"></tbody>
             </table>
@@ -646,7 +647,7 @@ html, body{ overflow-x:hidden; }
             </div>
           </div>
           <div class="card" style="overflow-x:auto;">
-            <table>
+            <table style="min-width:760px;">
               <thead><tr><th>Code</th><th>Role</th><th>Status</th><th>Expires</th><th>Used by</th><th>Action</th></tr></thead>
               <tbody id="staffCodeRows"><tr><td colspan="6"><div class="sc-empty">Loading…</div></td></tr></tbody>
             </table>
