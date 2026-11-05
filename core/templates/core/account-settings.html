@@ -18,6 +18,14 @@
   .theme-name{ display:block; padding:6px 0 8px; font-size:13px; font-weight:600; }
   .theme-opt input:checked + .theme-card{ border-color:#7F9F79; box-shadow:0 0 0 2px rgba(127,159,121,.35); }
   .theme-opt input:focus-visible + .theme-card{ outline:2px solid #7F9F79; outline-offset:2px; }
+
+  .doodle-bg.themed{ background-image:none !important; position:relative; isolation:isolate; }
+  .doodle-bg.themed::before, .doodle-bg.themed::after{ display:none !important; }
+  .theme-wall{ position:absolute; inset:0; z-index:-1; pointer-events:none; background-color:#7F9F79; opacity:.34;
+    -webkit-mask-image:var(--tile); mask-image:var(--tile);
+    -webkit-mask-size:600px 600px; mask-size:600px 600px;
+    -webkit-mask-repeat:repeat; mask-repeat:repeat; }
+  html[data-theme="dark"] .theme-wall{ background-color:#7FD1BE; opacity:.27; }
 </style>
 <script>
 /* A logged-in page follows the student's saved dark mode, same as the dashboard */
@@ -35,7 +43,8 @@
 {% endblock %}
 
 {% block content %}
-<section class="onboard doodle-bg">
+<section class="onboard doodle-bg themed">
+  <div class="theme-wall" id="themeWall" aria-hidden="true"></div>
   <div class="onboard-inner onboard-inner--narrow">
 
     <header class="onboard-head">
@@ -182,13 +191,14 @@
 
       <section class="set-section">
         <h3 class="set-title">Chat background</h3>
-        <p class="set-sub">Pick the doodles behind your screens.</p>
+        <p class="set-sub">Pick the doodles behind your screens. You'll see it change right away, but it only saves when you press Save changes.</p>
         <div class="theme-picker">
           {% for key, label in chat_themes %}
+            {% if key == 'mix' %}{% static 'core/images/chat-doodles.png' as tile_url %}{% else %}{% static 'core/images/chat-doodles-'|add:key|add:'.png' as tile_url %}{% endif %}
             <label class="theme-opt">
-              <input type="radio" name="chat_theme" value="{{ key }}" {% if profile.chat_theme == key %}checked{% endif %}>
+              <input type="radio" name="chat_theme" value="{{ key }}" data-tile="{{ tile_url }}" {% if profile.chat_theme == key %}checked{% endif %}>
               <span class="theme-card">
-                <span class="theme-swatch" style="--tile:url('{% if key == 'mix' %}{% static 'core/images/chat-doodles.png' %}{% else %}{% static 'core/images/chat-doodles-'|add:key|add:'.png' %}{% endif %}')"></span>
+                <span class="theme-swatch" style="--tile:url('{{ tile_url }}')"></span>
                 <span class="theme-name">{{ label }}</span>
               </span>
             </label>
@@ -284,6 +294,18 @@ function showToast(msg){
         }).catch(function () {});
       }, 0);
     });
+  });
+})();
+</script>
+<script>
+/* Live preview of the chat background. Nothing is saved until "Save changes". */
+(function () {
+  var wall = document.getElementById('themeWall');
+  if (!wall) return;
+  function apply(r) { wall.style.setProperty('--tile', "url('" + r.dataset.tile + "')"); }
+  document.querySelectorAll('input[name="chat_theme"]').forEach(function (r) {
+    if (r.checked) apply(r);
+    r.addEventListener('change', function () { if (r.checked) apply(r); });
   });
 })();
 </script>

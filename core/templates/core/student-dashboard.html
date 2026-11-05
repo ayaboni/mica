@@ -1826,8 +1826,8 @@ function toggleDyslexia(){
 }
 </script>
 </head>
-<body>
-<script><body data-chat-theme="{{ profile.chat_theme }}"></script>
+<body data-chat-theme="{{ profile.chat_theme }}">
+<script>(function(){ var d = {{ profile.dark_mode|yesno:"true,false" }}; if(d) document.body.classList.add('dark-mode'); try{ localStorage.setItem('mica_dark', d ? '1' : '0'); }catch(e){} })();</script>
   {% include 'core/_loader.html' %}
 
 
