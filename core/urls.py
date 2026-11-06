@@ -70,6 +70,7 @@ urlpatterns = [
     path('api/guidance/request/', views.guidance_request, name='guidance_request'),
     path('api/guidance/messages/', views.guidance_messages, name='guidance_messages'),
     path('api/guidance/hide/', views.guidance_hide, name='guidance_hide'),
+    path('api/guidance/notice-ack/', views.guidance_notice_ack, name='guidance_notice_ack'),
     path('api/staff/dashboard-stats/', views.staff_dashboard_stats, name='staff_dashboard_stats'),
     path('api/staff/assessments/', views.staff_assessments, name='staff_assessments'),
     path('api/staff/guidance/', views.staff_guidance_inbox, name='staff_guidance_inbox'),

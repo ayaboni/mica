@@ -365,6 +365,42 @@ html.dyslexia body{line-height:1.7;}
     color:#fff;
     opacity:.9;
   }
+  .content-header .header-landing-link{
+    display:inline-flex;
+    align-items:center;
+    gap:7px;
+    margin-left:10px;
+    padding:7px 14px 7px 12px;
+    font-size:13.5px;
+    font-weight:600;
+    line-height:1;
+    color:#fff;
+    text-decoration:none;
+    white-space:nowrap;
+    background:rgba(255,255,255,.16);
+    border:1.5px solid rgba(255,255,255,.4);
+    border-radius:999px;
+    transition:background .15s ease, color .15s ease, border-color .15s ease, transform .15s ease;
+  }
+  .content-header .header-landing-link svg{
+    width:15px; height:15px; flex-shrink:0;
+    transition:transform .15s ease;
+  }
+  /* Fixed colours (not theme variables) so the hover stays readable in light and dark mode. */
+  .content-header .header-landing-link:hover,
+  .content-header .header-landing-link:focus-visible{
+    background:#F6EAD0;
+    border-color:#F6EAD0;
+    color:#3E3226;
+    outline:none;
+  }
+  .content-header .header-landing-link:hover svg,
+  .content-header .header-landing-link:focus-visible svg{ transform:translateX(-2px); }
+  .content-header .header-landing-link:focus-visible{ box-shadow:0 0 0 3px rgba(255,255,255,.55); }
+  .content-header .header-landing-link:active{ transform:scale(.97); }
+  @media (max-width:600px){
+    .content-header .header-landing-link{ margin-left:4px; padding:6px 11px 6px 9px; font-size:12.5px; }
+  }
   .content-header-left{
     display:flex;
     align-items:center;
@@ -481,13 +517,6 @@ body[data-chat-theme="flowers"]{ --doodle-img:url("{% static 'core/images/backgr
     font-weight:600;
     text-align:center;
   }
-  .guidance-note .guidance-afterhours{
-    margin-top:8px;
-    padding-top:8px;
-    border-top:1px dashed rgba(142,174,136,.6);
-    color:var(--text-dark);
-  }
-  .guidance-note .guidance-afterhours[hidden]{ display:none; }
   @media (max-width:640px){
     .view::before{ -webkit-mask-size:460px 460px; mask-size:460px 460px; }
   }
@@ -1921,6 +1950,7 @@ function toggleDyslexia(){
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
         </button>
         <h1 id="view-title">Home</h1>
+        <a class="header-landing-link" href="{% url 'home' %}" title="Go to the MICA landing page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>Landing page</a>
       </div>
       <div class="live-time-clock" id="liveTime"></div>
     </header>
@@ -1987,11 +2017,7 @@ function toggleDyslexia(){
           <span id="guidance-who">Guidance Office</span>
           <button type="button" class="guidance-clear" onclick="clearGuidanceChat()">Clear chat</button>
         </div>
-        <div class="guidance-note">Heads up: the Guidance staff can read what you send here. Please keep your messages respectful. If you need help right now, contact a hotline or someone you trust.
-          <div class="guidance-afterhours" id="guidance-afterhours" role="status" hidden>
-            🌙 The Guidance staff are not available right now. They will respond during their working hours, 7:00 AM to 6:00 PM.
-          </div>
-        </div>
+        <div class="guidance-note">Heads up: the Guidance staff can read what you send here. Please keep your messages respectful. If you need help right now, contact a hotline or someone you trust.</div>
         <div class="messages" id="guidance-messages"></div>
         <div class="composer">
           <div class="composer-box">
@@ -3183,24 +3209,6 @@ function setGuidanceWho(role){
   if(el) el.textContent = role ? `You're talking with: ${role}` : 'Guidance Office · a staff member will reply soon';
 }
 
-// After-hours advisory: shown from 6:00 PM to 6:59 AM (Philippine time, same as the server's TIME_ZONE),
-// since the Guidance staff only work 7:00 AM - 6:00 PM. Uses Asia/Manila explicitly so it doesn't depend on the device's clock zone.
-function isGuidanceAfterHours(){
-  let hour;
-  try{
-    hour = parseInt(new Intl.DateTimeFormat('en-US', {timeZone:'Asia/Manila', hour:'numeric', hourCycle:'h23'}).format(new Date()), 10);
-  }catch(e){
-    hour = new Date().getHours();
-  }
-  return hour >= 18 || hour < 7;
-}
-function updateGuidanceAvailability(){
-  const el = document.getElementById('guidance-afterhours');
-  if(el) el.hidden = !isGuidanceAfterHours();
-}
-updateGuidanceAvailability();
-setInterval(updateGuidanceAvailability, 60000);   // flips on its own at 6 PM / 7 AM without a reload
-
 // Guidance view wiring: pressing the button alerts staff right away, then loads the real messages
 let guidanceLoaded = false;
 
@@ -3216,7 +3224,6 @@ function requestGuidance(){
 }
 
 document.getElementById('btn-guidance').addEventListener('click', ()=>{
-  updateGuidanceAvailability();
   fetch("{% url 'mark_notifications_read' %}", {method: "POST", headers: {"X-CSRFToken": getCookie("csrftoken")}});
   requestGuidance().then(added => {
     if(added || !guidanceLoaded){

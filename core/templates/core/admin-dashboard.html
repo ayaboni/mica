@@ -142,7 +142,21 @@
   }
   body.dark .topbar{background:#233024;}
   .topbar .titlewrap .eyebrow{font-size:11.5px; color:rgba(255,255,255,.7); text-transform:uppercase; letter-spacing:.07em; font-weight:700;}
-  .topbar .titlewrap{margin-right:auto;}
+  .topbar .titlewrap{margin-right:0;}
+  .topbar .header-landing-link{
+    display:inline-flex; align-items:center; gap:7px; margin:0 auto 0 16px; padding:7px 14px 7px 12px;
+    font-size:13.5px; font-weight:600; line-height:1; color:#fff; text-decoration:none; white-space:nowrap;
+    background:rgba(255,255,255,.16); border:1.5px solid rgba(255,255,255,.4); border-radius:999px;
+    transition:background .15s ease, color .15s ease, border-color .15s ease, transform .15s ease;
+  }
+  .topbar .header-landing-link svg{ width:15px; height:15px; flex-shrink:0; transition:transform .15s ease; }
+  /* Fixed colours (not theme variables) so the hover stays readable in light and dark mode. */
+  .topbar .header-landing-link:hover, .topbar .header-landing-link:focus-visible{
+    background:#F6EAD0; border-color:#F6EAD0; color:#3E3226; outline:none;
+  }
+  .topbar .header-landing-link:hover svg, .topbar .header-landing-link:focus-visible svg{ transform:translateX(-2px); }
+  .topbar .header-landing-link:focus-visible{ box-shadow:0 0 0 3px rgba(255,255,255,.55); }
+  .topbar .header-landing-link:active{ transform:scale(.97); }
   .topbar h2{font-size:21px; font-weight:700; color:#fff; font-family:'Baloo 2',sans-serif;}
   .topbar-actions{display:flex; align-items:center; gap:12px;}
   .searchbox{display:flex; align-items:center; gap:9px; background:var(--paper); border:none; border-radius:999px; padding:9px 16px; min-width:230px;}
@@ -423,6 +437,33 @@
   #subclassModalOverlay .modal-body{max-height:62vh; overflow-y:auto;}
   .form-error{color:var(--alert); font-size:13px; margin-top:12px; min-height:16px;}
 
+  /* ---- inline editing (role detail + compare matrix) ---- */
+  .rb-main.editing{overflow:visible;}
+  .rb-in{width:100%; padding:10px 14px; border:1.5px solid var(--line); border-radius:12px; font-size:14.5px; background:var(--cream); color:var(--ink); font-family:'Inter',sans-serif;}
+  .rb-in:focus{outline:none; border-color:var(--sage-deep);}
+  .rb-in.name{font-size:17px; font-weight:700; margin-bottom:8px;}
+  .rb-editing-tag{display:inline-block; margin-bottom:8px; padding:3px 10px; border-radius:999px; background:color-mix(in srgb, var(--sage) 24%, var(--paper)); font-size:11.5px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--ink);}
+  .rb-row.edit{align-items:center; padding:11px 0;}
+  .rb-row.edit.svc{align-items:flex-start; flex-wrap:wrap;}
+  .rb-row.edit .svc-chips{justify-content:flex-end; max-width:60%;}
+  .rb-row.edit + .rb-row.edit{border-top:1px solid var(--line);}
+  .rb-editbar{position:sticky; bottom:0; z-index:6; display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:12px 26px; background:var(--paper); border-top:1px solid var(--line); border-radius:0 0 var(--radius, 18px) var(--radius, 18px); box-shadow:0 -6px 14px -10px rgba(0,0,0,.35);}
+  .rb-editbar .eb-msg{flex:1 1 160px; font-size:12.5px; color:var(--ink-soft); min-width:0;}
+  .rb-editbar .eb-msg.err, .mx-editctl .eb-msg.err{color:var(--alert); font-weight:600;}
+  .mx-editctl{display:inline-flex; align-items:center; gap:10px; flex-wrap:wrap;}
+  .mx-editctl[hidden], #mxEditBtn[hidden]{display:none;}
+  .mx-editctl .eb-msg{font-size:12.5px; color:var(--ink-soft);}
+  .mx-editing thead th:not(.mx-corner){min-width:184px; width:184px; max-width:220px;}
+  .mx-editing .svc-chips{justify-content:center; gap:4px;}
+  .mx-editing .svc-chip{padding:3px 9px; font-size:11.5px;}
+  .mx-editing td{height:auto; padding:8px;}
+  .mx-editing .switch{display:inline-block; vertical-align:middle;}
+  @media (max-width:900px){
+    .rb-editbar{padding:12px 18px;}
+    .rb-row.edit .svc-chips{max-width:100%; justify-content:flex-start;}
+    .rb-row.edit.svc .rb-k{flex-basis:100%;}
+  }
+
   .modal-head > div:first-child{min-width:0; padding-right:12px;}
   .modal-head h2, .modal-head .sub{overflow-wrap:anywhere;}
   .field select{text-overflow:ellipsis;}
@@ -490,6 +531,8 @@ html, body{ overflow-x:hidden; }
   .topbar{ flex-wrap:wrap; gap:10px 8px; padding:12px 14px; }
   .topbar .titlewrap{ flex:1; min-width:0; margin-right:0; }
   .topbar h2{ font-size:18px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .topbar .header-landing-link{ margin:0 auto 0 4px; width:36px; height:36px; padding:0; justify-content:center; gap:0; flex-shrink:0; }
+  .topbar .header-landing-link .hl-text{ display:none; }
   .topbar-actions{ display:contents; }
   .icon-btn.menu-btn{ margin-right:0; }
   .icon-btn{ width:36px; height:36px; }
@@ -605,6 +648,7 @@ html, body{ overflow-x:hidden; }
         <div class="eyebrow" id="topEyebrow">Platform Overview</div>
         <h2 id="topTitle">System Dashboard</h2>
       </div>
+      <a class="header-landing-link" href="{% url 'home' %}" title="Go to the MICA landing page" aria-label="Go to the MICA landing page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg><span class="hl-text">Landing page</span></a>
       <div class="topbar-actions">
         <div class="searchbox">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--ink-soft)" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
@@ -801,6 +845,12 @@ html, body{ overflow-x:hidden; }
             <label class="mx-opt" id="mxDiffWrap"><input type="checkbox" id="mxDiff" onchange="matrixDiffChanged(this.checked)"> Show differences only</label>
             <span class="mx-key" id="mxKey" aria-hidden="true"><i></i>differs between roles</span>
             <div class="mx-sum" id="mxSum" aria-live="polite"></div>
+            <button type="button" class="pill-btn ghost sm" id="mxEditBtn" onclick="startMatrixEdit()">Edit permissions</button>
+            <div class="mx-editctl" id="mxEditCtl" hidden>
+              <span class="eb-msg" id="mxEditMsg" aria-live="polite"></span>
+              <button type="button" class="pill-btn ghost sm" onclick="cancelEdit()">Cancel</button>
+              <button type="button" class="pill-btn solid sm" id="mxSaveBtn" onclick="saveEdits()">Save changes</button>
+            </div>
           </div>
           <div class="mx-scroll" id="mxScroll" tabindex="0" role="region" aria-label="Roles and permissions comparison, scrolls in both directions"></div>
         </div>
@@ -2078,8 +2128,9 @@ const picHtml = url => url ? `<img class="av-pic" src="${esc(url)}" alt="" onerr
 
 let subclassList = [];
 let scMeta = {services:[], fields:[]};
-let editingSubclassId = null;
 let scDraft = {};
+/* Inline editing: edit = {scope:'detail'|'matrix', drafts:{roleId: copy of the role being changed}} */
+let edit = null;
 
 function loadSubclasses(){
   return api('/api/admin/subclasses/').then(r=>{
@@ -2134,6 +2185,7 @@ function roleSearchChanged(v){
   renderRoleList(); renderMatrix();
 }
 function selectRole(id, focusDetail){
+  if(edit && !(edit.scope === 'detail' && edit.drafts[id]) && !leaveEdit()) return;
   selectedRoleId = id;
   renderRoleList(); renderRoleDetail();
   if(focusDetail && window.matchMedia('(max-width:900px)').matches){
@@ -2151,7 +2203,9 @@ function renderSubclasses(){
 /* ---- Compare view: roles as columns, permissions as rows ---- */
 let roleView = 'list', matrixDiffOnly = false;
 function setRoleView(v){
-  roleView = v === 'matrix' ? 'matrix' : 'list';
+  const next = v === 'matrix' ? 'matrix' : 'list';
+  if(next !== roleView && edit && !leaveEdit()) return;
+  roleView = next;
   document.getElementById('roleSplit').hidden = roleView === 'matrix';
   document.getElementById('roleMatrix').hidden = roleView !== 'matrix';
   document.getElementById('rvList').setAttribute('aria-pressed', roleView === 'list');
@@ -2159,12 +2213,25 @@ function setRoleView(v){
   if(roleView === 'matrix') renderMatrix();
 }
 function matrixDiffChanged(on){ matrixDiffOnly = !!on; renderMatrix(); }
-function openRoleFromMatrix(id){ setRoleView('list'); selectRole(id, true); }
+function openRoleFromMatrix(id){
+  if(edit && !leaveEdit()) return;
+  setRoleView('list'); selectRole(id, true);
+}
 function permSig(sc, f){
   return f.kind === 'services' ? (sc[f.key] || []).slice().sort().join('|') : (sc[f.key] ? '1' : '0');
 }
-function matrixCellHtml(sc, f){
+function matrixCellHtml(sc, f, editing){
   const v = sc[f.key];
+  if(editing){
+    const who = ' (' + sc.name + ')';
+    if(f.kind === 'services'){
+      return '<div class="svc-chips">'+scMeta.services.map(s=>{
+        const on = (v || []).includes(s.key);
+        return '<button type="button" class="svc-chip '+(on?'on':'')+'" aria-pressed="'+on+'" data-cell="'+sc.id+'|'+f.key+'|'+s.key+'" aria-label="'+esc(f.label+': '+s.label+who)+'" onclick="editSvc('+sc.id+',\''+f.key+'\',\''+s.key+'\',this)">'+esc(s.label)+'</button>';
+      }).join('')+'</div>';
+    }
+    return '<button type="button" role="switch" aria-checked="'+!!v+'" aria-label="'+esc(f.label+who)+'" data-cell="'+sc.id+'|'+f.key+'" class="switch '+(v?'on':'')+'" onclick="editPerm('+sc.id+',\''+f.key+'\',this)"><span class="knob"></span></button>';
+  }
   if(f.kind === 'services'){
     if(!v || !v.length) return '<span class="mx-no">'+IC_DASH+'<span class="rb-sr">None</span></span>';
     if(v.length === scMeta.services.length) return '<span class="mx-all">'+IC_CHECK+'All</span>';
@@ -2179,30 +2246,34 @@ function renderMatrix(){
   const total = scMeta.fields.length;
   const cols = subclassList.filter(sc=>!roleQuery || (sc.name+' '+(sc.description||'')).toLowerCase().includes(roleQuery));
   const diffBox = document.getElementById('mxDiff'), diffWrap = document.getElementById('mxDiffWrap');
+  const editing = !!(edit && edit.scope === 'matrix');
   const canDiff = cols.length > 1;
-  diffBox.disabled = !canDiff; diffBox.checked = matrixDiffOnly && canDiff;
-  diffWrap.classList.toggle('dis', !canDiff);
+  /* While editing, every row stays visible so a row never disappears under the cursor. */
+  diffBox.disabled = !canDiff || editing; diffBox.checked = matrixDiffOnly && canDiff && !editing;
+  diffWrap.classList.toggle('dis', !canDiff || editing);
   document.getElementById('mxKey').hidden = !canDiff;
+  syncMatrixEditUi();
   if(!subclassList.length){ sum.textContent = ''; box.innerHTML = '<div class="mx-none">No staff roles yet. Create one to start comparing.</div>'; return; }
   if(!cols.length){ sum.textContent = '0 of '+subclassList.length+' roles'; box.innerHTML = '<div class="mx-none">No roles match “'+esc(roleQuery)+'”.</div>'; return; }
-  const useDiff = matrixDiffOnly && canDiff;
+  const useDiff = matrixDiffOnly && canDiff && !editing;
+  const shown = cols.map(viewOf);
   let shownRows = 0, diffRows = 0, body = '';
   groupedFields().forEach(g=>{
     let rows = '';
     g.fields.forEach(f=>{
-      const differs = new Set(cols.map(sc=>permSig(sc,f))).size > 1;
+      const differs = new Set(shown.map(sc=>permSig(sc,f))).size > 1;
       if(differs) diffRows++;
       if(useDiff && !differs) return;
       shownRows++;
       rows += '<tr'+(differs && canDiff ? ' class="diff"' : '')+'><th scope="row">'+esc(f.label)+(differs && canDiff ? '<span class="rb-sr"> (differs between roles)</span>' : '')+'</th>'+
-        cols.map(sc=>'<td>'+matrixCellHtml(sc,f)+'</td>').join('')+'</tr>';
+        shown.map(sc=>'<td>'+matrixCellHtml(sc,f,editing)+'</td>').join('')+'</tr>';
     });
     if(rows) body += '<tr class="mx-grp"><th scope="colgroup" colspan="'+(cols.length+1)+'"><span>'+esc(g.title)+'</span></th></tr>'+rows;
   });
   sum.textContent = (cols.length === subclassList.length ? cols.length+(cols.length===1?' role':' roles') : cols.length+' of '+subclassList.length+' roles')+
     ' · '+(useDiff ? diffRows+' differing' : total)+' permissions';
   if(!body) body = '<tr><td colspan="'+(cols.length+1)+'" class="mx-none" style="text-align:center">These roles have identical permissions.</td></tr>';
-  const head = cols.map(sc=>{
+  const head = shown.map(sc=>{
     const on = permCount(sc);
     return '<th scope="col"><button type="button" class="mx-head" onclick="openRoleFromMatrix('+sc.id+')" title="Open '+esc(sc.name)+'">'+
       '<span class="rb-mark" aria-hidden="true">'+esc(roleInitials(sc.name))+'</span>'+
@@ -2211,8 +2282,15 @@ function renderMatrix(){
       '<span class="rb-meter" aria-hidden="true"><span style="width:'+(total?Math.round(on/total*100):0)+'%"></span></span>'+
     '</button></th>';
   }).join('');
-  box.innerHTML = '<table class="mx"><caption class="rb-sr">Permissions by staff role. Roles are columns, permissions are rows.</caption>'+
+  const keepTop = box.scrollTop, keepLeft = box.scrollLeft;
+  const focusKey = editing && document.activeElement && box.contains(document.activeElement) ? document.activeElement.getAttribute('data-cell') : null;
+  box.innerHTML = '<table class="mx'+(editing?' mx-editing':'')+'"><caption class="rb-sr">Permissions by staff role. Roles are columns, permissions are rows.</caption>'+
     '<thead><tr><th scope="col" class="mx-corner">Permission</th>'+head+'</tr></thead><tbody>'+body+'</tbody></table>';
+  box.scrollTop = keepTop; box.scrollLeft = keepLeft;
+  if(focusKey){
+    const el = [...box.querySelectorAll('[data-cell]')].find(n=>n.getAttribute('data-cell') === focusKey);
+    if(el) el.focus({preventScroll:true});
+  }
 }
 
 function renderRoleList(){
@@ -2245,6 +2323,8 @@ function permValueHtml(sc, f){
 function renderRoleDetail(){
   const box = document.getElementById('roleDetail');
   const sc = subclassList.find(x=>x.id===selectedRoleId);
+  box.classList.remove('editing');
+  if(sc && edit && edit.scope === 'detail' && edit.drafts[sc.id]){ renderRoleEdit(box, sc, edit.drafts[sc.id]); return; }
   if(!sc){
     box.innerHTML = '<div class="rb-empty">'+(subclassList.length ? 'Select a role to see what it can do.' :
       'No staff roles yet. Create one to start assigning it to staff accounts.<br><button class="pill-btn solid" onclick="openSubclassModal()">+ New staff role</button>')+'</div>';
@@ -2264,11 +2344,171 @@ function renderRoleDetail(){
         '<div class="rb-meter" role="img" aria-label="'+on+' of '+total+' permissions enabled"><span style="width:'+(total?Math.round(on/total*100):0)+'%"></span></div>'+
       '</div></div>'+
       '<div class="rb-acts">'+
-        '<button type="button" class="pill-btn ghost sm" onclick="openSubclassModal('+sc.id+')">Edit permissions</button>'+
+        '<button type="button" class="pill-btn ghost sm" onclick="startDetailEdit('+sc.id+')">Edit permissions</button>'+
         '<button type="button" class="pill-btn danger sm" onclick="deleteSubclass('+sc.id+')">Delete</button>'+
       '</div>'+
     '</div>'+
     '<div class="rb-groups">'+groups+'</div>';
+}
+
+/* =========================================================
+   INLINE EDITING — role detail pane and Compare matrix
+   Changes are held in `edit.drafts` until "Save changes"; nothing is sent before that.
+========================================================= */
+const cloneRole = sc => JSON.parse(JSON.stringify(sc));
+const viewOf = sc => (edit && edit.drafts[sc.id]) || sc;
+function draftFor(id){
+  if(!edit.drafts[id]) edit.drafts[id] = cloneRole(subclassList.find(x=>x.id===id));
+  return edit.drafts[id];
+}
+function roleChanged(id){
+  const d = edit && edit.drafts[id], o = subclassList.find(x=>x.id===id);
+  if(!d || !o) return false;
+  if(String(d.name||'').trim() !== o.name || String(d.description||'').trim() !== (o.description||'')) return true;
+  return scMeta.fields.some(f=>permSig(d,f) !== permSig(o,f));
+}
+const changedIds = () => edit ? Object.keys(edit.drafts).map(Number).filter(roleChanged) : [];
+const isDirty = () => changedIds().length > 0;
+
+/* Leave edit mode, asking first if there is something to lose. Returns false if the user stayed. */
+function leaveEdit(){
+  if(isDirty() && !confirm('Discard your unsaved permission changes?')) return false;
+  edit = null;
+  renderRoleDetail(); renderMatrix();
+  return true;
+}
+function cancelEdit(){ if(edit && !(edit.saving)) leaveEdit(); }
+window.addEventListener('beforeunload', e=>{ if(isDirty()){ e.preventDefault(); e.returnValue = ''; } });
+
+function startDetailEdit(id){
+  const sc = subclassList.find(x=>x.id===id);
+  if(!sc) return;
+  if(edit && !leaveEdit()) return;
+  edit = {scope:'detail', drafts:{[id]:cloneRole(sc)}, error:'', saving:false};
+  renderRoleDetail();
+  const n = document.getElementById('rbName'); if(n) n.focus();
+}
+function startMatrixEdit(){
+  if(!subclassList.length) return;
+  if(edit && !leaveEdit()) return;
+  edit = {scope:'matrix', drafts:{}, error:'', saving:false};
+  renderMatrix();
+}
+
+function editPerm(id, key, el){
+  if(!edit || edit.saving) return;
+  const d = draftFor(id); d[key] = !d[key];
+  afterEditChange(el, !!d[key]);
+}
+function editSvc(id, key, svc, el){
+  if(!edit || edit.saving) return;
+  const d = draftFor(id), list = d[key] || (d[key] = []);
+  const i = list.indexOf(svc);
+  if(i >= 0) list.splice(i, 1); else list.push(svc);
+  afterEditChange(el, i < 0);
+}
+function editText(field, value){
+  if(!edit) return;
+  draftFor(selectedRoleId)[field] = value;
+  edit.error = '';
+  syncEditUi();
+}
+function afterEditChange(el, on){
+  edit.error = '';
+  if(edit.scope === 'matrix'){ renderMatrix(); return; }
+  /* detail pane: flip the control in place so focus and scroll position are untouched */
+  el.classList.toggle('on', on);
+  el.setAttribute(el.hasAttribute('aria-checked') ? 'aria-checked' : 'aria-pressed', on);
+  syncEditUi();
+}
+
+function editStatus(){
+  if(edit.error) return {text:edit.error, err:true};
+  if(edit.saving) return {text:'Saving…', err:false};
+  const n = changedIds().length;
+  if(!n) return {text:'No changes yet', err:false};
+  return {text: edit.scope === 'matrix' ? n+' role'+(n===1?'':'s')+' changed' : 'Unsaved changes', err:false};
+}
+function syncEditUi(){ if(!edit) return; if(edit.scope === 'matrix') syncMatrixEditUi(); else syncDetailEditUi(); }
+function syncMatrixEditUi(){
+  const editing = !!(edit && edit.scope === 'matrix');
+  const btn = document.getElementById('mxEditBtn'), ctl = document.getElementById('mxEditCtl');
+  btn.hidden = editing; btn.disabled = !subclassList.length;
+  ctl.hidden = !editing;
+  if(!editing) return;
+  const st = editStatus(), msg = document.getElementById('mxEditMsg');
+  msg.textContent = st.text; msg.classList.toggle('err', st.err);
+  document.getElementById('mxSaveBtn').disabled = edit.saving || !isDirty();
+}
+function syncDetailEditUi(){
+  const d = edit.drafts[selectedRoleId];
+  if(!d || !document.getElementById('rbMsg')) return;
+  const total = scMeta.fields.length, on = permCount(d), st = editStatus();
+  document.getElementById('rbOn').textContent = on;
+  const m = document.getElementById('rbMeter');
+  m.setAttribute('aria-label', on+' of '+total+' permissions enabled');
+  m.firstElementChild.style.width = (total ? Math.round(on/total*100) : 0)+'%';
+  const msg = document.getElementById('rbMsg');
+  msg.textContent = st.text; msg.classList.toggle('err', st.err);
+  document.getElementById('rbSaveBtn').disabled = edit.saving || !isDirty();
+}
+
+function renderRoleEdit(box, sc, d){
+  box.classList.add('editing');
+  const total = scMeta.fields.length, on = permCount(d);
+  const row = f=>{
+    if(f.kind === 'services'){
+      const chips = scMeta.services.map(s=>{
+        const o = (d[f.key] || []).includes(s.key);
+        return '<button type="button" class="svc-chip '+(o?'on':'')+'" aria-pressed="'+o+'" onclick="editSvc('+sc.id+',\''+f.key+'\',\''+s.key+'\',this)">'+esc(s.label)+'</button>';
+      }).join('');
+      return '<li class="rb-row edit svc"><span class="rb-k">'+esc(f.label)+'</span><div class="svc-chips" role="group" aria-label="'+esc(f.label)+'">'+chips+'</div></li>';
+    }
+    return '<li class="rb-row edit"><span class="rb-k">'+esc(f.label)+'</span>'+
+      '<button type="button" role="switch" aria-checked="'+!!d[f.key]+'" aria-label="'+esc(f.label)+'" class="switch '+(d[f.key]?'on':'')+'" onclick="editPerm('+sc.id+',\''+f.key+'\',this)"><span class="knob"></span></button></li>';
+  };
+  const groups = groupedFields().map(g=>
+    '<section class="rb-group"><h4>'+esc(g.title)+'</h4><ul class="rb-rows">'+g.fields.map(row).join('')+'</ul></section>').join('');
+  box.innerHTML =
+    '<div class="rb-top">'+
+      '<div class="rb-id"><div class="rb-mark" aria-hidden="true">'+esc(roleInitials(d.name || sc.name))+'</div><div style="min-width:0; flex:1;">'+
+        '<span class="rb-editing-tag">Editing</span>'+
+        '<input class="rb-in name" id="rbName" maxlength="60" aria-label="Role name" placeholder="Role name" value="'+esc(d.name)+'" oninput="editText(\'name\',this.value)" onkeydown="if(event.key===\'Enter\') saveEdits()">'+
+        '<input class="rb-in" id="rbDesc" maxlength="200" aria-label="Description (optional)" placeholder="Description (optional) — what this role is for" value="'+esc(d.description||'')+'" oninput="editText(\'description\',this.value)" onkeydown="if(event.key===\'Enter\') saveEdits()">'+
+        '<div class="rb-stats"><span><b>'+sc.members+'</b> staff account'+(sc.members===1?'':'s')+'</span><span><b id="rbOn">'+on+'</b> of '+total+' permissions on</span></div>'+
+        '<div class="rb-meter" id="rbMeter" role="img" aria-label="'+on+' of '+total+' permissions enabled"><span style="width:'+(total?Math.round(on/total*100):0)+'%"></span></div>'+
+      '</div></div>'+
+    '</div>'+
+    '<div class="rb-groups">'+groups+'</div>'+
+    '<div class="rb-editbar">'+
+      '<span class="eb-msg" id="rbMsg" aria-live="polite"></span>'+
+      '<button type="button" class="pill-btn ghost sm" onclick="cancelEdit()">Cancel</button>'+
+      '<button type="button" class="pill-btn solid sm" id="rbSaveBtn" onclick="saveEdits()">Save changes</button>'+
+    '</div>';
+  syncDetailEditUi();
+}
+
+function saveEdits(){
+  if(!edit || edit.saving) return;
+  const cur = edit, ids = changedIds();
+  if(!ids.length){ leaveEdit(); return; }
+  cur.saving = true; cur.error = ''; syncEditUi();
+  Promise.all(ids.map(id=>{
+    const d = cur.drafts[id];
+    return api('/api/admin/subclasses/'+id+'/update/', d).then(r=>({id, name:d.name, r}));
+  })).then(res=>{
+    const failed = res.filter(x=>!x.r.ok);
+    res.filter(x=>x.r.ok).forEach(x=>{ delete cur.drafts[x.id]; });
+    cur.saving = false;
+    if(failed.length){
+      cur.error = failed.map(x=>(ids.length > 1 ? '“'+x.name+'”: ' : '')+(x.r.data.error || 'Could not save this role.')).join(' ');
+      syncEditUi();
+    } else {
+      if(edit === cur) edit = null;
+      showToast(ids.length === 1 ? 'Role updated' : ids.length+' roles updated');
+    }
+    loadSubclasses().then(loadStaffAccounts);
+  });
 }
 
 /* Arrow keys move through the role list. */
@@ -2313,17 +2553,14 @@ function toggleSvc(key, svc){
   renderPermControls();
 }
 
-function openSubclassModal(id){
-  editingSubclassId = id || null;
-  const sc = id ? subclassList.find(x=>x.id===id) : null;
-  scDraft = sc ? JSON.parse(JSON.stringify(sc)) : defaultDraft();
-  document.getElementById('scModalTitle').textContent = sc ? 'Edit '+sc.name : 'New staff role';
-  document.getElementById('scSaveBtn').textContent = sc ? 'Save changes' : 'Create role';
+/* The popup is only for creating a role now; existing roles are edited in place. */
+function openSubclassModal(){
+  if(edit && !leaveEdit()) return;
+  scDraft = defaultDraft();
   document.getElementById('scName').value = scDraft.name;
   document.getElementById('scDesc').value = scDraft.description || '';
   document.getElementById('scError').textContent = '';
   const copy = document.getElementById('scCopy');
-  document.getElementById('scCopyWrap').style.display = sc ? 'none' : '';
   copy.innerHTML = '<option value="">Blank role</option>' + subclassList.map(x=>'<option value="'+x.id+'">'+esc(x.name)+'</option>').join('');
   renderPermControls();
   document.getElementById('subclassModalOverlay').classList.add('active');
@@ -2338,14 +2575,13 @@ function copySubclassPerms(){
 function saveSubclass(){
   scDraft.name = document.getElementById('scName').value.trim();
   scDraft.description = document.getElementById('scDesc').value.trim();
-  const url = editingSubclassId ? '/api/admin/subclasses/'+editingSubclassId+'/update/' : '/api/admin/subclasses/';
   const btn = document.getElementById('scSaveBtn'); btn.disabled = true;
-  api(url, scDraft).then(r=>{
+  api('/api/admin/subclasses/', scDraft).then(r=>{
     btn.disabled = false;
     if(!r.ok){ document.getElementById('scError').textContent = r.data.error || 'Could not save this role.'; return; }
     closeModal('subclassModalOverlay');
     if(r.data.subclass && r.data.subclass.id) selectedRoleId = r.data.subclass.id;
-    showToast(editingSubclassId ? 'Role updated' : 'Role “'+r.data.subclass.name+'” created');
+    showToast('Role “'+r.data.subclass.name+'” created');
     loadSubclasses().then(loadStaffAccounts);
   });
 }

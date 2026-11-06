@@ -205,7 +205,7 @@
 
       const data = await response.json();
       if (data.redirect) {
-        window.location.href = data.redirect;
+        if (window.MicaLoader) { window.MicaLoader.goTo(data.redirect, 'login'); } else { window.location.href = data.redirect; }
       } else {
         alert(data.error || "Google sign-in failed.");
       }

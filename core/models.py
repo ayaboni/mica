@@ -421,6 +421,9 @@ class GuidanceThread(models.Model):
     # Messages with an id up to this are a previous staff member's history. When a student is referred
     # to someone else the chat starts fresh: the new counselor never sees those messages (0 = show all).
     history_start_id = models.PositiveBigIntegerField(default=0)
+    # The student has dismissed the "give Guidance 24 hours, here are hotlines" notice. Reset to False whenever
+    # the student is handed to another counselor, so the notice shows again.
+    grace_notice_ack = models.BooleanField(default=False)
 
     class Meta:
         ordering = ['-updated_at']

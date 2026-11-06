@@ -2545,7 +2545,7 @@ def guidance_messages(request):
     thread = (GuidanceThread.objects.filter(student=request.user)
               .select_related('counselor', 'counselor__staff_profile').first())
     if not thread:
-        return JsonResponse({"messages": [], "counselor_name": None, "last_id": 0})
+        return JsonResponse({"messages": [], "counselor_name": None, "last_id": 0, "show_notice": False})
 
     # ?after=<id> returns only newer messages, so the chat can poll cheaply every few seconds.
     after = _after_id(request)
@@ -2571,11 +2571,24 @@ def guidance_messages(request):
                 entry["content"] = re.sub(r"\s*\[appointment:\d+\]", "", m.content)
         msgs.append(entry)
 
+    # The 24-hour response notice (with hotlines) shows once the student has written to Guidance, and
+    # again after each referral, until they dismiss it.
+    show_notice = (not thread.grace_notice_ack
+                   and thread.messages.filter(sender=request.user).exists())
     return JsonResponse({
         "messages": msgs,
         "counselor_name": _staff_role(thread.counselor) if thread.counselor else None,
         "last_id": last_id,
+        "show_notice": show_notice,
     })
+
+
+@login_required(login_url='login')
+@require_POST
+def guidance_notice_ack(request):
+    """The student dismissed the 24-hour response notice."""
+    GuidanceThread.objects.filter(student=request.user).update(grace_notice_ack=True)
+    return JsonResponse({"status": "ok"})
 
 
 @login_required(login_url='login')
@@ -3806,6 +3819,7 @@ def _hand_conversation_to(thread, staff):
         thread.messages.filter(hidden_for_student=False).exclude(content__contains="[appointment:") \
             .update(hidden_for_student=True)
     thread.counselor = staff
+    thread.grace_notice_ack = False      # show the 24-hour / hotlines notice again for the new counselor
     thread.save()
     thread.appointments.filter(
         status__in=['pending', 'confirmed'], scheduled_time__gte=dj_timezone.now()

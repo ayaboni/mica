@@ -235,6 +235,28 @@ class ReferralHandoverTests(TestCase):
         view = self.get(self.bob, reverse("staff_guidance_thread", args=[thread.id]))
         self.assertEqual(view.json()["messages"], [])
 
+    def student_notice(self):
+        self.client.force_login(self.student)
+        return self.client.get(reverse("guidance_messages")).json()["show_notice"]
+
+    def test_24_hour_notice_shows_after_first_message_until_dismissed(self):
+        self.client.force_login(self.student)
+        self.assertFalse(self.client.get(reverse("guidance_messages")).json()["show_notice"])   # never talked to Guidance
+        thread = self.alice_thread()
+        self.assertTrue(self.student_notice())
+        self.assertEqual(self.client.post(reverse("guidance_notice_ack")).status_code, 200)
+        self.assertFalse(self.student_notice())
+
+    def test_24_hour_notice_reappears_after_a_referral(self):
+        self.alice_thread()
+        self.client.force_login(self.student)
+        self.client.post(reverse("guidance_notice_ack"))
+        self.assertFalse(self.student_notice())
+        self.accept(self.refer())
+        self.assertTrue(self.student_notice())          # new counselor: show it again
+        self.client.post(reverse("guidance_notice_ack"))
+        self.assertFalse(self.student_notice())
+
     def test_the_system_admin_still_sees_the_full_history(self):
         thread = self.alice_thread()
         self.accept(self.refer())

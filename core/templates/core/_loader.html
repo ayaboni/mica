@@ -1,7 +1,8 @@
 {% load static %}
 <!-- =========================================================
      MICA PAGE-TRANSITION LOADER
-     Shown on every full-page navigation (incoming + outgoing).
+     Shown ONLY while logging in, logging out, and moving between the landing page and the dashboards
+     (and from About/Contact/Privacy to the dashboards).
      Include once, right after <body>, on every routed template:
      ========================================================= -->
 <!-- The loader brings its own fonts so it looks identical on every page (login, home, dashboards...) -->
@@ -55,6 +56,8 @@
     visibility: hidden;
     pointer-events: none;
   }
+  /* Used for the first frame of a page so the loader appears/disappears instantly instead of fading */
+  .mica-loader.no-trans{ transition: none !important; }
   .mica-loader, .mica-loader *{ text-transform: none; font-style: normal; }
   .mica-loader-inner{
     width: min(380px, 82vw);
@@ -125,7 +128,7 @@
     .mica-loader, .mica-loader-fill, .mica-loader-walker{ transition: none !important; }
   }
 </style>
-<div id="micaLoader" class="mica-loader" role="status" aria-live="polite">
+<div id="micaLoader" class="mica-loader is-hidden no-trans" role="status" aria-live="polite" aria-hidden="true">
   <div class="mica-loader-inner">
     <div class="mica-loader-brand">MICA</div>
     <div class="mica-loader-track" id="micaLoaderTrack">
@@ -140,6 +143,33 @@
     </div>
   </div>
 </div>
+
+<script>
+/* Decide, before the first paint, whether this page load is the end of a login or a logout.
+   Only then is the loader shown. Login/logout/landing<->dashboard links set sessionStorage
+   'mica_loader_flow' ("login:<time>", "logout:<time>" or "nav:<time>") just before navigating away; it is read once here and ignored if it is stale. */
+(function(){
+  var el = document.getElementById('micaLoader');
+  if (!el) return;
+  var flow = null;
+  try {
+    var raw = sessionStorage.getItem('mica_loader_flow') || '';
+    sessionStorage.removeItem('mica_loader_flow');
+    var parts = raw.split(':');
+    if (parts[0] && Date.now() - Number(parts[1]) < 20000) flow = parts[0];
+  } catch (e) {}
+  // A login step that lands on another login page (code entry, wrong password...) is not "logged in" yet.
+  var onLoginPage = /^\/login(\/|$)/.test(window.location.pathname);
+  var arriving = flow === 'logout' || flow === 'nav' || (flow === 'login' && !onLoginPage);
+  window.__micaLoaderArriving = arriving;
+  if (arriving) {
+    el.classList.remove('is-hidden');
+    el.setAttribute('aria-hidden', 'false');
+  }
+  // allow normal fade transitions from the second frame on
+  requestAnimationFrame(function(){ requestAnimationFrame(function(){ el.classList.remove('no-trans'); }); });
+})();
+</script>
 
 <script>
 /* The loader mirrors the app's own theme (NOT the device/system theme):
@@ -231,6 +261,10 @@
     trickleTimer = null;
   }
 
+  function setFlow(flow){
+    try { sessionStorage.setItem('mica_loader_flow', flow + ':' + Date.now()); } catch (e) {}
+  }
+
   function show(label){
     overlay.classList.remove('is-hidden');
     overlay.setAttribute('aria-hidden', 'false');
@@ -253,8 +287,13 @@
     }, wait);
   }
 
-  function goTo(url){
-    show(/\/logout\//.test(url) ? 'Signing you out…' : 'Taking you there…');
+  // Navigate to `url`. The loader is only used for logging out / in; any other URL is a plain navigation.
+  // flow: 'login' | 'logout' | 'nav' (defaults to 'logout' for the logout URL).
+  function goTo(url, flow){
+    flow = flow || (/\/logout\/?(\?|$)/.test(url) ? 'logout' : null);
+    if (!flow) { window.location.href = url; return; }
+    setFlow(flow);
+    show(flow === 'logout' ? 'Signing you out…' : (flow === 'login' ? 'Signing you in…' : 'Taking you there…'));
     // give the bar/mascot a quick, visible head start before the slower trickle takes over
     setTimeout(function(){ setPercent(60); }, 20);
     // let the motion read clearly before the browser actually navigates away
@@ -267,17 +306,29 @@
   // (e.g. a fetch-based login flow that redirects programmatically).
   window.MicaLoader = { show: show, finish: finish, goTo: goTo, setPercent: setPercent };
 
-  // ---- Arrival animation: play on every fresh page load ----
-  document.addEventListener('DOMContentLoaded', function(){
-    startTrickle();
-  });
-  window.addEventListener('load', function(){
-    finish();
-  });
-  // Safety net in case 'load' never fires for some reason
-  setTimeout(finish, 4000);
+  // ---- Arrival animation: only right after logging in or logging out ----
+  if (window.__micaLoaderArriving) {
+    document.addEventListener('DOMContentLoaded', function(){
+      startTrickle();
+    });
+    window.addEventListener('load', function(){
+      finish();
+    });
+    // Safety net in case 'load' never fires for some reason
+    setTimeout(finish, 4000);
+  }
 
-  // ---- Outgoing navigation: intercept same-site link clicks ----
+  // Coming back with the Back button can restore a page with the loader still showing
+  window.addEventListener('pageshow', function(e){
+    if (e.persisted) {
+      stopTrickle();
+      overlay.classList.add('is-hidden');
+      overlay.setAttribute('aria-hidden', 'true');
+    }
+  });
+
+  // ---- Outgoing navigation: only logout and landing<->dashboard links get the loader; other links navigate normally.
+  //      (Links are still intercepted when there are unsaved changes, to ask first.) ----
   document.addEventListener('click', function(e){
     var a = e.target.closest('a');
     if (!a) return;
@@ -294,16 +345,28 @@
     try { url = new URL(href, window.location.href); } catch (err) { return; }
     if (url.origin !== window.location.origin) return; // external link, leave alone
 
+    var isLogout = /\/logout\/?$/.test(url.pathname);
+    // Landing page <-> dashboards, and About/Contact/Privacy -> dashboards, also get the loader
+    var isLanding = function(path){ return path === '/' || /^\/home\/?$/.test(path); };
+    var isDash = function(path){ return /^\/dashboard\//.test(path); };
+    // About / Contact / Privacy -> dashboards (one way only)
+    var isInfo = function(path){ return /^\/(about|contact|privacy-policy)\/?$/.test(path); };
+    var here = window.location.pathname;
+    var isNav = ((isLanding(here) || isInfo(here)) && isDash(url.pathname)) || (isDash(here) && isLanding(url.pathname));
+    var flow = isLogout ? 'logout' : (isNav ? 'nav' : null);
+    var dirty = !!(window.MicaGuard && window.MicaGuard.dirty());
+    if (!flow && !dirty) return;                   // ordinary link: let the browser navigate, no loader
+
     e.preventDefault();
     // Unsaved changes on this page (e.g. a new profile photo)? Ask before leaving.
-    if (window.MicaGuard && window.MicaGuard.dirty()) {
-      window.MicaGuard.confirm(function(){ goTo(url.href); });
+    if (dirty) {
+      window.MicaGuard.confirm(function(){ goTo(url.href, flow); });
       return;
     }
-    goTo(url.href);
+    goTo(url.href, flow);
   });
 
-  // ---- Outgoing navigation: intercept native form submits (login/register/etc.) ----
+  // ---- Native form submits: only the sign-in forms (password, email code, authenticator code) get the loader ----
   document.addEventListener('submit', function(e){
     var form = e.target;
     if (!(form instanceof HTMLFormElement)) return;
@@ -311,7 +374,12 @@
     if (form.hasAttribute('data-no-loader')) return;
     if (form.hasAttribute('download')) return;
     if (form.target && form.target !== '' && form.target !== '_self') return;
-    show('Submitting…');
+    var path;
+    try { path = new URL(form.getAttribute('action') || window.location.href, window.location.href).pathname; }
+    catch (err) { return; }
+    if (!/^\/login\/(verify\/|two-factor\/)?$/.test(path)) return;
+    setFlow('login');
+    show('Signing you in…');
   });
 })();
 </script>
