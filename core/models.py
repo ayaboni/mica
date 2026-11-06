@@ -498,6 +498,7 @@ class StudentFlag(models.Model):
     assigned_to = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='flags_assigned')
     reason = models.TextField()
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='new')
+    is_panic = models.BooleanField(default=False)   # raised by the student's own panic button, not by staff
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     resolved_at = models.DateTimeField(null=True, blank=True)

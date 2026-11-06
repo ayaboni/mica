@@ -456,7 +456,7 @@ def period_report(request):
             "status": f.get_status_display(),
             "opened": when(f.created_at),
             "resolved": when(f.resolved_at),
-            "flagged_by": person(f.flagged_by),
+            "flagged_by": "Student (panic button)" if f.is_panic else person(f.flagged_by),
             "handled_by": person(f.assigned_to),
             "reason": f.reason,
         })

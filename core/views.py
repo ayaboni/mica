@@ -2376,6 +2376,17 @@ def api_chat_undo_last(request, conversation_id):
     return JsonResponse({"removed": removed})
 
 
+# Guidance Office working hours (24-hour clock, in settings.TIME_ZONE). Outside them the Talk to
+# Guidance "Heads up" box tells the student that staff will reply when the office reopens.
+GUIDANCE_OPEN_HOUR = 7       # 7:00 AM
+GUIDANCE_CLOSE_HOUR = 18     # 6:00 PM
+
+
+def _clock_label(hour):
+    """7 -> '7:00 AM', 18 -> '6:00 PM'."""
+    return "%d:00 %s" % (hour % 12 or 12, "AM" if hour < 12 else "PM")
+
+
 @ensure_csrf_cookie
 @login_required(login_url='login')
 @own_dashboard_only('student')
@@ -2398,6 +2409,11 @@ def student_dashboard(request):
         'show_mood_tutorial': is_student and not profile.has_seen_mood_tutorial,
         'account_unverified': is_student and profile.verification_status == 'unverified',
         'show_daily_goal': is_student,
+        'office_tz': settings.TIME_ZONE,
+        'guidance_open_hour': GUIDANCE_OPEN_HOUR,
+        'guidance_close_hour': GUIDANCE_CLOSE_HOUR,
+        'guidance_open_label': _clock_label(GUIDANCE_OPEN_HOUR),
+        'guidance_close_label': _clock_label(GUIDANCE_CLOSE_HOUR),
     })
 
 
@@ -2531,6 +2547,51 @@ def guidance_request(request):
     daily_goal.award(request.user, "guidance")
     _notify_staff_of_student_message(request.user, thread)
     return JsonResponse({"status": "ok", "thread_id": thread.id, "created": created})
+
+
+PANIC_REASON = ("PANIC BUTTON: the student pressed the panic button in the chat and may need "
+                "immediate support. Please reach out as soon as possible.")
+PANIC_RATE_PER_MINUTE = 5
+
+
+@login_required(login_url='login')
+@require_POST
+def panic_alert(request):
+    """The PANIC button (Mica chat and Talk to Guidance): flag the student in Risk Alerts at once.
+
+    One press creates an open, urgent flag and notifies every staff member who can see students.
+    If the student already has an open flag (raised by staff or by an earlier press) no second flag
+    is made: that flag is marked as a panic flag, and staff are told again (collapsed while an
+    earlier notification is unread), so pressing repeatedly never fills the alerts list.
+    """
+    user = request.user
+    if user.is_staff or user.is_superuser:
+        return JsonResponse({"error": "The panic button is for students."}, status=403)
+    if verification.is_unverified(user):
+        # Staff can't see this account yet, so a flag would reach nobody. Say so and point to a hotline.
+        return _unverified_guidance_response()
+    if _rate_limited(request, "panic", PANIC_RATE_PER_MINUTE):
+        return _rate_limit_response()
+
+    with transaction.atomic():
+        # Lock the student's row so two quick presses can't both create a flag.
+        User.objects.select_for_update().get(pk=user.pk)
+        flag = StudentFlag.objects.filter(student=user).exclude(status='resolved').first()
+        created = flag is None
+        if created:
+            flag = StudentFlag.objects.create(student=user, reason=PANIC_REASON, is_panic=True)
+        elif not flag.is_panic:
+            flag.is_panic = True
+            flag.save(update_fields=['is_panic', 'updated_at'])
+
+    name = user.get_full_name() or user.username
+    recipients = staff_with('view_students')
+    if flag.assigned_to_id:        # the counselor handling the case is always told, even without the permission
+        recipients = list({u.pk: u for u in recipients + [flag.assigned_to]}.values())
+    notify(recipients, 'flag', f"PANIC: {name} pressed the panic button",
+           section='alerts', student_ref=user.id, ref_id=flag.id,
+           urgent=True, collapse_unread=True)
+    return JsonResponse({"status": "ok", "flag_id": flag.id, "created": created})
 
 
 def _after_id(request):
@@ -4122,11 +4183,15 @@ def _flag_json(f, today, me=None):
         "name": s.get_full_name() or s.username,
         "student_number": profile.student_number if profile and profile.student_number else "No ID",
         "course": profile.course if profile and profile.course else "Not set",
-        "severity": _student_risk(s, today),
+        # An open panic flag is always urgent, whatever the mood diary says (it may be empty).
+        "severity": "urgent" if f.is_panic and f.status != 'resolved' else _student_risk(s, today),
         "reason": f.reason,
         "status": _FLAG_STATUS_LABEL[f.status],
         "date": timezone.localtime(f.created_at).strftime("%b %d, %Y"),
-        "flagged_by": (f.flagged_by.get_full_name() or f.flagged_by.username) if f.flagged_by else "Former staff",
+        "panic": f.is_panic,
+        "flagged_by": ("Student (panic button)" if f.is_panic
+                       else (f.flagged_by.get_full_name() or f.flagged_by.username) if f.flagged_by
+                       else "Former staff"),
         "assigned": (f.assigned_to.get_full_name() or f.assigned_to.username) if f.assigned_to else "Unassigned",
         "mine": bool(me) and f.assigned_to_id == me.id,
     }

@@ -517,6 +517,14 @@ body[data-chat-theme="flowers"]{ --doodle-img:url("{% static 'core/images/backgr
     font-weight:600;
     text-align:center;
   }
+  /* After-hours advisory inside the Heads up box (shown 6:00 PM - 7:00 AM office time) */
+  .guidance-note .gn-hours{
+    margin-top:8px; padding-top:8px;
+    border-top:1px dashed rgba(142,174,136,.6);
+    color:var(--text-dark); font-weight:600;
+  }
+  .guidance-note .gn-hours[hidden]{display:none;}
+  .guidance-note .gn-hours strong{font-weight:800;}
   /* 24-hour response notice: shown after the student writes to Guidance, until dismissed */
   .guidance-grace{
     display:none;
@@ -1827,6 +1835,73 @@ input:checked + .toggle-slider::before {
     .gd-cursor{display:none;}
   }
 
+  /* ---------- PANIC button (Mica chat + Talk to Guidance) ---------- */
+  /* same side padding as .messages, so the button lines up with the chat column */
+  .panic-bar{display:flex; justify-content:flex-end; padding:8px max(30px, calc((100% - var(--chat-w)) / 2)) 0; flex:none; position:relative; z-index:2;}
+  .panic-btn{
+    display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border-radius:999px;
+    border:none; cursor:pointer; background:var(--danger); color:#fff;
+    font:inherit; font-size:12px; font-weight:800; letter-spacing:.6px;
+    box-shadow:0 2px 8px rgba(185,68,64,.35); transition:background .15s ease, transform .1s ease;
+  }
+  .panic-btn svg{width:15px; height:15px;}
+  .panic-btn:hover{background:var(--danger-dark);}
+  .panic-btn:active{transform:scale(.96);}
+  .panic-btn:focus-visible{outline:3px solid var(--btn-active); outline-offset:2px;}
+  .panic-btn:disabled{opacity:.65; cursor:wait;}
+  @media (max-width:760px){
+    .panic-bar{padding:8px 16px 0;}
+    .panic-btn{min-height:40px; padding:8px 16px; font-size:12.5px;}      /* easier to tap */
+  }
+
+  .ptip{
+    position:fixed; z-index:9000; width:280px; padding:18px 16px 14px;
+    background:var(--card-bg); color:var(--text-dark);
+    border:1px solid rgba(0,0,0,.07); border-radius:14px;
+    box-shadow:inset 0 4px 0 var(--danger), 0 14px 40px rgba(20,16,10,.28);
+    pointer-events:none; opacity:0; transform:translateY(-4px);
+    transition:opacity .15s ease, transform .15s ease;
+  }
+  .ptip[hidden]{display:none;}
+  .ptip.show{opacity:1; transform:none;}
+  body.dark-mode .ptip{border-color:rgba(255,255,255,.1);}
+  .ptip-title{font-family:'Quicksand',sans-serif; font-size:15px; font-weight:700; margin:0 0 6px;}
+  .ptip-body{font-size:12.5px; line-height:1.5; color:var(--text-mute); margin:0;}
+  .ptip-body + .ptip-body{margin-top:6px;}
+  @media (prefers-reduced-motion:reduce){ .ptip{transition:none;} }
+
+  .panic-modal{position:fixed; inset:0; z-index:9500; display:flex; align-items:center; justify-content:center; padding:16px; background:rgba(20,16,10,.55);}
+  .panic-modal[hidden]{display:none;}
+  .panic-card{
+    width:min(440px,100%); max-height:90dvh; overflow:auto; padding:28px 24px 20px;
+    background:var(--card-bg); color:var(--text-dark); border-radius:18px;
+    box-shadow:inset 0 5px 0 var(--danger), 0 20px 60px rgba(20,16,10,.4);
+  }
+  .panic-card h2{font-family:'Quicksand',sans-serif; font-size:19px; margin:0 0 8px;}
+  .panic-card p{font-size:13.5px; line-height:1.5; color:var(--text-mute); margin:0 0 12px;}
+  .panic-card ul{margin:0 0 16px; padding-left:20px; font-size:13.5px; line-height:1.6;}
+  .panic-actions{display:flex; gap:10px;}
+  .panic-actions button{flex:1;}
+  @media (max-width:420px){
+    .panic-modal{padding:max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));}
+    .panic-card{padding:24px 18px 16px;}
+    .panic-actions{flex-direction:column-reverse;}      /* main action on top, within thumb reach */
+    .panic-actions button{flex:none;}
+  }
+  .panic-card .panic-cancel{
+    padding:11px; border:none; border-radius:999px; cursor:pointer;
+    background:var(--btn-bg); color:var(--text-dark); font:inherit; font-weight:800;
+  }
+  .panic-card .panic-send{
+    padding:11px; border:none; border-radius:999px; cursor:pointer;
+    background:var(--danger); color:#fff; font:inherit; font-weight:800;
+  }
+  .panic-card .panic-send:hover{background:var(--danger-dark);}
+  .panic-card .panic-ok{
+    width:100%; padding:11px; border:none; border-radius:999px; cursor:pointer;
+    background:var(--btn-active); color:var(--text-dark); font:inherit; font-weight:800;
+  }
+
 /* ---------- Exercises: mobile layout fixes ---------- */
 /* exercise screens keep their natural height, .content scrolls (doodles still cover the whole view) */
 #view-exercises, #view-breathe, #view-affirmations, #view-grounding,
@@ -1909,6 +1984,38 @@ function toggleDyslexia(){
   </div>
   <p class="gtip-title">Talk to Guidance</p>
   <p class="gtip-body">Press it once and the Guidance staff are notified right away. No need to write a message first. Your chat with them opens so you can add more details.</p>
+</div>
+
+<div class="ptip" id="panic-tip" role="tooltip" hidden>
+  <p class="ptip-title">Panic button</p>
+  <p class="ptip-body">Press this if you feel unsafe or need help right now. You are flagged in the Guidance Office's risk alerts immediately, and the staff are notified so they can reach out to you.</p>
+  <p class="ptip-body">You will be asked to confirm before anything is sent.</p>
+  <p class="ptip-body">Guidance staff have up to 24 hours to respond.</p>
+  <p class="ptip-body">It does not call emergency services. If you need help sooner or are in immediate danger, call 911 or a hotline.</p>
+</div>
+
+<div class="panic-modal" id="panic-confirm" role="alertdialog" aria-modal="true" aria-labelledby="panic-confirm-title" aria-describedby="panic-confirm-msg" hidden>
+  <div class="panic-card">
+    <h2 id="panic-confirm-title">Send a panic alert?</h2>
+    <p id="panic-confirm-msg">You will be flagged for urgent help and the Guidance staff will be notified right away so they can reach out to you. They have up to 24 hours to respond, so if you need help sooner, please call a hotline or 911.</p>
+    <div class="panic-actions">
+      <button type="button" class="panic-cancel" id="panic-confirm-cancel">Cancel</button>
+      <button type="button" class="panic-send" id="panic-confirm-send">Yes, send alert</button>
+    </div>
+  </div>
+</div>
+
+<div class="panic-modal" id="panic-modal" role="alertdialog" aria-modal="true" aria-labelledby="panic-modal-title" aria-describedby="panic-modal-msg" hidden>
+  <div class="panic-card">
+    <h2 id="panic-modal-title">Your alert was sent</h2>
+    <p id="panic-modal-msg">The Guidance staff have been notified and will reach out as soon as they can. They have up to 24 hours to respond. You are not alone.</p>
+    <p><strong>If you need someone right now, please reach out:</strong></p>
+    <ul>
+      {% for h in hotlines %}<li>{{ h.name }}{% if h.note %} ({{ h.note }}){% endif %}: {{ h.number }}</li>{% endfor %}
+      <li>In immediate danger: call 911 or go to the nearest hospital</li>
+    </ul>
+    <button type="button" class="panic-ok" id="panic-modal-close">OK</button>
+  </div>
 </div>
 
 <div class="app">
@@ -2026,6 +2133,7 @@ function toggleDyslexia(){
     <!-- ---------- CHAT ---------- -->
     <section class="view" id="view-chat">
       <div class="chat-view-inner">
+        {% include 'core/_panic_button.html' %}
         <div class="messages" id="chat-messages"></div>
         <div class="composer">
           <div class="composer-box">
@@ -2044,11 +2152,17 @@ function toggleDyslexia(){
     <!-- ---------- TALK TO GUIDANCE ---------- -->
     <section class="view" id="view-guidance">
       <div class="chat-view-inner">
+        {% include 'core/_panic_button.html' %}
         <div class="guidance-who" style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
           <span id="guidance-who">Guidance Office</span>
           <button type="button" class="guidance-clear" onclick="clearGuidanceChat()">Clear chat</button>
         </div>
-        <div class="guidance-note">Heads up: the Guidance staff can read what you send here. Please keep your messages respectful. If you need help right now, contact a hotline or someone you trust.</div>
+        <div class="guidance-note">Heads up: the Guidance staff can read what you send here. Please keep your messages respectful. If you need help right now, contact a hotline or someone you trust.
+          <div class="gn-hours" id="guidance-hours-advisory" role="status" hidden
+               data-tz="{{ office_tz }}" data-open="{{ guidance_open_hour }}" data-close="{{ guidance_close_hour }}">
+            <strong>The Guidance Office is closed right now.</strong> Staff are available from {{ guidance_open_label }} to {{ guidance_close_label }} and will respond to your message during their working hours.
+          </div>
+        </div>
         <div class="guidance-grace" id="guidance-grace" role="status">
           <div class="gg-body">
             <div class="gg-title">Guidance usually replies within 24 hours</div>
@@ -3269,6 +3383,25 @@ function dismissGuidanceNotice(){
 }
 document.getElementById('guidance-grace-close').addEventListener('click', dismissGuidanceNotice);
 
+/* ---------- After-hours advisory: shown 6:00 PM to 7:00 AM Guidance Office time ----------
+   Uses the office's timezone, not the device clock, so a wrong or travelling device still gets the right message. */
+function guidanceOfficeClosed(date, tz, openHour, closeHour){
+  let hour;
+  try{
+    hour = parseInt(new Intl.DateTimeFormat('en-US', {timeZone: tz, hour: 'numeric', hour12: false}).format(date), 10) % 24;   // some engines print midnight as 24
+  }catch(e){
+    hour = date.getHours();                              // unknown timezone: fall back to the device clock
+  }
+  return hour >= closeHour || hour < openHour;
+}
+function updateGuidanceHoursAdvisory(){
+  const el = document.getElementById('guidance-hours-advisory');
+  if(!el) return;
+  el.hidden = !guidanceOfficeClosed(new Date(), el.dataset.tz, +el.dataset.open, +el.dataset.close);
+}
+updateGuidanceHoursAdvisory();
+setInterval(updateGuidanceHoursAdvisory, 60000);         // flips on its own at 6 PM / 7 AM while the page is open
+
 // Guidance view wiring: pressing the button alerts staff right away, then loads the real messages
 let guidanceLoaded = false;
 
@@ -3338,6 +3471,102 @@ document.getElementById('btn-guidance').addEventListener('click', ()=>{
   btn.addEventListener('click', hide);
   document.addEventListener('keydown', e => { if(e.key === 'Escape') hide(); });
   window.addEventListener('resize', hide);
+})();
+
+/* ---------- PANIC button: flags the student in the staff Risk Alerts, then shows help and hotlines ---------- */
+(function(){
+  const buttons = Array.from(document.querySelectorAll('.panic-btn'));
+  const modal = document.getElementById('panic-modal');
+  const tip = document.getElementById('panic-tip');
+  if(!buttons.length || !modal || !tip) return;
+  const titleEl = document.getElementById('panic-modal-title');
+  const msgEl = document.getElementById('panic-modal-msg');
+  const closeBtn = document.getElementById('panic-modal-close');
+  const SENT_TITLE = titleEl.textContent, SENT_MSG = msgEl.textContent;
+  let busy = false, lastFocus = null;
+
+  function openModal(title, msg){
+    titleEl.textContent = title; msgEl.textContent = msg;
+    modal.hidden = false;
+    closeBtn.focus();
+  }
+  function closeModal(){
+    modal.hidden = true;
+    if(lastFocus && lastFocus.focus) lastFocus.focus();
+  }
+  // "Are you sure?" step: a click only opens this; nothing is sent until the student confirms.
+  const confirmBox = document.getElementById('panic-confirm');
+  const confirmCancel = document.getElementById('panic-confirm-cancel');
+  const confirmSend = document.getElementById('panic-confirm-send');
+  let confirmFocus = null;
+  function openConfirm(){
+    confirmFocus = document.activeElement;
+    confirmBox.hidden = false;
+    confirmCancel.focus();            // Cancel has focus, so a stray Enter/Space can't send the alert
+  }
+  function closeConfirm(){
+    confirmBox.hidden = true;
+    if(confirmFocus && confirmFocus.focus) confirmFocus.focus();
+  }
+  confirmCancel.addEventListener('click', closeConfirm);
+  confirmBox.addEventListener('click', e => { if(e.target === confirmBox) closeConfirm(); });
+  confirmSend.addEventListener('click', () => { confirmBox.hidden = true; lastFocus = confirmFocus; press(); });
+  document.addEventListener('keydown', e => { if(e.key === 'Escape' && !confirmBox.hidden) closeConfirm(); });
+
+  closeBtn.addEventListener('click', closeModal);
+  modal.addEventListener('click', e => { if(e.target === modal) closeModal(); });
+  document.addEventListener('keydown', e => { if(e.key === 'Escape' && !modal.hidden) closeModal(); });
+
+  function press(){
+    if(busy) return;                                   // ignore double clicks while the request is in flight
+    busy = true;
+    buttons.forEach(b => b.disabled = true);
+    fetch("{% url 'panic_alert' %}", {
+      method: "POST",
+      headers: {"Content-Type": "application/json", "X-CSRFToken": getCookie("csrftoken")},
+      body: "{}",
+    }).then(r => r.json().catch(() => ({})).then(d => ({ok: r.ok, d})))
+      .then(({ok, d}) => {
+        if(ok) openModal(SENT_TITLE, SENT_MSG);
+        else openModal("We couldn't send your alert", d.error || "Something went wrong, so Guidance was not notified. Please contact one of these right now.");
+      })
+      .catch(() => openModal("We couldn't send your alert", "Please check your connection. Guidance was not notified, so please contact one of these right now."))
+      .finally(() => { busy = false; buttons.forEach(b => b.disabled = false); });
+  }
+
+  // Tooltip: shown on hover and on keyboard focus, hidden on leave, blur, click, Esc and resize.
+  const hoverCapable = window.matchMedia('(hover: hover)').matches;   // touch screens have no hover
+  let timer = null;
+  function showTip(btn){
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      if(!btn.offsetParent) return;
+      tip.hidden = false;
+      const r = btn.getBoundingClientRect(), w = tip.offsetWidth;
+      const left = Math.max(8, Math.min(r.right - w, window.innerWidth - w - 8));
+      tip.style.left = left + 'px';
+      tip.style.top = (r.bottom + 10) + 'px';
+      requestAnimationFrame(() => tip.classList.add('show'));
+    }, 200);
+  }
+  function hideTip(){
+    clearTimeout(timer);
+    tip.classList.remove('show');
+    tip.hidden = true;
+  }
+
+  buttons.forEach(btn => {
+    btn.setAttribute('aria-describedby', 'panic-tip');
+    if(hoverCapable){
+      btn.addEventListener('mouseenter', () => showTip(btn));
+      btn.addEventListener('mouseleave', hideTip);
+    }
+    btn.addEventListener('focus', () => { if(btn.matches(':focus-visible')) showTip(btn); });
+    btn.addEventListener('blur', hideTip);
+    btn.addEventListener('click', () => { hideTip(); if(!busy) openConfirm(); });
+  });
+  document.addEventListener('keydown', e => { if(e.key === 'Escape') hideTip(); });
+  window.addEventListener('resize', hideTip);
 })();
 
 function sendGuidanceMessage(){

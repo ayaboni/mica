@@ -3055,6 +3055,7 @@ function renderAlerts(){
             <b style="font-size:14px;">${escapeHtmlStaff(a.name)}</b>
             <span style="color:var(--ink-soft); font-size:12px;">${escapeHtmlStaff(a.student_number)}</span>
             ${riskBadge(a.severity)}
+            ${a.panic ? '<span class="badge urgent" title="The student pressed the panic button">🚨 PANIC</span>' : ''}
           </div>
           ${statusBadge(a.status)}
         </div>
@@ -3117,7 +3118,7 @@ function renderDashAlertPreview(){
     div.innerHTML = `
       <div class="sev-strip" style="background:${color};"></div>
       <div class="body">
-        <div class="top-row"><b style="font-size:13px;">${escapeHtmlStaff(a.name)}</b>${riskBadge(a.severity)}</div>
+        <div class="top-row"><b style="font-size:13px;">${escapeHtmlStaff(a.name)}</b>${riskBadge(a.severity)}${a.panic ? '<span class="badge urgent">🚨 PANIC</span>' : ''}</div>
         <div class="reason" style="font-size:12.5px; margin:4px 0 0;">${escapeHtmlStaff(a.reason)}</div>
       </div>`;
     wrap.appendChild(div);
