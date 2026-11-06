@@ -152,6 +152,10 @@
   body.dark .sidebar-top .tagline,
   body.dark .sidebar-tagline,
   body.dark .admin-chip .who .role{ color:rgba(241,236,221,.65); }
+  .sidebar-tagline{padding:0 24px 14px; font-size:11.5px; color:rgba(90,74,61,.75); letter-spacing:.03em; font-weight:600;}
+  body.dark .sidebar-tagline{ color:rgba(241,236,221,.85); }
+  body.dark .collapse-btn{ color:#F1ECDD; }
+  body.dark .collapse-btn:hover{ background:rgba(255,255,255,.14); color:#fff; }
   body.dark .nav-item:hover{ background:rgba(255,255,255,.08); }
   body.dark .nav-item.active{ background:rgba(255,255,255,.16); color:#fff; box-shadow:none; }
   body.dark .nav-item .count{ background:rgba(255,255,255,.18); }
@@ -167,6 +171,20 @@
   .topbar .titlewrap .eyebrow{font-size:11.5px; color:rgba(255,255,255,.7); text-transform:uppercase; letter-spacing:.07em; font-weight:700;}
   .topbar h2{font-size:21px; font-weight:700; color:#fff; font-family:'Baloo 2',sans-serif;}
   .topbar .titlewrap{margin-right:auto;}
+  .topbar .header-landing-link{
+    display:inline-flex; align-items:center; gap:7px; margin:0 16px 0 16px; padding:7px 14px 7px 12px;
+    font-size:13.5px; font-weight:600; line-height:1; color:#fff; text-decoration:none; white-space:nowrap;
+    background:rgba(255,255,255,.16); border:1.5px solid rgba(255,255,255,.4); border-radius:999px;
+    transition:background .15s ease, color .15s ease, border-color .15s ease, transform .15s ease;
+  }
+  .topbar .header-landing-link svg{ width:15px; height:15px; flex-shrink:0; transition:transform .15s ease; }
+  /* Fixed colours (not theme variables) so the hover stays readable in light and dark mode. */
+  .topbar .header-landing-link:hover, .topbar .header-landing-link:focus-visible{
+    background:#F6EAD0; border-color:#F6EAD0; color:#3E3226; outline:none;
+  }
+  .topbar .header-landing-link:hover svg, .topbar .header-landing-link:focus-visible svg{ transform:translateX(-2px); }
+  .topbar .header-landing-link:focus-visible{ box-shadow:0 0 0 3px rgba(255,255,255,.55); }
+  .topbar .header-landing-link:active{ transform:scale(.97); }
   .topbar-actions{display:flex; align-items:center; gap:12px;}
   .searchbox{display:flex; align-items:center; gap:9px; background:var(--paper); border:none; border-radius:999px; padding:9px 16px; min-width:230px;}
   .searchbox input{border:none; outline:none; background:none; font-size:13.5px; width:100%; color:var(--ink); font-family:'Inter',sans-serif;}
@@ -529,6 +547,8 @@ html, body{ overflow-x:hidden; }
   .topbar{ flex-wrap:wrap; gap:10px 8px; padding:12px 14px; }
   .topbar .titlewrap{ flex:1; min-width:0; margin-right:0; }
   .topbar h2{ font-size:18px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .topbar .header-landing-link{ margin:0 4px 0 4px; width:36px; height:36px; padding:0; justify-content:center; gap:0; flex-shrink:0; }
+  .topbar .header-landing-link .hl-text{ display:none; }
   .topbar-actions{ display:contents; }
   .icon-btn.menu-btn{ margin-right:0; }
   .icon-btn{ width:36px; height:36px; }
@@ -572,7 +592,7 @@ html, body{ overflow-x:hidden; }
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="9" y1="4" x2="9" y2="20"/></svg>
     </button>
     </div>
-    <div class="sidebar-tagline" style="padding:0 24px 14px; font-size:11.5px; color:rgba(90,74,61,.75); letter-spacing:.03em; font-weight:600;">Staff Console</div>
+    <div class="sidebar-tagline">Staff Console</div>
 
     <div class="nav-group" style="flex:1; overflow-y:auto;">
       <div class="nav-label">Monitor</div>
@@ -659,6 +679,7 @@ html, body{ overflow-x:hidden; }
         <div class="eyebrow" id="topEyebrow">Overview</div>
         <h2 id="topTitle">Dashboard</h2>
       </div>
+      <a class="header-landing-link" href="{% url 'home' %}" title="Go to the MICA landing page" aria-label="Go to the MICA landing page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg><span class="hl-text">Landing page</span></a>
       <div class="topbar-actions">
         <div class="searchbox">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--ink-soft)" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>

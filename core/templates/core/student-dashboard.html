@@ -517,6 +517,37 @@ body[data-chat-theme="flowers"]{ --doodle-img:url("{% static 'core/images/backgr
     font-weight:600;
     text-align:center;
   }
+  /* 24-hour response notice: shown after the student writes to Guidance, until dismissed */
+  .guidance-grace{
+    display:none;
+    flex-shrink:0;
+    align-self:center;
+    width:calc(100% - 48px);
+    max-width:var(--chat-w);
+    margin:10px 0 0;
+    padding:12px 14px 12px 16px;
+    border-radius:var(--radius-md);
+    background:var(--card-bg);
+    border:1px solid rgba(142,174,136,.6);
+    border-left:4px solid #8EAE88;
+    color:var(--text-dark);
+    font-size:12.5px;
+    line-height:1.55;
+    gap:12px;
+    align-items:flex-start;
+  }
+  .guidance-grace.is-visible{ display:flex; }
+  .guidance-grace .gg-body{ flex:1; min-width:0; }
+  .guidance-grace .gg-title{ font-weight:800; margin-bottom:2px; }
+  .guidance-grace ul{ margin:6px 0 0; padding-left:18px; color:var(--text-mute); font-weight:600; }
+  .guidance-grace li{ margin:1px 0; }
+  .guidance-grace .gg-close{
+    flex-shrink:0; border:none; background:transparent; color:var(--text-mute);
+    width:26px; height:26px; border-radius:50%; cursor:pointer; font-size:18px; line-height:1;
+    display:flex; align-items:center; justify-content:center; transition:background .15s ease;
+  }
+  .guidance-grace .gg-close:hover{ background:rgba(0,0,0,.08); }
+  body.dark-mode .guidance-grace .gg-close:hover{ background:rgba(255,255,255,.12); }
   @media (max-width:640px){
     .view::before{ -webkit-mask-size:460px 460px; mask-size:460px 460px; }
   }
@@ -2018,6 +2049,17 @@ function toggleDyslexia(){
           <button type="button" class="guidance-clear" onclick="clearGuidanceChat()">Clear chat</button>
         </div>
         <div class="guidance-note">Heads up: the Guidance staff can read what you send here. Please keep your messages respectful. If you need help right now, contact a hotline or someone you trust.</div>
+        <div class="guidance-grace" id="guidance-grace" role="status">
+          <div class="gg-body">
+            <div class="gg-title">Guidance usually replies within 24 hours</div>
+            Your message has been sent. A Guidance staff member will get back to you as soon as they can. If you need help right now, please don't wait, reach out to one of these:
+            <ul>
+              {% for h in hotlines %}<li>{{ h.name }}{% if h.note %} ({{ h.note }}){% endif %}: {{ h.number }}</li>{% endfor %}
+              <li>In immediate danger: call 911 or go to the nearest hospital</li>
+            </ul>
+          </div>
+          <button type="button" class="gg-close" id="guidance-grace-close" title="Dismiss" aria-label="Dismiss this notice">&times;</button>
+        </div>
         <div class="messages" id="guidance-messages"></div>
         <div class="composer">
           <div class="composer-box">
@@ -3209,6 +3251,24 @@ function setGuidanceWho(role){
   if(el) el.textContent = role ? `You're talking with: ${role}` : 'Guidance Office · a staff member will reply soon';
 }
 
+// 24-hour response notice. The server decides when it shows (after the student writes, and again after a
+// referral to a new counselor) and remembers the dismissal.
+let guidanceNoticeAcking = false;     // true while the dismiss request is in flight, so a poll can't flash it back
+function setGuidanceNotice(show){
+  const el = document.getElementById('guidance-grace');
+  if(!el || guidanceNoticeAcking) return;
+  el.classList.toggle('is-visible', !!show);
+}
+function dismissGuidanceNotice(){
+  const el = document.getElementById('guidance-grace');
+  if(el) el.classList.remove('is-visible');
+  guidanceNoticeAcking = true;
+  fetch("{% url 'guidance_notice_ack' %}", {method: "POST", headers: {"X-CSRFToken": getCookie("csrftoken")}})
+    .catch(() => {})
+    .finally(() => { guidanceNoticeAcking = false; });
+}
+document.getElementById('guidance-grace-close').addEventListener('click', dismissGuidanceNotice);
+
 // Guidance view wiring: pressing the button alerts staff right away, then loads the real messages
 let guidanceLoaded = false;
 
@@ -3323,6 +3383,7 @@ function reloadGuidanceMessages() {
     .then(r => r.json())
     .then(data => {
       setGuidanceWho(data.counselor_name);
+      setGuidanceNotice(data.show_notice);
       const container = document.getElementById('guidance-messages');
       if (!container) return;
       container.innerHTML = '';
@@ -3339,6 +3400,7 @@ function reloadGuidanceMessages() {
 function pollGuidanceNew(){
   return MicaPoll.json("{% url 'guidance_messages' %}?after=" + guidanceLastId).then(data => {
     setGuidanceWho(data.counselor_name);
+    setGuidanceNotice(data.show_notice);
     if(!data.messages.length) return;
     if(!guidanceLastId) return reloadGuidanceMessages();     // only the greeting is showing: redraw the conversation
     const container = document.getElementById('guidance-messages');
@@ -3353,7 +3415,7 @@ function pollGuidanceNew(){
 }
 
 function refreshGuidanceWho(){
-  fetch("{% url 'guidance_messages' %}?after=" + guidanceLastId).then(r => r.json()).then(d => setGuidanceWho(d.counselor_name));
+  fetch("{% url 'guidance_messages' %}?after=" + guidanceLastId).then(r => r.json()).then(d => { setGuidanceWho(d.counselor_name); setGuidanceNotice(d.show_notice); });
 }
 document.getElementById('btn-guidance').addEventListener('click', refreshGuidanceWho);
 // Replies show up within ~3 s while the view is open (15 s if the tab is in the background). This also
