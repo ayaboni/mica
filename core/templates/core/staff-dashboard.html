@@ -853,6 +853,9 @@ html, body{ overflow-x:hidden; }
             <select class="filter-select" id="studentProgramFilter" onchange="renderStudents()">
               <option value="all">All programs</option>
             </select>
+            <select class="filter-select" id="studentYearFilter" onchange="renderStudents()">
+              <option value="all">All year levels</option>
+            </select>
             <select class="filter-select" id="studentAssessFilter" onchange="renderStudents()">
               <option value="all">All assessments</option>
               <option value="done">Assessment done</option>
@@ -983,6 +986,9 @@ html, body{ overflow-x:hidden; }
             <select class="filter-select" id="summaryCourseFilter" onchange="renderSummary()">
               <option value="all">All courses</option>
             </select>
+            <select class="filter-select" id="summaryYearFilter" onchange="renderSummary()">
+              <option value="all">All year levels</option>
+            </select>
           </div>
           <span style="font-size:12.5px; color:var(--ink-soft);">Mood levels, guidance chat status, and opt-in topic tags only. Diary entries and Mica messages are never shown.</span>
         </div>
@@ -1006,6 +1012,9 @@ html, body{ overflow-x:hidden; }
             </select>
             <select class="filter-select" id="assessCourseFilter" onchange="renderAssessments()">
               <option value="all">All courses</option>
+            </select>
+            <select class="filter-select" id="assessYearFilter" onchange="renderAssessments()">
+              <option value="all">All year levels</option>
             </select>
             <span id="assessSummary" style="font-size:12.5px; color:var(--ink-soft);"></span>
           </div>
@@ -1041,6 +1050,9 @@ html, body{ overflow-x:hidden; }
             </select>
             <select class="filter-select" id="alertCourseFilter" onchange="renderAlerts()">
               <option value="all">All courses</option>
+            </select>
+            <select class="filter-select" id="alertYearFilter" onchange="renderAlerts()">
+              <option value="all">All year levels</option>
             </select>
           </div>
         </div>
@@ -1876,7 +1888,7 @@ function yearLabel(y){
 }
 
 function fillYearSelects(){
-  ['moYear', 'repYear'].forEach(id => {
+  ['moYear', 'repYear', 'studentYearFilter', 'summaryYearFilter', 'assessYearFilter', 'alertYearFilter'].forEach(id => {
     const sel = document.getElementById(id);
     if(!sel || sel.options.length > 1 || !yearOptions.length) return;
     yearOptions.forEach(y => sel.add(new Option(y.label, y.code)));
@@ -1954,12 +1966,14 @@ function renderStudents(){
   const riskF = document.getElementById('studentRiskFilter').value;
   const progF = document.getElementById('studentProgramFilter').value;
   const assessF = document.getElementById('studentAssessFilter').value;
+  const yearF = document.getElementById('studentYearFilter').value;
   const q = (document.getElementById('globalSearch').value||'').toLowerCase();
   const tbody = document.getElementById('studentsTbody');
   tbody.innerHTML='';
   const filtered = studentsReal.filter(s=>
     (riskF==='all'||s.risk===riskF) &&
     (progF==='all'||s.program===progF) &&
+    (yearF==='all'||s.year===yearF) &&
     (assessF==='all'||(assessF==='done' ? s.assessment_done : !s.assessment_done)) &&
     (q===''||s.name.toLowerCase().includes(q)||s.student_number.toLowerCase().includes(q)||s.program.toLowerCase().includes(q))
   );
@@ -1968,7 +1982,7 @@ function renderStudents(){
     document.getElementById('studentsPager').innerHTML = '';
     return;
   }
-  const pageRows = paginate('students', filtered, 'studentsPager', renderStudents, [riskF, progF, assessF, q, document.getElementById('studentStatusFilter').value].join('|'));
+  const pageRows = paginate('students', filtered, 'studentsPager', renderStudents, [riskF, progF, yearF, assessF, q, document.getElementById('studentStatusFilter').value].join('|'));
   pageRows.forEach(s=>{
     const color = s.risk==='urgent'?'var(--alert)':s.risk==='watch'?'var(--sky-deep)':'var(--sage-deep)';
     const spark = s.trend.length > 1
@@ -3054,6 +3068,8 @@ function loadAlerts(fromPoll){
       alerts = d.flags || [];
       suggested = d.suggested || [];
       courseOptions = d.courses || courseOptions;
+      yearOptions = d.years || yearOptions;
+      fillYearSelects();
 
       const urgentNow = suggested.filter(s => s.severity === 'urgent');
       if(fromPoll === true && knownSuggested){
@@ -3080,7 +3096,8 @@ function renderAlerts(){
   courseSel.innerHTML = courseSelectHtml([...alerts, ...suggested].map(x => x.course));
   courseSel.value = [...courseSel.options].some(o => o.value === keepCourse) ? keepCourse : 'all';
   const courseF = courseSel.value;
-  const sugList = suggested.filter(s => courseF === 'all' || s.course === courseF);
+  const yearF = document.getElementById('alertYearFilter').value;
+  const sugList = suggested.filter(s => (courseF === 'all' || s.course === courseF) && (yearF === 'all' || s.year === yearF));
   const sbox = document.getElementById('suggestedBox');
 
   if(!sugList.length){
@@ -3093,7 +3110,7 @@ function renderAlerts(){
       <div id="suggestedItems"></div>
       <div class="list-pager" id="suggestedPager"></div>
     </div>`;
-    const sugRows = paginate('suggested', sugList, 'suggestedPager', renderAlerts, courseF, [5,10,25]);
+    const sugRows = paginate('suggested', sugList, 'suggestedPager', renderAlerts, courseF + '|' + yearF, [5,10,25]);
     document.getElementById('suggestedItems').innerHTML = sugRows.map(s=>`
         <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 0; border-top:1px solid var(--line);">
           <div><b>${escapeHtmlStaff(s.name)}</b> <span style="color:var(--ink-soft); font-size:12px;">${escapeHtmlStaff(s.student_number)}</span> ${riskBadge(s.severity)}</div>
@@ -3105,11 +3122,11 @@ function renderAlerts(){
   }
 
   list.innerHTML='';
-  const filtered = alerts.filter(a=>(statusF==='all'||a.status===statusF)&&(sevF==='all'||a.severity===sevF)&&(courseF==='all'||a.course===courseF));
+  const filtered = alerts.filter(a=>(statusF==='all'||a.status===statusF)&&(sevF==='all'||a.severity===sevF)&&(courseF==='all'||a.course===courseF)&&(yearF==='all'||a.year===yearF));
   if(filtered.length===0){
     list.innerHTML = `<div class="card empty-state">${MASCOT_SVG}<div class="e-title">No alerts match these filters</div>Everything else is under control.</div>`;
   }
-  const alertRows = paginate('alerts', filtered, 'alertsPager', renderAlerts, [statusF, sevF, courseF].join('|'));
+  const alertRows = paginate('alerts', filtered, 'alertsPager', renderAlerts, [statusF, sevF, courseF, yearF].join('|'));
   alertRows.forEach(a=>{
     const div = document.createElement('div');
     div.className='card alert-card';
@@ -3225,6 +3242,8 @@ function loadSummary(){
     .then(d => {
       summaryData = d.students || [];
       courseOptions = d.courses || courseOptions;
+      yearOptions = d.years || yearOptions;
+      fillYearSelects();
       const sel = document.getElementById('summaryCourseFilter');
       const keep = sel.value || 'all';
       sel.innerHTML = courseSelectHtml(summaryData.map(s => s.course));
@@ -3240,17 +3259,19 @@ function loadSummary(){
 function renderSummary(){
   const chatF = document.getElementById('summaryChatFilter').value;
   const courseF = document.getElementById('summaryCourseFilter').value;
+  const yearF = document.getElementById('summaryYearFilter').value;
   const tbody = document.getElementById('summaryTbody');
   const rows = summaryData.filter(s =>
     (chatF === 'all' || s.chat_status === chatF) &&
-    (courseF === 'all' || s.course === courseF));
+    (courseF === 'all' || s.course === courseF) &&
+    (yearF === 'all' || s.year === yearF));
 
   if(!rows.length){
     tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state">${MASCOT_SVG}<div class="e-title">No students match these filters</div></div></td></tr>`;
     document.getElementById('summaryPager').innerHTML = '';
     return;
   }
-  const pageRows = paginate('summary', rows, 'summaryPager', renderSummary, [chatF, courseF].join('|'));
+  const pageRows = paginate('summary', rows, 'summaryPager', renderSummary, [chatF, courseF, yearF].join('|'));
 
   const chatBadge = {
     awaiting: '<span class="badge urgent"><span class="dot pulse"></span>Awaiting reply</span>',
@@ -3295,6 +3316,8 @@ function loadAssessments(){
     .then(d => {
       assessData = d.students || [];
       courseOptions = d.courses || courseOptions;
+      yearOptions = d.years || yearOptions;
+      fillYearSelects();
       const sel = document.getElementById('assessCourseFilter');
       const keep = sel.value || 'all';
       sel.innerHTML = courseSelectHtml(assessData.map(s => s.course));
@@ -3319,6 +3342,7 @@ function condTags(h){
 function renderAssessments(){
   const statusF = document.getElementById('assessStatusFilter').value;
   const courseF = document.getElementById('assessCourseFilter').value;
+  const yearF = document.getElementById('assessYearFilter').value;
   const q = (document.getElementById('globalSearch').value || '').toLowerCase();
   const tbody = document.getElementById('assessTbody');
 
@@ -3328,6 +3352,7 @@ function renderAssessments(){
   const rows = assessData.filter(s =>
     (statusF === 'all' || (statusF === 'done' ? s.done : !s.done)) &&
     (courseF === 'all' || s.course === courseF) &&
+    (yearF === 'all' || s.year === yearF) &&
     (q === '' || s.name.toLowerCase().includes(q) || s.student_number.toLowerCase().includes(q)));
 
   if(!rows.length){
@@ -3335,7 +3360,7 @@ function renderAssessments(){
     document.getElementById('assessPager').innerHTML = '';
     return;
   }
-  const pageRows = paginate('assess', rows, 'assessPager', renderAssessments, [statusF, courseF, q].join('|'));
+  const pageRows = paginate('assess', rows, 'assessPager', renderAssessments, [statusF, courseF, yearF, q].join('|'));
 
   tbody.innerHTML = pageRows.map(s => {
     const h = s.history[0];

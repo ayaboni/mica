@@ -4183,6 +4183,7 @@ def _flag_json(f, today, me=None):
         "name": s.get_full_name() or s.username,
         "student_number": profile.student_number if profile and profile.student_number else "No ID",
         "course": profile.course if profile and profile.course else "Not set",
+        "year": profile.year_level if profile and profile.year_level else "",
         # An open panic flag is always urgent, whatever the mood diary says (it may be empty).
         "severity": "urgent" if f.is_panic and f.status != 'resolved' else _student_risk(s, today),
         "reason": f.reason,
@@ -4243,10 +4244,12 @@ def staff_flags(request):
                 "name": u.get_full_name() or u.username,
                 "student_number": profile.student_number if profile and profile.student_number else "No ID",
                 "course": profile.course if profile and profile.course else "Not set",
+                "year": profile.year_level if profile and profile.year_level else "",
                 "severity": risk,
             })
     suggested.sort(key=lambda s: 0 if s["severity"] == "urgent" else 1)
-    return JsonResponse({"flags": flag_data, "suggested": suggested, "courses": [{"code": c, "label": l} for c, l in get_courses()]})
+    return JsonResponse({"flags": flag_data, "suggested": suggested, "courses": [{"code": c, "label": l} for c, l in get_courses()],
+                         "years": [{"code": c, "label": l} for c, l in YEAR_LEVELS]})
 
 
 @login_required(login_url='login')
@@ -4555,7 +4558,8 @@ def staff_assessments(request):
             "history": history,
         })
     data.sort(key=lambda s: (s["done"], s["name"].lower()))   # not done first
-    return JsonResponse({"students": data, "courses": [{"code": c, "label": l} for c, l in get_courses()]})
+    return JsonResponse({"students": data, "courses": [{"code": c, "label": l} for c, l in get_courses()],
+                         "years": [{"code": c, "label": l} for c, l in YEAR_LEVELS]})
 
 
 @login_required(login_url='login')
@@ -4796,6 +4800,7 @@ def staff_summary(request):
             "name": u.get_full_name() or u.username,
             "avatar": _avatar_of(u), 
             "course": profile.course if profile and profile.course else "",
+            "year": profile.year_level if profile and profile.year_level else "",
             "checkins_7d": len(u.week_entries),
             "last_checkin": u.week_entries[0].date.strftime("%b %d") if u.week_entries else None,
             "avg_mood_7d": round(sum(scores) / len(scores), 1) if scores else None,
@@ -4810,7 +4815,8 @@ def staff_summary(request):
 
     data.sort(key=lambda s: (s["chat_status"] != "awaiting",
                              s["avg_mood_7d"] if s["avg_mood_7d"] is not None else 99))
-    return JsonResponse({"students": data, "courses": [{"code": c, "label": l} for c, l in get_courses()]})
+    return JsonResponse({"students": data, "courses": [{"code": c, "label": l} for c, l in get_courses()],
+                         "years": [{"code": c, "label": l} for c, l in YEAR_LEVELS]})
 
 
 def _console_unread(user):
