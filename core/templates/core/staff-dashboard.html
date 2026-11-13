@@ -1885,8 +1885,9 @@ function fillYearSelects(){
 
 /* ---------- Client-side pagination (students, chat & mood summary, assessments, alerts) ---------- */
 const PAGER = {};   // key -> {page, size, sig}
-function paginate(key, rows, pagerId, rerender, filterSig){
-  const st = PAGER[key] || (PAGER[key] = {page:1, size:10, sig:null});
+function paginate(key, rows, pagerId, rerender, filterSig, sizes){
+  sizes = sizes || [10,25,50];
+  const st = PAGER[key] || (PAGER[key] = {page:1, size:sizes[0], sig:null});
   // filterSig = the current filter/search values; changing any of them returns to page 1.
   if(st.sig !== filterSig){ st.page = 1; st.sig = filterSig; }
   const pages = Math.max(1, Math.ceil(rows.length / st.size));
@@ -1894,7 +1895,7 @@ function paginate(key, rows, pagerId, rerender, filterSig){
   const start = (st.page - 1) * st.size;
   const el = document.getElementById(pagerId);
   if(el){
-    if(rows.length <= 10){ el.innerHTML = ''; }
+    if(rows.length <= sizes[0]){ el.innerHTML = ''; }
     else {
       const nums = [];
       for(let i = 1; i <= pages; i++){
@@ -1909,7 +1910,7 @@ function paginate(key, rows, pagerId, rerender, filterSig){
           <button class="pill-btn ghost sm" ${st.page === pages ? 'disabled' : ''} data-pg="${st.page + 1}">Next ›</button>
         </div>
         <label class="lp-size">Rows
-          <select data-size>${[10,25,50].map(n => `<option value="${n}" ${n === st.size ? 'selected' : ''}>${n}</option>`).join('')}</select>
+          <select data-size>${sizes.map(n => `<option value="${n}" ${n === st.size ? 'selected' : ''}>${n}</option>`).join('')}</select>
         </label>`;
       el.onclick = e => {
         const b = e.target.closest('[data-pg]');
@@ -3082,19 +3083,26 @@ function renderAlerts(){
   const sugList = suggested.filter(s => courseF === 'all' || s.course === courseF);
   const sbox = document.getElementById('suggestedBox');
 
-  sbox.innerHTML = sugList.length ? `
+  if(!sugList.length){
+    sbox.innerHTML = '';
+  } else {
+    sbox.innerHTML = `
     <div class="card" style="padding:16px 18px; margin-bottom:16px;">
-      <h3 style="font-size:14px; margin-bottom:4px;">Suggested for review</h3>
+      <h3 style="font-size:14px; margin-bottom:4px;">Suggested for review <span style="color:var(--ink-soft); font-weight:500;">(${sugList.length})</span></h3>
       <div class="sub" style="font-size:12.5px; color:var(--ink-soft); margin-bottom:10px;">Based on mood check-ins only. Nobody is flagged until you decide.</div>
-      ${sugList.map(s=>`
+      <div id="suggestedItems"></div>
+      <div class="list-pager" id="suggestedPager"></div>
+    </div>`;
+    const sugRows = paginate('suggested', sugList, 'suggestedPager', renderAlerts, courseF, [5,10,25]);
+    document.getElementById('suggestedItems').innerHTML = sugRows.map(s=>`
         <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 0; border-top:1px solid var(--line);">
           <div><b>${escapeHtmlStaff(s.name)}</b> <span style="color:var(--ink-soft); font-size:12px;">${escapeHtmlStaff(s.student_number)}</span> ${riskBadge(s.severity)}</div>
           <div style="display:flex; gap:8px;">
             <button class="pill-btn ghost sm" onclick="openStudentModal('${s.code}')">View</button>
             <button class="pill-btn solid sm" onclick="openFlagModal(studentsReal.find(x=>x.code==='${s.code}'))">Flag</button>
           </div>
-        </div>`).join('')}
-    </div>` : '';
+        </div>`).join('');
+  }
 
   list.innerHTML='';
   const filtered = alerts.filter(a=>(statusF==='all'||a.status===statusF)&&(sevF==='all'||a.severity===sevF)&&(courseF==='all'||a.course===courseF));
