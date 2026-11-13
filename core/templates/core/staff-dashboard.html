@@ -226,6 +226,15 @@
   .notif-page-list .notif-item{padding:14px 20px;}
   .notif-page-list .notif-text{font-size:14px;}
   .pager{display:flex; justify-content:center; align-items:center; gap:14px; margin-top:20px; font-size:13px; color:var(--ink-soft);}
+  .list-pager{display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px 18px; margin-top:14px; font-size:13px; color:var(--ink-soft);}
+  .list-pager:empty{display:none;}
+  .list-pager .lp-info{font-variant-numeric:tabular-nums;}
+  .list-pager .lp-nav{display:flex; align-items:center; gap:6px; flex-wrap:wrap;}
+  .list-pager .lp-num{min-width:34px; padding:6px 10px;}
+  .list-pager .lp-num.current{background:var(--sage-deep); color:#fff; border-color:var(--sage-deep); pointer-events:none;}
+  .list-pager .lp-gap{padding:0 4px;}
+  .list-pager .lp-size{display:flex; align-items:center; gap:6px;}
+  .list-pager .lp-size select{padding:5px 8px; border:1.5px solid var(--line); border-radius:10px; background:transparent; color:var(--ink); font:inherit;}
 
   .content{padding:28px 34px 60px;}
   .section{display:none; animation:fadeIn .35s ease;}
@@ -865,6 +874,7 @@ html, body{ overflow-x:hidden; }
             <tbody id="studentsTbody"></tbody>
           </table>
         </div>
+        <div class="list-pager" id="studentsPager"></div>
       </section>
 
       <!-- ============ MOOD MONITORING ============ -->
@@ -982,6 +992,7 @@ html, body{ overflow-x:hidden; }
             <tbody id="summaryTbody"></tbody>
           </table>
         </div>
+        <div class="list-pager" id="summaryPager"></div>
       </section>
 
       <!-- ============ ASSESSMENT RECORDS ============ -->
@@ -1009,6 +1020,7 @@ html, body{ overflow-x:hidden; }
             <tbody id="assessTbody"></tbody>
           </table>
         </div>
+        <div class="list-pager" id="assessPager"></div>
       </section>
 
       <!-- ============ RISK ALERTS ============ -->
@@ -1034,6 +1046,7 @@ html, body{ overflow-x:hidden; }
         </div>
         <div id="suggestedBox"></div>
         <div id="alertsList"></div>
+        <div class="list-pager" id="alertsPager"></div>
       </section>
 
       <!-- ============ STUDENT MESSAGES ============ -->
@@ -1870,6 +1883,49 @@ function fillYearSelects(){
   });
 }
 
+/* ---------- Client-side pagination (students, chat & mood summary, assessments, alerts) ---------- */
+const PAGER = {};   // key -> {page, size, sig}
+function paginate(key, rows, pagerId, rerender, filterSig){
+  const st = PAGER[key] || (PAGER[key] = {page:1, size:10, sig:null});
+  // filterSig = the current filter/search values; changing any of them returns to page 1.
+  if(st.sig !== filterSig){ st.page = 1; st.sig = filterSig; }
+  const pages = Math.max(1, Math.ceil(rows.length / st.size));
+  st.page = Math.min(Math.max(st.page, 1), pages);
+  const start = (st.page - 1) * st.size;
+  const el = document.getElementById(pagerId);
+  if(el){
+    if(rows.length <= 10){ el.innerHTML = ''; }
+    else {
+      const nums = [];
+      for(let i = 1; i <= pages; i++){
+        if(i === 1 || i === pages || Math.abs(i - st.page) <= 1) nums.push(i);
+        else if(nums[nums.length - 1] !== '…') nums.push('…');
+      }
+      el.innerHTML = `
+        <div class="lp-info">Showing ${start + 1}–${Math.min(start + st.size, rows.length)} of ${rows.length}</div>
+        <div class="lp-nav">
+          <button class="pill-btn ghost sm" ${st.page === 1 ? 'disabled' : ''} data-pg="${st.page - 1}">‹ Prev</button>
+          ${nums.map(n => n === '…' ? '<span class="lp-gap">…</span>' : `<button class="pill-btn ghost sm lp-num ${n === st.page ? 'current' : ''}" data-pg="${n}">${n}</button>`).join('')}
+          <button class="pill-btn ghost sm" ${st.page === pages ? 'disabled' : ''} data-pg="${st.page + 1}">Next ›</button>
+        </div>
+        <label class="lp-size">Rows
+          <select data-size>${[10,25,50].map(n => `<option value="${n}" ${n === st.size ? 'selected' : ''}>${n}</option>`).join('')}</select>
+        </label>`;
+      el.onclick = e => {
+        const b = e.target.closest('[data-pg]');
+        if(!b || b.disabled) return;
+        st.page = +b.dataset.pg; rerender();
+        el.scrollIntoView({block:'nearest'});
+      };
+      el.onchange = e => {
+        if(!e.target.matches('[data-size]')) return;
+        st.size = +e.target.value; st.page = 1; rerender();
+      };
+    }
+  }
+  return rows.slice(start, start + st.size);
+}
+
 function loadStudents(){
   document.getElementById('studentsTbody').innerHTML =
     '<tr><td colspan="7" style="padding:24px; color:var(--ink-soft);">Loading students…</td></tr>';
@@ -1908,9 +1964,11 @@ function renderStudents(){
   );
   if(filtered.length===0){
     tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state">${MASCOT_SVG}<div class="e-title">No students match these filters</div>Try clearing a filter or search term.</div></td></tr>`;
+    document.getElementById('studentsPager').innerHTML = '';
     return;
   }
-  filtered.forEach(s=>{
+  const pageRows = paginate('students', filtered, 'studentsPager', renderStudents, [riskF, progF, assessF, q, document.getElementById('studentStatusFilter').value].join('|'));
+  pageRows.forEach(s=>{
     const color = s.risk==='urgent'?'var(--alert)':s.risk==='watch'?'var(--sky-deep)':'var(--sage-deep)';
     const spark = s.trend.length > 1
       ? `<svg width="70" height="24" viewBox="0 0 70 24"><polyline points="${sparkPath(s.trend,70,24)}" fill="none" stroke="${color}" stroke-width="2"/></svg>`
@@ -3043,7 +3101,8 @@ function renderAlerts(){
   if(filtered.length===0){
     list.innerHTML = `<div class="card empty-state">${MASCOT_SVG}<div class="e-title">No alerts match these filters</div>Everything else is under control.</div>`;
   }
-  filtered.forEach(a=>{
+  const alertRows = paginate('alerts', filtered, 'alertsPager', renderAlerts, [statusF, sevF, courseF].join('|'));
+  alertRows.forEach(a=>{
     const div = document.createElement('div');
     div.className='card alert-card';
     const color = a.severity==='urgent' ? 'var(--alert)' : a.severity==='watch' ? 'var(--sky-deep)' : 'var(--sage-deep)';
@@ -3180,8 +3239,10 @@ function renderSummary(){
 
   if(!rows.length){
     tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state">${MASCOT_SVG}<div class="e-title">No students match these filters</div></div></td></tr>`;
+    document.getElementById('summaryPager').innerHTML = '';
     return;
   }
+  const pageRows = paginate('summary', rows, 'summaryPager', renderSummary, [chatF, courseF].join('|'));
 
   const chatBadge = {
     awaiting: '<span class="badge urgent"><span class="dot pulse"></span>Awaiting reply</span>',
@@ -3190,7 +3251,7 @@ function renderSummary(){
     none:     '<span class="badge neutral">No chat yet</span>'
   };
 
-  tbody.innerHTML = rows.map(s => {
+  tbody.innerHTML = pageRows.map(s => {
     const spark = s.trend.length > 1
       ? `<svg width="60" height="22" viewBox="0 0 60 22"><polyline points="${sparkPath(s.trend,60,22)}" fill="none" stroke="var(--sage-deep)" stroke-width="2"/></svg>`
       : '';
@@ -3263,10 +3324,12 @@ function renderAssessments(){
 
   if(!rows.length){
     tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state">${MASCOT_SVG}<div class="e-title">No students match these filters</div></div></td></tr>`;
+    document.getElementById('assessPager').innerHTML = '';
     return;
   }
+  const pageRows = paginate('assess', rows, 'assessPager', renderAssessments, [statusF, courseF, q].join('|'));
 
-  tbody.innerHTML = rows.map(s => {
+  tbody.innerHTML = pageRows.map(s => {
     const h = s.history[0];
     return `
     <tr style="cursor:default;">
