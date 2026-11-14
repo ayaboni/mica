@@ -86,7 +86,7 @@
           </div>
 
           <div class="two-col">
-            <div class="auth-field"><input type="text" id="studentNumber" name="student_number" placeholder="Student Number (numbers only)" value="{{ form.student_number }}" inputmode="numeric" maxlength="11" pattern="[0-9]{7}|[0-9]{9}|[0-9]{3}-[0-9]{4}|[0-9]{2}-[0-9]{4}-[0-9]{3}" title="Type your 7 or 9 digit student number. The dashes are added for you (000-0000 or 00-0000-000)." oninput="this.value=this.value.replace(/[^0-9-]/g,'')" onblur="fmtStudentNo(this)" onchange="fmtStudentNo(this)" autocomplete="off" required></div>
+            <div class="auth-field"><input type="text" id="studentNumber" name="student_number" placeholder="000-0000 or 00-0000-000" value="{{ form.student_number }}" inputmode="numeric" maxlength="11" pattern="[0-9]{7}|[0-9]{9}|[0-9]{3}-[0-9]{4}|[0-9]{2}-[0-9]{4}-[0-9]{3}" title="Type your 7 or 9 digit student number. The dashes are added for you." autocomplete="off" required></div>
             <div class="auth-field"><input type="text" id="username" name="username" placeholder="Username" value="{{ form.username }}" autocomplete="username" title="3–30 characters: English letters, numbers, dots, dashes or underscores" maxlength="30" pattern="[A-Za-z0-9][A-Za-z0-9._\-]{2,29}" required></div>
           </div>
 
@@ -157,6 +157,23 @@
     input.parentNode.appendChild(btn);
   });
 })();
+
+/* Student number: auto dashes. 7 digits or fewer = 000-0000, 8 to 9 digits = 00-0000-000 */
+(function(){
+  const el = document.getElementById('studentNumber');
+  if (!el) return;
+
+  function format(digits){
+    if (digits.length <= 3) return digits;
+    if (digits.length <= 7) return digits.slice(0, 3) + '-' + digits.slice(3);
+    return digits.slice(0, 2) + '-' + digits.slice(2, 6) + '-' + digits.slice(6, 9);
+  }
+
+  el.addEventListener('input', function(){
+    const digits = el.value.replace(/\D/g, '').slice(0, 9);
+    el.value = format(digits);
+  });
+})();
 </script>
 
 <script type="module">
@@ -218,7 +235,7 @@
     } catch (error) {
       console.error(error);
       // Closing the Google window isn't an error worth shouting about; anything else gets a plain message.
-      var code = (error && error.code) || '';
+      const code = (error && error.code) || '';
       if (code !== 'auth/popup-closed-by-user' && code !== 'auth/cancelled-popup-request') {
         alert(code === 'auth/network-request-failed'
           ? "Can't reach Google. Check your connection and try again."
@@ -229,19 +246,5 @@
       btn.disabled = false;
     }
   });
-
-  // iPhone number pads have no "-" key, so students type digits only. Add the dashes when they leave the
-  // field, and again just before the form is sent: iOS Safari does not blur a field when you tap a button
-  // or press Go, so the blur alone is not enough. (The server also accepts digits only.)
-  function fmtStudentNo(el){
-    var d = el.value.replace(/[^0-9]/g, '');
-    if (d.length === 7) el.value = d.slice(0,3) + '-' + d.slice(3);
-    else if (d.length === 9) el.value = d.slice(0,2) + '-' + d.slice(2,6) + '-' + d.slice(6);
-  }
-  (function(){
-    var el = document.querySelector('input[name="student_number"]');
-    if (el && el.form) el.form.addEventListener('submit', function(){ fmtStudentNo(el); });
-  })();
-
 </script>
 {% endblock %}

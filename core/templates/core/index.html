@@ -95,46 +95,25 @@ html[data-theme="dark"] .intro-gif--dark{display:block;}
    Features (cards move sideways while you scroll)
    ========================================================================== */
 
-.features {
- margin-top: calc((100svh - var(--nav-h, 72px) - 510px) / -2 + 40px);
-}
-
-.features-scroll {
-  position: relative;
-  height: calc(100svh + var(--steps, 3) * 70vh);
-}
-
-.features-sticky {
-  position: sticky;
-  top: var(--nav-h, 72px);
-  height: calc(100svh - var(--nav-h, 72px));
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 28px;
-  overflow: hidden;
-}
+.features { margin-top: var(--section-gap); }
+.features-scroll { height: auto; }
+.features-sticky { position: static; height: auto; overflow: visible; }
 
 .features-track {
   --card-w: min(1000px, 80vw);
-  --card-gap: 28px;
   display: flex;
-  gap: var(--card-gap);
-  padding-left: calc((100% - var(--card-w)) / 2);
-  transition: transform 0.45s cubic-bezier(0.22, 0.61, 0.36, 1);
-  will-change: transform;
+  gap: 28px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  padding: 0 calc((100% - var(--card-w)) / 2);
+  scroll-padding: 0 calc((100% - var(--card-w)) / 2);
+  transform: none;
+  transition: none;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
 }
-
-.feature-card {
-  flex: 0 0 var(--card-w);
-  display: grid;
-  grid-template-columns: 1.05fr 1fr;
-  align-items: center;
-  gap: clamp(24px, 4vw, 56px);
-  padding: clamp(24px, 4vw, 56px);
-  background: var(--card-bg);
-  border-radius: var(--radius-lg);
-}
+.features-track::-webkit-scrollbar { display: none; }
+.feature-card { scroll-snap-align: center; }
 
 /* left: image placeholder */
 .feature-media {
@@ -193,12 +172,9 @@ html[data-theme="dark"] .intro-gif--dark{display:block;}
    ========================================================================== */
 
 .mica-intro {
-  background: linear-gradient(
-    180deg, var(--cream-bg) 0%,
-    var(--green) 20%,
-    var(--green) 80%,
-    var(--cream-bg) 100%);
-  padding: 150px 150px;
+  background: #2B2622;
+  color: #F9F6EC;
+  padding: 120px 24px;
   margin-top: var(--section-gap);
 }
 
@@ -228,13 +204,9 @@ html[data-theme="dark"] .intro-gif--dark{display:block;}
   filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.08));
 }
 
-.mica-intro-text h3 {
-  font-size: clamp(1.9rem, 4vw, 2.6rem);
-  font-weight: 600;
-  margin-bottom: 10px;
-}
-
-.mica-intro-text p { font-weight: 500; font-size: 1.2rem; margin: 0; max-width: 420px; }
+.mica-intro-text h3 { color: #F9F6EC; font-size: clamp(2rem, 4.4vw, 3rem); }
+.mica-intro-text p  { color: #E9E2D0; font-size: 1.3rem; font-weight: 500; }
+.tcaret { background: currentColor; }
 
 /* typing effect */
 .tchar { opacity: 0; }
@@ -463,53 +435,32 @@ function initHeroScroll() {
    Features: cards slide sideways as you scroll; dots jump to a card
    -------------------------------------------------------------------------- */
 function initFeatureScroll() {
-  const wrap = document.getElementById("features-scroll");
   const track = document.getElementById("features-track");
   const dotsWrap = document.getElementById("features-dots");
-  const nav = document.querySelector(".navbar");
-  if (!wrap || !track || !dotsWrap) return;
-
-  const stick = wrap.querySelector(".features-sticky");
+  if (!track || !dotsWrap) return;
   const cards = Array.from(track.querySelectorAll(".feature-card"));
-  const last = cards.length - 1;
-  let ticking = false;
 
-  const navH = () => (nav ? nav.offsetHeight : 72);
-  const range = () => wrap.offsetHeight - stick.offsetHeight;
-
-  const dots = cards.map((_, i) => {
+  const dots = cards.map((card, i) => {
     const dot = document.createElement("button");
     dot.type = "button";
     dot.className = "features-dot";
     dot.setAttribute("aria-label", `Show feature ${i + 1}`);
-    dot.addEventListener("click", () => scrollToCard(i));
+    dot.addEventListener("click", () =>
+      card.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" }));
     dotsWrap.appendChild(dot);
     return dot;
   });
 
-  function scrollToCard(i) {
-    const top = wrap.getBoundingClientRect().top + window.scrollY - navH();
-    window.scrollTo({ top: top + (i / last) * range(), behavior: "smooth" });
-  }
-
   function update() {
-    ticking = false;
-    const rect = wrap.getBoundingClientRect();
-    const p = Math.min(Math.max((navH() - rect.top) / range(), 0), 1);
-    const gap = parseFloat(getComputedStyle(track).columnGap) || 0;
-    const step = cards[0].offsetWidth + gap;
-
-    track.style.transform = `translateX(${-p * last * step}px)`;
-
-    const active = Math.round(p * last);
+    const mid = track.scrollLeft + track.clientWidth / 2;
+    let active = 0, best = Infinity;
+    cards.forEach((c, i) => {
+      const d = Math.abs(c.offsetLeft + c.offsetWidth / 2 - mid);
+      if (d < best) { best = d; active = i; }
+    });
     dots.forEach((d, i) => d.classList.toggle("is-active", i === active));
   }
-
-  window.addEventListener("scroll", () => {
-    if (!ticking) { ticking = true; requestAnimationFrame(update); }
-  }, { passive: true });
-  window.addEventListener("resize", update);
-
+  track.addEventListener("scroll", () => requestAnimationFrame(update), { passive: true });
   update();
 }
 
