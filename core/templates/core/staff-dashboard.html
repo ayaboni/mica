@@ -235,6 +235,10 @@
   .list-pager .lp-gap{padding:0 4px;}
   .list-pager .lp-size{display:flex; align-items:center; gap:6px;}
   .list-pager .lp-size select{padding:5px 8px; border:1.5px solid var(--line); border-radius:10px; background:transparent; color:var(--ink); font:inherit;}
+  /* dropdown lists: readable in dark mode (native option lists ignore the transparent select background) */
+  .list-pager .lp-size select, .filter-select{color-scheme:light;}
+  body.dark .list-pager .lp-size select, body.dark .filter-select, body.dark .ra-search input{color-scheme:dark;}
+  .list-pager .lp-size select option, .filter-select option{background:var(--paper); color:var(--ink);}
 
   .content{padding:28px 34px 60px;}
   .section{display:none; animation:fadeIn .35s ease;}
@@ -496,6 +500,128 @@
   .alert-card .reason{font-size:13.5px; line-height:1.5; color:var(--ink); margin:6px 0 10px;}
   .alert-card .meta{font-size:11.5px; color:var(--ink-soft); display:flex; gap:14px; flex-wrap:wrap;}
   .alert-card .actions{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;}
+
+  /* ---------- Risk Alerts tab (staff) ---------- */
+  .ra-stats{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; margin-bottom:12px;}
+  .ra-stat{display:flex; align-items:center; gap:10px; padding:10px 14px; border-radius:14px; border:1.5px solid var(--line); background:var(--paper); color:var(--ink); text-align:left; font-family:inherit; cursor:pointer; min-height:48px; transition:border-color .15s ease, background .15s ease;}
+  .ra-stat:hover{border-color:var(--sage-deep);}
+  .ra-stat[aria-pressed="true"]{border-color:var(--sage-deep); background:var(--sage-pale); box-shadow:inset 0 0 0 1px var(--sage-deep);}
+  body:not(.dark) .ra-stat[aria-pressed="true"]{background:#EEF5EB;}
+  .ra-stat .n{font-family:'IBM Plex Mono',monospace; font-size:22px; font-weight:600; line-height:1;}
+  .ra-stat .l{font-size:12px; font-weight:600; color:var(--ink-soft); line-height:1.25;}
+  .ra-stat.hot .n{color:var(--alert);}
+  .ra-stat:focus-visible, .ra-btn:focus-visible, .ra-more:focus-visible, .ra-search input:focus-visible, .ra-suggest summary:focus-visible{outline:2.5px solid var(--sky-deep); outline-offset:2px;}
+
+  .ra-toolbar{display:flex; align-items:center; gap:10px 12px; padding:10px 12px; margin-bottom:12px; flex-wrap:wrap; border-radius:16px;}
+  .ra-search{position:relative; flex:1 1 220px; min-width:0;}
+  .ra-search svg{position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--ink-soft); pointer-events:none;}
+  .ra-search input{width:100%; padding:9px 14px 9px 34px; border-radius:999px; border:1.5px solid var(--line); background:var(--paper); color:var(--ink); font:inherit; font-size:13px; min-height:38px;}
+  .ra-filters{display:flex; flex-wrap:wrap; gap:8px; align-items:center;}
+  .ra-filters .filter-select{min-height:38px; max-width:100%;}
+  .ra-filters .pill-btn[hidden]{display:none;}
+
+  .ra-list-head{display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin:4px 2px 8px; font-size:12.5px; color:var(--ink-soft);}
+  .ra-list-head:empty{display:none;}
+  .ra-list-head b{color:var(--ink); font-size:13.5px;}
+  .ra-list{display:flex; flex-direction:column; gap:8px;}
+
+  /* One alert = one compact row on desktop, a stacked card on phones */
+  .ra-row{display:grid; grid-template-columns:4px minmax(190px,1.1fr) minmax(0,2.2fr) 104px 300px; gap:6px 16px; min-height:84px; align-items:center; padding:12px 16px 12px 0; border-radius:14px; background:var(--paper); border:1px solid var(--line); box-shadow:var(--shadow-sm);}
+  .ra-row .ra-strip{align-self:stretch; border-radius:14px 0 0 14px; margin:-12px 0 -12px -1px; width:5px;}
+  .ra-row.sev-urgent .ra-strip{background:var(--alert);}
+  .ra-row.sev-watch .ra-strip{background:var(--sky-deep);}
+  .ra-row.sev-stable .ra-strip, .ra-row.sev-nodata .ra-strip{background:var(--sage-deep);}
+  .ra-row.is-resolved .ra-strip{background:var(--line);}
+  .ra-row.is-resolved .ra-reason{color:var(--ink-soft);}
+  .ra-who{display:flex; align-items:center; gap:10px; min-width:0;}
+  .ra-av{flex:none; width:36px; height:36px; border-radius:50%; background:var(--sage-pale); color:var(--ink); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:12.5px;}
+  body:not(.dark) .ra-av{background:#E3EEDF;}
+  .ra-name{font-weight:700; font-size:14px; display:flex; flex-wrap:wrap; align-items:center; gap:4px 8px; line-height:1.3;}
+  .ra-sub{font-size:12px; color:var(--ink-soft); line-height:1.35; overflow-wrap:anywhere;}
+  .ra-main{min-width:0;}
+  .ra-reason{font-size:13.5px; line-height:1.45; margin:0; overflow-wrap:anywhere; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;}
+  .ra-row.open .ra-reason{display:block; -webkit-line-clamp:unset; overflow:visible;}
+  .ra-more{background:none; border:none; padding:2px 0; margin-top:1px; font:inherit; font-size:12px; font-weight:600; color:var(--sky-deep); cursor:pointer;}
+  .ra-meta{font-size:11.5px; color:var(--ink-soft); margin-top:3px; display:flex; flex-wrap:wrap; gap:2px 12px;}
+  .ra-state{display:flex; flex-direction:column; align-items:flex-start; gap:4px;}
+  .ra-actions{display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap;}
+  .ra-actions .pill-btn{min-height:36px; white-space:nowrap;}
+
+  /* Panic button cases: pinned above everything, hard to miss */
+  .ra-panic-wrap{margin-bottom:14px; border:2px solid var(--alert); border-radius:18px; background:var(--alert-pale); padding:12px 12px 10px;}
+  .ra-panic-head{display:flex; align-items:center; gap:10px; margin:0 4px 10px; color:var(--alert); font-weight:800; font-size:14.5px;}
+  .ra-panic-head .sub{margin-left:auto; font-size:12px; font-weight:600; color:var(--ink-soft);}
+  .ra-panic-head .siren{display:inline-flex; width:26px; height:26px; border-radius:50%; background:var(--alert); color:#fff; align-items:center; justify-content:center; font-size:14px; animation:raPulse 1.6s ease-in-out infinite;}
+  @keyframes raPulse{0%,100%{box-shadow:0 0 0 0 rgba(192,104,78,.55);}50%{box-shadow:0 0 0 8px rgba(192,104,78,0);}}
+  @media (prefers-reduced-motion: reduce){ .ra-panic-head .siren{animation:none;} }
+  .ra-panic-wrap .ra-list{gap:8px;}
+  .ra-row.panic{border-color:var(--alert); background:var(--paper);}
+  .ra-row.panic .ra-strip{width:7px;}
+  .ra-row.panic .ra-reason{display:block; -webkit-line-clamp:unset; overflow:visible;}
+  .ra-row.panic .ra-more{display:none;}
+  .badge.panic{background:var(--alert); color:#fff; letter-spacing:.03em;}
+
+  /* Suggested for review: collapsed by default, compact grid */
+  .ra-suggest{margin-bottom:12px; border-radius:16px; padding:0;}
+  .ra-suggest summary{list-style:none; cursor:pointer; display:flex; align-items:center; gap:8px; padding:12px 16px; font-weight:700; font-size:14px; border-radius:16px; min-height:48px;}
+  .ra-suggest summary::-webkit-details-marker{display:none;}
+  .ra-suggest summary .chev{margin-left:auto; transition:transform .15s ease; color:var(--ink-soft);}
+  .ra-suggest[open] summary .chev{transform:rotate(180deg);}
+  .ra-suggest .ra-suggest-note{font-size:12px; color:var(--ink-soft); font-weight:500;}
+  .ra-suggest-body{padding:0 16px 14px;}
+  .ra-sug-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(min(100%,max(370px,calc(25% - 10px))),1fr)); gap:10px;}
+  .ra-sug{display:grid; grid-template-columns:36px minmax(0,1fr) auto; align-items:center; gap:12px; min-height:68px; padding:10px 12px; background:var(--paper); border:1px solid var(--line); border-left:4px solid var(--sage-deep); border-radius:12px; transition:border-color .15s ease, box-shadow .15s ease;}
+  .ra-sug:hover{box-shadow:var(--shadow-sm); border-color:var(--sage-deep);}
+  .ra-sug.sev-urgent, .ra-sug.sev-urgent:hover{border-left-color:var(--alert);}
+  .ra-sug.sev-watch, .ra-sug.sev-watch:hover{border-left-color:var(--sky-deep);}
+  .ra-sug .who{min-width:0;}
+  .ra-sug .nm{font-weight:700; font-size:13.5px; line-height:1.3; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .ra-sug .id{display:flex; align-items:center; gap:8px; margin-top:3px; min-width:0; font-size:12px; color:var(--ink-soft); font-variant-numeric:tabular-nums;}
+  .ra-sug .id .num{min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .ra-sug .id .badge{flex:none; padding:2px 9px; font-size:11px;}
+  .ra-sug .btns{display:flex; gap:6px;}
+  .ra-sug .btns .pill-btn{min-width:54px; min-height:34px; justify-content:center;}
+
+  .ra-empty{text-align:center; padding:34px 18px; color:var(--ink-soft);}
+  .ra-empty .e-title{font-weight:700; color:var(--ink); margin-bottom:4px;}
+  .ra-empty .pill-btn{margin-top:12px;}
+  .ra-empty svg{max-width:120px; height:auto;}
+
+  @media (min-width:1181px){ .ra-row{min-height:108px;} .ra-row.panic{min-height:0;} }
+  @media (max-width:1180px){
+    /* narrower laptop / tablet landscape: actions drop under the text */
+    .ra-row{grid-template-columns:4px minmax(170px,1fr) minmax(0,2fr) 104px; padding-right:14px;}
+    .ra-actions{grid-column:3 / -1; justify-content:flex-start;}
+  }
+  @media (max-width:860px){
+    .ra-stats{grid-template-columns:repeat(2,minmax(0,1fr));}
+    .ra-row{grid-template-columns:4px minmax(0,1fr) auto; align-items:start;}
+    .ra-main{grid-column:2 / -1;}
+    .ra-state{grid-column:3; grid-row:1; align-items:flex-end;}
+    .ra-actions{grid-column:2 / -1;}
+  }
+  @media (max-width:560px){
+    .ra-toolbar{padding:10px;}
+    .ra-search{flex-basis:100%;}
+    .ra-filters{display:grid; grid-template-columns:1fr 1fr; width:100%;}
+    .ra-filters .filter-select, .ra-filters .pill-btn{width:100%; min-width:0;}
+    .ra-row{grid-template-columns:4px minmax(0,1fr); padding-right:12px;}
+    .ra-state{grid-column:2; grid-row:auto; flex-direction:row; flex-wrap:wrap; align-items:center;}
+    .ra-main, .ra-actions{grid-column:2;}
+    .ra-actions{display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr));}
+    .ra-actions .pill-btn{justify-content:center; min-height:44px; white-space:normal;}
+    .ra-panic-head{flex-wrap:wrap;}
+    .ra-panic-head .sub{margin-left:0; flex-basis:100%;}
+    .ra-suggest summary{flex-wrap:wrap;}
+    .ra-suggest .ra-suggest-note{order:5; flex-basis:100%;}
+    .ra-sug{grid-template-columns:36px minmax(0,1fr);}
+    .ra-sug .btns{grid-column:1 / -1;}
+    .ra-sug .btns .pill-btn{flex:1; min-height:42px;}
+  }
+
+  /* nav badge goes red while a panic case is open */
+  .nav-item .count.has-panic{background:var(--alert); color:#fff; animation:raPulse 1.6s ease-in-out infinite;}
+  @media (prefers-reduced-motion: reduce){ .nav-item .count.has-panic{animation:none;} }
 
   /* ---------- Settings tabs ---------- */
   .tab-row{display:flex; gap:8px; margin-bottom:22px; border-bottom:1px solid var(--line); padding-bottom:0;}
@@ -1126,30 +1252,44 @@ html, body{ overflow-x:hidden; }
 
       <!-- ============ RISK ALERTS ============ -->
       <section class="section" id="sec-alerts">
-        <div class="toolbar">
-          <div class="toolbar-left">
-            <select class="filter-select" id="alertStatusFilter" onchange="renderAlerts()">
-              <option value="all">All statuses</option>
+        <!-- Quick counts: each one is also a one-tap filter -->
+        <div class="ra-stats" id="raStats" role="group" aria-label="Quick filters"></div>
+
+        <!-- Panic button cases are pinned here, above everything else, and ignore the filters below -->
+        <div id="raPanic" aria-live="polite"></div>
+
+        <div class="card ra-toolbar">
+          <div class="ra-search">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+            <input type="search" id="alertSearch" placeholder="Search name, ID or reason" autocomplete="off" aria-label="Search alerts" oninput="renderAlerts()">
+          </div>
+          <div class="ra-filters">
+            <select class="filter-select" id="alertStatusFilter" onchange="renderAlerts()" aria-label="Filter by status">
+              <option value="open" selected>Open cases</option>
               <option value="New">New</option>
-              <option value="In Review">In Review</option>
+              <option value="In Review">In review</option>
               <option value="Resolved">Resolved</option>
+              <option value="all">All statuses</option>
             </select>
-            <select class="filter-select" id="alertSeverityFilter" onchange="renderAlerts()">
+            <select class="filter-select" id="alertSeverityFilter" onchange="renderAlerts()" aria-label="Filter by severity">
               <option value="all">All severities</option>
               <option value="urgent">Urgent</option>
               <option value="watch">Watch</option>
               <option value="stable">Stable</option>
             </select>
-            <select class="filter-select" id="alertCourseFilter" onchange="renderAlerts()">
+            <select class="filter-select" id="alertCourseFilter" onchange="renderAlerts()" aria-label="Filter by course">
               <option value="all">All courses</option>
             </select>
-            <select class="filter-select" id="alertYearFilter" onchange="renderAlerts()">
+            <select class="filter-select" id="alertYearFilter" onchange="renderAlerts()" aria-label="Filter by year level">
               <option value="all">All year levels</option>
             </select>
+            <button type="button" class="pill-btn ghost sm" id="alertClear" onclick="clearAlertFilters()" hidden>Clear filters</button>
           </div>
         </div>
+
         <div id="suggestedBox"></div>
-        <div id="alertsList"></div>
+        <div class="ra-list-head" id="raListHead"></div>
+        <div id="alertsList" class="ra-list"></div>
         <div class="list-pager" id="alertsPager"></div>
       </section>
 
@@ -3226,81 +3366,224 @@ function loadAlerts(fromPoll){
       }
       knownSuggested = new Set(urgentNow.map(s => s.code));
 
+      if(fromPoll === true && knownFlagIds){
+        const freshPanic = alerts.filter(a => a.panic && a.status !== 'Resolved' && !knownFlagIds.has(a.id));
+        if(freshPanic.length){
+          playChime('alert');
+          showToast('PANIC: ' + freshPanic[0].name + ' pressed the panic button');
+        }
+      }
+
       knownFlagIds = new Set(alerts.map(a=>a.id));
       renderAlerts();
       renderDashAlertPreview();
     });
 }
 
+/* ---- Risk Alerts tab ---------------------------------------------------
+   Order (most urgent first): open PANIC cases, then open Urgent / Watch / Stable,
+   then Resolved. Inside a tier: unassigned (New) before In Review, newest first. */
+const RA_SEV_RANK = {urgent:0, watch:1, stable:2, nodata:3};
+let raQuick = null;                 // null | 'unassigned' | 'mine' | 'urgent'
+const raExpanded = new Set();       // alert ids whose reason text is expanded
+let raSuggestOpen = null;           // null = decide automatically
+
+function raIsOpen(a){ return a.status !== 'Resolved'; }
+function raIsPanic(a){ return !!a.panic && raIsOpen(a); }
+function raTier(a){
+  if(!raIsOpen(a)) return 10;
+  if(a.panic) return 0;
+  return 1 + (RA_SEV_RANK[a.severity] ?? 3);
+}
+function raSort(x, y){
+  return raTier(x) - raTier(y)
+    || (x.status === 'New' ? 0 : 1) - (y.status === 'New' ? 0 : 1)
+    || (y.created_ts || 0) - (x.created_ts || 0)
+    || y.id - x.id;
+}
+
+function clearAlertFilters(){
+  document.getElementById('alertStatusFilter').value = 'open';
+  document.getElementById('alertSeverityFilter').value = 'all';
+  document.getElementById('alertCourseFilter').value = 'all';
+  document.getElementById('alertYearFilter').value = 'all';
+  document.getElementById('alertSearch').value = '';
+  raQuick = null;
+  renderAlerts();
+}
+
+function raToggleQuick(k){
+  raQuick = (raQuick === k) ? null : k;
+  if(raQuick){ document.getElementById('alertStatusFilter').value = 'open'; }
+  renderAlerts();
+}
+
+function raToggleMore(id, btn){
+  if(raExpanded.has(id)) raExpanded.delete(id); else raExpanded.add(id);
+  const row = btn.closest('.ra-row');
+  const open = raExpanded.has(id);
+  row.classList.toggle('open', open);
+  btn.textContent = open ? 'Show less' : 'Show more';
+  btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+
+function raRow(a, pinned){
+  const open = raIsOpen(a);
+  const sev = a.severity || 'nodata';
+  const long = !pinned && (a.reason || '').length > 130;
+  const isOpenText = raExpanded.has(a.id);
+  const sub = [a.student_number, a.course, a.year].filter(x => x && x !== 'Not set').map(escapeHtmlStaff).join(' · ');
+  const take = open ? alertActionButton(a) : '';
+  const resolve = (open && a.mine && a.status === 'In Review')
+    ? `<button class="pill-btn solid sm" onclick="updateAlertStatus(${a.id},'resolve')">Mark resolved</button>` : '';
+  const primaryTake = (pinned && a.status === 'New')
+    ? `<button class="pill-btn solid sm" style="background:var(--alert);" onclick="updateAlertStatus(${a.id},'review')">Take case now</button>` : take;
+  return `
+    <article class="ra-row sev-${escapeHtmlStaff(sev)} ${a.panic && open ? 'panic' : ''} ${open ? '' : 'is-resolved'} ${isOpenText ? 'open' : ''}" data-flag="${a.id}">
+      <span class="ra-strip" aria-hidden="true"></span>
+      <div class="ra-who">
+        <span class="ra-av" aria-hidden="true">${initials(a.name)}</span>
+        <div style="min-width:0;">
+          <div class="ra-name">${escapeHtmlStaff(a.name)}
+            ${a.panic ? '<span class="badge panic" title="The student pressed the panic button">🚨 PANIC</span>' : ''}
+            ${open && !a.panic ? riskBadge(sev) : ''}
+          </div>
+          <div class="ra-sub">${sub}</div>
+        </div>
+      </div>
+      <div class="ra-main">
+        <p class="ra-reason">${escapeHtmlStaff(a.reason)}</p>
+        ${long ? `<button type="button" class="ra-more" aria-expanded="${isOpenText}" onclick="raToggleMore(${a.id}, this)">${isOpenText ? 'Show less' : 'Show more'}</button>` : ''}
+        <div class="ra-meta">
+          <span>Flagged ${escapeHtmlStaff(a.date)} · ${escapeHtmlStaff(a.flagged_by)}</span>
+          <span>Assigned: ${escapeHtmlStaff(a.assigned)}</span>
+        </div>
+      </div>
+      <div class="ra-state">${statusBadge(a.status)}</div>
+      <div class="ra-actions">
+        ${pinned ? primaryTake : ''}
+        <button class="pill-btn ghost sm" onclick="openStudentModal('${a.code}')">View student</button>
+        ${pinned ? '' : take}
+        ${resolve}
+      </div>
+    </article>`;
+}
+
 function renderAlerts(){
-  const statusF = document.getElementById('alertStatusFilter').value;
-  const sevF = document.getElementById('alertSeverityFilter').value;
-  const list = document.getElementById('alertsList');
+  const statusSel = document.getElementById('alertStatusFilter');
+  const sevSel = document.getElementById('alertSeverityFilter');
   const courseSel = document.getElementById('alertCourseFilter');
+  const yearSel = document.getElementById('alertYearFilter');
+  const q = document.getElementById('alertSearch').value.trim().toLowerCase();
   const keepCourse = courseSel.value || 'all';
   courseSel.innerHTML = courseSelectHtml([...alerts, ...suggested].map(x => x.course));
   courseSel.value = [...courseSel.options].some(o => o.value === keepCourse) ? keepCourse : 'all';
-  const courseF = courseSel.value;
-  const yearF = document.getElementById('alertYearFilter').value;
-  const sugList = suggested.filter(s => (courseF === 'all' || s.course === courseF) && (yearF === 'all' || s.year === yearF));
-  const sbox = document.getElementById('suggestedBox');
+  const statusF = statusSel.value, sevF = sevSel.value, courseF = courseSel.value, yearF = yearSel.value;
 
+  const sorted = alerts.slice().sort(raSort);
+  const openAll = sorted.filter(raIsOpen);
+  const panicOpen = sorted.filter(raIsPanic);
+
+  /* --- quick-filter chips --- */
+  const cUnassigned = openAll.filter(a => a.status === 'New').length;
+  const cMine = openAll.filter(a => a.mine).length;
+  const cUrgent = openAll.filter(a => a.severity === 'urgent').length;
+  const chip = (key, n, label, hot) => `
+    <button type="button" class="ra-stat ${hot && n ? 'hot' : ''}" aria-pressed="${raQuick === key}" ${key ? `onclick="raToggleQuick('${key}')"` : 'disabled style="cursor:default;"'}>
+      <span class="n">${n}</span><span class="l">${label}</span>
+    </button>`;
+  document.getElementById('raStats').innerHTML =
+    chip(null, openAll.length, 'Open cases', false) +
+    chip('urgent', cUrgent, 'Urgent', true) +
+    chip('unassigned', cUnassigned, 'Unassigned', true) +
+    chip('mine', cMine, 'Assigned to me', false);
+
+  /* --- pinned panic cases (ignore filters on purpose) --- */
+  const pbox = document.getElementById('raPanic');
+  if(panicOpen.length){
+    pbox.innerHTML = `
+      <div class="ra-panic-wrap" role="region" aria-label="Panic button cases">
+        <div class="ra-panic-head"><span class="siren" aria-hidden="true">🚨</span>
+          <span>Panic button · ${panicOpen.length} ${panicOpen.length === 1 ? 'student needs' : 'students need'} help now</span>
+          <span class="sub">Always shown first</span></div>
+        <div class="ra-list">${panicOpen.map(a => raRow(a, true)).join('')}</div>
+      </div>`;
+  } else {
+    pbox.innerHTML = '';
+  }
+
+  /* --- suggested for review (collapsible) --- */
+  const sugList = suggested.filter(s => (courseF === 'all' || s.course === courseF) && (yearF === 'all' || s.year === yearF)
+    && (!q || (s.name + ' ' + s.student_number).toLowerCase().includes(q)));
+  const sbox = document.getElementById('suggestedBox');
   if(!sugList.length){
     sbox.innerHTML = '';
   } else {
+    const urgentSug = sugList.filter(s => s.severity === 'urgent').length;
+    const isOpenSug = raSuggestOpen === null ? urgentSug > 0 : raSuggestOpen;
     sbox.innerHTML = `
-    <div class="card" style="padding:16px 18px; margin-bottom:16px;">
-      <h3 style="font-size:14px; margin-bottom:4px;">Suggested for review <span style="color:var(--ink-soft); font-weight:500;">(${sugList.length})</span></h3>
-      <div class="sub" style="font-size:12.5px; color:var(--ink-soft); margin-bottom:10px;">Based on mood check-ins only. Nobody is flagged until you decide.</div>
-      <div id="suggestedItems"></div>
-      <div class="list-pager" id="suggestedPager"></div>
-    </div>`;
-    const sugRows = paginate('suggested', sugList, 'suggestedPager', renderAlerts, courseF + '|' + yearF, [5,10,25]);
-    document.getElementById('suggestedItems').innerHTML = sugRows.map(s=>`
-        <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 0; border-top:1px solid var(--line);">
-          <div><b>${escapeHtmlStaff(s.name)}</b> <span style="color:var(--ink-soft); font-size:12px;">${escapeHtmlStaff(s.student_number)}</span> ${riskBadge(s.severity)}</div>
-          <div style="display:flex; gap:8px;">
+    <details class="card ra-suggest" ${isOpenSug ? 'open' : ''} ontoggle="raSuggestOpen = this.open">
+      <summary>Suggested for review <span class="badge ${urgentSug ? 'urgent' : 'neutral'}">${sugList.length}${urgentSug ? ' · ' + urgentSug + ' urgent' : ''}</span>
+        <span class="ra-suggest-note">From mood check-ins only. Nobody is flagged until you decide.</span>
+        <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+      <div class="ra-suggest-body">
+        <div class="ra-sug-grid" id="suggestedItems"></div>
+        <div class="list-pager" id="suggestedPager"></div>
+      </div>
+    </details>`;
+    const sugRows = paginate('suggested', sugList, 'suggestedPager', renderAlerts, courseF + '|' + yearF + '|' + q, [12,24,48]);
+    document.getElementById('suggestedItems').innerHTML = sugRows.map(s => `
+        <div class="ra-sug sev-${escapeHtmlStaff(s.severity)}">
+          <span class="ra-av" aria-hidden="true">${initials(s.name)}</span>
+          <div class="who"><div class="nm" title="${escapeHtmlStaff(s.name)}">${escapeHtmlStaff(s.name)}</div>
+            <div class="id"><span class="num">${escapeHtmlStaff(s.student_number)}</span>${riskBadge(s.severity, false)}</div></div>
+          <div class="btns">
             <button class="pill-btn ghost sm" onclick="openStudentModal('${s.code}')">View</button>
             <button class="pill-btn solid sm" onclick="openFlagModal(studentsReal.find(x=>x.code==='${s.code}'))">Flag</button>
           </div>
         </div>`).join('');
   }
 
-  list.innerHTML='';
-  const filtered = alerts.filter(a=>(statusF==='all'||a.status===statusF)&&(sevF==='all'||a.severity===sevF)&&(courseF==='all'||a.course===courseF)&&(yearF==='all'||a.year===yearF));
-  if(filtered.length===0){
-    list.innerHTML = `<div class="card empty-state">${MASCOT_SVG}<div class="e-title">No alerts match these filters</div>Everything else is under control.</div>`;
-  }
-  const alertRows = paginate('alerts', filtered, 'alertsPager', renderAlerts, [statusF, sevF, courseF, yearF].join('|'));
-  alertRows.forEach(a=>{
-    const div = document.createElement('div');
-    div.className='card alert-card';
-    const color = a.severity==='urgent' ? 'var(--alert)' : a.severity==='watch' ? 'var(--sky-deep)' : 'var(--sage-deep)';
-    div.innerHTML = `
-      <div class="sev-strip" style="background:${color};"></div>
-      <div class="body">
-        <div class="top-row">
-          <div>
-            <b style="font-size:14px;">${escapeHtmlStaff(a.name)}</b>
-            <span style="color:var(--ink-soft); font-size:12px;">${escapeHtmlStaff(a.student_number)}</span>
-            ${riskBadge(a.severity)}
-            ${a.panic ? '<span class="badge urgent" title="The student pressed the panic button">🚨 PANIC</span>' : ''}
-          </div>
-          ${statusBadge(a.status)}
-        </div>
-        <div class="reason">${escapeHtmlStaff(a.reason)}</div>
-        <div class="meta">
-          <span>Flagged ${escapeHtmlStaff(a.date)} by ${escapeHtmlStaff(a.flagged_by)}</span>
-          <span>Assigned: ${escapeHtmlStaff(a.assigned)}</span>
-        </div>
-        <div class="actions">
-          <button class="pill-btn ghost sm" onclick="openStudentModal('${a.code}')">View student</button>
-          ${a.status!=='Resolved' ? `${alertActionButton(a)}
-          ${a.mine && a.status==='In Review' ? `<button class="pill-btn solid sm" onclick="updateAlertStatus(${a.id},'resolve')">Mark resolved</button>` : ''}` : ''}
-        </div>
-      </div>`;
-    list.appendChild(div);
+  /* --- main list (panic cases are already pinned above, so they are left out here) --- */
+  const filtered = sorted.filter(a => {
+    if(raIsPanic(a)) return false;
+    if(raQuick === 'unassigned' && !(raIsOpen(a) && a.status === 'New')) return false;
+    if(raQuick === 'mine' && !(raIsOpen(a) && a.mine)) return false;
+    if(raQuick === 'urgent' && !(raIsOpen(a) && a.severity === 'urgent')) return false;
+    if(statusF === 'open' ? !raIsOpen(a) : (statusF !== 'all' && a.status !== statusF)) return false;
+    if(sevF !== 'all' && a.severity !== sevF) return false;
+    if(courseF !== 'all' && a.course !== courseF) return false;
+    if(yearF !== 'all' && a.year !== yearF) return false;
+    if(q && !(a.name + ' ' + a.student_number + ' ' + a.reason).toLowerCase().includes(q)) return false;
+    return true;
   });
+
+  const filtersOn = statusF !== 'open' || sevF !== 'all' || courseF !== 'all' || yearF !== 'all' || !!q || !!raQuick;
+  document.getElementById('alertClear').hidden = !filtersOn;
+
+  const list = document.getElementById('alertsList');
+  const head = document.getElementById('raListHead');
+  if(!filtered.length){
+    head.innerHTML = '';
+    const noneAtAll = !openAll.length && !filtersOn;
+    const pinned = panicOpen.length > 0;
+    const title = noneAtAll ? 'No open alerts right now'
+      : pinned ? (filtersOn ? 'No other alerts match these filters' : 'No other open alerts')
+      : 'No alerts match these filters';
+    const sub = noneAtAll ? 'Everything is under control.'
+      : pinned ? 'Panic button cases are shown above and are never filtered out.'
+      : 'Try a different filter or search.';
+    list.innerHTML = `<div class="card ra-empty">${pinned ? '' : MASCOT_SVG}
+      <div class="e-title">${title}</div>
+      ${sub}
+      ${filtersOn ? '<div><button type="button" class="pill-btn ghost sm" onclick="clearAlertFilters()">Clear filters</button></div>' : ''}
+    </div>`;
+    document.getElementById('alertsPager').innerHTML = '';
+  } else {
+    head.innerHTML = `<span><b>${filtered.length}</b> ${filtered.length === 1 ? 'alert' : 'alerts'} · most urgent first</span>`;
+    const rows = paginate('alerts', filtered, 'alertsPager', renderAlerts, [statusF, sevF, courseF, yearF, q, raQuick].join('|'));
+    list.innerHTML = rows.map(a => raRow(a, false)).join('');
+  }
   updateAlertCounts();
 }
 
@@ -3327,14 +3610,16 @@ function updateAlertStatus(id, action){
 
 function updateAlertCounts(){
   const openCount = alerts.filter(a=>a.status!=='Resolved').length;
-  document.getElementById('alertNavCount').textContent = openCount;
+  const nav = document.getElementById('alertNavCount');
+  nav.textContent = openCount;
+  nav.classList.toggle('has-panic', alerts.some(raIsPanic));
   document.getElementById('dashRiskCount').textContent = openCount;
 }
 
 function renderDashAlertPreview(){
   const wrap = document.getElementById('dashAlertPreview');
   wrap.innerHTML='';
-  const open = alerts.filter(a=>a.status!=='Resolved').slice(0,3);
+  const open = alerts.filter(a=>a.status!=='Resolved').sort(raSort).slice(0,3);
   if(!open.length){
     wrap.innerHTML = '<div style="color:var(--ink-soft); font-size:13px; padding:8px 0;">No open flags right now.</div>';
     return;
@@ -5576,37 +5861,104 @@ let staffNotifInitialized = false;
     },
     steps: [
       { welcome: true, title: "Welcome to the MICA Staff Console, {{ request.user.first_name|default:request.user.username|escapejs }}! 👋",
-        body: "Here's a quick look at the tools you'll use to look after students. It takes about a minute." },
+        body: "Here's a quick look at the tools you'll use to look after students. It takes a couple of minutes, and you'll only see the pages your role can use." },
       { view: 'dashboard', target: '#sec-dashboard .stat-grid', mobileTarget: '#sec-dashboard .stat-card', title: "Your dashboard at a glance",
-        body: "Cards like these show how many students are being monitored, today's check-ins, active risk flags and more, so you can see how things are going the moment you sign in." },
+        body: "Cards like these show how many students are being monitored, today's check-ins, active risk flags and more. Below them, Priority Risk Flags lists the cases that need you first, with panic button cases always on top." },
+      { target: '.searchbox', title: "Search from anywhere",
+        body: "Type a student's name or ID number and the Students list filters to match, whichever page you're on." },
+      { target: '#bellBtn', title: "Notifications bell",
+        body: "New messages, flags, appointments, referrals and pending accounts show up here with an unread count and a chime. A panic button alert is marked urgent." },
+      { target: '.nav-item[data-section="notifications"]', sidebar: true, title: "Notifications",
+        body: "Your full notification history in one list. Filter by type (messages, flags, appointments, referrals, pending accounts, notes to review) or show unread only." },
       { target: '.nav-item[data-section="students"]', sidebar: true, title: "Students",
-        body: "See every student with their mood trend, streak and risk level. Filter by risk or program, then open a student to see their mood history, flag them for a counselor, send a check-in, schedule an appointment or keep notes." },
+        body: "See every student with their mood trend, streak and risk level. Filter by risk, program, year or assessment, then open a student to see their mood history, flag them for a counselor, send a check-in, schedule an appointment or keep notes." },
       { target: '.nav-item[data-section="mood"]', sidebar: true, title: "Monitoring",
-        body: "Charts of how students' moods are trending over time, so you can spot dips early." },
+        body: "Charts of how students' moods are trending over time, so you can spot dips early. Switch to the Exercises tab to see how students use the breathing and other exercises." },
       { target: '.nav-item[data-section="summary"]', sidebar: true, title: "Chat & Mood Summary",
         body: "One table per student with their recent mood, check-ins, Mica chat topics, guidance chat status, who is handling them and their next appointment." },
+      { target: '.nav-item[data-section="assessments"]', sidebar: true, title: "Assessment Records",
+        body: "See who has taken the self-assessment, when they last took it and how many times. It also shows how many of the 9 questions were answered Often or Always, and any conditions it points to." },
       { target: '.nav-item[data-section="alerts"]', sidebar: true, title: "Risk Alerts",
-        body: "Flagged students appear here. Filter by status (New, In Review, Resolved), severity or course, and update each flag as you work through it." },
+        body: "Flagged students appear here, most urgent first. Panic button cases are pinned in a red banner at the very top and are never hidden by filters. Take a case so everyone knows you have it, then mark it resolved when you're done." },
+      { view: 'alerts', target: '#raStats', fallback: '#sec-alerts', title: "Working through alerts",
+        body: "These tiles count open, urgent, unassigned and your own cases, and each one is also a quick filter. Use the search box and filters to narrow the list, and open Suggested for review to see students the mood check-ins point to. Nobody is flagged until you decide." },
+      { target: '.nav-item[data-section="pending"]', sidebar: true, title: "Pending Accounts",
+        body: "Students who signed up with a shared term code wait here. They can use MICA, but they stay out of your dashboards until you approve them. Approve the ones you recognise and deactivate any that look like junk." },
       { target: '.nav-item[data-section="messages"]', sidebar: true, title: "Student Messages",
         body: "Students who ask for a counselor message you here. Open a conversation to reply, add private notes or schedule an appointment." },
       { target: '.nav-item[data-section="appointments"]', sidebar: true, title: "Appointments",
         body: "Your scheduled appointments appear on a calendar, on the day they happen. Tap a day to see who's coming, then mark each one completed or cancel it. Switch to List for a table. Students confirm from their side." },
+      { target: '.nav-item[data-section="regcodes"]', sidebar: true, title: "Registration Codes",
+        body: "New students need a code to register. Generate a single-use code that expires after 24 hours, make a batch to hand out on slips, or set one shared term code for a whole class. Accounts made with a shared code wait in Pending Accounts." },
       { target: '.nav-item[data-section="reports"]', sidebar: true, title: "Reports & Analytics",
-        body: "Generate a summary report for the last 7 days, 30 days or the semester, or export the raw data." },
+        body: "Service Reports summarise a period (7 days, 30 days, the semester or custom dates) by course and year. Analytics shows the trends. You can export everything for a period in one file." },
       { target: '.nav-item[data-section="settings"]', sidebar: true, title: "Settings",
-        body: "Update your profile, see how risk levels are decided, and switch themes. You can replay this tutorial any time from Settings → My Profile." }
+        body: "Update your profile, see how risk levels are decided in Monitoring Thresholds, manage the Care Team and System tabs your role allows, and switch themes under Appearance. You can replay this tutorial any time from Settings → My Profile." }
     ]
   };
 
+  // Skip steps for pages this role can't see (their sidebar item or target is hidden).
+  function visibleSteps(){
+    const hidden = el => !el || getComputedStyle(el).display === 'none';
+    return STAFF_TOUR.steps.filter(st => {
+      if(st.view){
+        const nav = document.querySelector('.nav-item[data-section="' + st.view + '"]');
+        if(nav && hidden(nav)) return false;
+      }
+      if(!st.target) return true;
+      const el = document.querySelector(st.target) || (st.fallback && document.querySelector(st.fallback));
+      if(!el) return false;
+      return getComputedStyle(el).display !== 'none';
+    });
+  }
+
   function startStaffTour(){
     goTo('dashboard');                 // always begin on the dashboard
-    MicaTour.run(STAFF_TOUR);
+    MicaTour.run(Object.assign({}, STAFF_TOUR, { steps: visibleSteps() }));
   }
   MicaTour.whenLoaderGone(startStaffTour);
   window.startMicaStaffTour = startStaffTour;
 })();
 </script>
 {% endif %}
+
+<script>
+/* Remember where the staff member was, so a browser refresh puts them back on the same page.
+   Stored per tab (sessionStorage) and per user, so a new tab or another account starts on the dashboard. */
+(function(){
+  var KEY = 'mica_staff_view_{{ request.user.id }}';
+  function read(){ try{ return JSON.parse(sessionStorage.getItem(KEY)) || {}; }catch(e){ return {}; } }
+  function save(k, v){ try{ var o = read(); o[k] = v; sessionStorage.setItem(KEY, JSON.stringify(o)); }catch(e){} }
+
+  var _goTo = goTo, _showTab = showTab, _showMonitorTab = showMonitorTab, _showReportTab = showReportTab;
+  goTo = function(section){ _goTo(section); save('section', section); };
+  showTab = function(tab, el){ _showTab(tab, el); save('settings', tab); };
+  showMonitorTab = function(tab, el){ _showMonitorTab(tab, el); save('mon', tab); };
+  showReportTab = function(tab, el){ _showReportTab(tab, el); save('rep', tab); };
+
+  function tabButton(sel, tab){
+    var list = document.querySelectorAll(sel);
+    for(var i = 0; i < list.length; i++){
+      var oc = list[i].getAttribute('onclick') || '';
+      if(oc.indexOf("'" + tab + "'") !== -1) return list[i];
+    }
+    return null;
+  }
+
+  var st = read(), section = st.section;
+  if(!section || section === 'dashboard' || !titles[section]) return;
+  var nav = document.querySelector('.nav-item[data-section="' + section + '"]');
+  if(!nav || getComputedStyle(nav).display === 'none') return;     // e.g. a page this role can't see
+
+  try{
+    var b;
+    if(section === 'settings' && st.settings && (b = document.querySelector('.tab-btn[data-tab="' + st.settings + '"]'))) _showTab(st.settings, b);
+    if(section === 'mood' && st.mon && (b = tabButton('.mtab-btn', st.mon))) _showMonitorTab(st.mon, b);
+    if(section === 'reports' && st.rep && (b = tabButton('.rtab-btn', st.rep))) _showReportTab(st.rep, b);
+  }catch(e){}
+  goTo(section);
+})();
+</script>
 
 {% include 'core/_my_photo_js.html' %}
 </body>

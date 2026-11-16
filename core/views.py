@@ -4188,6 +4188,21 @@ def _student_risk(u, today):
     return _risk_from_entries(list(u.mood_entries.order_by('-date')[:30]), today)
 
 
+_FLAG_SEVERITY_RANK = {"urgent": 0, "watch": 1, "stable": 2, "nodata": 3}
+
+
+def _flag_sort_key(d):
+    """Risk Alerts order, most urgent first: open PANIC cases, then open urgent / watch / stable,
+    then resolved. Within a tier, unassigned (New) before In Review, newest first."""
+    if d["status"] == "Resolved":
+        tier = 10
+    elif d["panic"]:
+        tier = 0
+    else:
+        tier = 1 + _FLAG_SEVERITY_RANK.get(d["severity"], 3)
+    return (tier, 0 if d["status"] == "New" else 1, -d["created_ts"], -d["id"])
+
+
 def _flag_json(f, today, me=None):
     s = f.student
     profile = getattr(s, 'profile', None)
@@ -4203,6 +4218,7 @@ def _flag_json(f, today, me=None):
         "reason": f.reason,
         "status": _FLAG_STATUS_LABEL[f.status],
         "date": timezone.localtime(f.created_at).strftime("%b %d, %Y"),
+        "created_ts": f.created_at.timestamp(),
         "panic": f.is_panic,
         "flagged_by": ("Student (panic button)" if f.is_panic
                        else (f.flagged_by.get_full_name() or f.flagged_by.username) if f.flagged_by
@@ -4237,7 +4253,7 @@ def staff_flags(request):
     today = timezone.localdate()
     flags = (StudentFlag.objects.filter(student__in=visible_students())
              .select_related('student', 'student__profile', 'flagged_by', 'assigned_to'))
-    flag_data = [_flag_json(f, today, request.user) for f in flags]
+    flag_data = sorted((_flag_json(f, today, request.user) for f in flags), key=_flag_sort_key)
     open_ids = set(StudentFlag.objects.exclude(status='resolved').values_list('student_id', flat=True))
     suggested = []
     students = (_active_students()
