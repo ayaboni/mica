@@ -4009,10 +4009,12 @@ def confirm_appointment(request, appointment_id):
 @login_required(login_url='login')
 @user_passes_test(lambda u: u.is_staff or u.is_superuser, login_url='login')
 def staff_appointments_list(request):
-    appts = Appointment.objects.filter(counselor=request.user).select_related('student').order_by('-scheduled_time')
+    appts = (Appointment.objects.filter(counselor=request.user)
+             .select_related('student', 'student__profile').order_by('-scheduled_time'))
     data = []
     for a in appts:
         local = timezone.localtime(a.scheduled_time)
+        profile = getattr(a.student, 'profile', None)
         data.append({
             "id": a.id,
             "student_name": a.student.get_full_name() or a.student.username,
@@ -4021,8 +4023,20 @@ def staff_appointments_list(request):
             "time": local.strftime("%I:%M %p"),
             "status": a.status.capitalize(),
             "service": a.get_service_display(),
+            # Used by the calendar view: local calendar day, 24h time, and ids to jump to the chat.
+            "date_iso": local.date().isoformat(),
+            "time24": local.strftime("%H:%M"),
+            "student_id": a.student_id,
+            "thread_id": a.thread_id,
+            # For the course / year level filters.
+            "course": profile.course if profile and profile.course else "",
+            "year": profile.year_level if profile and profile.year_level else "",
         })
-    return JsonResponse({"appointments": data})
+    return JsonResponse({
+        "appointments": data,
+        "courses": [{"code": c, "label": l} for c, l in get_courses()],
+        "years": [{"code": c, "label": l} for c, l in YEAR_LEVELS],
+    })
 
 
 @login_required(login_url='login')

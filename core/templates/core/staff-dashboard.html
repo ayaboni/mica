@@ -293,6 +293,98 @@
   .mono-cell{font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:var(--ink-soft); white-space:nowrap;}
   .row-actions{display:flex; gap:8px;}
 
+
+  /* ---------- Appointments: calendar ---------- */
+  .ac-status{ --st-pending-bg:#FEF3C7; --st-pending-fg:#92400E; --st-pending-dot:#E0A526;
+              --st-confirmed-bg:#E0F2FE; --st-confirmed-fg:#075985; --st-confirmed-dot:#3D8FC4;
+              --st-completed-bg:#DCFCE7; --st-completed-fg:#166534; --st-completed-dot:#4E9A5F;
+              --st-cancelled-bg:#FEE2E2; --st-cancelled-fg:#991B1B; --st-cancelled-dot:#C9605B; }
+  body.dark .ac-status{ --st-pending-bg:#3B3320; --st-pending-fg:#F3D58A; --st-pending-dot:#E0A526;
+              --st-confirmed-bg:#1F3340; --st-confirmed-fg:#A9D6F2; --st-confirmed-dot:#5BAEE0;
+              --st-completed-bg:#1F3526; --st-completed-fg:#A6DDB4; --st-completed-dot:#5FB874;
+              --st-cancelled-bg:#3D2422; --st-cancelled-fg:#F2B5B0; --st-cancelled-dot:#D9706A; }
+
+  .appt-top{display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:14px;}
+  .seg{display:inline-flex; background:var(--line); border-radius:999px; padding:3px; gap:2px;}
+  .seg-btn{border:none; background:transparent; color:var(--ink-soft); font-family:'Baloo 2',sans-serif; font-weight:600; font-size:14px; padding:7px 18px; border-radius:999px; display:inline-flex; align-items:center; gap:7px; transition:background .15s ease,color .15s ease;}
+  .seg-btn svg{width:16px; height:16px;}
+  .seg-btn.active{background:var(--paper); color:var(--ink); box-shadow:var(--shadow-sm);}
+  .seg-btn:focus-visible, .ac-cell:focus-visible, .ac-arrow:focus-visible{outline:2.5px solid var(--sky-deep); outline-offset:2px;}
+  .ac-cell:focus-visible{z-index:2; outline-offset:-3px;}
+
+  .ac-layout{display:grid; grid-template-columns:minmax(0,1fr) 320px; gap:18px; align-items:start;}
+  .ac-card{padding:18px 18px 16px;}
+  .ac-toolbar{display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:12px;}
+  .ac-nav{display:flex; align-items:center; gap:8px;}
+  .ac-arrow{width:34px; height:34px; border-radius:50%; border:1.5px solid var(--line); background:var(--paper); color:var(--ink); font-size:18px; line-height:1; display:flex; align-items:center; justify-content:center; transition:background .15s ease;}
+  .ac-arrow:hover{background:var(--peach);}
+  .ac-select{padding:8px 12px; border-radius:999px; border:1.5px solid var(--line); background:var(--paper); color:var(--ink); font:600 13.5px 'Inter',sans-serif;}
+  .ac-summary{font-size:12.5px; color:var(--ink-soft);}
+  .ac-legend{display:flex; flex-wrap:wrap; gap:6px 14px; font-size:12px; color:var(--ink-soft); margin-bottom:12px;}
+  .ac-legend span{display:inline-flex; align-items:center; gap:6px;}
+  .ac-legend i{width:9px; height:9px; border-radius:50%; display:inline-block;}
+
+  .ac-grid{display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); border-top:1px solid var(--line); border-left:1px solid var(--line); border-radius:6px; touch-action:pan-y;}
+  .ac-dow{padding:8px 4px; text-align:center; font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-soft); background:var(--cream); border-right:1px solid var(--line); border-bottom:1px solid var(--line);}
+  .ac-cell{position:relative; min-height:104px; padding:6px; text-align:left; background:var(--paper); color:var(--ink); border:none; border-right:1px solid var(--line); border-bottom:1px solid var(--line); display:flex; flex-direction:column; gap:4px; min-width:0; font-family:'Inter',sans-serif; transition:background .12s ease;}
+  .ac-cell:hover{background:var(--peach);}
+  .ac-cell.other{background:var(--cream);}
+  .ac-cell.other .ac-num{color:var(--ink-soft); opacity:.6;}
+  .ac-cell.selected{background:var(--sage-pale); box-shadow:inset 0 0 0 2px var(--sage-deep);}
+  body:not(.dark) .ac-cell.selected{background:#EAF3E7;}
+  .ac-num{font-size:12.5px; font-weight:700; width:24px; height:24px; display:flex; align-items:center; justify-content:center; border-radius:50%;}
+  .ac-cell.today .ac-num{background:var(--sage-deep); color:#fff;}
+  .ac-events{display:flex; flex-direction:column; gap:3px; min-width:0;}
+  .ac-chip{display:block; font-size:11px; font-weight:600; line-height:1.25; padding:3px 6px; border-radius:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; border-left:3px solid transparent;}
+  .ac-chip .t{font-weight:800; margin-right:5px; opacity:.85;}
+  .ac-more{font-size:11px; font-weight:700; color:var(--ink-soft); padding-left:4px;}
+  .ac-dots{display:none; gap:3px; flex-wrap:wrap; justify-content:center; margin-top:auto;}
+  .ac-dots i{width:7px; height:7px; border-radius:50%; display:block;}
+  .st-pending{background:var(--st-pending-bg); color:var(--st-pending-fg); border-left-color:var(--st-pending-dot);}
+  .st-confirmed{background:var(--st-confirmed-bg); color:var(--st-confirmed-fg); border-left-color:var(--st-confirmed-dot);}
+  .st-completed{background:var(--st-completed-bg); color:var(--st-completed-fg); border-left-color:var(--st-completed-dot);}
+  .st-cancelled{background:var(--st-cancelled-bg); color:var(--st-cancelled-fg); border-left-color:var(--st-cancelled-dot); text-decoration:line-through; opacity:.75;}
+
+  .ac-agenda{padding:18px 18px 8px; position:sticky; top:12px;}
+  .ac-agenda h3{font-size:17px; font-weight:700; line-height:1.2;}
+  .ac-agenda .sub{font-size:12.5px; color:var(--ink-soft); margin:3px 0 14px;}
+  .ac-item{display:flex; gap:12px; padding:13px 0; border-top:1px solid var(--line);}
+  .ac-item .bar{width:4px; border-radius:4px; flex-shrink:0;}
+  .ac-item .body{min-width:0; flex:1;}
+  .ac-item .when{font-family:'IBM Plex Mono',monospace; font-size:12.5px; font-weight:600; color:var(--ink-soft);}
+  .ac-item .who{font-weight:700; font-size:14.5px; margin:2px 0; overflow-wrap:anywhere;}
+  .ac-item .svc{font-size:12.5px; color:var(--ink-soft); display:flex; flex-wrap:wrap; align-items:center; gap:6px 8px;}
+  .ac-item .acts{display:flex; flex-wrap:wrap; gap:6px; margin-top:9px;}
+  .ac-empty{text-align:center; padding:26px 10px 30px; color:var(--ink-soft); font-size:13.5px; border-top:1px solid var(--line);}
+  .ac-empty .e-title{font-weight:600; color:var(--ink); margin-bottom:3px;}
+
+  @media (max-width:1180px){
+    .ac-layout{grid-template-columns:minmax(0,1fr);}
+    .ac-agenda{position:static;}
+  }
+  @media (max-width:760px){
+    .ac-card{padding:12px 8px 10px;}
+    .ac-toolbar{justify-content:center;}
+    .ac-summary{width:100%; text-align:center; order:3;}
+    .ac-select{padding:7px 10px; font-size:13px;}
+    .ac-cell{min-height:56px; align-items:center; padding:4px 2px;}
+    .ac-events{display:none;}
+    .ac-dots{display:flex;}
+    .ac-dow{font-size:10px; letter-spacing:.02em; padding:7px 0;}
+    .seg{width:100%;} .seg-btn{flex:1; justify-content:center;}
+    .ac-agenda{padding:16px 14px 6px;}
+  }
+  .appt-filters{display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-bottom:16px;}
+  .appt-filters .filter-select{min-width:0; max-width:100%;}
+  .appt-filters .appt-count{font-size:12.5px; color:var(--ink-soft); margin-left:auto;}
+  .appt-filters .pill-btn[hidden]{display:none;}
+  @media (max-width:760px){
+    .appt-filters .filter-select{flex:1 1 calc(50% - 5px);}
+    .appt-filters .appt-count{margin-left:0; width:100%;}
+  }
+  @media (hover:none){ .ac-cell:hover{background:var(--paper);} .ac-cell.other:hover{background:var(--cream);} .ac-cell.selected:hover{background:#EAF3E7;} body.dark .ac-cell.selected:hover{background:var(--sage-pale);} }
+  @media (prefers-reduced-motion: reduce){ .ac-cell, .seg-btn{transition:none;} }
+
   /* ---------- Modal ---------- */
   .modal-overlay{display:none; position:fixed; inset:0; background:rgba(20,22,15,.5); z-index:100; align-items:flex-start; justify-content:center; padding:50px 20px; overflow:auto;}
   .modal-overlay.active{display:flex;}
@@ -1075,7 +1167,19 @@ html, body{ overflow-x:hidden; }
     </section>
 
       <!-- ============ APPOINTMENTS ============ -->
-      <section class="section" id="sec-appointments">
+      <section class="section ac-status" id="sec-appointments">
+        <div class="appt-top">
+          <div class="seg" role="group" aria-label="Appointments view">
+            <button type="button" class="seg-btn active" data-view="calendar" aria-pressed="true" onclick="setApptView('calendar')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="18" height="16.5" rx="3"/><path d="M8 2.5v4M16 2.5v4M3 10h18"/></svg>
+              Calendar
+            </button>
+            <button type="button" class="seg-btn" data-view="list" aria-pressed="false" onclick="setApptView('list')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg>
+              List
+            </button>
+          </div>
+        </div>
         <div class="tab-row" style="margin-bottom:18px;">
           <button class="tab-btn active" data-status="all" onclick="filterAppts('all', this)">
             All <span class="count" id="count-all" style="font-size:11px; background:var(--line); padding:2px 8px; border-radius:999px; margin-left:4px;">0</span>
@@ -1094,11 +1198,49 @@ html, body{ overflow-x:hidden; }
           </button>
         </div>
 
+        <div class="appt-filters">
+          <select class="filter-select" id="apptCourseFilter" onchange="renderAppointments()" aria-label="Filter by course">
+            <option value="all">All courses</option>
+          </select>
+          <select class="filter-select" id="apptYearFilter" onchange="renderAppointments()" aria-label="Filter by year level">
+            <option value="all">All year levels</option>
+          </select>
+          <button type="button" class="pill-btn ghost sm" id="apptClear" onclick="clearApptFilters()" hidden>Clear filters</button>
+          <span class="appt-count" id="apptCount" aria-live="polite"></span>
+        </div>
+
+        <!-- Calendar view -->
+        <div class="ac-layout" id="apptCalendarView">
+          <div class="card ac-card">
+            <div class="ac-toolbar">
+              <div class="ac-nav">
+                <button type="button" class="ac-arrow" id="apptPrev" aria-label="Previous month">&#8249;</button>
+                <select class="ac-select" id="apptMonth" aria-label="Month"></select>
+                <select class="ac-select" id="apptYear" aria-label="Year"></select>
+                <button type="button" class="ac-arrow" id="apptNext" aria-label="Next month">&#8250;</button>
+              </div>
+              <button type="button" class="pill-btn ghost sm" id="apptToday">Today</button>
+              <div class="ac-summary" id="apptMonthSummary" aria-live="polite"></div>
+            </div>
+            <div class="ac-legend" aria-hidden="true">
+              <span><i style="background:var(--st-pending-dot)"></i>Pending</span>
+              <span><i style="background:var(--st-confirmed-dot)"></i>Confirmed</span>
+              <span><i style="background:var(--st-completed-dot)"></i>Completed</span>
+              <span><i style="background:var(--st-cancelled-dot)"></i>Cancelled</span>
+            </div>
+            <div class="ac-grid" id="apptGrid" role="group" aria-label="Appointments calendar"></div>
+          </div>
+          <div class="card ac-agenda" id="apptAgenda" aria-live="polite"></div>
+        </div>
+
+        <!-- List view -->
+        <div id="apptListView" style="display:none;">
         <div class="card" style="overflow-x:auto;">
           <table>
             <thead>
               <tr>
                 <th><br>Student</th>
+                <th><br>Course / Year</th>
                 <th><br>Counselor</th>
                 <th><br>Service</th>
                 <th><br>Date</th>
@@ -1109,6 +1251,8 @@ html, body{ overflow-x:hidden; }
             </thead>
             <tbody id="appointmentsTableBody"></tbody>
           </table>
+        </div>
+        <div class="list-pager" id="apptPager"></div>
         </div>
       </section>
 
@@ -1888,7 +2032,7 @@ function yearLabel(y){
 }
 
 function fillYearSelects(){
-  ['moYear', 'repYear', 'studentYearFilter', 'summaryYearFilter', 'assessYearFilter', 'alertYearFilter'].forEach(id => {
+  ['moYear', 'repYear', 'studentYearFilter', 'summaryYearFilter', 'assessYearFilter', 'alertYearFilter', 'apptYearFilter'].forEach(id => {
     const sel = document.getElementById(id);
     if(!sel || sel.options.length > 1 || !yearOptions.length) return;
     yearOptions.forEach(y => sel.add(new Option(y.label, y.code)));
@@ -2016,11 +2160,12 @@ let gsTimer = null;
 function handleGlobalSearch(v){
   clearTimeout(gsTimer);
   gsTimer = setTimeout(()=>{
-    const onList = ['sec-students','sec-assessments']
+    const onList = ['sec-students','sec-assessments','sec-appointments']
       .some(id => document.getElementById(id).classList.contains('active'));
     if((v || '').trim() && !onList) goTo('students');
     renderStudents();
     renderAssessments();
+    renderAppointments();
   }, 250);
 }
 
@@ -3424,7 +3569,13 @@ function loadAppointments() {
     .then(r => r.json())
     .then(data => {
       rawAppointments = data.appointments || [];
-      updateApptCounts();
+      courseOptions = data.courses || courseOptions;
+      yearOptions = data.years || yearOptions;
+      fillYearSelects();
+      const sel = document.getElementById('apptCourseFilter');
+      const keep = sel.value || 'all';
+      sel.innerHTML = courseSelectHtml(rawAppointments.map(a => a.course).filter(Boolean));
+      sel.value = [...sel.options].some(o => o.value === keep) ? keep : 'all';
       renderAppointments();
     })
     .catch(err => {
@@ -3438,9 +3589,26 @@ document.addEventListener("DOMContentLoaded", () => {
   loadAppointments();
 })
 
+/* Rows that match the course / year level filters and the top search box (every status). */
+function apptBaseRows() {
+  const courseF = (document.getElementById('apptCourseFilter') || {}).value || 'all';
+  const yearF = (document.getElementById('apptYearFilter') || {}).value || 'all';
+  const q = (document.getElementById('globalSearch').value || '').trim().toLowerCase();
+  return rawAppointments.filter(a =>
+    (courseF === 'all' || a.course === courseF) &&
+    (yearF === 'all' || a.year === yearF) &&
+    (!q || String(a.student_name || '').toLowerCase().includes(q) || String(courseLabel(a.course) || '').toLowerCase().includes(q))
+  );
+}
+/* ...and also the selected status tab. */
+function apptFilteredRows() {
+  return apptBaseRows().filter(a => activeApptStatus === 'all' || a.status === activeApptStatus);
+}
+
 function updateApptCounts() {
-  const counts = { all: rawAppointments.length, Pending: 0, Confirmed: 0, Completed: 0, Cancelled: 0 };
-  rawAppointments.forEach(a => {
+  const base = apptBaseRows();
+  const counts = { all: base.length, Pending: 0, Confirmed: 0, Completed: 0, Cancelled: 0 };
+  base.forEach(a => {
     if (counts[a.status] !== undefined) counts[a.status]++;
   });
 
@@ -3449,6 +3617,20 @@ function updateApptCounts() {
   document.getElementById('count-Confirmed').textContent = counts.Confirmed;
   document.getElementById('count-Completed').textContent = counts.Completed;
   document.getElementById('count-Cancelled').textContent = counts.Cancelled;
+}
+
+function apptFiltersActive() {
+  return document.getElementById('apptCourseFilter').value !== 'all'
+      || document.getElementById('apptYearFilter').value !== 'all'
+      || activeApptStatus !== 'all'
+      || !!(document.getElementById('globalSearch').value || '').trim();
+}
+
+function clearApptFilters() {
+  document.getElementById('apptCourseFilter').value = 'all';
+  document.getElementById('apptYearFilter').value = 'all';
+  document.getElementById('globalSearch').value = '';
+  filterAppts('all');
 }
 
 function filterAppts(status, btn) {
@@ -3475,20 +3657,42 @@ function getApptBadge(status) {
 }
 
 function renderAppointments() {
+  updateApptCounts();
+  renderApptCalendar();
+
+  const filtered = apptFilteredRows();
+  const clearBtn = document.getElementById('apptClear');
+  if (clearBtn) clearBtn.hidden = !apptFiltersActive();
+  const countEl = document.getElementById('apptCount');
+  if (countEl) countEl.textContent = rawAppointments.length
+    ? (filtered.length === rawAppointments.length
+        ? `${filtered.length} appointment${filtered.length === 1 ? '' : 's'}`
+        : `${filtered.length} of ${rawAppointments.length} appointments`)
+    : '';
+
   const body = document.getElementById('appointmentsTableBody');
+  const pager = document.getElementById('apptPager');
   if (!body) return;
-  
-  const filtered = rawAppointments.filter(a => activeApptStatus === 'all' || a.status === activeApptStatus);
 
   if (filtered.length === 0) {
+    const filtering = rawAppointments.length > 0;
     const label = activeApptStatus === 'all' ? '' : activeApptStatus.toLowerCase() + ' ';
-    body.innerHTML = `<tr><td colspan="7"><div class="empty-state">${MASCOT_SVG}<div class="e-title">No ${label}appointments yet</div>Appointments you schedule will show up here.</div></td></tr>`;
+    body.innerHTML = `<tr><td colspan="8"><div class="empty-state">${MASCOT_SVG}<div class="e-title">${
+      filtering ? 'No appointments match these filters' : `No ${label}appointments yet`}</div>${
+      filtering ? 'Try clearing a filter or search term.' : 'Appointments you schedule will show up here.'}</div></td></tr>`;
+    if (pager) pager.innerHTML = '';
     return;
   }
 
-  body.innerHTML = filtered.map(a => `
+  const sig = [activeApptStatus, document.getElementById('apptCourseFilter').value,
+               document.getElementById('apptYearFilter').value,
+               (document.getElementById('globalSearch').value || '').trim().toLowerCase()].join('|');
+  const pageRows = paginate('appts', filtered, 'apptPager', renderAppointments, sig);
+
+  body.innerHTML = pageRows.map(a => `
     <tr>
       <td style="font-weight:600;">${escapeHtmlStaff(a.student_name)}</td>
+      <td>${escapeHtmlStaff(courseLabel(a.course) || 'Not set')}<br><span class="prog" style="color:var(--ink-soft); font-size:11.5px;">${escapeHtmlStaff(yearLabel(a.year))}</span></td>
       <td>${escapeHtmlStaff(a.counselor_name)}</td>
       <td>${escapeHtmlStaff(a.service)}</td>
       <td class="mono-cell">${a.date}</td>
@@ -3506,6 +3710,222 @@ function renderAppointments() {
       </td>
     </tr>
   `).join('');
+}
+
+/* ---------- Appointments: calendar view ---------- */
+const AC_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const AC_DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+let apptView = 'calendar';
+try { if (localStorage.getItem('mica_staff_appt_view') === 'list') apptView = 'list'; } catch(e){}
+const _acNow = new Date();
+let acYear = _acNow.getFullYear(), acMonth = _acNow.getMonth();
+let acSelected = acIso(_acNow);
+let acFocusPending = false;
+
+function acPad(n){ return String(n).padStart(2,'0'); }
+function acIso(d){ return `${d.getFullYear()}-${acPad(d.getMonth()+1)}-${acPad(d.getDate())}`; }
+function acParse(iso){ const [y,m,d] = iso.split('-').map(Number); return new Date(y, m-1, d); }
+function acTime(t24){
+  const [h,m] = (t24 || '00:00').split(':').map(Number);
+  return `${(h % 12) || 12}:${acPad(m)} ${h >= 12 ? 'PM' : 'AM'}`;
+}
+function acTimeShort(t24){
+  const [h,m] = (t24 || '00:00').split(':').map(Number);
+  return `${(h % 12) || 12}${m ? ':' + acPad(m) : ''}${h >= 12 ? 'p' : 'a'}`;
+}
+function acByDay(){
+  const map = {};
+  apptFilteredRows().forEach(a => {
+    if (!a.date_iso) return;
+    (map[a.date_iso] = map[a.date_iso] || []).push(a);
+  });
+  Object.values(map).forEach(list => list.sort((x,y) => (x.time24 || '').localeCompare(y.time24 || '')));
+  return map;
+}
+
+function setApptView(v){
+  apptView = v === 'list' ? 'list' : 'calendar';
+  try { localStorage.setItem('mica_staff_appt_view', apptView); } catch(e){}
+  renderApptCalendar();
+}
+
+function acGo(y, m){
+  const d = new Date(y, m, 1);
+  acYear = d.getFullYear(); acMonth = d.getMonth();
+  const sel = acParse(acSelected);
+  if (sel.getFullYear() !== acYear || sel.getMonth() !== acMonth) {
+    const t = new Date();
+    const inThisMonth = t.getFullYear() === acYear && t.getMonth() === acMonth;
+    acSelected = acIso(inThisMonth ? t : new Date(acYear, acMonth, 1));
+  }
+  renderApptCalendar();
+}
+
+function acSelect(iso, focus){
+  acSelected = iso;
+  const d = acParse(iso);
+  acYear = d.getFullYear(); acMonth = d.getMonth();
+  acFocusPending = !!focus;
+  renderApptCalendar();
+}
+
+function renderApptCalendar(){
+  const calEl = document.getElementById('apptCalendarView');
+  const listEl = document.getElementById('apptListView');
+  if (!calEl || !listEl) return;
+  const isCal = apptView === 'calendar';
+  calEl.style.display = isCal ? '' : 'none';
+  listEl.style.display = isCal ? 'none' : '';
+  document.querySelectorAll('#sec-appointments .seg-btn').forEach(b => {
+    const on = b.dataset.view === apptView;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+  });
+  if (!isCal) return;
+
+  // Month / year pickers
+  const mSel = document.getElementById('apptMonth');
+  const ySel = document.getElementById('apptYear');
+  if (!mSel.options.length) {
+    mSel.innerHTML = AC_MONTHS.map((n,i) => `<option value="${i}">${n}</option>`).join('');
+    mSel.addEventListener('change', () => acGo(acYear, parseInt(mSel.value, 10)));
+    ySel.addEventListener('change', () => acGo(parseInt(ySel.value, 10), acMonth));
+    document.getElementById('apptPrev').addEventListener('click', () => acGo(acYear, acMonth - 1));
+    document.getElementById('apptNext').addEventListener('click', () => acGo(acYear, acMonth + 1));
+    document.getElementById('apptToday').addEventListener('click', () => acSelect(acIso(new Date())));
+    acBindGridInput();
+  }
+  const thisYear = new Date().getFullYear();
+  const yFrom = Math.min(thisYear - 2, acYear), yTo = Math.max(thisYear + 3, acYear);
+  if (ySel.dataset.from !== String(yFrom) || ySel.dataset.to !== String(yTo)) {
+    let opts = '';
+    for (let y = yFrom; y <= yTo; y++) opts += `<option value="${y}">${y}</option>`;
+    ySel.innerHTML = opts; ySel.dataset.from = yFrom; ySel.dataset.to = yTo;
+  }
+  mSel.value = acMonth; ySel.value = acYear;
+
+  const byDay = acByDay();
+  const todayIso = acIso(new Date());
+  const first = new Date(acYear, acMonth, 1);
+  const start = new Date(acYear, acMonth, 1 - first.getDay());
+  const weeks = Math.ceil((first.getDay() + new Date(acYear, acMonth + 1, 0).getDate()) / 7);
+
+  let html = AC_DOW.map(d => `<div class="ac-dow" aria-hidden="true">${d}</div>`).join('');
+  for (let i = 0; i < weeks * 7; i++) {
+    const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
+    const iso = acIso(d);
+    const list = byDay[iso] || [];
+    const other = d.getMonth() !== acMonth;
+    const cls = ['ac-cell', other ? 'other' : '', iso === todayIso ? 'today' : '', iso === acSelected ? 'selected' : ''].join(' ').replace(/\s+/g,' ').trim();
+    const label = `${AC_MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}` +
+      (list.length ? `, ${list.length} appointment${list.length > 1 ? 's' : ''}` : ', no appointments') +
+      (iso === todayIso ? ', today' : '');
+    const shown = list.slice(0, 3);
+    const chips = shown.map(a =>
+      `<span class="ac-chip st-${a.status.toLowerCase()}"><span class="t">${acTimeShort(a.time24)}</span>${escapeHtmlStaff(String(a.student_name || '').trim().split(/\s+/)[0])}</span>`).join('');
+    const more = list.length > shown.length ? `<span class="ac-more">+${list.length - shown.length} more</span>` : '';
+    const dots = list.slice(0, 4).map(a => `<i style="background:var(--st-${a.status.toLowerCase()}-dot)"></i>`).join('');
+    html += `<button type="button" class="${cls}" data-date="${iso}" tabindex="${iso === acSelected ? 0 : -1}" aria-label="${label}" aria-pressed="${iso === acSelected}">
+      <span class="ac-num">${d.getDate()}</span>
+      <span class="ac-events">${chips}${more}</span>
+      <span class="ac-dots">${dots}</span>
+    </button>`;
+  }
+  const grid = document.getElementById('apptGrid');
+  grid.innerHTML = html;
+  if (acFocusPending) {
+    acFocusPending = false;
+    const el = grid.querySelector(`[data-date="${acSelected}"]`);
+    if (el) el.focus();
+  }
+
+  // Month summary
+  let monthCount = 0, upcoming = 0;
+  const nowIso = todayIso;
+  Object.entries(byDay).forEach(([iso, list]) => {
+    const d = acParse(iso);
+    if (d.getFullYear() === acYear && d.getMonth() === acMonth) {
+      monthCount += list.length;
+      if (iso >= nowIso) upcoming += list.filter(a => a.status === 'Pending' || a.status === 'Confirmed').length;
+    }
+  });
+  document.getElementById('apptMonthSummary').textContent = monthCount
+    ? `${monthCount} appointment${monthCount > 1 ? 's' : ''} in ${AC_MONTHS[acMonth]}${upcoming ? ` · ${upcoming} still ahead` : ''}`
+    : `No appointments in ${AC_MONTHS[acMonth]}`;
+
+  renderApptAgenda(byDay);
+}
+
+function renderApptAgenda(byDay){
+  const el = document.getElementById('apptAgenda');
+  const d = acParse(acSelected);
+  const list = (byDay || acByDay())[acSelected] || [];
+  const isToday = acSelected === acIso(new Date());
+  const heading = `${AC_DOW[d.getDay()]}, ${AC_MONTHS[d.getMonth()]} ${d.getDate()}`;
+  const sub = list.length ? `${list.length} appointment${list.length > 1 ? 's' : ''}${isToday ? ' today' : ''}` : (isToday ? 'Today' : d.getFullYear());
+  let body;
+  if (!list.length) {
+    body = `<div class="ac-empty"><div class="e-title">Nothing scheduled</div>${
+      rawAppointments.length ? 'Pick another day, or schedule one from a student&rsquo;s chat.' : 'Appointments you schedule will show up here.'}</div>`;
+  } else {
+    body = list.map(a => {
+      const st = a.status.toLowerCase();
+      const actions = a.status === 'Pending'
+        ? `<button type="button" class="pill-btn ghost sm" onclick="updateApptStatus(${a.id}, 'cancelled')">Cancel</button>`
+        : a.status === 'Confirmed'
+        ? `<button type="button" class="pill-btn solid sm" onclick="updateApptStatus(${a.id}, 'completed')">Complete</button>
+           <button type="button" class="pill-btn ghost sm" onclick="updateApptStatus(${a.id}, 'cancelled')">Cancel</button>`
+        : '';
+      const chat = a.thread_id
+        ? `<button type="button" class="pill-btn ghost sm" onclick="openApptChat(${a.thread_id}, ${JSON.stringify(a.student_name).replace(/&/g,'&amp;').replace(/"/g,'&quot;')})">Open chat</button>` : '';
+      return `<div class="ac-item">
+        <div class="bar" style="background:var(--st-${st}-dot)"></div>
+        <div class="body">
+          <div class="when">${acTime(a.time24)}</div>
+          <div class="who">${escapeHtmlStaff(a.student_name)}</div>
+          ${(a.course || a.year) ? `<div class="svc" style="margin-bottom:3px;">${escapeHtmlStaff([courseLabel(a.course), yearLabel(a.year)].filter(Boolean).join(' · '))}</div>` : ''}
+          <div class="svc">${escapeHtmlStaff(a.service)} ${getApptBadge(a.status)}</div>
+          <div class="acts">${actions}${chat}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+  el.innerHTML = `<h3>${heading}</h3><div class="sub">${sub}</div>${body}`;
+}
+
+function openApptChat(threadId, name){
+  goTo('messages');
+  loadGuidanceInbox().then(() => openGuidanceThread(threadId, name));
+}
+
+// Arrow-key navigation, click selection, and swipe to change month
+function acBindGridInput(){
+  const grid = document.getElementById('apptGrid');
+  grid.addEventListener('click', e => {
+    const c = e.target.closest('.ac-cell');
+    if (c) acSelect(c.dataset.date);
+  });
+  grid.addEventListener('keydown', e => {
+    const c = e.target.closest('.ac-cell');
+    if (!c) return;
+    const d = acParse(c.dataset.date);
+    const step = {ArrowLeft:-1, ArrowRight:1, ArrowUp:-7, ArrowDown:7}[e.key];
+    if (step) { e.preventDefault(); acSelect(acIso(new Date(d.getFullYear(), d.getMonth(), d.getDate() + step)), true); }
+    else if (e.key === 'PageUp' || e.key === 'PageDown') {
+      e.preventDefault();
+      const n = new Date(d.getFullYear(), d.getMonth() + (e.key === 'PageUp' ? -1 : 1), 1);
+      const last = new Date(n.getFullYear(), n.getMonth() + 1, 0).getDate();
+      acSelect(acIso(new Date(n.getFullYear(), n.getMonth(), Math.min(d.getDate(), last))), true);
+    }
+  });
+  let sx = null, sy = null;
+  grid.addEventListener('touchstart', e => { sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, {passive:true});
+  grid.addEventListener('touchend', e => {
+    if (sx === null) return;
+    const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy;
+    sx = sy = null;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.8) acGo(acYear, acMonth + (dx < 0 ? 1 : -1));
+  }, {passive:true});
 }
 
 function updateApptStatus(apptId, newStatus) {
@@ -5170,7 +5590,7 @@ let staffNotifInitialized = false;
       { target: '.nav-item[data-section="messages"]', sidebar: true, title: "Student Messages",
         body: "Students who ask for a counselor message you here. Open a conversation to reply, add private notes or schedule an appointment." },
       { target: '.nav-item[data-section="appointments"]', sidebar: true, title: "Appointments",
-        body: "See the appointments you've scheduled. Students confirm them from their side, and you can mark each one completed or cancel it." },
+        body: "Your scheduled appointments appear on a calendar, on the day they happen. Tap a day to see who's coming, then mark each one completed or cancel it. Switch to List for a table. Students confirm from their side." },
       { target: '.nav-item[data-section="reports"]', sidebar: true, title: "Reports & Analytics",
         body: "Generate a summary report for the last 7 days, 30 days or the semester, or export the raw data." },
       { target: '.nav-item[data-section="settings"]', sidebar: true, title: "Settings",
