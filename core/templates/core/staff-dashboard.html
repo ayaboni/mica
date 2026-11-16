@@ -261,6 +261,94 @@
   .panel-head{display:flex; align-items:center; justify-content:between; justify-content:space-between; margin-bottom:16px;}
   .panel-head h3{font-size:16px; font-weight:700;}
   .panel-head .sub{font-size:12px; color:var(--ink-soft); margin-top:2px;}
+  .chart-summary{font-size:13px; line-height:1.55; color:var(--ink-soft); margin-top:12px; padding:10px 12px; background:var(--paper); border:1px solid var(--line); border-radius:12px;}
+  .chart-summary:empty{display:none;}
+  .chart-summary b{font-weight:700; color:var(--ink);}
+  .chart-summary b.hl-num{background:rgba(135,169,145,.25); border-radius:5px; padding:0 2px;}
+  .chart-summary b.hl-name{background:rgba(156,197,232,.28); border-radius:5px; padding:0 2px;}
+  .chart-summary b.hl-mood{color:var(--sky-deep);}
+  .chart-summary b.hl-up{color:#3F7A4D;} .chart-summary b.hl-down{color:#B5533C;} .chart-summary b.hl-steady{color:var(--ink);}
+  body.dark .chart-summary b.hl-mood{color:#9CC5E8;}
+  body.dark .chart-summary b.hl-up{color:#8FD0A0;} body.dark .chart-summary b.hl-down{color:#F08C74;}
+  body.dark .chart-summary b.hl-num{background:rgba(135,169,145,.2);}
+  /* ---- Mood tab ---- */
+  #mon-mood, #mon-exercises{ display:flex; flex-direction:column; gap:18px; }
+  #mon-mood[hidden], #mon-exercises[hidden]{ display:none; }
+  .md-toolbar{ padding:12px 16px; display:flex; flex-wrap:wrap; align-items:center; gap:10px 16px; }
+  .md-chips{ display:flex; gap:6px; flex-wrap:wrap; background:var(--cream); border:1px solid var(--line); border-radius:999px; padding:4px; }
+  .md-chip{ border:none; background:transparent; color:var(--ink-soft); font-size:13px; font-weight:600; padding:7px 14px; border-radius:999px; transition:background .15s, color .15s; min-height:34px; }
+  .md-chip:hover{ color:var(--ink); background:var(--line); }
+  .md-chip[aria-pressed="true"]{ background:var(--sage-deep); color:#fff; }
+  .md-chip:focus-visible, .md-toggle:focus-visible, .md-legend li:focus-visible{ outline:2px solid var(--sky-deep); outline-offset:2px; }
+  .md-custom{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  .md-custom label{ font-size:12.5px; color:var(--ink-soft); display:flex; align-items:center; gap:6px; }
+  .md-custom .invalid{ border-color:var(--alert); }
+  .md-filters{ flex-basis:100%; display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding-top:10px; border-top:1px solid var(--line); }
+  .md-filters .filter-select{ min-width:0; max-width:100%; }
+  .md-filters .filter-select.on{ border-color:var(--sage-deep); background:rgba(135,169,145,.18); font-weight:600; }
+  .md-rangelabel{ margin-left:auto; font-size:12.5px; color:var(--ink-soft); }
+  .md-kpis{ display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:14px; }
+  .md-kpi{ padding:16px 18px; display:flex; flex-direction:column; gap:4px; }
+  .md-kpi-label{ font-size:12px; font-weight:700; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.03em; }
+  .md-kpi-value{ font-family:'IBM Plex Mono',monospace; font-size:28px; font-weight:600; letter-spacing:-.5px; }
+  .md-kpi-value small{ font-size:14px; color:var(--ink-soft); font-weight:500; }
+  .md-kpi-sub{ font-size:12px; font-weight:600; color:var(--ink-soft); min-height:1.2em; }
+  .md-kpi-sub.up{ color:#4F7A59; } .md-kpi-sub.down{ color:var(--alert); }
+  .md-grid{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; align-items:start; }
+  .md-card{ display:flex; flex-direction:column; min-width:0; }
+  .md-dist{ display:flex; align-items:center; gap:22px; flex-wrap:wrap; margin-bottom:14px; flex:1; }
+  .md-donut{ position:relative; width:190px; height:190px; flex:none; margin:0 auto; }
+  .md-donut-center{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; pointer-events:none; }
+  .md-donut-num{ font-family:'IBM Plex Mono',monospace; font-size:26px; font-weight:600; line-height:1.1; transition:color .15s; }
+  .md-donut-cap{ font-size:11.5px; color:var(--ink-soft); max-width:96px; text-align:center; white-space:nowrap; }
+  .md-legend{ list-style:none; flex:1 1 220px; min-width:200px; display:flex; flex-direction:column; gap:6px; }
+  .md-legend li{ display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:4px 10px; padding:8px 10px; border-radius:12px; cursor:pointer; border:1px solid transparent; transition:background .15s, opacity .15s; }
+  .md-legend li:hover, .md-legend li.hl{ background:var(--cream); border-color:var(--line); }
+  .md-legend li.off{ opacity:.4; }
+  .md-legend .sw{ width:12px; height:12px; border-radius:4px; }
+  .md-legend .nm{ font-size:13.5px; font-weight:600; }
+  .md-legend .vl{ font-size:12.5px; color:var(--ink-soft); font-family:'IBM Plex Mono',monospace; text-align:right; }
+  .md-legend .bar{ grid-column:1 / -1; height:5px; border-radius:99px; background:var(--line); overflow:hidden; }
+  .md-legend .bar i{ display:block; height:100%; border-radius:99px; transition:width .4s ease; }
+  .md-course-wrap{ position:relative; max-height:250px; overflow-y:auto; overscroll-behavior:contain; margin-bottom:14px; padding-right:4px; scrollbar-width:thin; }
+  .md-course-inner{ position:relative; width:100%; }
+  .md-hint{ font-size:11.5px; color:var(--ink-soft); margin:-8px 0 12px; text-align:center; }
+  .md-hint[hidden]{ display:none; }
+  .md-course-wrap[hidden], .md-empty[hidden]{ display:none; }
+  .md-empty{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:6px; min-height:200px; margin-bottom:14px; border:1.5px dashed var(--line); border-radius:14px; color:var(--ink-soft); font-size:14px; font-weight:600; padding:20px; }
+  .md-empty span{ font-weight:400; font-size:12.5px; max-width:300px; }
+  .md-trend-head{ gap:12px; flex-wrap:wrap; }
+  .md-toggles{ display:flex; gap:6px; flex-wrap:wrap; }
+  .md-toggle{ display:inline-flex; align-items:center; gap:7px; border:1.5px solid var(--line); background:var(--paper); color:var(--ink); border-radius:999px; padding:6px 12px; font-size:12.5px; font-weight:600; min-height:32px; }
+  .md-toggle .sw{ width:10px; height:10px; border-radius:3px; }
+  .md-toggle:not(.on){ color:var(--ink-soft); background:transparent; } .md-toggle:not(.on) .sw{ opacity:.35; }
+  .md-trend-wrap{ position:relative; height:280px; margin-bottom:14px; }
+  #mon-mood.loading .md-card, #mon-mood.loading .md-kpi, #mon-exercises.loading .md-card, #mon-exercises.loading .md-kpi{ opacity:.55; transition:opacity .15s; }
+  #mon-mood .md-card, #mon-mood .md-kpi, #mon-exercises .md-card, #mon-exercises .md-kpi{ transition:opacity .2s; }
+  .md-spacer{ flex:1; }
+  #mon-mood [hidden], #mon-exercises [hidden]{ display:none !important; }
+  .md-note{ font-size:12.5px; color:var(--ink-soft); margin:-6px 4px 0; }
+  .md-kpi-text{ font-family:'Baloo 2',sans-serif; font-size:22px; line-height:1.25; padding:3px 0; overflow-wrap:anywhere; }
+  .ex-chart{ position:relative; height:220px; margin-bottom:14px; }
+  .ex-chart.tall{ height:280px; } .ex-chart.short{ height:170px; }
+  .ex-chart[hidden]{ display:none; }
+  .ex-mini-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin-bottom:16px; }
+  .ex-mini{ background:var(--cream); border:1px solid var(--line); border-radius:14px; padding:12px 14px; }
+  .ex-mini .l{ font-size:11.5px; font-weight:700; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.03em; }
+  .ex-mini .v{ font-family:'IBM Plex Mono',monospace; font-size:24px; font-weight:600; margin-top:2px; }
+  .ex-mini .s{ font-size:12px; color:var(--ink-soft); }
+  .ex-share{ display:flex; align-items:center; gap:8px; justify-content:flex-end; }
+  .ex-share i{ display:block; height:6px; border-radius:99px; background:var(--sage-deep); min-width:2px; }
+  .ex-share span.bg{ flex:0 0 70px; height:6px; border-radius:99px; background:var(--line); overflow:hidden; display:block; }
+  #mon-exercises .md-empty{ min-height:160px; }
+  @media (max-width:980px){ .md-grid{ grid-template-columns:minmax(0,1fr); } .md-rangelabel{ margin-left:0; flex-basis:100%; } }
+  @media (max-width:560px){
+    .md-filters .md-spacer{ display:none; } .md-filters > *{ flex:1 1 calc(50% - 8px); } .ex-chart.tall{ height:230px; }
+    .md-chips{ width:100%; border-radius:16px; } .md-chip{ flex:1 1 auto; padding:7px 10px; }
+    .md-kpis{ grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; } .md-kpi{ padding:12px 14px; } .md-kpi-value{ font-size:22px; }
+    .md-donut{ width:170px; height:170px; } .md-trend-wrap{ height:230px; }
+  }
+  @media (prefers-reduced-motion: reduce){ .md-legend .bar i{ transition:none; } }
   .legend-row{display:flex; gap:16px; font-size:12px; color:var(--ink-soft);}
   .legend-row .dot{width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:5px;}
 
@@ -470,7 +558,7 @@
   .note-actions{display:flex; gap:8px; margin-top:12px;}
   .toast{position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px); background:#3A2E28; color:#fff; padding:11px 20px; border-radius:999px; font-size:13.5px; font-weight:600; opacity:0; pointer-events:none; transition:all .25s ease; z-index:300;}
   .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
-  .notes-scroll{max-height:340px; overflow-y:auto; padding-right:4px;}
+  .notes-scroll{max-height:250px; overflow-y:auto; padding-right:4px;}
   .note-row{display:block; width:100%; text-align:left; background:var(--cream); border:none; border-radius:12px; padding:11px 14px; margin-bottom:8px; cursor:pointer; color:inherit; font-family:inherit; transition:background .15s ease;}
   .note-row:hover{background:var(--peach);}
   .note-row .d{font-size:11.5px; font-weight:700; color:var(--ink-soft); display:flex; justify-content:space-between; gap:10px;}
@@ -993,6 +1081,7 @@ html, body{ overflow-x:hidden; }
               </div>
             </div>
             <canvas id="moodTrendChart" height="150"></canvas>
+<p class="chart-summary" id="sum-moodTrendChart"></p>
           </div>
           <div class="card panel">
             <div class="panel-head">
@@ -1002,6 +1091,7 @@ html, body{ overflow-x:hidden; }
               </div>
             </div>
             <canvas id="engagementChart" height="150"></canvas>
+<p class="chart-summary" id="sum-engagementChart"></p>
           </div>
         </div>
 
@@ -1106,85 +1196,162 @@ html, body{ overflow-x:hidden; }
         </div>
 
         <div class="mpanel" id="mon-mood">
-        <div class="grid-2">
-          <div class="card panel">
-            <div class="panel-head">
-              <div><h3>Mood Distribution</h3><div class="sub">Self-reported mood this week, campus-wide</div></div>
+          <!-- Range toolbar -->
+          <div class="card md-toolbar">
+            <div class="md-chips" role="group" aria-label="Date range">
+              <button type="button" class="md-chip" data-range="7"   aria-pressed="true">7 days</button>
+              <button type="button" class="md-chip" data-range="14"  aria-pressed="false">14 days</button>
+              <button type="button" class="md-chip" data-range="30"  aria-pressed="false">30 days</button>
+              <button type="button" class="md-chip" data-range="90"  aria-pressed="false">90 days</button>
+              <button type="button" class="md-chip" data-range="180" aria-pressed="false">6 months</button>
+              <button type="button" class="md-chip" data-range="365" aria-pressed="false">1 year</button>
+              <button type="button" class="md-chip" data-range="custom" aria-pressed="false">Custom</button>
             </div>
-            <canvas id="moodDistChart" height="200"></canvas>
-          </div>
-          <div class="card panel">
-            <div class="panel-head">
-              <div><h3>Mood by Course</h3><div class="sub">Average score out of 5, courses with 3+ students</div></div>
+            <div class="md-custom" id="moodCustomRange" hidden>
+              <label>From <input type="date" class="filter-select" id="moodFrom"></label>
+              <label>To <input type="date" class="filter-select" id="moodTo"></label>
             </div>
-            <canvas id="moodByCollegeChart" height="200"></canvas>
+            <div class="md-rangelabel" id="moodRangeLabel" aria-live="polite"></div>
+            <div class="md-filters">
+              <select class="filter-select" id="moodCourse" aria-label="Filter by course"><option value="">All courses</option></select>
+              <select class="filter-select" id="moodYear" aria-label="Filter by year level"><option value="">All year levels</option></select>
+              <button type="button" class="pill-btn ghost sm" id="moodReset" hidden>Reset filters</button>
+            </div>
           </div>
-        </div>
-        <div class="card panel">
-          <div class="panel-head">
-            <div><h3>30-Day Campus Mood &amp; Check-ins</h3><div class="sub">Average mood and number of check-ins per day</div></div>
+
+          <!-- KPI strip -->
+          <div class="md-kpis" id="mdKpis" aria-live="polite">
+            <div class="card md-kpi"><div class="md-kpi-label">Average mood</div><div class="md-kpi-value" id="kpiAvg">–</div><div class="md-kpi-sub" id="kpiAvgSub">&nbsp;</div></div>
+            <div class="card md-kpi"><div class="md-kpi-label">Check-ins</div><div class="md-kpi-value" id="kpiCount">–</div><div class="md-kpi-sub" id="kpiCountSub">&nbsp;</div></div>
+            <div class="card md-kpi"><div class="md-kpi-label">Students checking in</div><div class="md-kpi-value" id="kpiStudents">–</div><div class="md-kpi-sub" id="kpiStudentsSub">&nbsp;</div></div>
+            <div class="card md-kpi"><div class="md-kpi-label">Low or struggling</div><div class="md-kpi-value" id="kpiLow">–</div><div class="md-kpi-sub" id="kpiLowSub">&nbsp;</div></div>
           </div>
-          <canvas id="moodJournalChart" height="90"></canvas>
-        </div>
+
+          <div class="md-grid" id="mdBody">
+            <!-- Distribution -->
+            <div class="card panel md-card">
+              <div class="panel-head">
+                <div><h3>Mood Distribution</h3><div class="sub" id="moodDistSub">Self-reported mood, campus-wide</div></div>
+              </div>
+              <div class="md-dist">
+                <div class="md-donut"><canvas id="moodDistChart" aria-label="Mood distribution doughnut chart" role="img"></canvas>
+                  <div class="md-donut-center"><div class="md-donut-num" id="moodDistCenter">–</div><div class="md-donut-cap" id="moodDistCenterCap">check-ins</div></div>
+                </div>
+                <ul class="md-legend" id="moodLegend"></ul>
+              </div>
+              <p class="chart-summary" id="sum-moodDistChart"></p>
+            </div>
+
+            <!-- By course -->
+            <div class="card panel md-card">
+              <div class="panel-head">
+                <div><h3>Mood by Course</h3><div class="sub">Average score out of 5 · courses with 3+ students</div></div>
+              </div>
+              <div class="md-course-wrap" id="moodCourseWrap" tabindex="0" aria-label="Courses, scrollable"><div class="md-course-inner" id="moodCourseInner"><canvas id="moodByCollegeChart" aria-label="Average mood by course bar chart" role="img"></canvas></div></div>
+              <div class="md-hint" id="moodCourseHint" hidden>Scroll to see all courses · lowest average first</div>
+              <div class="md-empty" id="moodCourseEmpty" hidden>Not enough data yet.<br><span>A course appears once 3 or more of its students have checked in during this range.</span></div>
+              <p class="chart-summary" id="sum-moodByCollegeChart"></p>
+            </div>
+          </div>
+
+          <!-- Trend -->
+          <div class="card panel md-card md-trend">
+            <div class="panel-head md-trend-head">
+              <div><h3 id="moodJournalTitle">Campus Mood &amp; Check-ins</h3><div class="sub">Average mood and number of check-ins per day</div></div>
+              <div class="md-toggles" role="group" aria-label="Show series">
+                <button type="button" class="md-toggle on" data-series="0" aria-pressed="true"><span class="sw" style="background:#5F7F68"></span>Avg mood</button>
+                <button type="button" class="md-toggle on" data-series="1" aria-pressed="true"><span class="sw" style="background:#9CC5E8"></span>Check-ins</button>
+              </div>
+            </div>
+            <div class="md-trend-wrap"><canvas id="moodJournalChart" aria-label="Daily average mood and check-ins chart" role="img"></canvas></div>
+            <p class="chart-summary" id="sum-moodJournalChart"></p>
+          </div>
         </div>
 
         <div class="mpanel" id="mon-exercises" hidden>
-          <div class="card panel" style="margin-bottom:18px;">
-            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-              <select class="filter-select" id="moPeriod" onchange="loadExerciseStats()">
-                <option value="7">Last 7 days</option>
-                <option value="30" selected>Last 30 days</option>
-                <option value="90">Last 90 days</option>
-              </select>
-              <select class="filter-select" id="moCourse" onchange="loadExerciseStats()"><option value="">All courses</option></select>
-              <select class="filter-select" id="moYear" onchange="loadExerciseStats()">
-                <option value="">All year levels</option>
-              </select>
-              <input class="filter-select" id="moStudent" list="moStudentList" placeholder="Search a student…" autocomplete="off" onchange="moStudentChanged()">
+          <!-- Toolbar: period + filters + export -->
+          <div class="card md-toolbar">
+            <div class="md-chips" role="group" aria-label="Date range">
+              <button type="button" class="md-chip ex-chip" data-range="7"   aria-pressed="false">7 days</button>
+              <button type="button" class="md-chip ex-chip" data-range="14"  aria-pressed="false">14 days</button>
+              <button type="button" class="md-chip ex-chip" data-range="30"  aria-pressed="true">30 days</button>
+              <button type="button" class="md-chip ex-chip" data-range="90"  aria-pressed="false">90 days</button>
+              <button type="button" class="md-chip ex-chip" data-range="180" aria-pressed="false">6 months</button>
+              <button type="button" class="md-chip ex-chip" data-range="custom" aria-pressed="false">Custom</button>
+            </div>
+            <select class="filter-select" id="moSem" aria-label="Semester" hidden><option value="">Semester…</option></select>
+            <!-- real period value (also receives the semester options added by loadSemesters) -->
+            <select id="moPeriod" hidden>
+              <option value="7">Last 7 days</option>
+              <option value="14">Last 14 days</option>
+              <option value="30" selected>Last 30 days</option>
+              <option value="90">Last 90 days</option>
+              <option value="180">Last 180 days</option>
+              <option value="custom">Custom</option>
+            </select>
+            <div class="md-custom" id="exCustomRange" hidden>
+              <label>From <input type="date" class="filter-select" id="exFrom"></label>
+              <label>To <input type="date" class="filter-select" id="exTo"></label>
+            </div>
+            <div class="md-rangelabel" id="exRangeLabel" aria-live="polite"></div>
+            <div class="md-filters">
+              <select class="filter-select" id="moCourse" aria-label="Filter by course"><option value="">All courses</option></select>
+              <select class="filter-select" id="moYear" aria-label="Filter by year level"><option value="">All year levels</option></select>
+              <select class="filter-select" id="moExercise" aria-label="Filter by exercise"><option value="">All exercises</option></select>
+              <input class="filter-select" id="moStudent" list="moStudentList" placeholder="Search a student…" autocomplete="off" aria-label="Search a student">
               <datalist id="moStudentList"></datalist>
-              <select class="filter-select" id="moExercise" onchange="loadExerciseStats()"><option value="">All exercises</option></select>
+              <button type="button" class="pill-btn ghost sm" id="exReset" hidden>Reset filters</button>
+              <span class="md-spacer"></span>
+              <button class="pill-btn solid sm" onclick="exportExercisesExcel()">Export Excel</button>
+              <button class="pill-btn ghost sm" onclick="exportExercisesPdf()">Export PDF</button>
             </div>
+          </div>
+          <div class="md-note">Counts and time only. What students write or type in the exercises is never saved or shown.</div>
 
-  <div style="margin-top:12px; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
-    <div style="font-size:12.5px; color:var(--ink-soft);">Counts and time only. What students write or type in the exercises is never saved or shown.</div>
-    <div style="display:flex; gap:8px;">
-      <button class="pill-btn solid sm" onclick="exportExercisesExcel()">Export Excel</button>
-      <button class="pill-btn ghost sm" onclick="exportExercisesPdf()">Export PDF</button>
-    </div>
-  </div>
-</div>
-
-          <div id="moCards" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:16px; margin-bottom:18px;"></div>
-
-          <div class="card panel" style="margin-bottom:18px;">
-            <div class="panel-head"><div><h3>Sessions per day</h3><div class="sub">By exercise</div></div></div>
-            <canvas id="moDailyChart" height="90"></canvas>
+          <!-- KPI strip -->
+          <div class="md-kpis" id="exKpis" aria-live="polite">
+            <div class="card md-kpi"><div class="md-kpi-label">Sessions</div><div class="md-kpi-value" id="exkSessions">–</div><div class="md-kpi-sub" id="exkSessionsSub">&nbsp;</div></div>
+            <div class="card md-kpi"><div class="md-kpi-label">Time spent</div><div class="md-kpi-value" id="exkTime">–</div><div class="md-kpi-sub" id="exkTimeSub">&nbsp;</div></div>
+            <div class="card md-kpi"><div class="md-kpi-label">Students who used them</div><div class="md-kpi-value" id="exkStudents">–</div><div class="md-kpi-sub" id="exkStudentsSub">&nbsp;</div></div>
+            <div class="card md-kpi"><div class="md-kpi-label">Most popular</div><div class="md-kpi-value md-kpi-text" id="exkTop">–</div><div class="md-kpi-sub" id="exkTopSub">&nbsp;</div></div>
           </div>
 
-          <div class="grid-2 even" style="margin-bottom:18px;">
-            <div class="card panel">
+          <div class="card panel md-card">
+            <div class="panel-head"><div><h3>Sessions per day</h3><div class="sub">By exercise · click a name in the legend to hide it</div></div></div>
+            <div class="ex-chart tall" id="moDailyWrap"><canvas id="moDailyChart" aria-label="Sessions per day, stacked by exercise" role="img"></canvas></div>
+            <div class="md-empty" id="moDailyEmpty" hidden>No sessions in this range.<br><span>Try a longer range, or clear a filter.</span></div>
+            <p class="chart-summary" id="sum-moDailyChart"></p>
+          </div>
+
+          <div class="md-grid">
+            <div class="card panel md-card">
               <div class="panel-head"><div><h3>How often students use them</h3><div class="sub">Number of different days used</div></div></div>
-              <canvas id="moFreqChart" height="170"></canvas>
+              <div class="ex-chart"><canvas id="moFreqChart" aria-label="How often students use the exercises" role="img"></canvas></div>
+              <p class="chart-summary" id="sum-moFreqChart"></p>
             </div>
-            <div class="card panel">
+            <div class="card panel md-card">
               <div class="panel-head"><div><h3>Day of the week</h3><div class="sub">When sessions start</div></div></div>
-              <canvas id="moDowChart" height="170"></canvas>
+              <div class="ex-chart"><canvas id="moDowChart" aria-label="Sessions by day of the week" role="img"></canvas></div>
+              <p class="chart-summary" id="sum-moDowChart"></p>
             </div>
-          </div>
-          <div class="card panel" style="margin-bottom:18px;">
-            <div class="panel-head"><div><h3>Time of day</h3><div class="sub">When sessions start</div></div></div>
-            <canvas id="moHourChart" height="70"></canvas>
           </div>
 
-          <div class="card panel">
-            <div class="panel-head"><div><h3>By exercise</h3></div></div>
+          <div class="card panel md-card">
+            <div class="panel-head"><div><h3>Time of day</h3><div class="sub">When sessions start</div></div></div>
+            <div class="ex-chart short"><canvas id="moHourChart" aria-label="Sessions by hour of the day" role="img"></canvas></div>
+            <p class="chart-summary" id="sum-moHourChart"></p>
+          </div>
+
+          <div class="card panel md-card">
+            <div class="panel-head"><div><h3>By exercise</h3><div class="sub">Sorted by sessions</div></div></div>
             <div id="moTable" style="overflow-x:auto;"></div>
           </div>
 
-          <div class="card panel" id="moQuestCard" style="margin-top:18px;">
+          <div class="card panel md-card" id="moQuestCard">
             <div class="panel-head"><div><h3>Mica Quests</h3><div class="sub">Daily quest checklists. Counts only, no quest names.</div></div></div>
-            <div id="moQuestCards" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; margin-bottom:16px;"></div>
-            <canvas id="moQuestChart" height="110"></canvas>
+            <div id="moQuestCards" class="ex-mini-grid"></div>
+            <div class="ex-chart"><canvas id="moQuestChart" aria-label="Quests done and not done per day" role="img"></canvas></div>
+            <p class="chart-summary" id="sum-moQuestChart"></p>
           </div>
 
         </div>
@@ -1612,21 +1779,25 @@ html, body{ overflow-x:hidden; }
             <div class="card panel">
               <div class="panel-head"><div><h3>Risk flags</h3><div class="sub">Opened and resolved in the period, open now as of today</div></div></div>
               <canvas id="flagChart" height="170"></canvas>
+<p class="chart-summary" id="sum-flagChart"></p>
             </div>
             <div class="card panel">
               <div class="panel-head"><div><h3>Assessment completion</h3><div class="sub">Active students</div></div></div>
               <canvas id="assessChart" height="170"></canvas>
+<p class="chart-summary" id="sum-assessChart"></p>
             </div>
           </div>
 
           <div class="card panel" style="margin-bottom:18px;">
             <div class="panel-head"><div><h3>Appointments by status</h3><div class="sub">Scheduled in the selected period</div></div></div>
             <canvas id="apptChart" height="90"></canvas>
+<p class="chart-summary" id="sum-apptChart"></p>
           </div>
 
           <div class="card panel">
             <div class="panel-head"><div><h3>Check-in rate by course</h3><div class="sub">Share of students who checked in at least once in the selected period</div></div></div>
             <canvas id="programChart" height="110"></canvas>
+<p class="chart-summary" id="sum-programChart"></p>
           </div>
         </div>
       </section>
@@ -1789,7 +1960,8 @@ html, body{ overflow-x:hidden; }
         <div class="kv"><div class="k">Last active</div><div class="v" id="modalLast">—</div></div>
       </div>
       <h3 style="font-size:14px; margin-bottom:10px;">Mood history — last 14 check-ins</h3>
-      <canvas id="modalMoodChart" height="90" style="margin-bottom:18px;"></canvas>
+      <canvas id="modalMoodChart" height="90"></canvas>
+      <p class="chart-summary" id="sum-modalMoodChart" style="margin-bottom:18px;"></p>
       <div class="assess-box" id="modalAssessment">
         <h3>Student check-in (assessment)</h3>
       <div id="assessContent" style="font-size:13px; color:var(--ink-soft);">Loading…</div>
@@ -3051,6 +3223,9 @@ function openStudentModal(code){
     data:{labels:s.history.map((_,i)=>i+1), datasets:[{data:s.history, borderColor:'#5F7F68', backgroundColor:'rgba(135,169,145,0.15)', fill:true, tension:.35, pointRadius:3}]},
     options:{plugins:{legend:{display:false}}, scales:{y:{min:0,max:5,ticks:{stepSize:1}}, x:{display:false}}}
   });
+  setSummary('modalMoodChart', s.history.length
+    ? summarizeMoodLine(s.history, 'these check-ins')
+    : 'No mood check-ins recorded yet.');
 }
 
 function ansClass(a){
@@ -4316,6 +4491,67 @@ function loadDashboard(){
 }
 
 const chartFont = {family:"'Inter',sans-serif", size:11};
+
+/* ---------- Plain-language summaries under each chart ---------- */
+const _esc = t => String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+/* Turns a plain sentence into HTML with the important parts highlighted:
+   names after "Highest:", numbers/percentages with their unit, quoted moods,
+   mood words, and rise/fall wording (green for up, red for down). Text is escaped first. */
+const _HL = new RegExp([
+  '((?:Highest|Lowest|Busiest|Peak|Most popular|Most common)[^:.]{0,28}:\\s)([^(.]+?)(?=\\s\\(|\\.)',   // 1,2 label + name
+  '(\\b(?:backlog shrank|rose|grew|up on|is up|are up)\\b)',                                                         // 3 good trend
+  '(\\b(?:backlog grew|fell|shrank|is down|are down|down on)\\b)',                                                  // 4 bad trend
+  '(\\bstayed steady\\b|\\bmatches\\b)',                                                           // 5 steady
+  '("[^"]+")',                                                                                     // 6 quoted
+  '(\\d(?:[\\d,]*\\d)?(?:\\.\\d+)?%?(?: out of 5| \\/ 5| points?| per day)?(?: (?:check-ins?|sessions?|students?|days?|weeks?|quests?|flags?|appointments?))?)', // 7 number
+  '(\\b(?:very positive|very low|positive|neutral|great or good|low or struggling|low|great|good)\\b)'  // 8 mood word
+].join('|'), 'g');
+function highlightSummary(text){
+  return _esc(text).replace(_HL, (m, lbl, name, up, down, steady, quoted, num, mood) => {
+    if(lbl) return lbl + '<b class="hl-name">' + name + '</b>';
+    if(up) return '<b class="hl-up">' + m + '</b>';
+    if(down) return '<b class="hl-down">' + m + '</b>';
+    if(steady) return '<b class="hl-steady">' + m + '</b>';
+    if(quoted) return '<b class="hl-mood">' + m + '</b>';
+    if(num) return '<b class="hl-num">' + m + '</b>';
+    if(mood) return '<b class="hl-mood">' + m + '</b>';
+    return m;
+  });
+}
+function setSummary(chartId, text){
+  const el = document.getElementById('sum-' + chartId);
+  if(el) el.innerHTML = text ? highlightSummary(text) : '';
+}
+const _nums = a => (a || []).filter(v => v !== null && v !== undefined && !isNaN(v));
+const _sum = a => _nums(a).reduce((x, y) => x + y, 0);
+const _avg = a => { const n = _nums(a); return n.length ? _sum(n) / n.length : null; };
+const _plural = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
+const _pct = (a, b) => b ? Math.round(a / b * 100) : 0;
+function _moodWord(v){
+  return v >= 4.5 ? 'very positive' : v >= 3.5 ? 'positive' : v >= 2.5 ? 'neutral' : v >= 1.5 ? 'low' : 'very low';
+}
+/* Compares the first and second half of a series and says which way it moved. */
+function _direction(values, flat, noun, span){
+  const n = _nums(values);
+  if(n.length < 4) return '';
+  const mid = Math.floor(n.length / 2);
+  const a = _avg(n.slice(0, mid)), b = _avg(n.slice(mid));
+  const diff = b - a;
+  if(Math.abs(diff) < flat) return ' ' + noun + ' stayed steady across ' + (span || 'the period') + '.';
+  return ' ' + noun + ' ' + (diff > 0 ? 'rose' : 'fell') + ' in the second half of ' + (span || 'the period') + '.';
+}
+function summarizeMoodLine(values, span){
+  const avg = _avg(values);
+  if(avg === null) return 'No mood check-ins ' + (span ? 'in ' + span : 'in this period') + ' yet.';
+  return 'Mood averaged ' + avg.toFixed(1) + ' out of 5 (' + _moodWord(avg) + ').' + _direction(values, 0.15, 'It', span);
+}
+function summarizeBars(labels, values, what, unit){
+  const total = _sum(values);
+  if(!total) return 'No ' + what + ' in this period.';
+  let top = 0;
+  values.forEach((v, i) => { if(v > values[top]) top = i; });
+  return _plural(total, unit) + ' in total. Highest: ' + labels[top] + ' (' + values[top] + ', ' + _pct(values[top], total) + '%).';
+}
 function baseGrid(){return {color: getComputedStyle(document.body).getPropertyValue('--line'), drawTicks:false};}
 
 function renderCharts(){
@@ -4329,6 +4565,7 @@ function renderCharts(){
     options:{plugins:{legend:{display:false}}, scales:{y:{min:1,max:5, grid:baseGrid(), ticks:{font:chartFont}}, x:{grid:{display:false}, ticks:{font:chartFont, maxRotation:0}}}}
   });
 
+  setSummary('moodTrendChart', summarizeMoodLine(vals, 'the last 14 days'));
   const ctx2 = document.getElementById('engagementChart');
   if(charts.engagement) charts.engagement.destroy();
   charts.engagement = new Chart(ctx2,{
@@ -4337,43 +4574,269 @@ function renderCharts(){
     options:{plugins:{legend:{display:false}}, scales:{y:{grid:baseGrid(), ticks:{font:chartFont}}, x:{grid:{display:false}, ticks:{font:chartFont}}}}
   });
 
+  (function(){
+    const w = dashData.engagement || [];
+    const counts = w.map(x => x.count), total = _sum(counts);
+    if(!total){ setSummary('engagementChart', 'No check-ins have been submitted in these weeks.'); return; }
+    let top = 0; counts.forEach((v, i) => { if(v > counts[top]) top = i; });
+    const last = counts[counts.length - 1], prev = counts[counts.length - 2];
+    let trend = '';
+    if(counts.length > 1) trend = last > prev ? ' The latest week is up on the one before.' : last < prev ? ' The latest week is down on the one before.' : ' The latest week matches the one before.';
+    setSummary('engagementChart', _plural(total, 'check-in') + ' over ' + _plural(w.length, 'week') + '. Busiest week: ' + w[top].label + ' (' + counts[top] + ').' + trend);
+  })();
   renderDashAlertPreview();
   renderActivityFeed();
 }
 
+/* ---------- Mood tab: range, KPIs, interactive charts ---------- */
+const MOOD_LEVELS = [
+  {name:'Great',      color:'#5F7F68'},
+  {name:'Good',       color:'#87A991'},
+  {name:'Okay',       color:'#9CC5E8'},
+  {name:'Low',        color:'#D9A46B'},
+  {name:'Struggling', color:'#B5533C'}
+];
+let moodRangeValue = '7';
+let moodReq = 0;          // ignores stale responses when the user clicks quickly
+let moodTimer = null;
+let moodDistHidden = [false, false, false, false, false];
+let moodDistState = {dist:[0,0,0,0,0], total:0};
+try{ const saved = localStorage.getItem('micaMoodRange'); if(saved && /^(7|14|30|90|180|365|custom)$/.test(saved)) moodRangeValue = saved; }catch(e){}
+
+function initMoodControls(){
+  const chips = document.querySelectorAll('.md-chip');
+  if(!chips.length || chips[0].dataset.bound) return;
+  chips.forEach(c => { c.dataset.bound = '1'; c.addEventListener('click', () => setMoodRange(c.dataset.range)); });
+  ['moodCourse','moodYear'].forEach(id => {
+    const el = document.getElementById(id);
+    el.addEventListener('mousedown', fillMoodFilters);   // options may arrive after the tab first opened
+    el.addEventListener('focus', fillMoodFilters);
+    el.addEventListener('change', renderMoodCharts);
+  });
+  document.getElementById('moodReset').addEventListener('click', () => {
+    document.getElementById('moodCourse').value = ''; document.getElementById('moodYear').value = ''; renderMoodCharts();
+  });
+  ['moodFrom','moodTo'].forEach(id => document.getElementById(id).addEventListener('change', () => {
+    clearTimeout(moodTimer); moodTimer = setTimeout(renderMoodCharts, 250);
+  }));
+  document.querySelectorAll('.md-toggle').forEach(t => t.addEventListener('click', () => {
+    const ch = charts.moodJournal; if(!ch) return;
+    const i = +t.dataset.series, on = !t.classList.contains('on');
+    t.classList.toggle('on', on); t.setAttribute('aria-pressed', on);
+    ch.setDatasetVisibility(i, on);
+    ch.options.scales[i === 0 ? 'y' : 'y1'].display = on;
+    ch.update();
+  }));
+  syncMoodChips();
+}
+function syncMoodChips(){
+  document.querySelectorAll('.md-chip').forEach(c => c.setAttribute('aria-pressed', c.dataset.range === moodRangeValue));
+  document.getElementById('moodCustomRange').hidden = moodRangeValue !== 'custom';
+}
+function setMoodRange(v){
+  moodRangeValue = v;
+  try{ localStorage.setItem('micaMoodRange', v); }catch(e){}
+  if(v === 'custom'){
+    const from = document.getElementById('moodFrom'), to = document.getElementById('moodTo');
+    const today = new Date(), start = new Date(); start.setDate(start.getDate() - 29);
+    if(!to.value) to.value = ymd(today);
+    if(!from.value) from.value = ymd(start);
+    to.max = from.max = ymd(today);
+  }
+  syncMoodChips();
+  renderMoodCharts();
+}
+function fillMoodFilters(){
+  const c = document.getElementById('moodCourse'), y = document.getElementById('moodYear');
+  if(c.options.length <= 1 && courseOptions.length) courseOptions.forEach(o => c.add(new Option(o.label, o.code)));
+  if(y.options.length <= 1 && yearOptions.length) yearOptions.forEach(o => y.add(new Option(o.label, o.code)));
+  const cv = c.value, yv = y.value;
+  c.classList.toggle('on', !!cv); y.classList.toggle('on', !!yv);
+  document.getElementById('moodReset').hidden = !(cv || yv);
+}
+function moodFilterText(){
+  const c = document.getElementById('moodCourse'), y = document.getElementById('moodYear');
+  return [c.value ? c.options[c.selectedIndex].text : '', y.value ? y.options[y.selectedIndex].text : ''].filter(Boolean).join(', ');
+}
+function moodQuery(){
+  const q = moodBaseQuery();
+  if(!q) return null;
+  const cv = document.getElementById('moodCourse').value, yv = document.getElementById('moodYear').value;
+  if(cv) q.set('course', cv);
+  if(yv) q.set('year', yv);
+  return q;
+}
+function moodBaseQuery(){
+  if(moodRangeValue === 'custom'){
+    const f = document.getElementById('moodFrom'), t = document.getElementById('moodTo');
+    const bad = !f.value || !t.value || f.value > t.value;
+    f.classList.toggle('invalid', bad); t.classList.toggle('invalid', bad);
+    if(bad) return null;
+    return new URLSearchParams({from: f.value, to: t.value});
+  }
+  return new URLSearchParams({days: moodRangeValue});
+}
+function mdSetKpi(id, value, sub, cls){
+  document.getElementById(id).innerHTML = value;
+  const el = document.getElementById(id + 'Sub');
+  el.textContent = sub || ' '; el.className = 'md-kpi-sub' + (cls ? ' ' + cls : '');
+}
+
 function renderMoodCharts(){
   if(!PERMS.view_students) return;
-  fetch("{% url 'staff_mood_stats' %}").then(r=>r.json()).then(d=>{
-    if(charts.moodDist) charts.moodDist.destroy();
-    charts.moodDist = new Chart(document.getElementById('moodDistChart'),{
-      type:'doughnut',
-      data:{labels:['Great','Good','Okay','Low','Struggling'], datasets:[{data:d.distribution, backgroundColor:['#5F7F68','#87A991','#9CC5E8','#D9A46B','#B5533C'], borderWidth:0}]},
-      options:{plugins:{legend:{position:'bottom', labels:{font:chartFont, boxWidth:10, padding:16}}}, cutout:'62%'}
-    });
-
-    if(charts.moodByCollege) charts.moodByCollege.destroy();
-    charts.moodByCollege = new Chart(document.getElementById('moodByCollegeChart'),{
-      type:'bar',
-      data:{labels:d.by_course.map(c=>c.code), datasets:[{data:d.by_course.map(c=>c.avg), backgroundColor:'#87A991', borderRadius:8, maxBarThickness:30}]},
-      options:{indexAxis:'y', plugins:{legend:{display:false}}, scales:{x:{min:0,max:5, grid:baseGrid(), ticks:{font:chartFont}}, y:{grid:{display:false}, ticks:{font:chartFont}}}}
-    });
-
-    if(charts.moodJournal) charts.moodJournal.destroy();
-    charts.moodJournal = new Chart(document.getElementById('moodJournalChart'),{
-      data:{labels:d.daily.labels, datasets:[
-        {type:'line', label:'Avg mood', data:d.daily.avg, spanGaps:true, borderColor:'#5F7F68', yAxisID:'y', tension:.4, pointRadius:0, borderWidth:2},
-        {type:'bar', label:'Check-ins', data:d.daily.count, backgroundColor:'rgba(156,197,232,0.55)', yAxisID:'y1', borderRadius:5, maxBarThickness:10}
-      ]},
-      options:{
-        scales:{
-          y:{min:1,max:5, position:'left', grid:baseGrid(), ticks:{font:chartFont}},
-          y1:{min:0, position:'right', grid:{display:false}, ticks:{font:chartFont, precision:0}},
-          x:{grid:{display:false}, ticks:{font:chartFont, maxTicksLimit:10}}
-        },
-        plugins:{legend:{position:'bottom', labels:{font:chartFont, boxWidth:10}}}
-      }
-    });
+  initMoodControls();
+  fillMoodFilters();
+  const q = moodQuery();
+  if(!q){ document.getElementById('moodRangeLabel').textContent = 'Pick a start date that is on or before the end date.'; return; }
+  const mine = ++moodReq, root = document.getElementById('mon-mood');
+  root.classList.add('loading');
+  fetch("{% url 'staff_mood_stats' %}?" + q).then(r => { if(!r.ok) throw 0; return r.json(); }).then(d => {
+    if(mine !== moodReq) return;
+    root.classList.remove('loading');
+    paintMood(d);
+  }).catch(err => {
+    if(mine !== moodReq) return;
+    root.classList.remove('loading');
+    console.error('Mood stats failed', err);
+    showToast('Could not load mood data. Try again.');
   });
+}
+
+function paintMood(d){
+  const n = d.period.days, dist = d.distribution, total = _sum(dist);
+  const rangeText = moodRangeValue === 'custom' ? d.period.from + ' to ' + d.period.to : 'last ' + _plural(n, 'day');
+  document.getElementById('moodRangeLabel').textContent = d.period.from + ' → ' + d.period.to + ' · ' + _plural(n, 'day') + (moodFilterText() ? ' · ' + moodFilterText() : '');
+  const ft = moodFilterText();
+  document.getElementById('moodDistSub').textContent = 'Self-reported mood, ' + rangeText + (ft ? ', ' + ft : ', campus-wide');
+  document.getElementById('moodJournalTitle').textContent = n + '-Day Campus Mood & Check-ins';
+
+  /* KPIs */
+  const weighted = total ? dist.reduce((a, v, i) => a + v * (5 - i), 0) / total : null;
+  if(weighted === null) mdSetKpi('kpiAvg', '–', 'No check-ins in range');
+  else {
+    let sub = '', cls = '';
+    if(d.prev_avg != null){
+      const diff = weighted - d.prev_avg;
+      if(Math.abs(diff) < 0.05){ sub = 'Steady vs previous ' + n + ' days'; }
+      else { sub = (diff > 0 ? '▲ ' : '▼ ') + Math.abs(diff).toFixed(1) + ' vs previous ' + n + ' days'; cls = diff > 0 ? 'up' : 'down'; }
+    } else sub = _moodWord(weighted).replace(/^./, c => c.toUpperCase());
+    mdSetKpi('kpiAvg', weighted.toFixed(1) + '<small> / 5</small>', sub, cls);
+  }
+  mdSetKpi('kpiCount', total.toLocaleString(), total ? '≈ ' + (total / n).toFixed(1) + ' per day' : 'None in range');
+  mdSetKpi('kpiStudents', d.students_checked_in + '<small> / ' + d.students_total + '</small>',
+           d.students_total ? _pct(d.students_checked_in, d.students_total) + '% of active students' : '');
+  const low = dist[3] + dist[4], lowPct = _pct(low, total);
+  mdSetKpi('kpiLow', total ? lowPct + '%' : '–', total ? _plural(low, 'check-in') : '', total && lowPct >= 25 ? 'down' : '');
+
+  /* Distribution: doughnut + interactive legend */
+  const visible = dist.map((v, i) => moodDistHidden[i] ? 0 : v);
+  if(charts.moodDist) charts.moodDist.destroy();
+  charts.moodDist = new Chart(document.getElementById('moodDistChart'), {
+    type:'doughnut',
+    data:{labels:MOOD_LEVELS.map(l => l.name), datasets:[{data:total ? visible : [1], backgroundColor:total ? MOOD_LEVELS.map(l => l.color) : ['#D9D3BF'], borderWidth:0, hoverOffset:6}]},
+    options:{responsive:true, maintainAspectRatio:false, cutout:'68%', animation:{duration:350},
+      layout:{padding:10},                       // room for the hover pop-out so slices never clip
+      plugins:{legend:{display:false}, tooltip:{enabled:false}},   // details show in the centre instead
+      onHover:(e, els) => { const i = els.length && total ? els[0].index : -1; highlightLegend(i); setDonutCenter(i); }}
+  });
+  moodDistState = {dist:dist, total:total};
+  setDonutCenter(-1);
+  const dcv = document.getElementById('moodDistChart');
+  if(!dcv.dataset.bound){ dcv.dataset.bound = '1'; dcv.addEventListener('mouseleave', () => { highlightLegend(-1); setDonutCenter(-1); }); }
+  const ul = document.getElementById('moodLegend');
+  ul.innerHTML = MOOD_LEVELS.map((l, i) => `
+    <li tabindex="0" role="button" data-i="${i}" aria-pressed="${!moodDistHidden[i]}" class="${moodDistHidden[i] ? 'off' : ''}" title="Click to show or hide">
+      <span class="sw" style="background:${l.color}"></span><span class="nm">${l.name}</span>
+      <span class="vl">${dist[i]} · ${_pct(dist[i], total)}%</span>
+      <span class="bar"><i style="width:${_pct(dist[i], total)}%; background:${l.color}"></i></span>
+    </li>`).join('');
+  ul.querySelectorAll('li').forEach(li => {
+    const i = +li.dataset.i;
+    li.addEventListener('mouseenter', () => focusSlice(i));
+    li.addEventListener('mouseleave', () => focusSlice(-1));
+    li.addEventListener('focus', () => focusSlice(i));
+    li.addEventListener('blur', () => focusSlice(-1));
+    const toggle = () => { moodDistHidden[i] = !moodDistHidden[i]; if(moodDistHidden.every(Boolean)) moodDistHidden = [false,false,false,false,false]; paintMood(d); };
+    li.addEventListener('click', toggle);
+    li.addEventListener('keydown', e => { if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); toggle(); } });
+  });
+  if(!total) setSummary('moodDistChart', 'No mood check-ins in this period.');
+  else {
+    const names = ['great','good','okay','low','struggling'];
+    let top = 0; dist.forEach((v, i) => { if(v > dist[top]) top = i; });
+    setSummary('moodDistChart', 'Most check-ins (' + _pct(dist[top], total) + '%) were "' + names[top] + '". '
+      + _pct(dist[0] + dist[1], total) + '% were great or good, and ' + lowPct + '% were low or struggling, out of ' + _plural(total, 'check-in') + '.');
+  }
+
+  /* By course */
+  const c = d.by_course, wrap = document.getElementById('moodCourseWrap'), empty = document.getElementById('moodCourseEmpty');
+  wrap.hidden = !c.length; empty.hidden = !!c.length;
+  if(!c.length) document.getElementById('moodCourseHint').hidden = true;
+  if(charts.moodByCollege) charts.moodByCollege.destroy();
+  if(c.length){
+    document.getElementById('moodCourseInner').style.height = Math.max(180, c.length * 34 + 30) + 'px';
+    wrap.scrollTop = 0;
+    document.getElementById('moodCourseHint').hidden = c.length * 34 + 30 <= 250;
+    const colorFor = v => v >= 4 ? '#5F7F68' : v >= 3 ? '#87A991' : v >= 2 ? '#D9A46B' : '#B5533C';
+    charts.moodByCollege = new Chart(document.getElementById('moodByCollegeChart'), {
+      type:'bar',
+      data:{labels:c.map(x => x.code), datasets:[{data:c.map(x => x.avg), backgroundColor:c.map(x => colorFor(x.avg)), borderRadius:8, maxBarThickness:28}]},
+      options:{indexAxis:'y', responsive:true, maintainAspectRatio:false,
+        plugins:{legend:{display:false}, tooltip:{callbacks:{label:t => ' Average ' + t.parsed.x.toFixed(2) + ' / 5'}}},
+        scales:{x:{min:0, max:5, grid:baseGrid(), ticks:{font:chartFont, stepSize:1}}, y:{grid:{display:false}, ticks:{font:chartFont}}}}
+    });
+    const lo = c[0], hi = c[c.length - 1];
+    setSummary('moodByCollegeChart', c.length === 1
+      ? lo.code + ' averaged ' + lo.avg.toFixed(1) + ' out of 5.'
+      : 'Highest average: ' + hi.code + ' (' + hi.avg.toFixed(1) + '). Lowest: ' + lo.code + ' (' + lo.avg.toFixed(1) + '), a gap of ' + (hi.avg - lo.avg).toFixed(1) + ' points.');
+  } else setSummary('moodByCollegeChart', 'No course has 3 or more students with check-ins in this period.');
+
+  /* Daily trend */
+  const counts = d.daily.count, avgs = d.daily.avg, ctotal = _sum(counts);
+  if(charts.moodJournal) charts.moodJournal.destroy();
+  charts.moodJournal = new Chart(document.getElementById('moodJournalChart'), {
+    data:{labels:d.daily.labels, datasets:[
+      {type:'line', label:'Avg mood', data:avgs, spanGaps:true, borderColor:'#5F7F68', backgroundColor:'#5F7F68', yAxisID:'y', tension:.35, pointRadius:n <= 31 ? 3 : 0, pointHoverRadius:5, borderWidth:2.5, order:1},
+      {type:'bar', label:'Check-ins', data:counts, backgroundColor:'rgba(156,197,232,0.6)', yAxisID:'y1', borderRadius:5, maxBarThickness:14, order:2}
+    ]},
+    options:{responsive:true, maintainAspectRatio:false, interaction:{mode:'index', intersect:false},
+      scales:{
+        y:{min:1, max:5, position:'left', grid:baseGrid(), ticks:{font:chartFont, stepSize:1}, title:{display:true, text:'Avg mood', font:chartFont}},
+        y1:{min:0, position:'right', grid:{display:false}, ticks:{font:chartFont, precision:0}, title:{display:true, text:'Check-ins', font:chartFont}},
+        x:{grid:{display:false}, ticks:{font:chartFont, maxTicksLimit:n > 60 ? 8 : 10, maxRotation:0, autoSkip:true}}
+      },
+      plugins:{legend:{display:false}, tooltip:{callbacks:{label:t => t.datasetIndex === 0 ? ' Avg mood: ' + (t.parsed.y == null ? '–' : t.parsed.y.toFixed(2)) : ' Check-ins: ' + t.parsed.y}}}}
+  });
+  document.querySelectorAll('.md-toggle').forEach(t => { t.classList.add('on'); t.setAttribute('aria-pressed', 'true'); });
+  if(!ctotal) setSummary('moodJournalChart', 'No mood check-ins in this period.');
+  else {
+    const active = counts.filter(x => x > 0).length;
+    setSummary('moodJournalChart', summarizeMoodLine(avgs) + ' ' + _plural(ctotal, 'check-in') + ' on ' + _plural(active, 'day')
+      + ' (about ' + (ctotal / n).toFixed(1) + ' per day).' + _direction(counts, 0.5, 'Check-in volume'));
+  }
+}
+/* Centre of the doughnut: total by default, the hovered mood's count and share otherwise. */
+function setDonutCenter(i){
+  const num = document.getElementById('moodDistCenter'), cap = document.getElementById('moodDistCenterCap');
+  const {dist, total} = moodDistState;
+  if(i < 0 || moodDistHidden[i]){
+    num.textContent = (total - dist.reduce((a, v, k) => a + (moodDistHidden[k] ? v : 0), 0)).toLocaleString();
+    num.style.color = ''; cap.textContent = 'check-ins';
+  } else {
+    num.textContent = dist[i].toLocaleString();
+    num.style.color = MOOD_LEVELS[i].color;
+    cap.textContent = MOOD_LEVELS[i].name + ' · ' + _pct(dist[i], total) + '%';
+  }
+}
+function focusSlice(i){
+  const ch = charts.moodDist; if(!ch) return;
+  highlightLegend(i);
+  setDonutCenter(i);
+  ch.setActiveElements(i < 0 || moodDistHidden[i] ? [] : [{datasetIndex:0, index:i}]);
+  ch.update('none');
+}
+function highlightLegend(i){
+  document.querySelectorAll('#moodLegend li').forEach(li => li.classList.toggle('hl', +li.dataset.i === i));
 }
 
 /* ---------- Monitoring tabs + Exercises ---------- */
@@ -4393,6 +4856,9 @@ let moLast = null;
 let moStudentId = '';
 const moLabel = s => `${s.name} (${s.student_number})`;
 
+let exReq = 0, exTimer = null, exBound = false;
+try{ const sv = localStorage.getItem('micaExRange'); if(sv && /^(7|14|30|90|180|custom)$/.test(sv)) document.getElementById('moPeriod').value = sv; }catch(e){}
+
 function fillMoFilters(){
   fillYearSelects();
   const course = document.getElementById('moCourse');
@@ -4403,6 +4869,74 @@ function fillMoFilters(){
   if(!list.options.length && studentsReal.length){
     studentsReal.forEach(s => { const o = document.createElement('option'); o.value = moLabel(s); list.appendChild(o); });
   }
+  syncExSemesters();
+  syncExFilterState();
+}
+/* Semesters are added to the hidden #moPeriod select by loadSemesters(); mirror them into a visible picker. */
+function syncExSemesters(){
+  const per = document.getElementById('moPeriod'), sem = document.getElementById('moSem');
+  const opts = [...per.options].filter(o => o.value.startsWith('sem:'));
+  if(sem.options.length - 1 !== opts.length){
+    sem.length = 1;
+    opts.forEach(o => sem.add(new Option(o.text, o.value)));
+  }
+  sem.hidden = !opts.length;
+}
+function syncExFilterState(){
+  const ids = ['moCourse', 'moYear', 'moExercise'];
+  ids.forEach(id => { const el = document.getElementById(id); el.classList.toggle('on', !!el.value); });
+  const st = document.getElementById('moStudent');
+  st.classList.toggle('on', !!moStudentId);
+  document.getElementById('exReset').hidden = !(ids.some(id => document.getElementById(id).value) || moStudentId);
+}
+function syncExChips(){
+  const v = document.getElementById('moPeriod').value;
+  document.querySelectorAll('.ex-chip').forEach(c => c.setAttribute('aria-pressed', c.dataset.range === v));
+  const sem = document.getElementById('moSem');
+  sem.value = v.startsWith('sem:') ? v : '';
+  sem.classList.toggle('on', v.startsWith('sem:'));
+  document.getElementById('exCustomRange').hidden = v !== 'custom';
+}
+function setExRange(v){
+  const per = document.getElementById('moPeriod');
+  if(![...per.options].some(o => o.value === v)) return;
+  per.value = v;
+  try{ localStorage.setItem('micaExRange', v); }catch(e){}
+  if(v === 'custom'){
+    const from = document.getElementById('exFrom'), to = document.getElementById('exTo');
+    const today = new Date(), start = new Date(); start.setDate(start.getDate() - 29);
+    if(!to.value) to.value = ymd(today);
+    if(!from.value) from.value = ymd(start);
+    to.max = from.max = ymd(today);
+  }
+  syncExChips();
+  loadExerciseStats();
+}
+function exRange(){
+  if(document.getElementById('moPeriod').value === 'custom'){
+    const f = document.getElementById('exFrom'), t = document.getElementById('exTo');
+    const bad = !f.value || !t.value || f.value > t.value;
+    f.classList.toggle('invalid', bad); t.classList.toggle('invalid', bad);
+    return bad ? null : {from: f.value, to: t.value};
+  }
+  return periodRange('moPeriod');
+}
+function initExerciseControls(){
+  if(exBound) return;
+  exBound = true;
+  document.querySelectorAll('.ex-chip').forEach(c => c.addEventListener('click', () => setExRange(c.dataset.range)));
+  document.getElementById('moSem').addEventListener('change', e => { if(e.target.value) setExRange(e.target.value); });
+  ['exFrom', 'exTo'].forEach(id => document.getElementById(id).addEventListener('change', () => {
+    clearTimeout(exTimer); exTimer = setTimeout(loadExerciseStats, 250);
+  }));
+  ['moCourse', 'moYear', 'moExercise'].forEach(id => document.getElementById(id).addEventListener('change', loadExerciseStats));
+  document.getElementById('moStudent').addEventListener('change', moStudentChanged);
+  document.getElementById('exReset').addEventListener('click', () => {
+    ['moCourse', 'moYear', 'moExercise', 'moStudent'].forEach(id => document.getElementById(id).value = '');
+    moStudentId = '';
+    loadExerciseStats();
+  });
+  syncExChips();
 }
 function moStudentChanged(){
   const v = document.getElementById('moStudent').value.trim();
@@ -4414,98 +4948,157 @@ function moStudentChanged(){
 
 function loadExerciseStats(){
   if(!PERMS.view_students) return;
+  initExerciseControls();
   fillMoFilters();
-  const r = periodRange('moPeriod');
+  syncExChips();
+  const r = exRange();
+  if(!r){ document.getElementById('exRangeLabel').textContent = 'Pick a start date that is on or before the end date.'; return; }
   const q = new URLSearchParams({from: r.from, to: r.to,
     course: document.getElementById('moCourse').value,
     year: document.getElementById('moYear').value,
     exercise: document.getElementById('moExercise').value,
     student: moStudentId,});
+  const mine = ++exReq, root = document.getElementById('mon-exercises');
+  root.classList.add('loading');
   fetch("{% url 'staff_exercise_stats' %}?" + q)
-    .then(x => x.json()).then(renderExerciseStats)
-    .catch(() => showToast('Could not load exercise stats'));
+    .then(x => { if(!x.ok) throw new Error('HTTP ' + x.status); return x.json(); })
+    .then(d => { if(mine !== exReq) return; root.classList.remove('loading'); renderExerciseStats(d); })
+    .catch(err => { if(mine !== exReq) return; root.classList.remove('loading'); console.error('Exercise stats failed', err); showToast('Could not load exercise stats'); });
 }
 
 function fmtDur(sec){ return sec < 60 ? sec + ' s' : (sec / 60).toFixed(1) + ' min'; }
+function exSetKpi(id, value, sub, cls){
+  document.getElementById(id).innerHTML = value;
+  const el = document.getElementById(id + 'Sub');
+  el.textContent = sub || ' '; el.className = 'md-kpi-sub' + (cls ? ' ' + cls : '');
+}
+function exFilterText(){
+  return ['moCourse', 'moYear', 'moExercise'].map(id => { const e = document.getElementById(id); return e.value ? e.options[e.selectedIndex].text : ''; })
+    .concat(moStudentId ? [document.getElementById('moStudent').value] : []).filter(Boolean).join(' · ');
+}
 
 function renderExerciseStats(d){
   moLast = d;
   const exSel = document.getElementById('moExercise');
-  if(exSel.options.length <= 1) d.options.forEach(o => exSel.add(new Option(o.label, o.key)));
+  if(exSel.options.length <= 1){ d.options.forEach(o => exSel.add(new Option(o.label, o.key))); exSel.value = d.exercise || ''; }
+  syncExFilterState();
   document.getElementById('moQuestCard').hidden = !!d.exercise;
-  const t = d.totals;
-  const card = (label, value, sub) => `
-    <div class="card panel">
-      <div style="font-size:12.5px; font-weight:700; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.03em;">${label}</div>
-      <div style="font-size:34px; font-weight:700; margin:6px 0 2px;">${value}</div>
-      <div style="font-size:12.5px; color:var(--ink-soft);">${sub}</div>
-    </div>`;
-  document.getElementById('moCards').innerHTML =
-    card('Sessions', t.sessions, 'in this period') +
-    card('Time spent', t.minutes + ' min', 'avg ' + fmtDur(t.avg_seconds) + ' per session') +
-    card('Students who used them', t.adoption == null ? '–' : t.adoption + '%', t.active_students + ' of ' + t.total_students + ' students') ;
+  const t = d.totals, n = d.period.days || d.daily.labels.length;
+  const ft = exFilterText();
+  document.getElementById('exRangeLabel').textContent = d.period.from + ' → ' + d.period.to + ' · ' + _plural(n, 'day') + (ft ? ' · ' + ft : '');
+
+  /* KPIs */
+  let sub = '', cls = '';
+  if(d.prev){
+    const diff = t.sessions - d.prev.sessions;
+    if(d.prev.sessions === 0 && t.sessions === 0) sub = 'None in the previous ' + n + ' days either';
+    else if(d.prev.sessions === 0) sub = 'None in the previous ' + n + ' days';
+    else if(diff === 0) sub = 'Same as previous ' + n + ' days';
+    else { sub = (diff > 0 ? '▲ ' : '▼ ') + Math.abs(Math.round(diff / d.prev.sessions * 100)) + '% vs previous ' + n + ' days'; cls = diff > 0 ? 'up' : 'down'; }
+  }
+  exSetKpi('exkSessions', t.sessions.toLocaleString(), sub, cls);
+  exSetKpi('exkTime', t.minutes.toLocaleString() + '<small> min</small>', t.sessions ? 'avg ' + fmtDur(t.avg_seconds) + ' per session' : 'No sessions yet');
+  exSetKpi('exkStudents', t.adoption == null ? '–' : t.adoption + '%', t.active_students + ' of ' + t.total_students + ' students');
+  const ranked = d.exercises.slice().sort((a, b) => b.sessions - a.sessions);
+  if(ranked.length && ranked[0].sessions) exSetKpi('exkTop', escapeHtmlStaff(ranked[0].label), ranked[0].sessions + ' sessions · ' + _pct(ranked[0].sessions, t.sessions) + '%');
+  else exSetKpi('exkTop', '–', 'No sessions yet');
 
   const colors = ['#5F7F68','#9CC5E8','#D9A46B','#B5533C','#786251','#87A991'];
-  if(charts.moDaily) charts.moDaily.destroy();
-  charts.moDaily = new Chart(document.getElementById('moDailyChart'), {
-    type:'bar',
-    data:{labels:d.daily.labels.map(x => x.slice(5)),
-          datasets:d.daily.series.map((s, i) => ({label:s.label, data:s.data,
-            backgroundColor:colors[i % colors.length], borderRadius:4, maxBarThickness:18}))},
-    options:{plugins:{legend:{position:'bottom', labels:{font:chartFont, boxWidth:10}}},
-             scales:{x:{stacked:true, grid:{display:false}, ticks:{font:chartFont, maxTicksLimit:12}},
-                     y:{stacked:true, beginAtZero:true, grid:baseGrid(), ticks:{precision:0, font:chartFont}}}}
-  });
+  const none = !t.sessions;
+  const fontOpt = {font: chartFont};
 
+  /* Sessions per day */
+  document.getElementById('moDailyWrap').hidden = none;
+  document.getElementById('moDailyEmpty').hidden = !none;
+  if(charts.moDaily) charts.moDaily.destroy();
+  if(!none){
+    charts.moDaily = new Chart(document.getElementById('moDailyChart'), {
+      type:'bar',
+      data:{labels:d.daily.labels.map(x => x.slice(5)),
+            datasets:d.daily.series.map((s, i) => ({label:s.label, data:s.data,
+              backgroundColor:colors[i % colors.length], borderRadius:4, maxBarThickness:18}))},
+      options:{responsive:true, maintainAspectRatio:false, interaction:{mode:'index', intersect:false},
+               plugins:{legend:{position:'bottom', labels:{font:chartFont, boxWidth:10, usePointStyle:true}}},
+               scales:{x:{stacked:true, grid:{display:false}, ticks:{font:chartFont, maxTicksLimit:12, maxRotation:0}},
+                       y:{stacked:true, beginAtZero:true, grid:baseGrid(), ticks:{precision:0, font:chartFont}}}}
+    });
+  }
+
+  /* Frequency */
   if(charts.moFreq) charts.moFreq.destroy();
   charts.moFreq = new Chart(document.getElementById('moFreqChart'), {
     type:'bar',
     data:{labels:d.frequency.map(f => f.label),
-          datasets:[{data:d.frequency.map(f => f.students), backgroundColor:'#87A991', borderRadius:8, maxBarThickness:46}]},
-    options:{plugins:{legend:{display:false}},
+          datasets:[{data:d.frequency.map(f => f.students), backgroundColor:['#D9D3BF','#9CC5E8','#87A991','#5F7F68'], borderRadius:8, maxBarThickness:46}]},
+    options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}, tooltip:{callbacks:{label:c => ' ' + c.parsed.y + ' students'}}},
              scales:{y:{beginAtZero:true, grid:baseGrid(), ticks:{precision:0, font:chartFont}},
                      x:{grid:{display:false}, ticks:{font:chartFont}}}}
   });
 
+  /* Time of day */
   if(charts.moHour) charts.moHour.destroy();
   charts.moHour = new Chart(document.getElementById('moHourChart'), {
     type:'bar',
     data:{labels:d.by_hour.map((_, h) => h + ':00'),
           datasets:[{data:d.by_hour, backgroundColor:'#9CC5E8', borderRadius:4, maxBarThickness:14}]},
-    options:{plugins:{legend:{display:false}},
+    options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
              scales:{y:{beginAtZero:true, grid:baseGrid(), ticks:{precision:0, font:chartFont}},
-                     x:{grid:{display:false}, ticks:{font:chartFont, maxTicksLimit:8}}}}
+                     x:{grid:{display:false}, ticks:{font:chartFont, maxTicksLimit:8, maxRotation:0}}}}
   });
 
-  document.getElementById('moTable').innerHTML = `<table class="rep-table">
-    <tr><th>Exercise</th><th class="num">Sessions</th><th class="num">Students</th><th class="num">Total time</th><th class="num">Avg per session</th><th class="num">Extra</th><th class="num">Last used</th></tr>
-    ${d.exercises.map(e => `<tr>
-      <td>${e.label}</td><td class="num">${e.sessions}</td><td class="num">${e.students}</td>
-      <td class="num">${e.minutes} min</td><td class="num">${e.sessions ? fmtDur(e.avg_seconds) : '–'}</td>
-      <td class="num">${e.count_label ? e.count + ' ' + e.count_label : '–'}</td>
-      <td class="num">${e.last_used || '–'}</td></tr>`).join('')}
-  </table>`;
-
+  /* Day of week */
   if(charts.moDow) charts.moDow.destroy();
   charts.moDow = new Chart(document.getElementById('moDowChart'), {
     type:'bar',
     data:{labels:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
           datasets:[{data:d.by_weekday, backgroundColor:'#D9A46B', borderRadius:8, maxBarThickness:36}]},
-    options:{plugins:{legend:{display:false}},
+    options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
              scales:{y:{beginAtZero:true, grid:baseGrid(), ticks:{precision:0, font:chartFont}},
                      x:{grid:{display:false}, ticks:{font:chartFont}}}}
   });
 
+  /* By-exercise table with a share bar */
+  const maxS = Math.max(1, ...ranked.map(e => e.sessions));
+  document.getElementById('moTable').innerHTML = `<table class="rep-table">
+    <tr><th>Exercise</th><th class="num">Sessions</th><th class="num">Students</th><th class="num">Total time</th><th class="num">Avg per session</th><th class="num">Extra</th><th class="num">Last used</th></tr>
+    ${ranked.map(e => `<tr>
+      <td>${escapeHtmlStaff(e.label)}</td>
+      <td class="num"><div class="ex-share"><b>${e.sessions}</b><span class="bg"><i style="width:${_pct(e.sessions, maxS)}%"></i></span></div></td>
+      <td class="num">${e.students}</td>
+      <td class="num">${e.minutes} min</td><td class="num">${e.sessions ? fmtDur(e.avg_seconds) : '–'}</td>
+      <td class="num">${e.count_label ? e.count + ' ' + escapeHtmlStaff(e.count_label) : '–'}</td>
+      <td class="num">${e.last_used || '–'}</td></tr>`).join('')}
+  </table>`;
+
+  /* Written summaries */
+  (function(){
+    const totals = d.daily.series.map(x => ({label: x.label, n: _sum(x.data)}));
+    const all = _sum(totals.map(x => x.n));
+    if(!all){ setSummary('moDailyChart', 'No exercise sessions in this period.'); }
+    else {
+      const perDay = d.daily.labels.map((_, i) => d.daily.series.reduce((a, x) => a + (x.data[i] || 0), 0));
+      let bd = 0; perDay.forEach((v, i) => { if(v > perDay[bd]) bd = i; });
+      totals.sort((a, b) => b.n - a.n);
+      setSummary('moDailyChart', _plural(all, 'session') + ' in total. Most popular: ' + totals[0].label + ' (' + _pct(totals[0].n, all) + '%). Busiest day: '
+        + d.daily.labels[bd] + ' (' + perDay[bd] + ').' + _direction(perDay, 0.5, 'Daily use'));
+    }
+    const fv = d.frequency.map(f => f.students), ft2 = _sum(fv);
+    if(!ft2) setSummary('moFreqChart', 'No students used the exercises in this period.');
+    else {
+      let top = 0; fv.forEach((v, i) => { if(v > fv[top]) top = i; });
+      setSummary('moFreqChart', 'Most students (' + fv[top] + ' of ' + ft2 + ', ' + _pct(fv[top], ft2) + '%) fall in the "' + d.frequency[top].label + '" group.');
+    }
+    const days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+    setSummary('moDowChart', summarizeBars(days, d.by_weekday, 'sessions', 'session').replace('Highest: ', 'Busiest day: '));
+    const hrs = d.by_hour.map((_, h) => h + ':00');
+    setSummary('moHourChart', summarizeBars(hrs, d.by_hour, 'sessions', 'session').replace('Highest: ', 'Peak hour: '));
+  })();
   renderQuestStats(d.quests);
 }
 
 function renderQuestStats(q){
   const mini = (label, value, sub) => `
-    <div style="background:var(--paper); border:1px solid var(--line); border-radius:14px; padding:14px 16px;">
-      <div style="font-size:12px; font-weight:700; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.03em;">${label}</div>
-      <div style="font-size:28px; font-weight:700; margin:4px 0 0;">${value}</div>
-      <div style="font-size:12px; color:var(--ink-soft);">${sub}</div>
-    </div>`;
+    <div class="ex-mini"><div class="l">${label}</div><div class="v">${value}</div><div class="s">${sub}</div></div>`;
   document.getElementById('moQuestCards').innerHTML =
     mini('Quests done', q.done, 'of ' + q.assigned + ' shown to students') +
     mini('Completion rate', q.rate == null ? '–' : q.rate + '%', 'on days students opened it') +
@@ -4518,10 +5111,15 @@ function renderQuestStats(q){
           datasets:[
             {label:'Done', data:q.done_per_day, backgroundColor:'#87A991', borderRadius:4, maxBarThickness:18},
             {label:'Not done', data:q.open_per_day, backgroundColor:'#D9D3BF', borderRadius:4, maxBarThickness:18}]},
-    options:{plugins:{legend:{position:'bottom', labels:{font:chartFont, boxWidth:10}}},
-             scales:{x:{stacked:true, grid:{display:false}, ticks:{font:chartFont, maxTicksLimit:12}},
+    options:{responsive:true, maintainAspectRatio:false, interaction:{mode:'index', intersect:false},
+             plugins:{legend:{position:'bottom', labels:{font:chartFont, boxWidth:10, usePointStyle:true}}},
+             scales:{x:{stacked:true, grid:{display:false}, ticks:{font:chartFont, maxTicksLimit:12, maxRotation:0}},
                      y:{stacked:true, beginAtZero:true, grid:baseGrid(), ticks:{precision:0, font:chartFont}}}}
   });
+  const dn = _sum(q.done_per_day), op = _sum(q.open_per_day), tot = dn + op;
+  setSummary('moQuestChart', tot
+    ? 'Students completed ' + dn + ' of ' + tot + ' quests (' + _pct(dn, tot) + '%) in this period.' + _direction(q.done_per_day, 0.5, 'Daily completions')
+    : 'No quests were shown to students in this period.');
 }
 
 function exportExercisesExcel(){
@@ -4892,7 +5490,20 @@ function renderAnalytics(d){
     options:{cutout:'62%', plugins:{legend:{position:'bottom', labels:{font:chartFont, boxWidth:10, padding:16}}}}
   });
 
+  setSummary('apptChart', summarizeBars(d.appointments.map(x => names[x.status]), d.appointments.map(x => x.count), 'appointments', 'appointment').replace('Highest: ', 'Most common status: '));
+  setSummary('flagChart', f.opened + ' flags were opened and ' + f.resolved + ' resolved. '
+    + (f.open_now ? f.open_now + ' still need action.' : 'None are waiting for action.')
+    + (f.opened > f.resolved ? ' More were opened than closed, so the backlog grew.' : f.resolved > f.opened ? ' More were closed than opened, so the backlog shrank.' : ''));
+  setSummary('assessChart', a.total
+    ? a.completed + ' of ' + _plural(a.total, 'student') + ' (' + _pct(a.completed, a.total) + '%) completed the assessment; ' + Math.max(a.total - a.completed, 0) + ' have not yet.'
+    : 'There are no active students to assess.');
   const rows = d.checkin_by_course || [];
+  if(rows.length){
+    const srt = rows.slice().sort((x, y) => x.rate - y.rate), lo = srt[0], hi = srt[srt.length - 1];
+    setSummary('programChart', rows.length === 1
+      ? lo.code + ' had a check-in rate of ' + lo.rate + '%.'
+      : 'Highest check-in rate: ' + hi.code + ' (' + hi.rate + '%). Lowest: ' + lo.code + ' (' + lo.rate + '%). Average across courses: ' + Math.round(_avg(rows.map(r => r.rate))) + '%.');
+  } else setSummary('programChart', 'No course data for this period.');
   if(charts.program) charts.program.destroy();
   charts.program = new Chart(document.getElementById('programChart'), {
     type:'bar',

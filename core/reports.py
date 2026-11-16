@@ -361,8 +361,16 @@ def exercise_stats(request):
         "open_per_day": [q_assigned.get(x, 0) - q_done.get(x, 0) for x in days],
     }
 
+    # Same-length window straight before this one, for the "vs previous" comparison.
+    span = (end - start).days + 1
+    p0, p1 = _day_bounds(start - timedelta(days=span), start - timedelta(days=1))
+    prev_sessions = ExerciseSession.objects.filter(user__in=students, created_at__range=(p0, p1))
+    if ex_filter:
+        prev_sessions = prev_sessions.filter(exercise=ex_filter)
+
     return JsonResponse({
-        "period": {"from": start.isoformat(), "to": end.isoformat()},
+        "period": {"from": start.isoformat(), "to": end.isoformat(), "days": span},
+        "prev": {"sessions": prev_sessions.count()},
         "totals": {
             "sessions": all_sessions,
             "minutes": round(all_seconds / 60, 1),

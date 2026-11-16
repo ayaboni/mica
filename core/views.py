@@ -4422,41 +4422,88 @@ def staff_dashboard_stats(request):
 @require_perm('view_students')
 def staff_mood_stats(request):
     today = timezone.localdate()
-    week_start = today - timedelta(days=6)
-    month_start = today - timedelta(days=29)
+    # Date range: ?from=YYYY-MM-DD&to=YYYY-MM-DD, or ?days=N. Defaults to the last 7 days
+    # for the distribution/course charts (the old behaviour) when nothing is sent.
+    def _parse(v):
+        try:
+            return datetime.strptime(v, '%Y-%m-%d').date()
+        except (TypeError, ValueError):
+            return None
+    end = _parse(request.GET.get('to')) or today
+    start = _parse(request.GET.get('from'))
+    if start is None:
+        try:
+            n = int(request.GET.get('days', 7))
+        except ValueError:
+            n = 7
+        start = end - timedelta(days=min(max(n, 1), MOOD_STATS_MAX_DAYS) - 1)
+    end = min(end, today)
+    if start > end:
+        start = end
+    if (end - start).days + 1 > MOOD_STATS_MAX_DAYS:
+        start = end - timedelta(days=MOOD_STATS_MAX_DAYS - 1)
+    n_days = (end - start).days + 1
+
+    # Optional filters: ?course=<code>&year=<year level>
+    students = _active_students()
+    course_f = (request.GET.get('course') or '').strip()
+    year_f = (request.GET.get('year') or '').strip()
+    if course_f:
+        students = students.filter(profile__course=course_f)
+    if year_f:
+        students = students.filter(profile__year_level=year_f)
+
     rows = list(MoodEntry.objects.filter(
-        user__in=_active_students(),
+        user__in=students, date__gte=start, date__lte=end,
     ).values_list('date', 'mood', 'user_id', 'user__profile__course'))
+
+    # Same-length window straight before this one, so the page can say "up/down vs previous".
+    prev_scores = [
+        sc for sc in (_mood_score(m) for m in MoodEntry.objects.filter(
+            user__in=students,
+            date__gte=start - timedelta(days=n_days), date__lt=start,
+        ).values_list('mood', flat=True)) if sc is not None and 1 <= sc <= 5
+    ]
 
     dist = [0, 0, 0, 0, 0]      # great, good, okay, low, struggling
     by_course = {}
     by_day = {}
+    student_ids = set()
     for d, mood, uid, course in rows:
         score = _mood_score(mood)
-        if score is None:
+        if score is None or not 1 <= score <= 5:
             continue
+        student_ids.add(uid)
         by_day.setdefault(d, []).append(score)
-        if d >= week_start:
-            dist[5 - score] += 1
-            c = by_course.setdefault(course or "Not set", {"scores": [], "students": set()})
-            c["scores"].append(score)
-            c["students"].add(uid)
+        dist[5 - score] += 1
+        c = by_course.setdefault(course or "Not set", {"scores": [], "students": set()})
+        c["scores"].append(score)
+        c["students"].add(uid)
 
     course_data = [
         {"code": code, "avg": round(sum(v["scores"]) / len(v["scores"]), 2)}
         for code, v in by_course.items() if len(v["students"]) >= 3
     ]
     course_data.sort(key=lambda c: c["avg"])
-    days = [month_start + timedelta(days=i) for i in range(30)]
+    days = [start + timedelta(days=i) for i in range(n_days)]
+    label_fmt = "%b %d" if n_days <= 180 else "%b %d '%y"
     return JsonResponse({
+        "period": {"from": start.isoformat(), "to": end.isoformat(), "days": n_days},
+        "filters": {"course": course_f, "year": year_f},
         "distribution": dist,
         "by_course": course_data,
+        "prev_avg": round(sum(prev_scores) / len(prev_scores), 2) if prev_scores else None,
+        "students_checked_in": len(student_ids),
+        "students_total": students.count(),
         "daily": {
-            "labels": [d.strftime("%b %d") for d in days],
+            "labels": [d.strftime(label_fmt) for d in days],
             "avg": [round(sum(by_day[d]) / len(by_day[d]), 2) if d in by_day else None for d in days],
             "count": [len(by_day.get(d, [])) for d in days],
         },
     })
+
+
+MOOD_STATS_MAX_DAYS = 365
 
 
 ACCESS_LOG_WINDOW = timedelta(minutes=10)
