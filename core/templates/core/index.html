@@ -95,35 +95,45 @@ html[data-theme="dark"] .intro-gif--dark{display:block;}
    Features (cards move sideways while you scroll)
    ========================================================================== */
 
-.features {
- margin-top: calc((100svh - var(--nav-h, 72px) - 510px) / -2 + 40px);
-}
-
-.features-scroll {
-  position: relative;
-  height: calc(100svh + var(--steps, 3) * 70vh);
-}
-
-.features-sticky {
-  position: sticky;
-  top: var(--nav-h, 72px);
-  height: calc(100svh - var(--nav-h, 72px));
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 28px;
-  overflow: hidden;
-}
+.features { padding: 40px 0 0; }
 
 .features-track {
   --card-w: min(1000px, 80vw);
   --card-gap: 28px;
+  position: relative;
   display: flex;
   gap: var(--card-gap);
-  padding-left: calc((100% - var(--card-w)) / 2);
-  transition: transform 0.45s cubic-bezier(0.22, 0.61, 0.36, 1);
-  will-change: transform;
+  padding: 8px calc((100% - var(--card-w)) / 2) 12px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
 }
+.features-track::-webkit-scrollbar { display: none; }
+.features-track:focus-visible { outline: 3px solid var(--brown-dark); outline-offset: -3px; }
+
+.features-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  margin-top: 20px;
+}
+.features-arrow {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1.5px solid var(--brown);
+  background: transparent;
+  color: var(--ink);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.2s ease, opacity 0.2s ease;
+}
+.features-arrow:hover:not(:disabled) { background: var(--brown); color: #fff; }
+.features-arrow:disabled { opacity: 0.3; cursor: default; }
 
 .feature-card {
   flex: 0 0 var(--card-w);
@@ -134,6 +144,7 @@ html[data-theme="dark"] .intro-gif--dark{display:block;}
   padding: clamp(24px, 4vw, 56px);
   background: var(--card-bg);
   border-radius: var(--radius-lg);
+  scroll-snap-align: center;
 }
 
 /* left: image placeholder */
@@ -186,6 +197,7 @@ html[data-theme="dark"] .intro-gif--dark{display:block;}
   .features-track { --card-w: 86vw; --card-gap: 16px; }
   .feature-card { grid-template-columns: 1fr; text-align: center; padding: 22px; gap: 20px; }
   .feature-text p { margin-inline: auto; }
+  .features-arrow { display: none; }   /* phones swipe */
 }
 
 /* ==========================================================================
@@ -325,55 +337,54 @@ html[data-theme="dark"] .features-dot:not(.is-active) { background: var(--line);
 
 <!-- ============================= FEATURES ============================= -->
 <section class="features" id="features" aria-label="Features">
-  <div class="features-scroll" id="features-scroll" style="--steps: 3;">
-    <div class="features-sticky">
+  <div class="features-track" id="features-track" tabindex="0" role="region" aria-label="Features, swipe or use the arrows">
 
-      <div class="features-track" id="features-track">
-
-        <article class="feature-card" style="--card-bg: var(--card-yellow);">
-          <div class="feature-media">
-            <img src="{% static 'core/images/ss-chat.png' %}" alt="AI Chatbot feature">
-          </div>
-          <div class="feature-text">
-            <h3>AI Chatbot</h3>
-            <p>Talk to Mica about your day or your worries.</p>
-          </div>
-        </article>
-
-        <article class="feature-card" style="--card-bg: var(--card-green);">
-          <div class="feature-media">
-            <img src="{% static 'core/images/ss-guidance.png' %}" alt="Connect with Guidance feature">
-          </div>
-          <div class="feature-text">
-            <h3>Connect with Guidance</h3>
-            <p>Share your thoughts and schedule appointments with the university's guidance office.</p>
-          </div>
-        </article>
-
-        <article class="feature-card" style="--card-bg: var(--card-pink);">
-          <div class="feature-media">
-            <img src="{% static 'core/images/ss-mood.png' %}" alt="Daily mood tracking and diary feature">
-          </div>
-          <div class="feature-text">
-            <h3>Daily Mood Tracking and Diary</h3>
-            <p>Check in daily for your mood and write freely in your private diary.</p>
-          </div>
-        </article>
-
-        <article class="feature-card" style="--card-bg: var(--card-blue);">
-          <div class="feature-media">
-            <img src="{% static 'core/images/ss-micapop.png' %}" alt="Calming exercises feature">
-          </div>
-          <div class="feature-text">
-            <h3>Calming Exercises</h3>
-            <p>Enjoy exercises that calm down your mind and regulate your emotions.</p>
-          </div>
-        </article>
-
+    <article class="feature-card" style="--card-bg: var(--card-yellow);">
+      <div class="feature-media">
+        <img src="{% static 'core/images/ss-chat.png' %}" alt="AI Chatbot feature">
       </div>
+      <div class="feature-text">
+        <h3>AI Chatbot</h3>
+        <p>Talk to Mica about your day or your worries.</p>
+      </div>
+    </article>
 
-      <div class="features-dots" id="features-dots"></div>
-    </div>
+    <article class="feature-card" style="--card-bg: var(--card-green);">
+      <div class="feature-media">
+        <img src="{% static 'core/images/ss-guidance.png' %}" alt="Connect with Guidance feature">
+      </div>
+      <div class="feature-text">
+        <h3>Connect with Guidance</h3>
+        <p>Share your thoughts and schedule appointments with the university's guidance office.</p>
+      </div>
+    </article>
+
+    <article class="feature-card" style="--card-bg: var(--card-pink);">
+      <div class="feature-media">
+        <img src="{% static 'core/images/ss-mood.png' %}" alt="Daily mood tracking and diary feature">
+      </div>
+      <div class="feature-text">
+        <h3>Daily Mood Tracking and Diary</h3>
+        <p>Check in daily for your mood and write freely in your private diary.</p>
+      </div>
+    </article>
+
+    <article class="feature-card" style="--card-bg: var(--card-blue);">
+      <div class="feature-media">
+        <img src="{% static 'core/images/ss-micapop.png' %}" alt="Calming exercises feature">
+      </div>
+      <div class="feature-text">
+        <h3>Calming Exercises</h3>
+        <p>Enjoy exercises that calm down your mind and regulate your emotions.</p>
+      </div>
+    </article>
+
+  </div>
+
+  <div class="features-nav">
+    <button type="button" class="features-arrow" id="features-prev" aria-label="Previous feature">&#8249;</button>
+    <div class="features-dots" id="features-dots"></div>
+    <button type="button" class="features-arrow" id="features-next" aria-label="Next feature">&#8250;</button>
   </div>
 </section>
 
@@ -463,52 +474,59 @@ function initHeroScroll() {
    Features: cards slide sideways as you scroll; dots jump to a card
    -------------------------------------------------------------------------- */
 function initFeatureScroll() {
-  const wrap = document.getElementById("features-scroll");
   const track = document.getElementById("features-track");
   const dotsWrap = document.getElementById("features-dots");
-  const nav = document.querySelector(".navbar");
-  if (!wrap || !track || !dotsWrap) return;
+  const prev = document.getElementById("features-prev");
+  const next = document.getElementById("features-next");
+  if (!track || !dotsWrap) return;
 
-  const stick = wrap.querySelector(".features-sticky");
   const cards = Array.from(track.querySelectorAll(".feature-card"));
   const last = cards.length - 1;
   let ticking = false;
-
-  const navH = () => (nav ? nav.offsetHeight : 72);
-  const range = () => wrap.offsetHeight - stick.offsetHeight;
 
   const dots = cards.map((_, i) => {
     const dot = document.createElement("button");
     dot.type = "button";
     dot.className = "features-dot";
     dot.setAttribute("aria-label", `Show feature ${i + 1}`);
-    dot.addEventListener("click", () => scrollToCard(i));
+    dot.addEventListener("click", () => goTo(i));
     dotsWrap.appendChild(dot);
     return dot;
   });
 
-  function scrollToCard(i) {
-    const top = wrap.getBoundingClientRect().top + window.scrollY - navH();
-    window.scrollTo({ top: top + (i / last) * range(), behavior: "smooth" });
+  function goTo(i) {
+    const c = cards[Math.max(0, Math.min(i, last))];
+    track.scrollTo({ left: c.offsetLeft - (track.clientWidth - c.offsetWidth) / 2, behavior: "smooth" });
+  }
+
+  function current() {
+    const mid = track.scrollLeft + track.clientWidth / 2;
+    let best = 0, bestDist = Infinity;
+    cards.forEach((c, i) => {
+      const d = Math.abs(c.offsetLeft + c.offsetWidth / 2 - mid);
+      if (d < bestDist) { bestDist = d; best = i; }
+    });
+    return best;
   }
 
   function update() {
     ticking = false;
-    const rect = wrap.getBoundingClientRect();
-    const p = Math.min(Math.max((navH() - rect.top) / range(), 0), 1);
-    const gap = parseFloat(getComputedStyle(track).columnGap) || 0;
-    const step = cards[0].offsetWidth + gap;
-
-    track.style.transform = `translateX(${-p * last * step}px)`;
-
-    const active = Math.round(p * last);
+    const active = current();
     dots.forEach((d, i) => d.classList.toggle("is-active", i === active));
+    if (prev) prev.disabled = active === 0;
+    if (next) next.disabled = active === last;
   }
 
-  window.addEventListener("scroll", () => {
+  track.addEventListener("scroll", () => {
     if (!ticking) { ticking = true; requestAnimationFrame(update); }
   }, { passive: true });
   window.addEventListener("resize", update);
+  if (prev) prev.addEventListener("click", () => goTo(current() - 1));
+  if (next) next.addEventListener("click", () => goTo(current() + 1));
+  track.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowRight") { e.preventDefault(); goTo(current() + 1); }
+    if (e.key === "ArrowLeft")  { e.preventDefault(); goTo(current() - 1); }
+  });
 
   update();
 }
