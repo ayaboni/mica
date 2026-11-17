@@ -794,6 +794,20 @@
     flex-shrink: 0;
     animation: pulseDot 1.8s ease-in-out infinite;
   }
+  .waiting-banner-floating .banner-close {
+    background: rgba(255,255,255,.18);
+    color: #fff;
+    border: none;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    flex-shrink: 0;
+    margin-left: 4px;
+  }
+  .waiting-banner-floating .banner-close:hover { background: rgba(255,255,255,.32); }
   @keyframes bannerSlideUp {
     from { transform: translateY(100px); opacity: 0; }
     to { transform: translateY(0); opacity: 1; }
@@ -2157,6 +2171,7 @@ html, body{ overflow-x:hidden; }
 <div id="studentWaitingBanner" class="waiting-banner-floating" style="display: none;" onclick="goTo('messages')">
   <span class="banner-dot"></span>
   <span>A student is waiting for a reply.</span>
+  <button type="button" class="banner-close" aria-label="Dismiss" onclick="dismissWaitingBanner(event)">&times;</button>
 </div>
 
 {{ staff_perms|json_script:"staff-perms" }}
@@ -2668,6 +2683,13 @@ function openReferral(code){
   setTimeout(pollReferrals, 800);
 }
 
+let bannerDismissed = false;
+function dismissWaitingBanner(e){
+  e.stopPropagation();   // so it doesn't open Messages
+  bannerDismissed = true;
+  document.getElementById('studentWaitingBanner').style.display = 'none';
+}
+
 function applyInbox(data){
       if(!data || !data.threads) return;
       const waiting = data.threads.filter(t => t.awaiting_reply).length;
@@ -2682,14 +2704,9 @@ function applyInbox(data){
       lastStaffNotifCount = waiting;
       document.getElementById('guidanceNavCount').textContent = waiting;
 
+      if (fresh.length || waiting === 0) bannerDismissed = false;   // a new message brings it back
       const banner = document.getElementById('studentWaitingBanner');
-      if (banner) {
-        if (waiting > 0) {
-          banner.style.display = 'flex';
-        } else {
-          banner.style.display = 'none';
-        }
-      }
+      if (banner) banner.style.display = (waiting > 0 && !bannerDismissed) ? 'flex' : 'none';
 
       const messagesSection = document.getElementById('sec-messages');
       if(messagesSection && messagesSection.classList.contains('active')){

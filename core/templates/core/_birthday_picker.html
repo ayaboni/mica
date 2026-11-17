@@ -1,0 +1,54 @@
+<div class="auth-field auth-field--date">
+  <label class="field-hint" for="bdMonth">Birthday <span>(optional)</span></label>
+  <div class="bd-row" data-bd data-min="{{ birthday_min }}" data-max="{{ birthday_max }}" data-value="{{ form.birthday }}">
+    <select id="bdMonth" aria-label="Birthday month"></select>
+    <select id="bdDay" aria-label="Birthday day"></select>
+    <select id="bdYear" aria-label="Birthday year"></select>
+    <input type="hidden" name="birthday" value="{{ form.birthday }}">
+  </div>
+</div>
+<script>
+(function(){
+  var box = document.querySelector('[data-bd]');
+  if (!box) return;
+  var m = box.querySelector('#bdMonth'), d = box.querySelector('#bdDay'), y = box.querySelector('#bdYear');
+  var out = box.querySelector('input[type="hidden"]');
+  var minY = parseInt((box.dataset.min || '').split('-')[0], 10) || 1950;
+  var maxY = parseInt((box.dataset.max || '').split('-')[0], 10) || new Date().getFullYear();
+  var names = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+  function opt(v, t){ var o = document.createElement('option'); o.value = v; o.textContent = t; return o; }
+
+  m.appendChild(opt('', 'Month'));
+  names.forEach(function(n, i){ m.appendChild(opt(i + 1, n)); });
+  y.appendChild(opt('', 'Year'));
+  for (var i = maxY; i >= minY; i--) y.appendChild(opt(i, i));
+
+  function fillDays(){
+    var keep = d.value;
+    var len = m.value ? new Date(y.value || 2000, m.value, 0).getDate() : 31;
+    d.innerHTML = '';
+    d.appendChild(opt('', 'Day'));
+    for (var i = 1; i <= len; i++) d.appendChild(opt(i, i));
+    if (keep && +keep <= len) d.value = keep;
+  }
+
+  function sync(){
+    var pad = function(n){ return String(n).padStart(2, '0'); };
+    out.value = (m.value && d.value && y.value) ? y.value + '-' + pad(m.value) + '-' + pad(d.value) : '';
+  }
+
+  fillDays();
+  var v = (box.dataset.value || '').split('-');
+  if (v.length === 3) {
+    y.value = parseInt(v[0], 10); m.value = parseInt(v[1], 10);
+    fillDays();
+    d.value = parseInt(v[2], 10);
+  }
+  sync();
+
+  m.addEventListener('change', function(){ fillDays(); sync(); });
+  y.addEventListener('change', function(){ fillDays(); sync(); });
+  d.addEventListener('change', sync);
+})();
+</script>

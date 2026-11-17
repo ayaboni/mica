@@ -795,3 +795,6 @@ html[data-theme="dark"] .auth-field input[type="date"] { color-scheme: dark; }
 @media (max-width: 640px) {
   .footer-nav { grid-template-columns: 1fr; }
 }
+
+.bd-row { display: grid; grid-template-columns: 1.5fr 0.8fr 1fr; gap: 10px; }
+.bd-row select { width: 100%; }

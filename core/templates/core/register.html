@@ -86,7 +86,7 @@
           </div>
 
           <div class="two-col">
-            <div class="auth-field"><input type="text" id="studentNumber" name="student_number" placeholder="Student Number" value="{{ form.student_number }}" inputmode="numeric" maxlength="11" pattern="[0-9]{7}|[0-9]{9}|[0-9]{3}-[0-9]{4}|[0-9]{2}-[0-9]{4}-[0-9]{3}" title="Type your 7 or 9 digit student number. The dashes are added for you." autocomplete="off" required></div>
+            <div class="auth-field"><input type="text" id="studentNumber" name="student_number" placeholder="e.g. 00-0000-000" value="{{ form.student_number }}" inputmode="numeric" maxlength="11" pattern="[0-9]{7}|[0-9]{9}|[0-9]{3}-[0-9]{4}|[0-9]{2}-[0-9]{4}-[0-9]{3}" title="Type your 7 or 9 digit student number. The dashes are added for you." autocomplete="off" required></div>
             <div class="auth-field"><input type="text" id="username" name="username" placeholder="Username" value="{{ form.username }}" autocomplete="username" title="3–30 characters: English letters, numbers, dots, dashes or underscores" maxlength="30" pattern="[A-Za-z0-9][A-Za-z0-9._\-]{2,29}" required></div>
           </div>
 
@@ -105,10 +105,7 @@
             <input type="email" id="regEmail" name="email" placeholder="Email" value="{{ form.email }}" required>
           </div>
 
-          <div class="auth-field auth-field--date">
-            <label class="field-hint" for="birthday">Birthday <span>(optional)</span></label>
-            <input type="date" id="birthday" name="birthday" value="{{ form.birthday }}" min="{{ birthday_min }}" max="{{ birthday_max }}" autocomplete="bday">
-          </div>
+          {% include 'core/_birthday_picker.html' %}
 
           <div class="two-col">
             <div class="auth-field"><input type="password" id="regPassword" name="password" placeholder="Password" autocomplete="new-password" required></div>
