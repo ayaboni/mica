@@ -218,15 +218,16 @@ img { max-width: 100%; display: block; }
 }
 
 .footer-nav {
-  display: flex !important;
-  flex-direction: row !important;
-  flex-wrap: wrap;
-  justify-content: center;
-  align-items: center;
-  gap: 10px 32px;
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr);
+  justify-items: center;
+  width: 100%;
+  max-width: 680px;
+  gap: 10px 16px;
   list-style: none;
   margin: 0;
   padding: 0;
+  text-align: center;
 }
 .footer-nav a { font-weight: 500; font-size: 0.95rem; }
 .footer-nav a:hover { text-decoration: underline; }
@@ -789,4 +790,8 @@ html[data-theme="dark"] .auth-field input[type="date"] { color-scheme: dark; }
 @media (max-width: 560px) {
   .set-grid { grid-template-columns: 1fr; gap: 16px; }
   .set-section { margin-top: 28px; padding-top: 22px; }
+}
+
+@media (max-width: 640px) {
+  .footer-nav { grid-template-columns: 1fr; }
 }
