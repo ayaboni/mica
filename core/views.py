@@ -4875,6 +4875,7 @@ def staff_summary(request):
         data.append({
             "code": f"MC-{1000 + u.id}",
             "name": u.get_full_name() or u.username,
+            "student_number": profile.student_number if profile and profile.student_number else "",
             "avatar": _avatar_of(u), 
             "course": profile.course if profile and profile.course else "",
             "year": profile.year_level if profile and profile.year_level else "",

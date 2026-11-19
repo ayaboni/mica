@@ -608,6 +608,23 @@
   .ra-search svg{position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--ink-soft); pointer-events:none;}
   .ra-search input{width:100%; padding:9px 14px 9px 34px; border-radius:999px; border:1.5px solid var(--line); background:var(--paper); color:var(--ink); font:inherit; font-size:13px; min-height:38px;}
   .ra-filters{display:flex; flex-wrap:wrap; gap:8px; align-items:center;}
+  /* In-page table search (students, chat & mood summary, assessment records). Same look as the Risk Alerts search. */
+  .tbl-search{position:relative; flex:0 1 230px; min-width:170px;}
+  .tbl-search > svg{position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--ink-soft); pointer-events:none;}
+  .tbl-search input{width:100%; padding:9px 34px 9px 34px; border-radius:999px; border:1.5px solid var(--line); background:var(--paper); color:var(--ink); font:inherit; font-size:13px; min-height:38px; -webkit-appearance:none; appearance:none; transition:border-color .15s ease, box-shadow .15s ease;}
+  .tbl-search input::placeholder{color:var(--ink-soft); opacity:.9;}
+  .tbl-search input:hover{border-color:var(--sage-deep);}
+  .tbl-search input:focus{outline:none; border-color:var(--sky-deep);}
+  .tbl-search input:focus-visible{outline:2.5px solid var(--sky-deep); outline-offset:2px;}
+  .tbl-search input::-webkit-search-cancel-button, .tbl-search input::-webkit-search-decoration{-webkit-appearance:none; display:none;}
+  .tbl-search .tbl-search-clear{position:absolute; right:6px; top:50%; transform:translateY(-50%); width:26px; height:26px; border:none; border-radius:50%; background:none; color:var(--ink-soft); display:flex; align-items:center; justify-content:center; padding:0;}
+  .tbl-search .tbl-search-clear[hidden]{display:none;}
+  .tbl-search .tbl-search-clear:hover{background:var(--line); color:var(--ink);}
+  .tbl-search .tbl-search-clear:focus-visible{outline:2.5px solid var(--sky-deep); outline-offset:1px;}
+  body.dark .tbl-search input{color-scheme:dark;}
+  @media (max-width:760px){
+    .toolbar-left .tbl-search{flex:1 1 100%; order:-1;}
+  }
   .ra-filters .filter-select{min-height:38px; max-width:100%;}
   .ra-filters .pill-btn[hidden]{display:none;}
 
@@ -1163,6 +1180,11 @@ html, body{ overflow-x:hidden; }
       <section class="section" id="sec-students">
         <div class="toolbar">
           <div class="toolbar-left">
+            <div class="tbl-search">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+              <input type="search" id="studentSearch" placeholder="Search name, ID or program" autocomplete="off" spellcheck="false" aria-label="Search students" enterkeyhint="search">
+              <button type="button" class="tbl-search-clear" hidden aria-label="Clear search"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+            </div>
             <select class="filter-select" id="studentStatusFilter" onchange="loadStudents()">
               <option value="active">Active</option>
               <option value="inactive">Archived</option>
@@ -1378,6 +1400,11 @@ html, body{ overflow-x:hidden; }
       <section class="section" id="sec-summary">
         <div class="toolbar">
           <div class="toolbar-left">
+            <div class="tbl-search">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+              <input type="search" id="summarySearch" placeholder="Search name, ID or course" autocomplete="off" spellcheck="false" aria-label="Search chat and mood summary" enterkeyhint="search">
+              <button type="button" class="tbl-search-clear" hidden aria-label="Clear search"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+            </div>
             <select class="filter-select" id="summaryChatFilter" onchange="renderSummary()">
               <option value="all">All chat statuses</option>
               <option value="awaiting">Awaiting reply</option>
@@ -1407,6 +1434,11 @@ html, body{ overflow-x:hidden; }
       <section class="section" id="sec-assessments">
         <div class="toolbar">
           <div class="toolbar-left">
+            <div class="tbl-search">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+              <input type="search" id="assessSearch" placeholder="Search name or ID" autocomplete="off" spellcheck="false" aria-label="Search assessment records" enterkeyhint="search">
+              <button type="button" class="tbl-search-clear" hidden aria-label="Clear search"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+            </div>
             <select class="filter-select" id="assessStatusFilter" onchange="renderAssessments()">
               <option value="all">All students</option>
               <option value="done">Completed</option>
@@ -2369,6 +2401,66 @@ function fillYearSelects(){
   });
 }
 
+/* ---------- In-page table search ----------
+   One search box per table page. Matching is case-insensitive, ignores accents and extra spaces,
+   and every word typed must match somewhere (so "juan bsit" works). On Students and Assessments the
+   box shares its text with the top bar search, so the two never disagree about what is filtering the list. */
+function tblNorm(v){
+  return String(v == null ? '' : v).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+function tblQuery(id){
+  const el = document.getElementById(id);
+  return el ? el.value.trim().replace(/\s+/g, ' ') : '';
+}
+function tblMatch(q, ...fields){
+  if(!q) return true;
+  const hay = tblNorm(fields.filter(f => f != null && f !== '').join(' \u0001 '));
+  return tblNorm(q).split(' ').every(w => hay.includes(w));
+}
+const TBL_SEARCHES = [
+  {id:'studentSearch', render: () => renderStudents(),    shareGlobal: true},
+  {id:'summarySearch', render: () => renderSummary(),     shareGlobal: false},
+  {id:'assessSearch',  render: () => renderAssessments(), shareGlobal: true}
+];
+function tblSyncClear(input){
+  const b = input.parentElement.querySelector('.tbl-search-clear');
+  if(b) b.hidden = !input.value;
+}
+function initTableSearch(){
+  const g = document.getElementById('globalSearch');
+  const shared = TBL_SEARCHES.filter(t => t.shareGlobal).map(t => document.getElementById(t.id));
+  TBL_SEARCHES.forEach(t => {
+    const input = document.getElementById(t.id);
+    if(!input) return;
+    const clear = input.parentElement.querySelector('.tbl-search-clear');
+    let timer = null;
+    const run = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        if(t.shareGlobal){
+          // keep the other shared boxes and the top bar in step with this one
+          if(g && g.value !== input.value) g.value = input.value;
+          shared.forEach(o => { if(o && o !== input){ o.value = input.value; tblSyncClear(o); } });
+          renderStudents(); renderAssessments();
+          if(typeof renderAppointments === 'function') renderAppointments();
+        } else {
+          t.render();
+        }
+      }, 120);
+    };
+    input.addEventListener('input', () => { tblSyncClear(input); run(); });
+    input.addEventListener('keydown', e => {
+      if(e.key === 'Escape' && input.value){ e.preventDefault(); input.value = ''; tblSyncClear(input); run(); }
+    });
+    if(clear) clear.addEventListener('click', () => { input.value = ''; tblSyncClear(input); run(); input.focus(); });
+  });
+  // top bar -> page boxes
+  if(g) g.addEventListener('input', () => {
+    shared.forEach(o => { if(o){ o.value = g.value; tblSyncClear(o); } });
+  });
+}
+document.addEventListener('DOMContentLoaded', initTableSearch);
+
 /* ---------- Client-side pagination (students, chat & mood summary, assessments, alerts) ---------- */
 const PAGER = {};   // key -> {page, size, sig}
 function paginate(key, rows, pagerId, rerender, filterSig, sizes){
@@ -2441,7 +2533,7 @@ function renderStudents(){
   const progF = document.getElementById('studentProgramFilter').value;
   const assessF = document.getElementById('studentAssessFilter').value;
   const yearF = document.getElementById('studentYearFilter').value;
-  const q = (document.getElementById('globalSearch').value||'').toLowerCase();
+  const q = tblQuery('studentSearch');
   const tbody = document.getElementById('studentsTbody');
   tbody.innerHTML='';
   const filtered = studentsReal.filter(s=>
@@ -2449,10 +2541,10 @@ function renderStudents(){
     (progF==='all'||s.program===progF) &&
     (yearF==='all'||s.year===yearF) &&
     (assessF==='all'||(assessF==='done' ? s.assessment_done : !s.assessment_done)) &&
-    (q===''||s.name.toLowerCase().includes(q)||s.student_number.toLowerCase().includes(q)||s.program.toLowerCase().includes(q))
+    tblMatch(q, s.name, s.student_number, s.program, courseLabel(s.program))
   );
   if(filtered.length===0){
-    tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state">${MASCOT_SVG}<div class="e-title">No students match these filters</div>Try clearing a filter or search term.</div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state">${MASCOT_SVG}<div class="e-title">${q ? 'No students match “' + escapeHtmlStaff(q) + '”' : 'No students match these filters'}</div>Try clearing a filter or search term.</div></td></tr>`;
     document.getElementById('studentsPager').innerHTML = '';
     return;
   }
@@ -3885,18 +3977,20 @@ function renderSummary(){
   const chatF = document.getElementById('summaryChatFilter').value;
   const courseF = document.getElementById('summaryCourseFilter').value;
   const yearF = document.getElementById('summaryYearFilter').value;
+  const q = tblQuery('summarySearch');
   const tbody = document.getElementById('summaryTbody');
   const rows = summaryData.filter(s =>
     (chatF === 'all' || s.chat_status === chatF) &&
     (courseF === 'all' || s.course === courseF) &&
-    (yearF === 'all' || s.year === yearF));
+    (yearF === 'all' || s.year === yearF) &&
+    tblMatch(q, s.name, s.student_number, s.code, courseLabel(s.course), s.course, s.handled_by, (s.topics || []).join(' ')));
 
   if(!rows.length){
-    tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state">${MASCOT_SVG}<div class="e-title">No students match these filters</div></div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state">${MASCOT_SVG}<div class="e-title">${q ? 'No students match “' + escapeHtmlStaff(q) + '”' : 'No students match these filters'}</div>${q ? 'Try a different name, ID or course.' : ''}</div></td></tr>`;
     document.getElementById('summaryPager').innerHTML = '';
     return;
   }
-  const pageRows = paginate('summary', rows, 'summaryPager', renderSummary, [chatF, courseF, yearF].join('|'));
+  const pageRows = paginate('summary', rows, 'summaryPager', renderSummary, [chatF, courseF, yearF, q].join('|'));
 
   const chatBadge = {
     awaiting: '<span class="badge urgent"><span class="dot pulse"></span>Awaiting reply</span>',
@@ -3968,7 +4062,7 @@ function renderAssessments(){
   const statusF = document.getElementById('assessStatusFilter').value;
   const courseF = document.getElementById('assessCourseFilter').value;
   const yearF = document.getElementById('assessYearFilter').value;
-  const q = (document.getElementById('globalSearch').value || '').toLowerCase();
+  const q = tblQuery('assessSearch');
   const tbody = document.getElementById('assessTbody');
 
   const done = assessData.filter(s => s.done).length;
@@ -3978,10 +4072,10 @@ function renderAssessments(){
     (statusF === 'all' || (statusF === 'done' ? s.done : !s.done)) &&
     (courseF === 'all' || s.course === courseF) &&
     (yearF === 'all' || s.year === yearF) &&
-    (q === '' || s.name.toLowerCase().includes(q) || s.student_number.toLowerCase().includes(q)));
+    tblMatch(q, s.name, s.student_number, courseLabel(s.course), s.course));
 
   if(!rows.length){
-    tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state">${MASCOT_SVG}<div class="e-title">No students match these filters</div></div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state">${MASCOT_SVG}<div class="e-title">${q ? 'No students match “' + escapeHtmlStaff(q) + '”' : 'No students match these filters'}</div>${q ? 'Try a different name or ID.' : ''}</div></td></tr>`;
     document.getElementById('assessPager').innerHTML = '';
     return;
   }
@@ -4110,6 +4204,7 @@ function clearApptFilters() {
   document.getElementById('apptCourseFilter').value = 'all';
   document.getElementById('apptYearFilter').value = 'all';
   document.getElementById('globalSearch').value = '';
+  ['studentSearch','assessSearch'].forEach(id => { const el = document.getElementById(id); if(el){ el.value = ''; tblSyncClear(el); } });
   filterAppts('all');
 }
 
