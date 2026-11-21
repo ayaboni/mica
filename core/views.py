@@ -3482,7 +3482,8 @@ def staff_guidance_thread(request, thread_id):
         qs = qs.filter(id__gt=after)
     rows = list(qs)
     msgs = [
-        {"id": m.id, "sender": "student" if m.sender_id == thread.student_id else "counselor", "content": m.content}
+        {"id": m.id, "sender": "student" if m.sender_id == thread.student_id else "counselor", "content": m.content,
+         "time": dj_timezone.localtime(m.created_at).isoformat()}
         for m in rows
     ]
     last_id = max([after] + [m.id for m in rows])

@@ -531,8 +531,20 @@
 .thread-messages{flex:1; overflow-y:auto; padding:18px; display:flex; flex-direction:column; gap:10px;}
 .tmsg-row{display:flex;}
 .tmsg-row.counselor{justify-content:flex-end;}
-.tmsg-bubble{max-width:65%; padding:10px 14px; border-radius:16px; font-size:13.5px; line-height:1.5;}
+.tmsg-bubble{padding:10px 14px; border-radius:16px; font-size:13.5px; line-height:1.5;}
 .tmsg-copy{align-self:center; width:28px; height:28px; border:none; border-radius:50%; background:none; color:var(--ink-soft); display:flex; align-items:center; justify-content:center; opacity:0; cursor:pointer; flex:none;}
+.tmsg-col{display:flex; flex-direction:column; max-width:65%; min-width:0;}
+.tmsg-row.counselor .tmsg-col{align-items:flex-end;}
+.tmsg-time{font-size:10.5px; color:var(--ink-soft); margin-top:3px; padding:0 4px;}
+.tmsg-day{align-self:center; font-size:11px; font-weight:700; color:var(--ink-soft); background:var(--line); padding:3px 12px; border-radius:999px; margin:6px 0;}
+.thread-search{display:flex; align-items:center; gap:8px; padding:8px 16px; border-bottom:1px solid var(--line);}
+.thread-search input{flex:1; min-width:0; border:1px solid var(--line); border-radius:999px; padding:7px 14px; font-family:inherit; font-size:13px; background:var(--cream); color:var(--ink);}
+.thread-search input:focus{outline:none; border-color:var(--sky-deep);}
+.thread-search .ts-count{font-size:11.5px; color:var(--ink-soft); white-space:nowrap;}
+.thread-search button{border:none; background:none; cursor:pointer; color:var(--ink-soft); font-size:14px; padding:4px 8px; border-radius:6px;}
+.thread-search button:hover{background:var(--line);}
+mark.tmsg-hit{background:#ffe27a; color:#222; border-radius:3px; padding:0 1px;}
+mark.tmsg-hit.current{outline:2px solid var(--alert); background:#ffc83d;}
 .tmsg-row:hover .tmsg-copy, .tmsg-copy:focus-visible{opacity:1;}
 .tmsg-copy:hover{background:var(--line);}
 @media (hover:none){ .tmsg-copy{opacity:.55;} }
@@ -2901,6 +2913,12 @@ function openGuidanceThread(threadId, studentName){
       </span>
     </div>
     ${archived ? `<div class="archived-banner">This student's account is archived, so they can't see new messages. Replies are turned off. You can still read the history.</div>` : ''}
+    <div class="thread-search">
+      <input type="text" id="threadSearch" placeholder="Search in this conversation" autocomplete="off">
+      <span class="ts-count" id="threadSearchCount"></span>
+      <button type="button" title="Previous (Shift+Enter)" onclick="stepThreadHit(-1)">▲</button>
+      <button type="button" title="Next (Enter)" onclick="stepThreadHit(1)">▼</button>
+    </div>
     <div class="thread-messages" id="threadMessages"></div>
     <div class="thread-composer">
       <input type="text" id="threadInput" maxlength="2000" placeholder="${archived ? 'Replies are off for archived students' : 'Reply to ' + studentName + '...'}" ${archived ? 'disabled' : ''}>
@@ -2909,6 +2927,13 @@ function openGuidanceThread(threadId, studentName){
   `;
   document.getElementById('threadInput').addEventListener('keydown', e=>{
     if(e.key==='Enter') sendStaffGuidanceMessage();
+  });
+
+  threadSearchQ = '';
+  const ts = document.getElementById('threadSearch');
+  ts.addEventListener('input', () => { threadSearchQ = ts.value; runThreadSearch(false); });
+  ts.addEventListener('keydown', e => {
+    if(e.key === 'Enter'){ e.preventDefault(); stepThreadHit(e.shiftKey ? -1 : 1); }
   });
 
   refreshThread();
@@ -2948,15 +2973,80 @@ function releaseThread(threadId){
 
 const COPY_ICON = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg>';
 
+let threadLastDay = '';
+let threadSearchQ = '';
+let threadHits = [];
+let threadHitIdx = -1;
+
+function fmtThreadDay(d){
+  const t = new Date();
+  const y = new Date(); y.setDate(t.getDate() - 1);
+  if(d.toDateString() === t.toDateString()) return 'Today';
+  if(d.toDateString() === y.toDateString()) return 'Yesterday';
+  return d.toLocaleDateString([], {month:'short', day:'numeric', year:'numeric'});
+}
+
 function threadMsgHtml(m){
   const text = m.content.replace(/\s*\[appointment:\d+\]/g, '');
-  const bubble = `<div class="tmsg-bubble">${escapeHtmlStaff(text)}</div>`;
+  const d = m.time ? new Date(m.time) : null;
+  let sep = '';
+  let stamp = '';
+  if(d && !isNaN(d)){
+    const day = d.toDateString();
+    if(day !== threadLastDay){
+      threadLastDay = day;
+      sep = `<div class="tmsg-day">${fmtThreadDay(d)}</div>`;
+    }
+    stamp = `<div class="tmsg-time">${d.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'})}</div>`;
+  }
+  const bubble = `<div class="tmsg-col"><div class="tmsg-bubble">${escapeHtmlStaff(text)}</div>${stamp}</div>`;
   const copy = `<button class="tmsg-copy" title="Copy" aria-label="Copy message" onclick="copyThreadMsg(this)">${COPY_ICON}</button>`;
-  return `
+  return sep + `
           <div class="tmsg-row ${m.sender}">
             ${m.sender === 'student' ? avatarHtml(threadHead.name, threadHead.avatar) : ''}
             ${m.sender === 'student' ? bubble + copy : copy + bubble}
           </div>`;
+}
+
+function highlightHtml(raw, q){
+  if(!q) return escapeHtmlStaff(raw);
+  const re = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+  let out = '', last = 0, m;
+  while((m = re.exec(raw))){
+    out += escapeHtmlStaff(raw.slice(last, m.index)) + '<mark class="tmsg-hit">' + escapeHtmlStaff(m[0]) + '</mark>';
+    last = m.index + m[0].length;
+    if(m[0].length === 0) re.lastIndex++;
+  }
+  return out + escapeHtmlStaff(raw.slice(last));
+}
+
+function runThreadSearch(keepPlace){
+  const box = document.getElementById('threadMessages');
+  if(!box) return;
+  const q = threadSearchQ.trim();
+  box.querySelectorAll('.tmsg-bubble').forEach(b => {
+    if(q || b.querySelector('mark')) b.innerHTML = highlightHtml(b.textContent, q);
+  });
+  threadHits = Array.from(box.querySelectorAll('mark.tmsg-hit'));
+  if(!keepPlace || threadHitIdx >= threadHits.length) threadHitIdx = threadHits.length ? threadHits.length - 1 : -1;
+  showThreadHit(!keepPlace);
+}
+
+function showThreadHit(scroll){
+  const count = document.getElementById('threadSearchCount');
+  threadHits.forEach(h => h.classList.remove('current'));
+  if(!threadSearchQ.trim()){ if(count) count.textContent = ''; return; }
+  if(!threadHits.length){ if(count) count.textContent = 'No results'; return; }
+  const cur = threadHits[threadHitIdx];
+  cur.classList.add('current');
+  if(count) count.textContent = (threadHitIdx + 1) + ' of ' + threadHits.length;
+  if(scroll) cur.scrollIntoView({block:'center'});
+}
+
+function stepThreadHit(dir){
+  if(!threadHits.length) return;
+  threadHitIdx = (threadHitIdx + dir + threadHits.length) % threadHits.length;
+  showThreadHit(true);
 }
 
 // First call for a conversation downloads it whole; after that only messages newer than the last one
@@ -2979,13 +3069,16 @@ function fetchThreadMessages(){
       if(!fresh.length) return;
       const nearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 80;
       container.insertAdjacentHTML('beforeend', fresh.map(threadMsgHtml).join(''));
+      if(threadSearchQ.trim()) runThreadSearch(true);
       container.dataset.lastId = String(data.last_id || have);
       if(nearBottom) container.scrollTop = container.scrollHeight;
       return;
     }
 
     threadHead = {name: data.student_name, avatar: data.student_avatar};
+    threadLastDay = '';
     container.innerHTML = data.messages.map(threadMsgHtml).join('');
+    if(threadSearchQ.trim()) runThreadSearch(false);
     container.dataset.tid = String(tid);
     container.dataset.lastId = String(data.last_id || 0);
     container.scrollTop = container.scrollHeight;
