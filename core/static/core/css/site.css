@@ -119,6 +119,30 @@ img { max-width: 100%; display: block; }
 .navbar .btn-pill:active,
 .navbar .btn-pill.is-active { background: var(--cream-card); }
 
+/* back link: a visible pill with a chevron, same idea as the dashboards' "Landing page" button */
+.navbar .btn-pill.nav-back {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 16px 7px 12px; font-size: 0.9rem; font-weight: 600; line-height: 1;
+  background: rgba(255,255,255,.4); border: 1.5px solid rgba(255,255,255,.7); box-shadow: none;
+}
+.navbar .btn-pill.nav-back:hover,
+.navbar .btn-pill.nav-back:focus-visible { background: #F6EAD0; border-color: #F6EAD0; color: #3E3226; }
+.nav-back-ico {
+  width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2.4;
+  stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; transition: transform .15s ease;
+}
+.nav-back:hover .nav-back-ico, .nav-back:focus-visible .nav-back-ico { transform: translateX(-2px); }
+
+html[data-theme="dark"] .navbar .btn-pill.nav-back { background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.3); }
+html[data-theme="dark"] .navbar .btn-pill.nav-back:hover,
+html[data-theme="dark"] .navbar .btn-pill.nav-back:focus-visible { background: #F6EAD0; border-color: #F6EAD0; color: #3E3226; }
+
+/* phones: icon-only circle, same size as the Aa / moon buttons */
+@media (max-width: 640px) {
+  .navbar .btn-pill.nav-back { width: 40px; height: 40px; padding: 0; justify-content: center; gap: 0; }
+  .nav-back-text { display: none; }
+}
+
 .nav-links { display: flex; align-items: center; gap: 12px; list-style: none; margin: 0; padding: 0; }
 
 .nav-toggle {

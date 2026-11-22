@@ -4,7 +4,7 @@
       {% include 'core/_logo.html' %}
     </a>
     <div class="nav-right">
-      {% if nav_link_url %}<a href="{{ nav_link_url }}" class="btn btn-pill">{{ nav_link_label }}</a>{% endif %}
+      {% if nav_link_url %}<a href="{{ nav_link_url }}" class="btn btn-pill{% if nav_link_back %} nav-back{% endif %}"{% if nav_link_back %} aria-label="{{ nav_link_label }}"{% endif %}>{% if nav_link_back %}<svg class="nav-back-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg><span class="nav-back-text">{{ nav_link_label }}</span>{% else %}{{ nav_link_label }}{% endif %}</a>{% endif %}
       <button type="button" class="theme-toggle dys-toggle" onclick="toggleDyslexia()" aria-pressed="false" aria-label="Dyslexia-friendly font" title="Dyslexia-friendly font">Aa</button>
       <button type="button" class="theme-toggle" data-theme-toggle aria-label="Toggle dark mode" title="Toggle dark mode">
         <svg class="icon-moon" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>

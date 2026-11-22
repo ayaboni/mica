@@ -6,7 +6,7 @@
 
 {% block navbar %}
   {% url 'home' as home_url %}
-  {% include 'core/_navbar_min.html' with nav_link_url=home_url nav_link_label="← Back to Home" %}
+    {% include 'core/_navbar_min.html' with nav_link_url=home_url nav_link_label="Back to Home" nav_link_back=True %}
 {% endblock %}
 
 {% block content %}

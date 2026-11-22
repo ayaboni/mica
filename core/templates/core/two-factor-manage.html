@@ -7,7 +7,7 @@
 
 {% block navbar %}
   {% url 'admin_dashboard' as dash_url %}
-  {% include 'core/_navbar_min.html' with nav_link_url=dash_url nav_link_label="<- Back to dashboard" %}
+  {% include 'core/_navbar_min.html' with nav_link_url=dash_url nav_link_label="Back to Dashboard" nav_link_back=True %}
 {% endblock %}
 
 {% block content %}
