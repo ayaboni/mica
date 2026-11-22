@@ -2148,6 +2148,12 @@ function toggleDyslexia(){
     <section class="view" id="view-chat">
       <div class="chat-view-inner">
         {% include 'core/_panic_button.html' %}
+        <div class="guidance-search">
+          <input type="text" id="chat-search" placeholder="Search in this chat" autocomplete="off" aria-label="Search in this chat">
+          <span class="gs-count" id="chat-search-count"></span>
+          <button type="button" title="Previous (Shift+Enter)" aria-label="Previous result" onclick="chatSearchApi.step(-1)">▲</button>
+          <button type="button" title="Next (Enter)" aria-label="Next result" onclick="chatSearchApi.step(1)">▼</button>
+        </div>
         <div class="messages" id="chat-messages"></div>
         <div class="composer">
           <div class="composer-box">
@@ -2707,6 +2713,84 @@ document.getElementById('btn-exercises').addEventListener('click', ()=>switchVie
 /* ============================================================
    CHAT HISTORY (new chat + search + select)
 ============================================================ */
+function createThreadSearch(boxId, inputId, countId){
+  let q = '', hits = [], idx = -1;
+  const box = () => document.getElementById(boxId);
+  const countEl = () => document.getElementById(countId);
+
+  function show(scroll){
+    hits.forEach(h => h.classList.remove('current'));
+    const c = countEl();
+    if(!q.trim()){ if(c) c.textContent = ''; return; }
+    if(!hits.length){ if(c) c.textContent = 'No results'; return; }
+    const cur = hits[idx];
+    cur.classList.add('current');
+    if(c) c.textContent = (idx + 1) + ' of ' + hits.length;
+    if(scroll) cur.scrollIntoView({block:'center'});
+  }
+
+  function run(keepPlace){
+    const b = box();
+    if(!b) return;
+    const term = q.trim();
+    if(!term && !hits.length) return;
+    clearGuidanceMarks(b);
+    if(term){
+      const re = new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+      b.querySelectorAll('.msg-bubble').forEach(bub => {
+        const walker = document.createTreeWalker(bub, NodeFilter.SHOW_TEXT);
+        const nodes = [];
+        while(walker.nextNode()) nodes.push(walker.currentNode);
+        nodes.forEach(node => {
+          const text = node.nodeValue;
+          re.lastIndex = 0;
+          let m, last = 0, frag = null;
+          while((m = re.exec(text))){
+            if(!m[0]){ re.lastIndex++; continue; }
+            frag = frag || document.createDocumentFragment();
+            frag.appendChild(document.createTextNode(text.slice(last, m.index)));
+            const mk = document.createElement('mark');
+            mk.className = 'gs-hit';
+            mk.textContent = m[0];
+            frag.appendChild(mk);
+            last = m.index + m[0].length;
+          }
+          if(frag){
+            frag.appendChild(document.createTextNode(text.slice(last)));
+            node.parentNode.replaceChild(frag, node);
+          }
+        });
+      });
+    }
+    hits = Array.from(b.querySelectorAll('mark.gs-hit'));
+    if(!keepPlace || idx >= hits.length) idx = hits.length ? hits.length - 1 : -1;
+    show(!keepPlace);
+  }
+
+  function step(dir){
+    if(!hits.length) return;
+    idx = (idx + dir + hits.length) % hits.length;
+    show(true);
+  }
+
+  function reset(){
+    q = ''; hits = []; idx = -1;
+    const i = document.getElementById(inputId);
+    if(i) i.value = '';
+    const c = countEl();
+    if(c) c.textContent = '';
+  }
+
+  const input = document.getElementById(inputId);
+  input.addEventListener('input', () => { q = input.value; run(false); });
+  input.addEventListener('keydown', e => {
+    if(e.key === 'Enter'){ e.preventDefault(); step(e.shiftKey ? -1 : 1); }
+  });
+  return {run, step, reset};
+}
+window.chatSearchApi = createThreadSearch('chat-messages', 'chat-search', 'chat-search-count');
+const chatSearchApi = window.chatSearchApi;
+
 let currentConversationId = null;
 
 const historyList = document.getElementById('chat-history-list');
@@ -2729,8 +2813,10 @@ historyList.addEventListener('click', (e)=>{
     .then(data => {
       const container = document.getElementById('chat-messages');
       container.innerHTML = '';
-        data.messages.forEach(m => {
-        addMessage('chat-messages', escapeHtml(m.content).replace(/\n/g, '<br>'), m.sender === 'user' ? 'user' : 'bot', 'MASCOT');
+      container.dataset.lastDay = '';
+      chatSearchApi.reset();
+      data.messages.forEach(m => {
+        addMessage('chat-messages', escapeHtml(m.content).replace(/\n/g, '<br>'), m.sender === 'user' ? 'user' : 'bot', 'MASCOT', null, m.time);
       });
 
       switchView('view-chat','Chat');
@@ -2838,7 +2924,10 @@ historyList.addEventListener('keydown', e => {
 document.getElementById('btn-newchat').addEventListener('click', ()=>{
   currentConversationId = null;
   setActiveHistoryItem(null);
-  document.getElementById('chat-messages').innerHTML = '';
+  const cm = document.getElementById('chat-messages');
+  cm.innerHTML = '';
+  cm.dataset.lastDay = '';
+  chatSearchApi.reset();
   switchView('view-chat','Chat');
 });
 
@@ -2897,16 +2986,23 @@ function addMessage(containerId, text, sender, avatarLabel, msgId, time){
   const withButtons = sender === 'bot' && containerId === 'chat-messages' && avatarLabel === 'MASCOT';
   const withUserButtons = sender === 'user' && containerId === 'chat-messages';
   const withGuidanceCopy = containerId === 'guidance-messages';
-  const stamp = (time && containerId === 'guidance-messages') ? guidanceTimeHtml(time) : '';
+  const isChat = containerId === 'chat-messages';
+  // live messages in the AI chat have no server time yet, so use "now"
+  const when = time || (isChat ? new Date().toISOString() : '');
+  if(isChat) guidanceDayDivider(container, when);
+  const stamp = (when && (isChat || withGuidanceCopy)) ? guidanceTimeHtml(when) : '';
   row.innerHTML = withButtons
-    ? `${avatarHtml}<div class="msg-col">${bubble}${MSG_ACTIONS_HTML}</div>`
+    ? `${avatarHtml}<div class="msg-col">${bubble}${stamp}${MSG_ACTIONS_HTML}</div>`
     : withUserButtons
-      ? `${avatarHtml}<div class="msg-col">${bubble}${USER_ACTIONS_HTML}</div>`
+      ? `${avatarHtml}<div class="msg-col">${bubble}${stamp}${USER_ACTIONS_HTML}</div>`
       : withGuidanceCopy
         ? `${avatarHtml}<div class="msg-col">${bubble}${stamp}${COPY_ONLY_HTML}</div>`
         : `${avatarHtml}${bubble}`;
   container.appendChild(row);
-  if(containerId === 'chat-messages') syncUserActions();
+  if(containerId === 'chat-messages'){
+    syncUserActions();
+    if(window.chatSearchApi) window.chatSearchApi.run(true);
+  }
   container.scrollTop = container.scrollHeight;
   return row;
 }
@@ -2996,6 +3092,13 @@ async function getAIReply(message) {
     item.innerHTML = `<div class="history-title">${escapeHtml(data.title)}</div><div class="history-time">Just now</div><button type="button" class="history-more" aria-label="Chat options"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></button>`;
     historyList.prepend(item);
     setActiveHistoryItem(item);
+    fetch(`/api/conversations/${data.conversation_id}/autotitle/`, {
+      method: 'POST', headers: {'X-CSRFToken': getCookie('csrftoken')}
+    }).then(r => r.json()).then(t => {
+      if(!t.title || item.dataset.title !== data.title) return;     // renamed meanwhile: leave it
+      item.dataset.title = t.title;
+      item.querySelector('.history-title').textContent = t.title;
+    }).catch(() => {});
   }
 
   return data.reply || "Sorry, something went wrong.";
@@ -3080,7 +3183,8 @@ function rateReply(row, which){
 }
 
 function retryReply(row){
-  const prev = row.previousElementSibling;
+  let prev = row.previousElementSibling;
+  while(prev && prev.classList.contains('msg-day')) prev = prev.previousElementSibling;   // skip date dividers
   if(!prev || !prev.classList.contains('user')){ showToast('Nothing to retry'); return; }
   const text = prev.querySelector('.msg-bubble').textContent;
   const containerId = row.parentElement.id;

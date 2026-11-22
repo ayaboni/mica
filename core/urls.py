@@ -61,6 +61,7 @@ urlpatterns = [
     path('api/speech-to-text/', views.speech_to_text, name='speech_to_text'),
     path('api/conversations/<int:conversation_id>/', views.get_conversation, name='get_conversation'),
     path('api/conversations/<int:conversation_id>/rename/', views.api_conversation_rename, name='api_conversation_rename'),
+    path('api/conversations/<int:conversation_id>/autotitle/', views.api_conversation_autotitle, name='api_conversation_autotitle'),
     path('api/conversations/<int:conversation_id>/delete/', views.api_conversation_delete, name='api_conversation_delete'),
     path('api/conversations/<int:conversation_id>/undo-last/', views.api_chat_undo_last, name='api_chat_undo_last'),
     path('api/notifications/', views.get_notifications, name='get_notifications'),

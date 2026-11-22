@@ -2328,7 +2328,10 @@ def speech_to_text(request):
 @login_required(login_url='login')
 def get_conversation(request, conversation_id):
     conversation = get_object_or_404(ChatConversation, id=conversation_id, user=request.user)
-    messages = list(conversation.messages.values('sender', 'content'))
+    messages = [
+        {"sender": m.sender, "content": m.content, "time": timezone.localtime(m.created_at).isoformat()}
+        for m in conversation.messages.order_by('created_at', 'id')
+    ]
     return JsonResponse({"title": conversation.title, "messages": messages})
 
 
@@ -2346,6 +2349,52 @@ def api_conversation_rename(request, conversation_id):
     convo.title = title
     convo.save(update_fields=['title'])      # keeps its place in the list
     return JsonResponse({'title': convo.title})
+
+
+@login_required(login_url='login')
+@require_POST
+@csrf_protect
+def api_conversation_autotitle(request, conversation_id):
+    """Replace the 'first message' title with a short AI summary title. Only runs while the title is
+    still the automatic one, so a title the student renamed is never overwritten."""
+    convo = get_object_or_404(ChatConversation, id=conversation_id, user=request.user)
+    texts = list(convo.messages.filter(sender='user').order_by('created_at', 'id')
+                 .values_list('content', flat=True)[:6])
+    if not texts:
+        return JsonResponse({"title": convo.title})
+    fallback = (texts[0][:40] + "…") if len(texts[0]) > 40 else texts[0]
+    if convo.title != fallback:
+        return JsonResponse({"title": convo.title})
+    # Crisis messages never go to the AI, same as in chatbot_reply: keep the plain title
+    if any(_safety_reply(t) for t in texts):
+        return JsonResponse({"title": convo.title})
+    if _rate_limited(request, "autotitle", CHAT_RATE_PER_MINUTE):
+        return JsonResponse({"title": convo.title})
+    try:
+        response = requests.post(
+            url=f"https://generativelanguage.googleapis.com/v1beta/models/{settings.GEMINI_MODEL}:generateContent",
+            headers={"x-goog-api-key": settings.GEMINI_API_KEY, "Content-Type": "application/json"},
+            json={
+                "system_instruction": {"parts": [{"text":
+                    "Write a short title for a student's chat, 3 to 6 words, that summarizes what it is about. "
+                    "Use the same language as the student. Keep it neutral and gentle. No quotes, no emojis, "
+                    "no names, no ending punctuation. Reply with the title only."}]},
+                "contents": [{"role": "user", "parts": [{"text": "\n".join(texts)[:1500]}]}],
+                "generationConfig": {"temperature": 0.3},
+            },
+            timeout=15,
+        )
+        response.raise_for_status()
+        raw = response.json()["candidates"][0]["content"]["parts"][0]["text"]
+        title = ' '.join(raw.replace('\n', ' ').split()).strip(' "\'*#.')[:60]
+    except Exception as e:
+        print("Auto-title error:", e)
+        return JsonResponse({"title": convo.title})
+    if not title or has_blocked_term(title):
+        return JsonResponse({"title": convo.title})
+    convo.title = title
+    convo.save(update_fields=['title'])      # keeps its place in the list
+    return JsonResponse({"title": convo.title})
 
 
 @login_required(login_url='login')
