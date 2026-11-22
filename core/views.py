@@ -2619,7 +2619,8 @@ def guidance_messages(request):
     last_id = after
     for m in qs:
         last_id = max(last_id, m.id)
-        entry = {"id": m.id, "sender": "user" if m.sender_id == request.user.id else "counselor", "content": m.content}
+        entry = {"id": m.id, "sender": "user" if m.sender_id == request.user.id else "counselor", "content": m.content,
+                 "time": timezone.localtime(m.created_at).isoformat()}
         match = re.search(r"\[appointment:(\d+)\]", m.content)
         if match:
             appt = Appointment.objects.filter(id=match.group(1)).first()

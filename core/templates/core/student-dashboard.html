@@ -627,6 +627,17 @@ body[data-chat-theme="flowers"]{ --doodle-img:url("{% static 'core/images/backgr
   .msg-row.user:not(.is-latest) .msg-act[data-act="edit"],
   .msg-row.user:not(.is-latest) .msg-act[data-act="retry"]{display:none;}
 
+  .msg-time{font-size:10.5px; opacity:.6; padding:0 4px;}
+  .msg-day{display:block; width:fit-content; margin:8px auto; font-size:11px; font-weight:700; padding:3px 12px; border-radius:999px; background:rgba(128,128,128,.18); opacity:.8;}
+  .guidance-search{display:flex; align-items:center; gap:8px; padding:8px 12px;}
+  .guidance-search input{flex:1; min-width:0; border:1px solid rgba(128,128,128,.35); border-radius:999px; padding:7px 14px; font-family:inherit; font-size:13px; background:transparent; color:inherit;}
+  .guidance-search input:focus{outline:none; border-color:#8B6F4E;}
+  .guidance-search .gs-count{font-size:11.5px; opacity:.7; white-space:nowrap;}
+  .guidance-search button{border:none; background:none; cursor:pointer; color:inherit; opacity:.7; font-size:14px; padding:4px 8px; border-radius:6px;}
+  .guidance-search button:hover{background:rgba(128,128,128,.18);}
+  mark.gs-hit{background:#ffe27a; color:#222; border-radius:3px; padding:0 1px;}
+  mark.gs-hit.current{background:#ffc83d; outline:2px solid #c0392b;}
+
   .guidance-clear{background:none; border:none; color:var(--text-mute); font:inherit; font-size:12px; font-weight:700; text-decoration:underline; cursor:pointer;}
   #guidance-messages .msg-row:not([data-id]) .msg-act[data-act="delete"]{display:none;}  /* unsaved / system messages can't be deleted */
 
@@ -2177,6 +2188,12 @@ function toggleDyslexia(){
           </div>
           <button type="button" class="gg-close" id="guidance-grace-close" title="Dismiss" aria-label="Dismiss this notice">&times;</button>
         </div>
+        <div class="guidance-search">
+          <input type="text" id="guidance-search" placeholder="Search in this conversation" autocomplete="off" aria-label="Search in this conversation">
+          <span class="gs-count" id="guidance-search-count"></span>
+          <button type="button" title="Previous (Shift+Enter)" aria-label="Previous result" onclick="stepGuidanceHit(-1)">▲</button>
+          <button type="button" title="Next (Enter)" aria-label="Next result" onclick="stepGuidanceHit(1)">▼</button>
+        </div>
         <div class="messages" id="guidance-messages"></div>
         <div class="composer">
           <div class="composer-box">
@@ -2858,7 +2875,7 @@ const MSG_ACTIONS_HTML = `
     <button class="msg-act" data-act="retry" title="Try again" aria-label="Try again"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg></button>
   </div>`;
 
-function addMessage(containerId, text, sender, avatarLabel, msgId){
+function addMessage(containerId, text, sender, avatarLabel, msgId, time){
   const container = document.getElementById(containerId);
   const row = document.createElement('div');
   row.className = 'msg-row ' + sender;
@@ -2880,12 +2897,13 @@ function addMessage(containerId, text, sender, avatarLabel, msgId){
   const withButtons = sender === 'bot' && containerId === 'chat-messages' && avatarLabel === 'MASCOT';
   const withUserButtons = sender === 'user' && containerId === 'chat-messages';
   const withGuidanceCopy = containerId === 'guidance-messages';
+  const stamp = (time && containerId === 'guidance-messages') ? guidanceTimeHtml(time) : '';
   row.innerHTML = withButtons
     ? `${avatarHtml}<div class="msg-col">${bubble}${MSG_ACTIONS_HTML}</div>`
     : withUserButtons
       ? `${avatarHtml}<div class="msg-col">${bubble}${USER_ACTIONS_HTML}</div>`
       : withGuidanceCopy
-        ? `${avatarHtml}<div class="msg-col">${bubble}${COPY_ONLY_HTML}</div>`
+        ? `${avatarHtml}<div class="msg-col">${bubble}${stamp}${COPY_ONLY_HTML}</div>`
         : `${avatarHtml}${bubble}`;
   container.appendChild(row);
   if(containerId === 'chat-messages') syncUserActions();
@@ -3572,10 +3590,103 @@ document.getElementById('btn-guidance').addEventListener('click', ()=>{
   window.addEventListener('resize', hideTip);
 })();
 
+function guidanceTimeHtml(iso){
+  const d = new Date(iso);
+  if(isNaN(d)) return '';
+  return `<div class="msg-time">${d.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'})}</div>`;
+}
+
+function guidanceDayDivider(container, iso){
+  if(!iso) return;
+  const d = new Date(iso);
+  if(isNaN(d)) return;
+  const day = d.toDateString();
+  if(container.dataset.lastDay === day) return;
+  container.dataset.lastDay = day;
+  const t = new Date();
+  const y = new Date(); y.setDate(t.getDate() - 1);
+  const label = day === t.toDateString() ? 'Today'
+              : day === y.toDateString() ? 'Yesterday'
+              : d.toLocaleDateString([], {month:'short', day:'numeric', year:'numeric'});
+  const el = document.createElement('div');
+  el.className = 'msg-day';
+  el.textContent = label;
+  container.appendChild(el);
+}
+
+let guidanceSearchQ = '';
+let guidanceHits = [];
+let guidanceHitIdx = -1;
+
+function clearGuidanceMarks(box){
+  box.querySelectorAll('mark.gs-hit').forEach(mk => {
+    const p = mk.parentNode;
+    p.replaceChild(document.createTextNode(mk.textContent), mk);
+    p.normalize();
+  });
+}
+
+function runGuidanceSearch(keepPlace){
+  const box = document.getElementById('guidance-messages');
+  if(!box) return;
+  clearGuidanceMarks(box);
+  const q = guidanceSearchQ.trim();
+  if(q){
+    const re = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+    box.querySelectorAll('.msg-bubble').forEach(b => {
+      const walker = document.createTreeWalker(b, NodeFilter.SHOW_TEXT);
+      const nodes = [];
+      while(walker.nextNode()) nodes.push(walker.currentNode);
+      nodes.forEach(node => {
+        const text = node.nodeValue;
+        re.lastIndex = 0;
+        let m, last = 0, frag = null;
+        while((m = re.exec(text))){
+          if(!m[0]){ re.lastIndex++; continue; }
+          frag = frag || document.createDocumentFragment();
+          frag.appendChild(document.createTextNode(text.slice(last, m.index)));
+          const mk = document.createElement('mark');
+          mk.className = 'gs-hit';
+          mk.textContent = m[0];
+          frag.appendChild(mk);
+          last = m.index + m[0].length;
+        }
+        if(frag){
+          frag.appendChild(document.createTextNode(text.slice(last)));
+          node.parentNode.replaceChild(frag, node);
+        }
+      });
+    });
+  }
+  guidanceHits = Array.from(box.querySelectorAll('mark.gs-hit'));
+  if(!keepPlace || guidanceHitIdx >= guidanceHits.length) guidanceHitIdx = guidanceHits.length ? guidanceHits.length - 1 : -1;
+  showGuidanceHit(!keepPlace);
+}
+
+function showGuidanceHit(scroll){
+  const count = document.getElementById('guidance-search-count');
+  guidanceHits.forEach(h => h.classList.remove('current'));
+  if(!guidanceSearchQ.trim()){ if(count) count.textContent = ''; return; }
+  if(!guidanceHits.length){ if(count) count.textContent = 'No results'; return; }
+  const cur = guidanceHits[guidanceHitIdx];
+  cur.classList.add('current');
+  if(count) count.textContent = (guidanceHitIdx + 1) + ' of ' + guidanceHits.length;
+  if(scroll) cur.scrollIntoView({block:'center'});
+}
+
+function stepGuidanceHit(dir){
+  if(!guidanceHits.length) return;
+  guidanceHitIdx = (guidanceHitIdx + dir + guidanceHits.length) % guidanceHits.length;
+  showGuidanceHit(true);
+}
+
 function sendGuidanceMessage(){
   const text = guidanceInput.value.trim();
   if(!text) return;
-  const row = addMessage('guidance-messages', escapeHtml(text), 'user');
+  const nowIso = new Date().toISOString();
+  guidanceDayDivider(document.getElementById('guidance-messages'), nowIso);
+  const row = addMessage('guidance-messages', escapeHtml(text), 'user', undefined, undefined, nowIso);
+  if(guidanceSearchQ.trim()) runGuidanceSearch(true);
   guidanceInput.value = '';
   autoGrow(guidanceInput);
 
@@ -3595,6 +3706,7 @@ let guidanceLastId = 0;     // id of the newest message on screen; the poll only
 function renderGuidanceMessage(m){
   const container = document.getElementById('guidance-messages');
   let row;
+  guidanceDayDivider(container, m.time);
   if (m.appointment) {
     row = document.createElement('div');
     row.className = 'msg-row ' + (m.sender === 'user' ? 'user' : 'bot');
@@ -3604,7 +3716,7 @@ function renderGuidanceMessage(m){
     row.innerHTML = `<div class="msg-bubble"><strong>${escapeHtml(m.content)}</strong>${confirmedHtml}</div>`;
     container.appendChild(row);
   } else {
-    row = addMessage('guidance-messages', escapeHtml(m.content).replace(/\n/g, '<br>'), m.sender === 'user' ? 'user' : 'bot', 'LEAF');
+    row = addMessage('guidance-messages', escapeHtml(m.content).replace(/\n/g, '<br>'), m.sender === 'user' ? 'user' : 'bot', 'LEAF', m.id, m.time);
   }
   if (row && m.id) row.dataset.id = m.id;      // lets "remove from my screen" work on messages loaded from the server
   return row;
@@ -3619,12 +3731,14 @@ function reloadGuidanceMessages() {
       const container = document.getElementById('guidance-messages');
       if (!container) return;
       container.innerHTML = '';
+      container.dataset.lastDay = '';
       guidanceLastId = data.last_id || 0;
       if(data.messages.length === 0){
         addMessage('guidance-messages', "Hi! Send a message here and a Guidance staff member will reply when they can.", 'bot', 'LEAF');
         return;
       }
       data.messages.forEach(renderGuidanceMessage);
+      if(guidanceSearchQ.trim()) runGuidanceSearch(false);
     });
 }
 
@@ -3642,6 +3756,7 @@ function pollGuidanceNew(){
       if(container.querySelector('[data-id="' + Number(m.id) + '"]')) return;
       renderGuidanceMessage(m);
     });
+    if(guidanceSearchQ.trim()) runGuidanceSearch(true);
     guidanceLastId = Math.max(guidanceLastId, data.last_id || 0);
   });
 }
@@ -3658,6 +3773,12 @@ MicaPoll.every(pollGuidanceNew, {active: 3000, hidden: 15000,
 const guidanceInput = document.getElementById('guidance-input');
 document.getElementById('guidance-send').addEventListener('click', sendGuidanceMessage);
 bindComposer(guidanceInput, sendGuidanceMessage);
+
+const guidanceSearchInput = document.getElementById('guidance-search');
+guidanceSearchInput.addEventListener('input', () => { guidanceSearchQ = guidanceSearchInput.value; runGuidanceSearch(false); });
+guidanceSearchInput.addEventListener('keydown', e => {
+  if(e.key === 'Enter'){ e.preventDefault(); stepGuidanceHit(e.shiftKey ? -1 : 1); }
+});
 
 // Home composer routes into Chat
 const homeInput = document.getElementById('home-input');
