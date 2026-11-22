@@ -449,6 +449,15 @@ def dashboard_stats(request):
 STATUS_LABEL = {"active": "Active", "inactive": "Archived", "graduated": "Graduated"}
 
 
+def _page_size(request, default, allowed):
+    """Rows per page the admin picked (?size=). Anything not on the list falls back to the default."""
+    try:
+        size = int(request.GET.get("size", default))
+    except (TypeError, ValueError):
+        return default
+    return size if size in allowed else default
+
+
 @_admin
 def students_list(request):
     """One page of students for the admin cards. Account info only, nothing a student wrote."""
@@ -483,7 +492,7 @@ def students_list(request):
                        | Q(profile__student_number__icontains=token))
     qs = qs.order_by("last_name", "first_name", "username")
 
-    paginator = Paginator(qs, 12)
+    paginator = Paginator(qs, _page_size(request, 12, (12, 24, 48)))
     page = paginator.get_page(request.GET.get("page"))
     keys = [_throttle_key(u.username) for u in page]
     locked = set(LoginThrottle.objects.filter(
@@ -518,7 +527,7 @@ def students_list(request):
 
     return JsonResponse({
         "students": rows, "counts": counts, "page": page.number,
-        "pages": paginator.num_pages, "total": paginator.count,
+        "pages": paginator.num_pages, "total": paginator.count, "size": paginator.per_page,
         "courses": [{"code": c, "label": l} for c, l in get_course_labels().items()],
     })
 
@@ -676,10 +685,11 @@ def _stamp(dt):
 def audit_logs(request):
     """One page of the audit log. Who did what to which student, never what a student wrote."""
     rows = _audit_rows(request, 1000)
-    page = Paginator(rows, 25).get_page(request.GET.get("page"))
+    page = Paginator(rows, _page_size(request, 25, (25, 50, 100))).get_page(request.GET.get("page"))
     return JsonResponse({
         "rows": [dict(r, when=_stamp(r["when"])) for r in page],
         "page": page.number, "pages": page.paginator.num_pages, "total": page.paginator.count,
+        "size": page.paginator.per_page,
     })
 
 
@@ -1001,7 +1011,7 @@ def signin_failures(request):
     reason = request.GET.get("reason", "all")
     if reason in SIGNIN_REASON:
         qs = qs.filter(reason=reason)
-    page = Paginator(qs.order_by("-created_at"), 25).get_page(request.GET.get("page"))
+    page = Paginator(qs.order_by("-created_at"), _page_size(request, 25, (25, 50, 100))).get_page(request.GET.get("page"))
 
     def kind(u):
         return "Admin" if u.is_superuser else ("Staff" if u.is_staff else "Student")
@@ -1025,6 +1035,7 @@ def signin_failures(request):
         "watch": watch,
         "rows": [row(f) for f in page],
         "page": page.number, "pages": page.paginator.num_pages, "total": page.paginator.count,
+        "size": page.paginator.per_page,
     })
 
 

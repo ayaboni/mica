@@ -496,6 +496,19 @@
   .stu-actions{margin-top:auto;}
   .pager{display:flex; justify-content:center; align-items:center; gap:14px; margin-top:22px; font-size:13px; color:var(--ink-soft);}
 
+  .list-pager{display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px 18px; margin-top:14px; font-size:13px; color:var(--ink-soft);}
+  .list-pager:empty{display:none;}
+  .list-pager .lp-info{font-variant-numeric:tabular-nums;}
+  .list-pager .lp-nav{display:flex; align-items:center; gap:6px; flex-wrap:wrap;}
+  .list-pager .lp-num{min-width:34px; padding:6px 10px;}
+  .list-pager .lp-num.current{background:var(--sage-deep); color:#fff; border-color:var(--sage-deep); pointer-events:none;}
+  .list-pager .lp-gap{padding:0 4px;}
+  .list-pager .lp-size{display:flex; align-items:center; gap:6px;}
+  .list-pager .lp-size select{padding:5px 8px; border:1.5px solid var(--line); border-radius:10px; background:transparent; color:var(--ink); font:inherit;}
+  .list-pager .lp-size select{color-scheme:light;}
+  body.dark .list-pager .lp-size select{color-scheme:dark;}
+  .list-pager .lp-size select option{background:var(--paper); color:var(--ink);}
+
   .hl-row{display:grid; grid-template-columns:1.2fr 1.6fr .8fr auto; gap:10px; align-items:end; margin-bottom:12px;}
   .hl-row .field{margin-bottom:0;}
   @media (max-width:760px){ .hl-row{grid-template-columns:1fr;} }
@@ -820,7 +833,7 @@ html, body{ overflow-x:hidden; }
             </div>
           </div>
           <div class="stu-grid" id="stuGrid"></div>
-          <div class="pager" id="stuPager"></div>
+          <div class="list-pager" id="stuPager"></div>
         </div>
       </section>
 
@@ -903,7 +916,7 @@ html, body{ overflow-x:hidden; }
           <button class="pill-btn ghost sm" onclick="deleteReadNotifs()">Delete read</button>
         </div>
         <div class="card notif-page-list" id="notifPageList" style="overflow:hidden;"></div>
-        <div class="pager" id="notifPager"></div>
+        <div class="list-pager" id="notifPager"></div>
       </section>
 
       <!-- ============ AUDIT LOGS ============ -->
@@ -950,7 +963,7 @@ html, body{ overflow-x:hidden; }
             <tbody id="logsTbody"></tbody>
           </table>
         </div>
-        <div class="pager" id="logPager"></div>
+        <div class="list-pager" id="logPager"></div>
       </section>
 
       <!-- ============ SIGN IN ACTIVITY ============ -->
@@ -987,7 +1000,7 @@ html, body{ overflow-x:hidden; }
             <tbody id="siTbody"></tbody>
           </table>
         </div>
-        <div class="pager" id="siPager"></div>
+        <div class="list-pager" id="siPager"></div>
       </section>
 
       <!-- ============ ENROLLMENT ============ -->
@@ -1933,6 +1946,37 @@ function stuFiltersChanged(){
   stuTimer = setTimeout(() => loadStudentsPage(1), 300);
 }
 
+/* Shared pager, same look as staff: "Showing 1–12 of 160", numbered pages, Rows dropdown.
+   d = {page, pages, total, size}. go(n) loads page n. setSize(n) changes rows per page. */
+function renderListPager(elId, d, sizes, go, setSize){
+  const el = document.getElementById(elId);
+  if(!el) return;
+  if(!d.total || d.total <= sizes[0]){ el.innerHTML = ''; return; }
+  const start = (d.page - 1) * d.size;
+  const nums = [];
+  for(let i = 1; i <= d.pages; i++){
+    if(i === 1 || i === d.pages || Math.abs(i - d.page) <= 1) nums.push(i);
+    else if(nums[nums.length - 1] !== '…') nums.push('…');
+  }
+  el.innerHTML = `
+    <div class="lp-info">Showing ${start + 1}–${Math.min(start + d.size, d.total)} of ${d.total}</div>
+    <div class="lp-nav">
+      <button class="pill-btn ghost sm" ${d.page === 1 ? 'disabled' : ''} data-pg="${d.page - 1}">‹ Prev</button>
+      ${nums.map(n => n === '…' ? '<span class="lp-gap">…</span>' : `<button class="pill-btn ghost sm lp-num ${n === d.page ? 'current' : ''}" data-pg="${n}">${n}</button>`).join('')}
+      <button class="pill-btn ghost sm" ${d.page === d.pages ? 'disabled' : ''} data-pg="${d.page + 1}">Next ›</button>
+    </div>
+    <label class="lp-size">Rows
+      <select data-size>${sizes.map(n => `<option value="${n}" ${n === d.size ? 'selected' : ''}>${n}</option>`).join('')}</select>
+    </label>`;
+  el.onclick = e => {
+    const b = e.target.closest('[data-pg]');
+    if(!b || b.disabled) return;
+    go(+b.dataset.pg);
+  };
+  el.onchange = e => { if(e.target.matches('[data-size]')) setSize(+e.target.value); };
+}
+let stuSize = 12;
+
 function loadStudentsPage(page){
   stuPage = page || 1;
   const grid = document.getElementById('stuGrid');
@@ -1940,7 +1984,8 @@ function loadStudentsPage(page){
     q: document.getElementById('stuSearch').value.trim(),
     status: document.getElementById('stuStatus').value,
     course: document.getElementById('stuCourse').value,
-    page: stuPage
+    page: stuPage,
+    size: stuSize
   });
   return api('/api/admin/students/?' + q).then(r=>{
     if(!r.ok){ grid.innerHTML = '<div class="sc-empty" style="grid-column:1/-1;">Could not load students. Refresh and try again.</div>'; return; }
@@ -1984,11 +2029,7 @@ function renderStudentCards(d){
     </div>`;
   }).join('') : '<div class="sc-empty" style="grid-column:1/-1;">No students match these filters.</div>';
 
-  document.getElementById('stuPager').innerHTML = d.pages > 1
-    ? `<button class="pill-btn ghost sm" ${d.page <= 1 ? 'disabled' : ''} onclick="loadStudentsPage(${d.page - 1})">← Previous</button>
-       <span>Page ${d.page} of ${d.pages} · ${d.total} students</span>
-       <button class="pill-btn ghost sm" ${d.page >= d.pages ? 'disabled' : ''} onclick="loadStudentsPage(${d.page + 1})">Next →</button>`
-    : `<span>${d.total} student${d.total === 1 ? '' : 's'}</span>`;
+  renderListPager('stuPager', d, [12, 24, 48], loadStudentsPage, n => { stuSize = n; loadStudentsPage(1); });
 }
 
 function openStudentModal(id){
@@ -2720,9 +2761,13 @@ function logFiltersChanged(){
   logTimer = setTimeout(()=>loadAuditLogs(1), 300);
 }
 
+let logSize = 25;
+
 function loadAuditLogs(page){
   const body = document.getElementById('logsTbody');
-  return api('/api/admin/audit/?' + logParams(page || 1)).then(r=>{
+  const p = logParams(page || 1);
+  p.set('size', logSize);
+  return api('/api/admin/audit/?' + p).then(r=>{
     if(!r.ok){
       body.innerHTML = '<tr><td colspan="6"><div class="sc-empty">Could not load the audit log. Refresh and try again.</div></td></tr>';
       return;
@@ -2738,11 +2783,7 @@ function loadAuditLogs(page){
         <td style="color:var(--ink-soft); font-size:12.5px; overflow-wrap:anywhere;">${esc(l.detail)}</td>
       </tr>`).join('')
       : '<tr><td colspan="6"><div class="sc-empty">No log entries match these filters.</div></td></tr>';
-    document.getElementById('logPager').innerHTML = d.pages > 1
-      ? `<button class="pill-btn ghost sm" ${d.page <= 1 ? 'disabled' : ''} onclick="loadAuditLogs(${d.page - 1})">← Previous</button>
-         <span>Page ${d.page} of ${d.pages} · ${d.total} entries</span>
-         <button class="pill-btn ghost sm" ${d.page >= d.pages ? 'disabled' : ''} onclick="loadAuditLogs(${d.page + 1})">Next →</button>`
-      : `<span>${d.total} entr${d.total === 1 ? 'y' : 'ies'}</span>`;
+    renderListPager('logPager', d, [25, 50, 100], loadAuditLogs, n => { logSize = n; loadAuditLogs(1); });
   });
 }
 
@@ -2774,10 +2815,12 @@ function loadPrivacy(){
 /* =========================================================
    SIGN IN ACTIVITY
 ========================================================= */
+let siSize = 25;
+
 function loadSignins(page){
   const body = document.getElementById('siTbody');
   const reason = document.getElementById('siReason').value;
-  return api('/api/admin/signins/?reason=' + encodeURIComponent(reason) + '&page=' + (page || 1)).then(r=>{
+  return api('/api/admin/signins/?reason=' + encodeURIComponent(reason) + '&page=' + (page || 1) + '&size=' + siSize).then(r=>{
     if(!r.ok){
       body.innerHTML = '<tr><td colspan="5"><div class="sc-empty">Could not load sign-in activity. Refresh and try again.</div></td></tr>';
       return;
@@ -2797,11 +2840,7 @@ function loadSignins(page){
         <td class="mono-cell">${esc(f.ip)}</td>
       </tr>`).join('')
       : '<tr><td colspan="5"><div class="sc-empty">No failed sign-ins recorded yet.</div></td></tr>';
-    document.getElementById('siPager').innerHTML = d.pages > 1
-      ? `<button class="pill-btn ghost sm" ${d.page <= 1 ? 'disabled' : ''} onclick="loadSignins(${d.page - 1})">← Previous</button>
-         <span>Page ${d.page} of ${d.pages} · ${d.total} entries</span>
-         <button class="pill-btn ghost sm" ${d.page >= d.pages ? 'disabled' : ''} onclick="loadSignins(${d.page + 1})">Next →</button>`
-      : `<span>${d.total} entr${d.total === 1 ? 'y' : 'ies'}</span>`;
+    renderListPager('siPager', d, [25, 50, 100], loadSignins, n => { siSize = n; loadSignins(1); });
   });
 }
 
@@ -3460,6 +3499,7 @@ let notifs = [];
 let notifUnread = 0;
 let notifMaxSeen = null;
 let notifPage = [];
+let notifSize = 20;
 let notifPageNo = 1;
 const NOTIF_ICON = {security:'🛡️', data_request:'📄', staff_setup:'🧑‍💼', service:'⚠️',
                     maintenance:'🛠️', enrollment:'📋', account:'✉️'};
@@ -3506,7 +3546,7 @@ function renderNotifs(){
 
 function loadNotifPage(page){
   notifPageNo = page || 1;
-  const q = new URLSearchParams({size: 20, page: notifPageNo});
+  const q = new URLSearchParams({size: notifSize, page: notifPageNo});
   const kind = document.getElementById('notifKindFilter').value;
   if(kind) q.set('kind', kind);
   if(document.getElementById('notifUnreadOnly').checked) q.set('unread', '1');
@@ -3517,11 +3557,7 @@ function loadNotifPage(page){
       notifPage = d.notifications || [];
       notifUnread = d.unread || 0;
       renderNotifs();
-      document.getElementById('notifPager').innerHTML = d.pages > 1
-        ? `<button class="pill-btn ghost sm" ${d.page <= 1 ? 'disabled' : ''} onclick="loadNotifPage(${d.page - 1})">← Newer</button>
-           <span>Page ${d.page} of ${d.pages} · ${d.total} notifications</span>
-           <button class="pill-btn ghost sm" ${d.page >= d.pages ? 'disabled' : ''} onclick="loadNotifPage(${d.page + 1})">Older →</button>`
-        : `<span>${d.total} notification${d.total === 1 ? '' : 's'}</span>`;
+      renderListPager('notifPager', d, [10, 20, 50], loadNotifPage, n => { notifSize = n; loadNotifPage(1); });
     })
     .catch(() => {});
 }

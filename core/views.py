@@ -4986,6 +4986,7 @@ def api_notifications(request):
         'unread': _console_unread(request.user),
         'total': total,
         'page': page,
+        'size': size,
         'pages': max(1, -(-total // size)),
     })
 
