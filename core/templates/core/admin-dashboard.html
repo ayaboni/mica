@@ -371,7 +371,7 @@
   @media (max-width:900px){
     .rb{grid-template-columns:1fr;}
     .rb-side{position:static;}
-    .rb-list{max-height:240px;}
+    .rb-list{max-height:340px;}
     .rb-top{padding:20px 18px 16px;}
     .rb-groups{padding:4px 18px 12px;}
     .rb-v{max-width:60%;}
@@ -609,6 +609,10 @@ html, body{ overflow-x:hidden; }
   .toolbar-left{ width:100%; }
   .toolbar-left .searchbox{ order:-1; flex:1 1 100%; min-width:0; }
   .toolbar-left .filter-select{ flex:1 1 calc(50% - 5px); min-width:0; }
+}
+
+@media (max-width:760px){
+  #enrMissingCard .searchbox{ flex:1 1 100%; min-width:0; }
 }
 
 </style>
@@ -1094,8 +1098,8 @@ html, body{ overflow-x:hidden; }
           <div style="font-size:14px; line-height:1.7;">
             First row is the column names. <b>Required:</b> student_number, last_name. <b>Optional:</b> first_name, course, year_level (1 to 5).
             <pre style="background:var(--sage-pale); padding:12px; border-radius:10px; overflow-x:auto; margin-top:10px;">student_number,last_name,first_name,course,year_level
-      2022-00123,Santos,Maria,BSIT,3
-      2023-00456,Reyes,Juan,BSN,2</pre>
+2022-00123,Santos,Maria,BSIT,3
+2023-00456,Reyes,Juan,BSN,2</pre>
           </div>
         </div>
       </section>
