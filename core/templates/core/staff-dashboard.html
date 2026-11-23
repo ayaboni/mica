@@ -950,6 +950,11 @@ html, body{ overflow-x:hidden; }
   .stat-card .delta{ font-size:11px; }
 }
 
+@media (max-width:760px){
+  .topbar .titlewrap .eyebrow{ font-size:10px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .topbar h2{ font-size:16px; line-height:1.15; white-space:normal; overflow:visible; }
+}
+
 </style>
 </head>
 <body>
@@ -1142,7 +1147,7 @@ html, body{ overflow-x:hidden; }
               </div>
             </div>
             <canvas id="moodTrendChart" height="150"></canvas>
-<p class="chart-summary" id="sum-moodTrendChart"></p>
+            <p class="chart-summary" id="sum-moodTrendChart"></p>
           </div>
           <div class="card panel">
             <div class="panel-head">
@@ -1152,11 +1157,11 @@ html, body{ overflow-x:hidden; }
               </div>
             </div>
             <canvas id="engagementChart" height="150"></canvas>
-<p class="chart-summary" id="sum-engagementChart"></p>
+            <p class="chart-summary" id="sum-engagementChart"></p>
           </div>
         </div>
 
-        <div class="grid-2">
+        <div class="grid-2" style="align-items:start;">
           <div class="card panel">
             <div class="panel-head">
               <div>

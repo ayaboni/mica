@@ -100,6 +100,8 @@
   .collapse-btn{width:32px; height:32px; border-radius:8px; border:none; background:transparent; color:var(--brown-deep); display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0;}
   .collapse-btn:hover{background:rgba(255,255,255,.35);}
   .collapse-btn svg{width:18px; height:18px;}
+  body.dark .collapse-btn{ color:#F1ECDD; }
+  body.dark .collapse-btn:hover{ background:rgba(255,255,255,.14); color:#fff; }
   .icon-btn.menu-btn{display:none; margin-right:14px; flex-shrink:0;}
   .sidebar.is-collapsed ~ .main .icon-btn.menu-btn{display:flex;}
   .sidebar-backdrop{display:none; position:fixed; inset:0; background:rgba(20,16,10,.4); z-index:55;}
@@ -583,6 +585,17 @@ html, body{ overflow-x:hidden; }
   .stat-card .delta{ font-size:11px; }
 }
 
+@media (max-width:760px){
+  .topbar .titlewrap .eyebrow{ font-size:10px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .topbar h2{ font-size:16px; line-height:1.15; white-space:normal; overflow:visible; }
+}
+
+@media (max-width:760px){
+  #staffActivity table{ min-width:0; }
+  #staffActivity th, #staffActivity td{ padding:10px 8px; font-size:12.5px; white-space:normal; }
+  #staffActivity .badge{ white-space:normal; padding:3px 9px; font-size:11px; line-height:1.25; text-align:left; }
+}
+
 </style>
 </head>
 <body>
@@ -761,7 +774,7 @@ html, body{ overflow-x:hidden; }
           </div>
         </div>
 
-        <div class="grid-2" style="grid-template-columns:1fr 1.4fr;">
+        <div class="grid-2" style="grid-template-columns:1fr 1.4fr; align-items:start;">
           <div class="card panel">
             <div class="panel-head"><div><h3>Needs Attention</h3><div class="sub">Things waiting on someone</div></div></div>
             <div id="attentionList"></div>
