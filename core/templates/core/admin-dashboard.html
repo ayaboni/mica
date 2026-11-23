@@ -615,6 +615,32 @@ html, body{ overflow-x:hidden; }
   #enrMissingCard .searchbox{ flex:1 1 100%; min-width:0; }
 }
 
+/* button-styled links shouldn't be underlined */
+a.pill-btn{ text-decoration:none; }
+
+/* Integrations: status pills stay on one line */
+.service-row{ gap:10px; }
+.service-row .s-left{ min-width:0; flex:1; }
+.service-row .badge{ white-space:nowrap; flex-shrink:0; }
+
+@media (max-width:760px){
+  /* no scrollbar under scrolling tab rows */
+  .tab-row{ scrollbar-width:none; }
+  .tab-row::-webkit-scrollbar{ display:none; }
+
+  /* card headers: the button wraps under the text instead of being squeezed */
+  .panel-head{ flex-wrap:wrap; }
+  .panel-head .pill-btn{ white-space:nowrap; flex-shrink:0; }
+
+  /* Data Privacy: last (3rd) stat card spans the row; lists a bit tighter */
+  #sec-privacy .stat-grid > :last-child:nth-child(odd){ grid-column:1 / -1; }
+  #sec-privacy .panel ul{ line-height:1.6 !important; }
+
+  /* Enrollment "Not on the list": numbers stay on one line, names wrap */
+  #missTbody td, #enrMissingCard th{ white-space:nowrap; }
+  #missTbody td:nth-child(2){ white-space:normal; min-width:130px; }
+}
+
 </style>
 </head>
 <body>
