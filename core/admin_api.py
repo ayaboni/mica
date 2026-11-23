@@ -969,7 +969,7 @@ def enrollment_missing(request):
     for token in request.GET.get("q", "").lower().split()[:5]:
         people = [p for p in people if token in " ".join([
             p.user.get_full_name(), p.user.username, p.student_number or "", p.course or ""]).lower()]
-    page = Paginator(people, 15).get_page(request.GET.get("page"))
+    page = Paginator(people, _page_size(request, 15, (15, 30, 60))).get_page(request.GET.get("page"))
     return JsonResponse({
         "all_total": all_total,
         "total": len(people),
@@ -978,7 +978,7 @@ def enrollment_missing(request):
             {"id": p.user_id, "name": p.user.get_full_name() or p.user.username,
              "student_number": p.student_number, "course": p.course, "year_level": p.year_level}
             for p in page],
-        "page": page.number, "pages": page.paginator.num_pages,
+        "page": page.number, "pages": page.paginator.num_pages, "size": page.paginator.per_page,
     })
 
 
@@ -1082,12 +1082,13 @@ def data_requests(request):
         page = int(request.GET.get("page", 1))
     except ValueError:
         page = 1
-    pg = Paginator(qs,10).get_page(page)
+    pg = Paginator(qs, _page_size(request, 10, (10, 25, 50))).get_page(page)
     return JsonResponse({
         "rows": [_dr_row(r) for r in pg.object_list],
         "page": pg.number,
         "pages": pg.paginator.num_pages,
         "total": pg.paginator.count,
+        "size": pg.paginator.per_page,
         "open_count": DataRequest.objects.filter(status="open").count(),
     })
 

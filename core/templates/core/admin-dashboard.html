@@ -1043,7 +1043,7 @@ html, body{ overflow-x:hidden; }
             <tbody id="missTbody"></tbody>
           </table>
         </div>
-        <div class="pager" id="missPager"></div>
+        <div class="list-pager" id="missPager"></div>
         <div style="margin-top:14px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
           <button class="pill-btn solid sm" id="missBtn" onclick="archiveMissing()">Archive selected</button>
           <span id="missMsg" style="font-size:12.5px; color:var(--ink-soft); white-space:pre-line;"></span>
@@ -1146,7 +1146,7 @@ html, body{ overflow-x:hidden; }
               <tbody id="drTbody"></tbody>
             </table>
           </div>
-          <div class="pager" id="drPager"></div>
+          <div class="list-pager" id="drPager"></div>
         </div>
       </section>
 
@@ -1753,6 +1753,7 @@ function handleGlobalSearch(q){
    ENROLLMENT
 ========================================================= */
 let missList = [], missMatching = [], missSel = new Map(), missPage = 1, missTimer = null;
+let missSize = 15;
 
 function loadEnrollment(){
   return api('/api/admin/enrollment/').then(r=>{
@@ -1815,7 +1816,7 @@ function missSearchChanged(){
 
 function loadMissing(page){
   missPage = page || 1;
-  const q = new URLSearchParams({q: document.getElementById('missSearch').value.trim(), page: missPage});
+  const q = new URLSearchParams({q: document.getElementById('missSearch').value.trim(), page: missPage, size: missSize});
   return api('/api/admin/enrollment/missing/?' + q).then(r=>{
     if(!r.ok) return;
     const d = r.data;
@@ -1832,11 +1833,7 @@ function loadMissing(page){
         <td>${esc(s.course)}</td><td>${esc(s.year_level)}</td>
       </tr>`).join('')
       : '<tr><td colspan="5"><div class="sc-empty">No students match this search.</div></td></tr>';
-    document.getElementById('missPager').innerHTML = d.pages > 1
-      ? `<button class="pill-btn ghost sm" ${d.page <= 1 ? 'disabled' : ''} onclick="loadMissing(${d.page - 1})">← Previous</button>
-         <span>Page ${d.page} of ${d.pages} · ${d.total} students</span>
-         <button class="pill-btn ghost sm" ${d.page >= d.pages ? 'disabled' : ''} onclick="loadMissing(${d.page + 1})">Next →</button>`
-      : `<span>${d.total} student${d.total === 1 ? '' : 's'}</span>`;
+    renderListPager('missPager', d, [15, 30, 60], loadMissing, n => { missSize = n; loadMissing(1); });
     document.getElementById('missCount').textContent = d.total === d.all_total
       ? d.all_total + ' not on the list'
       : d.total + ' of ' + d.all_total + ' match';
@@ -3276,11 +3273,12 @@ function deleteCourse(id){
 const DR_BADGE = {open:'watch', done:'stable', declined:'neutral'};
 let drStudent = null, drResults = [], drTimer = null;
 let drRows = [];
+let drSize = 10;
 
 function loadDataRequests(page){
   const body = document.getElementById('drTbody');
   const status = document.getElementById('drStatus').value;
-  return api('/api/admin/data-requests/?status=' + encodeURIComponent(status) + '&page=' + (page || 1)).then(r=>{
+  return api('/api/admin/data-requests/?status=' + encodeURIComponent(status) + '&page=' + (page || 1) + '&size=' + drSize).then(r=>{
     if(!r.ok){
       body.innerHTML = '<tr><td colspan="6"><div class="sc-empty">Could not load data requests. Refresh and try again.</div></td></tr>';
       return;
@@ -3310,11 +3308,8 @@ function loadDataRequests(page){
             : ''}
         </div></td>
       </tr>`).join('')
-      : '<tr><td colspan="6"><div class="sc-empty">No data requests logged yet.</div></td></tr>';    document.getElementById('drPager').innerHTML = d.pages > 1
-      ? `<button class="pill-btn ghost sm" ${d.page <= 1 ? 'disabled' : ''} onclick="loadDataRequests(${d.page - 1})">← Previous</button>
-         <span>Page ${d.page} of ${d.pages} · ${d.total} requests</span>
-         <button class="pill-btn ghost sm" ${d.page >= d.pages ? 'disabled' : ''} onclick="loadDataRequests(${d.page + 1})">Next →</button>`
-      : `<span>${d.total} request${d.total === 1 ? '' : 's'}</span>`;
+      : '<tr><td colspan="6"><div class="sc-empty">No data requests logged yet.</div></td></tr>';
+    renderListPager('drPager', d, [10, 25, 50], loadDataRequests, n => { drSize = n; loadDataRequests(1); });
   });
 }
 

@@ -1200,7 +1200,7 @@ html, body{ overflow-x:hidden; }
           <button class="pill-btn ghost sm" onclick="deleteReadNotifs()">Delete read</button>
         </div>
         <div class="card notif-page-list" id="notifPageList" style="overflow:hidden;"></div>
-        <div class="pager" id="notifPager"></div>
+        <div class="list-pager" id="notifPager"></div>
       </section>
 
       <!-- ============ STUDENTS ============ -->
@@ -6345,9 +6345,39 @@ function renderNotifs(){
                                              : '<div class="notif-empty">Nothing here</div>';
 }
 
+/* Pager for lists the server pages (notifications). Same look as the client-side one above. */
+function renderListPager(elId, d, sizes, go, setSize){
+  const el = document.getElementById(elId);
+  if(!el) return;
+  if(!d.total || d.total <= sizes[0]){ el.innerHTML = ''; return; }
+  const start = (d.page - 1) * d.size;
+  const nums = [];
+  for(let i = 1; i <= d.pages; i++){
+    if(i === 1 || i === d.pages || Math.abs(i - d.page) <= 1) nums.push(i);
+    else if(nums[nums.length - 1] !== '…') nums.push('…');
+  }
+  el.innerHTML = `
+    <div class="lp-info">Showing ${start + 1}–${Math.min(start + d.size, d.total)} of ${d.total}</div>
+    <div class="lp-nav">
+      <button class="pill-btn ghost sm" ${d.page === 1 ? 'disabled' : ''} data-pg="${d.page - 1}">‹ Prev</button>
+      ${nums.map(n => n === '…' ? '<span class="lp-gap">…</span>' : `<button class="pill-btn ghost sm lp-num ${n === d.page ? 'current' : ''}" data-pg="${n}">${n}</button>`).join('')}
+      <button class="pill-btn ghost sm" ${d.page === d.pages ? 'disabled' : ''} data-pg="${d.page + 1}">Next ›</button>
+    </div>
+    <label class="lp-size">Rows
+      <select data-size>${sizes.map(n => `<option value="${n}" ${n === d.size ? 'selected' : ''}>${n}</option>`).join('')}</select>
+    </label>`;
+  el.onclick = e => {
+    const b = e.target.closest('[data-pg]');
+    if(!b || b.disabled) return;
+    go(+b.dataset.pg);
+  };
+  el.onchange = e => { if(e.target.matches('[data-size]')) setSize(+e.target.value); };
+}
+let notifSize = 20;
+
 function loadNotifPage(page){
   notifPageNo = page || 1;
-  const q = new URLSearchParams({size: 20, page: notifPageNo});
+  const q = new URLSearchParams({size: notifSize, page: notifPageNo});
   const kind = document.getElementById('notifKindFilter').value;
   if(kind) q.set('kind', kind);
   if(document.getElementById('notifUnreadOnly').checked) q.set('unread', '1');
@@ -6358,11 +6388,7 @@ function loadNotifPage(page){
       notifPage = d.notifications || [];
       notifUnread = d.unread || 0;
       renderNotifs();
-      document.getElementById('notifPager').innerHTML = d.pages > 1
-        ? `<button class="pill-btn ghost sm" ${d.page <= 1 ? 'disabled' : ''} onclick="loadNotifPage(${d.page - 1})">← Newer</button>
-           <span>Page ${d.page} of ${d.pages} · ${d.total} notifications</span>
-           <button class="pill-btn ghost sm" ${d.page >= d.pages ? 'disabled' : ''} onclick="loadNotifPage(${d.page + 1})">Older →</button>`
-        : `<span>${d.total} notification${d.total === 1 ? '' : 's'}</span>`;
+      renderListPager('notifPager', d, [10, 20, 50], loadNotifPage, n => { notifSize = n; loadNotifPage(1); });
     })
     .catch(() => {});
 }
