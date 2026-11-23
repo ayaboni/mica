@@ -570,7 +570,7 @@ html, body{ overflow-x:hidden; }
   .modal-head, .modal-body, .modal-foot{ padding-left:18px; padding-right:18px; }
 
   .alert-card .top-row{ flex-wrap:wrap; }
-  .waiting-banner-floating{ left:12px; right:12px; bottom:12px; max-width:none; }
+  .waiting-banner-floating{ left:auto; right:12px; bottom:12px; max-width:calc(100vw - 24px); padding:9px 12px 9px 14px; font-size:12.5px; border-radius:14px; gap:10px; }
 
   /* admin card grids (minmax was wider than a small phone) */
   .stu-grid{ grid-template-columns:repeat(auto-fill,minmax(min(270px,100%),1fr)); }
@@ -594,6 +594,21 @@ html, body{ overflow-x:hidden; }
   #staffActivity table{ min-width:0; }
   #staffActivity th, #staffActivity td{ padding:10px 8px; font-size:12.5px; white-space:normal; }
   #staffActivity .badge{ white-space:normal; padding:3px 9px; font-size:11px; line-height:1.25; text-align:left; }
+}
+
+/* Student cards: status + Manage on one row (shorter cards) */
+.stu-card{ display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:14px 10px; }
+.stu-card > .stu-top, .stu-card > .stu-meta{ grid-column:1 / -1; }
+.stu-card .stu-actions{ margin-top:0; }
+
+/* Search stretches instead of cutting its placeholder */
+#atab-students .toolbar-left .searchbox{ flex:1 1 320px; min-width:min(100%,260px); }
+
+@media (max-width:760px){
+  /* search on its own row, the two selects side by side */
+  .toolbar-left{ width:100%; }
+  .toolbar-left .searchbox{ order:-1; flex:1 1 100%; min-width:0; }
+  .toolbar-left .filter-select{ flex:1 1 calc(50% - 5px); min-width:0; }
 }
 
 </style>
@@ -819,12 +834,24 @@ html, body{ overflow-x:hidden; }
                  details and password. Each code works once, expires on its own, and sets the role the account gets.</p>
             </div>
           </div>
+          <div class="toolbar" style="margin-bottom:12px;">
+            <div class="toolbar-left">
+              <select class="filter-select" id="staffCodeFilter" onchange="setStaffCodeFilter(this.value)">
+                <option value="active">Active codes</option>
+                <option value="used">Used</option>
+                <option value="expired">Expired</option>
+                <option value="revoked">Revoked</option>
+                <option value="all">All codes</option>
+              </select>
+            </div>
+          </div>
           <div class="card" style="overflow-x:auto;">
             <table style="min-width:760px;">
               <thead><tr><th>Code</th><th>Role</th><th>Status</th><th>Expires</th><th>Used by</th><th>Action</th></tr></thead>
               <tbody id="staffCodeRows"><tr><td colspan="6"><div class="sc-empty">Loading…</div></td></tr></tbody>
             </table>
           </div>
+          <div class="list-pager" id="staffCodePager"></div>
         </div>
 
         <div class="subpanel" id="atab-students">
@@ -2678,6 +2705,7 @@ function staffToAccount(st){
 
 /* ---- Staff registration codes ---- */
 let staffCodes = [], newStaffCodes = [];
+let codeFilter = 'active', codePage = 1, codeSize = 10;
 const CODE_BADGE = {active:'stable', used:'neutral', expired:'neutral', revoked:'urgent'};
 const CODE_LABEL = {active:'Active', used:'Used', expired:'Expired', revoked:'Revoked'};
 
@@ -2688,14 +2716,28 @@ function loadStaffCodes(){
     renderStaffCodes();
   });
 }
+
+function setStaffCodeFilter(v){ codeFilter = v; codePage = 1; renderStaffCodes(); }
+
 function renderStaffCodes(){
   const body = document.getElementById('staffCodeRows');
+  const pagerEl = document.getElementById('staffCodePager');
   if(!staffCodes.length){
     body.innerHTML = '<tr><td colspan="6"><div class="sc-empty">No staff codes yet. Use “Generate staff code” to invite someone.</div></td></tr>';
+    pagerEl.innerHTML = '';
     return;
   }
+  const rows = codeFilter === 'all' ? staffCodes : staffCodes.filter(c => c.status === codeFilter);
+  if(!rows.length){
+    body.innerHTML = '<tr><td colspan="6"><div class="sc-empty">No ' + (CODE_LABEL[codeFilter] || '').toLowerCase() + ' codes.</div></td></tr>';
+    pagerEl.innerHTML = '';
+    return;
+  }
+  const pages = Math.max(1, Math.ceil(rows.length / codeSize));
+  codePage = Math.min(Math.max(codePage, 1), pages);
+  const slice = rows.slice((codePage - 1) * codeSize, codePage * codeSize);
   const day = iso => new Date(iso).toLocaleDateString(undefined, {month:'short', day:'numeric', year:'numeric'});
-  body.innerHTML = staffCodes.map(c=>`
+  body.innerHTML = slice.map(c=>`
     <tr>
       <td style="font-family:'IBM Plex Mono',monospace; font-weight:600; letter-spacing:.12em;">${c.status === 'active' ? esc(c.code) : '<span style="opacity:.55">'+esc(c.code)+'</span>'}</td>
       <td><span class="badge neutral">${esc(c.role)}</span>${c.label ? '<div style="font-size:12px; color:var(--ink-soft); margin-top:4px;">'+esc(c.label)+'</div>' : ''}</td>
@@ -2704,6 +2746,8 @@ function renderStaffCodes(){
       <td>${c.used_by ? esc(c.used_by) : '\u2014'}</td>
       <td>${c.status === 'active' ? '<button class="pill-btn ghost sm" onclick="revokeStaffCode('+c.id+')">Revoke</button>' : ''}</td>
     </tr>`).join('');
+  renderListPager('staffCodePager', {page: codePage, pages, total: rows.length, size: codeSize}, [10, 25, 50],
+    n => { codePage = n; renderStaffCodes(); }, n => { codeSize = n; codePage = 1; renderStaffCodes(); });
 }
 function openStaffCodeModal(){
   document.getElementById('staffCodeError').textContent = '';

@@ -934,7 +934,7 @@ html, body{ overflow-x:hidden; }
   .modal-head, .modal-body, .modal-foot{ padding-left:18px; padding-right:18px; }
 
   .alert-card .top-row{ flex-wrap:wrap; }
-  .waiting-banner-floating{ left:12px; right:12px; bottom:12px; max-width:none; }
+  .waiting-banner-floating{ left:auto; right:12px; bottom:12px; max-width:calc(100vw - 24px); padding:9px 12px 9px 14px; font-size:12.5px; border-radius:14px; gap:10px; }
 
   /* admin card grids (minmax was wider than a small phone) */
   .subclass-grid{ grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr)); }
@@ -1754,6 +1754,18 @@ html, body{ overflow-x:hidden; }
             <tbody id="regBatchRows"></tbody>
           </table>
         </div>
+
+        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:12px;">
+          <div style="font-weight:700;">Single codes</div>
+          <select class="filter-select" id="regCodeFilter" onchange="setRegCodeFilter(this.value)">
+            <option value="active">Active codes</option>
+            <option value="used">Used</option>
+            <option value="expired">Expired</option>
+            <option value="revoked">Revoked</option>
+            <option value="all">All codes</option>
+          </select>
+        </div>
+        <div class="list-pager" id="regCodePager"></div>
 
         <div class="card" style="overflow-x:auto;">
           <table>
@@ -6010,10 +6022,18 @@ function regStatusBadge(status){
 }
 const REG_EMPTY = (cols, text) => `<tr style="cursor:default;"><td colspan="${cols}" style="text-align:center; color:var(--ink-soft); padding:24px;">${text}</td></tr>`;
 
-function renderRegCodes(data){
-  if(data.ttl_hours) document.getElementById('regCodeTtl').textContent = data.ttl_hours;
-  const rows = data.codes || [];
-  document.getElementById('regCodeRows').innerHTML = rows.length ? rows.map(c => `
+let regCodesAll = [], regCodeFilter = 'active';
+function setRegCodeFilter(v){ regCodeFilter = v; renderRegCodeRows(); }
+function renderRegCodeRows(){
+  const body = document.getElementById('regCodeRows');
+  const rows = regCodeFilter === 'all' ? regCodesAll : regCodesAll.filter(c => c.status === regCodeFilter);
+  if(!rows.length){
+    body.innerHTML = REG_EMPTY(6, regCodesAll.length ? 'No ' + regCodeFilter + ' codes.' : 'No single codes generated yet.');
+    document.getElementById('regCodePager').innerHTML = '';
+    return;
+  }
+  const slice = paginate('regcodes', rows, 'regCodePager', renderRegCodeRows, regCodeFilter, [10, 25, 50]);
+  body.innerHTML = slice.map(c => `
     <tr style="cursor:default;">
       <td style="font-family:'IBM Plex Mono',monospace; font-weight:700; letter-spacing:.12em;">${escapeHtmlStaff(c.code)}</td>
       <td>${regStatusBadge(c.status)}</td>
@@ -6021,8 +6041,13 @@ function renderRegCodes(data){
       <td>${regDateText(c.expires_at)}</td>
       <td>${c.used_by ? escapeHtmlStaff(c.used_by) : '<span style="color:var(--ink-soft);">\u2014</span>'}</td>
       <td>${c.status === 'active' ? `<button class="pill-btn ghost sm" onclick="revokeRegCode(${c.id})">Revoke</button>` : ''}</td>
-    </tr>`).join('')
-    : REG_EMPTY(6, 'No single codes generated yet.');
+    </tr>`).join('');
+}
+
+function renderRegCodes(data){
+  if(data.ttl_hours) document.getElementById('regCodeTtl').textContent = data.ttl_hours;
+  regCodesAll = data.codes || [];
+  renderRegCodeRows();
 
   const shared = data.shared || [];
   document.getElementById('regSharedRows').innerHTML = shared.length ? shared.map(c => `
