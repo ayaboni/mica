@@ -204,11 +204,11 @@
 
 <script>
 (function(){
-  var dlg = document.getElementById('demoDialog');
-  var openBtn = document.getElementById('demoOpen');
+  const dlg = document.getElementById('demoDialog');
+  const openBtn = document.getElementById('demoOpen');
   if (!dlg || !openBtn) return;
 
-  var elTitle = document.getElementById('demoTitle'),
+  const elTitle = document.getElementById('demoTitle'),
       elText  = document.getElementById('demoText'),
       elMock  = document.getElementById('demoMock'),
       elLabel = document.getElementById('demoStepLabel'),
@@ -216,11 +216,11 @@
       btnBack = document.getElementById('demoBack'),
       btnNext = document.getElementById('demoNext'),
       btnGo   = document.getElementById('demoGo');
-  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  var timers = [], idx = 0;
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let timers = [], idx = 0;
 
-  var elMockEl = elMock, cursor = null;
-  var DOTS = '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022';
+  let elMockEl = elMock, cursor = null;
+  const DOTS = '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022';
 
   function $(id){ return document.getElementById(id); }
   function focusField(el, val){
@@ -232,12 +232,12 @@
 
   /* cursor helpers */
   function cursorPoint(el){
-    var m = elMockEl.getBoundingClientRect(), r = el.getBoundingClientRect();
+    const m = elMockEl.getBoundingClientRect(), r = el.getBoundingClientRect();
     return { x: r.left - m.left + Math.min(r.width / 2, 46), y: r.top - m.top + r.height / 2 };
   }
   function placeCursor(el, instant){
     if (!cursor) return;
-    var p = el ? cursorPoint(el) : { x: elMockEl.clientWidth - 40, y: elMockEl.clientHeight - 24 };
+    const p = el ? cursorPoint(el) : { x: elMockEl.clientWidth - 40, y: elMockEl.clientHeight - 24 };
     if (instant) cursor.style.transition = 'none';
     cursor.style.transform = 'translate(' + Math.round(p.x) + 'px,' + Math.round(p.y) + 'px)';
     if (instant) { void cursor.offsetWidth; cursor.style.transition = ''; }
@@ -249,21 +249,21 @@
   /* list = [{id, act(el) -> optional extra ms to wait}] ; cursor visits each in turn, clicks, then runs act */
   function play(list){
     if (reduce) { list.forEach(function(s){ s.act($(s.id)); }); return; }
-    var i = 0;
+    let i = 0;
     (function nxt(){
       if (i >= list.length) return;
-      var s = list[i++], el = $(s.id);
+      const s = list[i++], el = $(s.id);
       placeCursor(el);
       later(function(){
         clickFx();
-        later(function(){ var wait = s.act(el) || 0; later(nxt, 380 + wait); }, 120);
+        later(function(){ const wait = s.act(el) || 0; later(nxt, 380 + wait); }, 120);
       }, 750);
     })();
   }
 
-  var GLOGO = '<svg viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20.4H24v7.2h11.3c-1.6 4.6-6 8-11.3 8-6.9 0-12.5-5.6-12.5-12.5S17.1 10.6 24 10.6c3.2 0 6.1 1.2 8.3 3.2l5.1-5.1C34.3 5.6 29.4 3.6 24 3.6 12.7 3.6 3.6 12.7 3.6 24S12.7 44.4 24 44.4 44.4 35.3 44.4 24c0-1.2-.1-2.4-.3-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l5.9 4.3C13.8 15.6 18.5 12.6 24 12.6c3.2 0 6.1 1.2 8.3 3.2l5.1-5.1C34.3 7.6 29.4 5.6 24 5.6c-7.4 0-13.8 4.2-17.7 10.1z"/><path fill="#4CAF50" d="M24 44.4c5.3 0 10.1-1.8 13.8-5l-6.4-5.4c-2 1.5-4.6 2.4-7.4 2.4-5.3 0-9.7-3.4-11.3-8.1l-6.1 4.7c3.8 6 10.2 10.4 17.4 10.4z"/><path fill="#1976D2" d="M43.6 20.5H42V20.4H24v7.2h11.3c-.8 2.2-2.2 4.1-4 5.4l6.4 5.4c-.5.4 6.8-5 6.8-14.4 0-1.2-.1-2.4-.3-3.5z"/></svg>';
+  const GLOGO = '<svg viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20.4H24v7.2h11.3c-1.6 4.6-6 8-11.3 8-6.9 0-12.5-5.6-12.5-12.5S17.1 10.6 24 10.6c3.2 0 6.1 1.2 8.3 3.2l5.1-5.1C34.3 5.6 29.4 3.6 24 3.6 12.7 3.6 3.6 12.7 3.6 24S12.7 44.4 24 44.4 44.4 35.3 44.4 24c0-1.2-.1-2.4-.3-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l5.9 4.3C13.8 15.6 18.5 12.6 24 12.6c3.2 0 6.1 1.2 8.3 3.2l5.1-5.1C34.3 7.6 29.4 5.6 24 5.6c-7.4 0-13.8 4.2-17.7 10.1z"/><path fill="#4CAF50" d="M24 44.4c5.3 0 10.1-1.8 13.8-5l-6.4-5.4c-2 1.5-4.6 2.4-7.4 2.4-5.3 0-9.7-3.4-11.3-8.1l-6.1 4.7c3.8 6 10.2 10.4 17.4 10.4z"/><path fill="#1976D2" d="M43.6 20.5H42V20.4H24v7.2h11.3c-.8 2.2-2.2 4.1-4 5.4l6.4 5.4c-.5.4 6.8-5 6.8-14.4 0-1.2-.1-2.4-.3-3.5z"/></svg>';
 
-  var codeStep = {
+  const codeStep = {
     title: 'Get a registration code',
       text: 'Registration is by code. Students get theirs from the Guidance Office, and staff get theirs from the System Admin.',
       mock: function(){
@@ -273,13 +273,13 @@
           '<div class="m-btn" id="mBtn">Continue</div>';
       },
       run: function(){
-        var code = 'MICA7K2Q';
+        const code = 'MICA7K2Q';
         play([
           { id: 'mCode', act: function(el){
               focusField(el, '');
               if (reduce) { el.textContent = code; return 0; }
               el.classList.add('m-caret');
-              var n = 0;
+              let n = 0;
               (function type(){
                 if (n <= code.length) { el.textContent = code.slice(0, n++); later(type, 130); }
                 else el.classList.remove('m-caret');
@@ -290,7 +290,7 @@
         ]);
       } };
 
-  var pwSteps = [
+  const pwSteps = [
     codeStep,
     { title: 'Fill in your details',
       text: 'Add your name, student number, course, year level and email, then pick a username. Staff are asked for a name, username and email instead.',
@@ -302,7 +302,7 @@
           '<div class="m-field ph" id="f7">Email</div>';
       },
       run: function(){
-        var vals = { f1:'Juan', f2:'Dela Cruz', f3:'000-0000', f4:'juan.dc', f5:'Your college', f6:'Your year level', f7:'juan@email.com' };
+        const vals = { f1:'Juan', f2:'Dela Cruz', f3:'000-0000', f4:'juan.dc', f5:'Your college', f6:'Your year level', f7:'juan@email.com' };
         play(['f1','f2','f3','f4','f5','f6','f7'].map(function(id){
           return { id: id, act: function(el){ focusField(el, vals[id]); } };
         }));
@@ -341,7 +341,7 @@
       } }
   ];
 
-  var googleSteps = [
+  const googleSteps = [
     codeStep,
     { title: 'Choose Google',
       text: 'On the register page, press Continue with Google instead of filling in the form. Google sign-up is for students only; staff register with the form.',
@@ -377,13 +377,13 @@
           '<div class="m-btn" id="mBtn">Sign in</div>';
       },
       run: function(){
-        var code = 'K7Q2M9';
+        const code = 'K7Q2M9';
         play([
           { id: 'gCode', act: function(el){
               focusField(el, '');
               if (reduce) { el.textContent = code; return 0; }
               el.classList.add('m-caret');
-              var n = 0;
+              let n = 0;
               (function type(){
                 if (n <= code.length) { el.textContent = code.slice(0, n++); later(type, 130); }
                 else el.classList.remove('m-caret');
@@ -404,8 +404,8 @@
           '<div class="m-btn" id="mBtn">Continue</div>';
       },
       run: function(){
-        var vals = { d1:'Juan', d2:'Dela Cruz', d3:'000-0000', d4:'Your course', d5:'Your year', d6:'juan.dc' };
-        var list = ['d1','d2','d3','d4','d5','d6'].map(function(id){
+        const vals = { d1:'Juan', d2:'Dela Cruz', d3:'000-0000', d4:'Your course', d5:'Your year', d6:'juan.dc' };
+        let list = ['d1','d2','d3','d4','d5','d6'].map(function(id){
           return { id: id, act: function(el){ focusField(el, vals[id]); } };
         });
         list.push({ id: 'mBtn', act: function(el){ press(el); } });
@@ -413,11 +413,11 @@
       } }
   ];
 
-  var flows = { password: pwSteps, google: googleSteps };
-  var steps = pwSteps;
+  const flows = { password: pwSteps, google: googleSteps };
+  let steps = pwSteps;
 
 
-  var tabs = Array.prototype.slice.call(document.querySelectorAll('.demo-tab'));
+  const tabs = Array.prototype.slice.call(document.querySelectorAll('.demo-tab'));
   function setFlow(name){
     steps = flows[name];
     tabs.forEach(function(t){ t.setAttribute('aria-selected', String(t.getAttribute('data-flow') === name)); t.tabIndex = t.getAttribute('data-flow') === name ? 0 : -1; });
@@ -432,7 +432,7 @@
   function show(i){
     clearTimers();
     idx = i;
-    var s = steps[i], last = i === steps.length - 1;
+    const s = steps[i], last = i === steps.length - 1;
     elLabel.textContent = 'Step ' + (i + 1) + ' of ' + steps.length;
     elTitle.textContent = s.title;
     elText.textContent = s.text;
@@ -466,7 +466,7 @@
     t.addEventListener('keydown', function(e){
       if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
       e.preventDefault(); e.stopPropagation();
-      var other = tabs[tabs.indexOf(t) === 0 ? 1 : 0];
+      const other = tabs[tabs.indexOf(t) === 0 ? 1 : 0];
       other.focus(); other.click();
     });
   });

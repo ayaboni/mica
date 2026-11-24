@@ -258,7 +258,7 @@ html[data-theme="dark"] .form-note.error { color: #ffb4b0; }
 <script>
 /* After sending (or an error), bring the message into view */
 document.addEventListener("DOMContentLoaded", function () {
-  var note = document.querySelector(".form-note.is-visible");
+  const note = document.querySelector(".form-note.is-visible");
   if (note) note.scrollIntoView({ block: "center" });
 });
 </script>

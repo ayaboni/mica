@@ -48,22 +48,22 @@
 (function(){
   if (window.MicaGuard) return;
 
-  var DEF = {
+  const DEF = {
     title: 'You have unsaved changes',
     text: "Save them to keep them, or discard them and leave. Changes that aren't saved will be lost.",
     yes: 'Save changes', no: 'Discard and leave', stay: 'Keep editing'
   };
-  var providers = [];
-  var back  = document.getElementById('mgBack');
-  var elT   = document.getElementById('mgTitle');
-  var elX   = document.getElementById('mgText');
-  var bYes  = document.getElementById('mgYes');
-  var bNo   = document.getElementById('mgNo');
-  var bStay = document.getElementById('mgStay');
-  var isOpen = false, onYes = null, onNo = null, lastFocus = null, busy = false;
+  const providers = [];
+  const back  = document.getElementById('mgBack');
+  const elT   = document.getElementById('mgTitle');
+  const elX   = document.getElementById('mgText');
+  const bYes  = document.getElementById('mgYes');
+  const bNo   = document.getElementById('mgNo');
+  const bStay = document.getElementById('mgStay');
+  let isOpen = false, onYes = null, onNo = null, lastFocus = null, busy = false;
 
   function dirtyList(only){
-    var list = only ? [only] : providers;
+    const list = only ? [only] : providers;
     return list.filter(function(p){ try { return !!p.isDirty(); } catch (e) { return false; } });
   }
   function dirty(){ return dirtyList().length > 0; }
@@ -81,31 +81,31 @@
     back.hidden = false;
     bYes.focus();
   }
-  var onStay = null;
+  let onStay = null;
   function hide(){
     back.hidden = true; isOpen = false;
     if (lastFocus && lastFocus.focus) { try { lastFocus.focus(); } catch (e) {} }
   }
-  function stay(){ if (busy) return; var f = onStay; hide(); if (f) f(); }
+  function stay(){ if (busy) return; const f = onStay; hide(); if (f) f(); }
 
   bYes.addEventListener('click', function(){
     if (busy || !onYes) return;
     busy = true; bYes.disabled = bNo.disabled = true;
-    var label = bYes.textContent; bYes.textContent = 'Saving…';
+    const label = bYes.textContent; bYes.textContent = 'Saving…';
     Promise.resolve().then(onYes).then(function(ok){
       busy = false; bYes.textContent = label; hide();
     }, function(){ busy = false; bYes.textContent = label; hide(); });
   });
-  bNo.addEventListener('click', function(){ if (busy) return; var f = onNo; hide(); if (f) f(); });
+  bNo.addEventListener('click', function(){ if (busy) return; const f = onNo; hide(); if (f) f(); });
   bStay.addEventListener('click', stay);
   back.addEventListener('mousedown', function(e){ if (e.target === back) stay(); });
   document.addEventListener('keydown', function(e){
     if (!isOpen) return;
     if (e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); stay(); }
     if (e.key === 'Tab') {                      // keep focus inside the dialog
-      var f = [bYes, bNo, bStay].filter(function(b){ return b.style.display !== 'none' && !b.disabled; });
+      const f = [bYes, bNo, bStay].filter(function(b){ return b.style.display !== 'none' && !b.disabled; });
       if (!f.length) return;
-      var i = f.indexOf(document.activeElement);
+      const i = f.indexOf(document.activeElement);
       e.preventDefault();
       f[(i + (e.shiftKey ? f.length - 1 : 1)) % f.length].focus();
     }
@@ -114,13 +114,13 @@
   /* ---- public API ---- */
   function register(p){
     providers.push(p);
-    return function(){ var i = providers.indexOf(p); if (i > -1) providers.splice(i, 1); };
+    return function(){ const i = providers.indexOf(p); if (i > -1) providers.splice(i, 1); };
   }
 
   // Ask before running proceed() when something is unsaved.
   function confirm(proceed, opts){
     opts = opts || {};
-    var list = dirtyList(opts.only);
+    const list = dirtyList(opts.only);
     if (!list.length) { if (proceed) proceed(); return; }
     if (isOpen) return;
     show({
@@ -152,10 +152,10 @@
 
   // Make a global function (e.g. a page/tab switcher) ask first when there are unsaved changes.
   function wrap(name, needsGuard){
-    var fn = window[name];
+    const fn = window[name];
     if (typeof fn !== 'function' || fn.__mgWrapped) return;
-    var w = function(){
-      var self = this, args = arguments, a = Array.prototype.slice.call(args);
+    const w = function(){
+      const self = this, args = arguments, a = Array.prototype.slice.call(args);
       if (needsGuard && !needsGuard(a)) return fn.apply(self, args);
       if (!dirty()) return fn.apply(self, args);
       confirm(function(){ fn.apply(self, args); });

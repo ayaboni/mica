@@ -149,18 +149,18 @@
    Only then is the loader shown. Login/logout/landing<->dashboard links set sessionStorage
    'mica_loader_flow' ("login:<time>", "logout:<time>" or "nav:<time>") just before navigating away; it is read once here and ignored if it is stale. */
 (function(){
-  var el = document.getElementById('micaLoader');
+  const el = document.getElementById('micaLoader');
   if (!el) return;
-  var flow = null;
+  let flow = null;
   try {
-    var raw = sessionStorage.getItem('mica_loader_flow') || '';
+    const raw = sessionStorage.getItem('mica_loader_flow') || '';
     sessionStorage.removeItem('mica_loader_flow');
-    var parts = raw.split(':');
+    const parts = raw.split(':');
     if (parts[0] && Date.now() - Number(parts[1]) < 20000) flow = parts[0];
   } catch (e) {}
   // A login step that lands on another login page (code entry, wrong password...) is not "logged in" yet.
-  var onLoginPage = /^\/login(\/|$)/.test(window.location.pathname);
-  var arriving = flow === 'logout' || flow === 'nav' || (flow === 'login' && !onLoginPage);
+  const onLoginPage = /^\/login(\/|$)/.test(window.location.pathname);
+  const arriving = flow === 'logout' || flow === 'nav' || (flow === 'login' && !onLoginPage);
   window.__micaLoaderArriving = arriving;
   if (arriving) {
     el.classList.remove('is-hidden');
@@ -181,26 +181,26 @@
    (links, form posts, redirects, JS redirects) - e.g. login (light) -> student dashboard (dark),
    and student dashboard (dark) -> login (light) after logging out. */
 (function(){
-  var KEY = 'mica_last_theme';
-  var el = document.getElementById('micaLoader');
+  const KEY = 'mica_last_theme';
+  const el = document.getElementById('micaLoader');
   if (!el) return;
 
   function isDark(){
     if (document.documentElement.getAttribute('data-theme') === 'dark') return true;
-    var b = document.body;
+    const b = document.body;
     return !!(b && (b.classList.contains('dark') || b.classList.contains('dark-mode')));
   }
   function actual(){ return isDark() ? 'dark' : 'light'; }
   function remember(t){ try { sessionStorage.setItem(KEY, t); } catch (e) {} }
 
   // Theme of the page we came from
-  var from = null;
+  let from = null;
   try {
-    var v = sessionStorage.getItem(KEY);
+    const v = sessionStorage.getItem(KEY);
     if (v === 'dark' || v === 'light') from = v;
   } catch (e) {}
 
-  var target = actual();
+  const target = actual();
   remember(target);                                    // this page is now the "previous page" for the next one
 
   if (from && from !== target) {
@@ -214,12 +214,12 @@
   // Live sync if the user toggles the theme while a page is open
   try {
     new MutationObserver(function(){
-      var t = actual();
+      const t = actual();
       remember(t);
       el.setAttribute('data-theme', t);
     }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
       new MutationObserver(function(){
-        var t = actual(); remember(t); el.setAttribute('data-theme', t);
+        const t = actual(); remember(t); el.setAttribute('data-theme', t);
         }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
   } catch (e) {}
 })();
@@ -228,16 +228,16 @@
 
 <script>
 (function(){
-  var fillEl   = document.getElementById('micaLoaderFill');
-  var walkerEl = document.getElementById('micaLoaderWalker');
-  var pctEl    = document.getElementById('micaLoaderPct');
-  var labelEl  = document.getElementById('micaLoaderLabel');
-  var overlay  = document.getElementById('micaLoader');
+  const fillEl   = document.getElementById('micaLoaderFill');
+  const walkerEl = document.getElementById('micaLoaderWalker');
+  const pctEl    = document.getElementById('micaLoaderPct');
+  const labelEl  = document.getElementById('micaLoaderLabel');
+  const overlay  = document.getElementById('micaLoader');
 
-  var current = 4;     // current displayed percent
-  var trickleTimer = null;
-  var shownAt = Date.now();
-  var MIN_VISIBLE_MS = window.__micaLoaderMinMs || 450; // avoid an instant flash; longer when the theme is changing
+  let current = 4;     // current displayed percent
+  let trickleTimer = null;
+  let shownAt = Date.now();
+  const MIN_VISIBLE_MS = window.__micaLoaderMinMs || 450; // avoid an instant flash; longer when the theme is changing
 
   function setPercent(p){
     current = Math.max(0, Math.min(100, p));
@@ -250,7 +250,7 @@
     clearInterval(trickleTimer);
     trickleTimer = setInterval(function(){
       // asymptotically creep toward ~90% while we wait for the real page load
-      var remaining = 90 - current;
+      const remaining = 90 - current;
       if (remaining <= 0.5) return;
       setPercent(current + remaining * 0.12);
     }, 180);
@@ -276,8 +276,8 @@
 
   function finish(){
     stopTrickle();
-    var elapsed = Date.now() - shownAt;
-    var wait = Math.max(0, MIN_VISIBLE_MS - elapsed);
+    const elapsed = Date.now() - shownAt;
+    const wait = Math.max(0, MIN_VISIBLE_MS - elapsed);
     setTimeout(function(){
       setPercent(100);
       setTimeout(function(){
@@ -330,31 +330,31 @@
   // ---- Outgoing navigation: only logout and landing<->dashboard links get the loader; other links navigate normally.
   //      (Links are still intercepted when there are unsaved changes, to ask first.) ----
   document.addEventListener('click', function(e){
-    var a = e.target.closest('a');
+    const a = e.target.closest('a');
     if (!a) return;
     if (a.hasAttribute('data-no-loader')) return;
     if (a.target && a.target !== '' && a.target !== '_self') return;
     if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
 
-    var href = a.getAttribute('href');
+    const href = a.getAttribute('href');
     if (!href || href.charAt(0) === '#') return;
     if (/^(blob|data|javascript):/i.test(href)) return;
     if (href.indexOf('mailto:') === 0 || href.indexOf('tel:') === 0) return;
 
-    var url;
+    let url;
     try { url = new URL(href, window.location.href); } catch (err) { return; }
     if (url.origin !== window.location.origin) return; // external link, leave alone
 
-    var isLogout = /\/logout\/?$/.test(url.pathname);
+    const isLogout = /\/logout\/?$/.test(url.pathname);
     // Landing page <-> dashboards, and About/Contact/Privacy -> dashboards, also get the loader
-    var isLanding = function(path){ return path === '/' || /^\/home\/?$/.test(path); };
-    var isDash = function(path){ return /^\/dashboard\//.test(path); };
+    const isLanding = function(path){ return path === '/' || /^\/home\/?$/.test(path); };
+    const isDash = function(path){ return /^\/dashboard\//.test(path); };
     // About / Contact / Privacy -> dashboards (one way only)
-    var isInfo = function(path){ return /^\/(about|contact|privacy-policy)\/?$/.test(path); };
-    var here = window.location.pathname;
-    var isNav = ((isLanding(here) || isInfo(here)) && isDash(url.pathname)) || (isDash(here) && isLanding(url.pathname));
-    var flow = isLogout ? 'logout' : (isNav ? 'nav' : null);
-    var dirty = !!(window.MicaGuard && window.MicaGuard.dirty());
+    const isInfo = function(path){ return /^\/(about|contact|privacy-policy)\/?$/.test(path); };
+    const here = window.location.pathname;
+    const isNav = ((isLanding(here) || isInfo(here)) && isDash(url.pathname)) || (isDash(here) && isLanding(url.pathname));
+    let flow = isLogout ? 'logout' : (isNav ? 'nav' : null);
+    const dirty = !!(window.MicaGuard && window.MicaGuard.dirty());
     if (!flow && !dirty) return;                   // ordinary link: let the browser navigate, no loader
 
     e.preventDefault();
@@ -368,13 +368,13 @@
 
   // ---- Native form submits: only the sign-in forms (password, email code, authenticator code) get the loader ----
   document.addEventListener('submit', function(e){
-    var form = e.target;
+    const form = e.target;
     if (!(form instanceof HTMLFormElement)) return;
     if (e.defaultPrevented) return;
     if (form.hasAttribute('data-no-loader')) return;
     if (form.hasAttribute('download')) return;
     if (form.target && form.target !== '' && form.target !== '_self') return;
-    var path;
+    let path;
     try { path = new URL(form.getAttribute('action') || window.location.href, window.location.href).pathname; }
     catch (err) { return; }
     if (!/^\/login\/(verify\/|two-factor\/)?$/.test(path)) return;

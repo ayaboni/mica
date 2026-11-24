@@ -22,25 +22,25 @@
 </style>
 <script>
 (function(){
-  var URL_SAVE = "{% url 'staff_avatar_update' %}";
-  var MAX = 5 * 1024 * 1024;
-  var TYPES = ['image/jpeg','image/png','image/webp','image/gif'];
-  var G = window.MicaGuard, C = window.MicaCropper;
+  const URL_SAVE = "{% url 'staff_avatar_update' %}";
+  const MAX = 5 * 1024 * 1024;
+  const TYPES = ['image/jpeg','image/png','image/webp','image/gif'];
+  const G = window.MicaGuard, C = window.MicaCropper;
 
   window.MY_AVATAR_URL = "{{ my_avatar_url|escapejs }}";
-  var LOCKED = {% if avatar_locked %}true{% else %}false{% endif %};   // unverified student: may remove a photo, not add or change one
+  const LOCKED = {% if avatar_locked %}true{% else %}false{% endif %};   // unverified student: may remove a photo, not add or change one
   window.MY_INITIALS = "{% filter escapejs %}{% include 'core/_initials.html' with u=request.user %}{% endfilter %}".trim();
 
-  var pending = null;        // { blob, url } - a cropped photo that is not saved yet
+  let pending = null;        // { blob, url } - a cropped photo that is not saved yet
 
   function $(id){ return document.getElementById(id); }
   function toast(m){ if (typeof showToast === 'function') showToast(m); else alert(m); }
   function csrf(){ return (typeof getCookie === 'function') ? getCookie('csrftoken') : ''; }
-  function busy(on){ ['myPicBtn','myPicAdjust','myPicRemove','myPicSave','myPicCancel'].forEach(function(id){ var e = $(id); if (e) e.disabled = on; }); }
+  function busy(on){ ['myPicBtn','myPicAdjust','myPicRemove','myPicSave','myPicCancel'].forEach(function(id){ const e = $(id); if (e) e.disabled = on; }); }
 
   function paint(el, url){
     el.textContent = '';
-    if (url) { var img = document.createElement('img'); img.alt = ''; img.src = url; el.appendChild(img); }
+    if (url) { const img = document.createElement('img'); img.alt = ''; img.src = url; el.appendChild(img); }
     else el.textContent = window.MY_INITIALS;
   }
 
@@ -48,7 +48,7 @@
   window.refreshMyAvatar = function(){
     document.querySelectorAll('.me-avatar').forEach(function(el){ paint(el, window.MY_AVATAR_URL); });
     document.querySelectorAll('.me-pic').forEach(function(el){ paint(el, pending ? pending.url : window.MY_AVATAR_URL); });
-    var has = !!window.MY_AVATAR_URL, any = has || !!pending;
+    const has = !!window.MY_AVATAR_URL, any = has || !!pending;
     $('myPicBtn') && ($('myPicBtn').textContent = any ? 'Change photo' : 'Add photo');
     $('myPicBtn') && ($('myPicBtn').hidden = LOCKED);
     $('myPicAdjust') && ($('myPicAdjust').hidden = !any || LOCKED);
@@ -73,7 +73,7 @@
   // Upload the pending (cropped) photo. Resolves true on success.
   function savePending(){
     if (!pending) return Promise.resolve(true);
-    var fd = new FormData();
+    const fd = new FormData();
     fd.append('avatar', new File([pending.blob], 'avatar.jpg', { type: 'image/jpeg' }));
     return post(fd).then(function(res){
       if (!res.ok){ toast(res.d.error || 'Could not save the picture.'); return false; }
@@ -94,7 +94,7 @@
   }
 
   window.pickMyPhoto = function(input){
-    var f = input.files && input.files[0];
+    const f = input.files && input.files[0];
     input.value = '';                           // lets the same file be picked again later
     if (!f) return;
     if (TYPES.indexOf(f.type) === -1){ toast('Please choose a JPG, PNG, WebP or GIF image.'); return; }
@@ -122,7 +122,7 @@
       yes: 'Yes, remove it', no: 'No, keep it'
     }).then(function(yes){
       if (!yes) return;
-      var fd = new FormData(); fd.append('remove', '1');
+      const fd = new FormData(); fd.append('remove', '1');
       post(fd).then(function(res){
         if (!res.ok){ toast(res.d.error || 'Could not remove the picture.'); return; }
         window.MY_AVATAR_URL = '';
