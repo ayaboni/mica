@@ -1984,7 +1984,7 @@ function toggleDyslexia(){
 </script>
 </head>
 <body data-chat-theme="{{ profile.chat_theme }}">
-<script>(function(){ var d = {{ profile.dark_mode|yesno:"true,false" }}; if(d) document.body.classList.add('dark-mode'); try{ localStorage.setItem('mica_dark', d ? '1' : '0'); }catch(e){} })();</script>
+<script>(function(){ const d = {{ profile.dark_mode|yesno:"true,false" }}; if(d) document.body.classList.add('dark-mode'); try{ localStorage.setItem('mica_dark', d ? '1' : '0'); }catch(e){} })();</script>
   {% include 'core/_loader.html' %}
 
 
@@ -2116,7 +2116,7 @@ function toggleDyslexia(){
     </div>
     <script>
       (function(){
-        var b = document.getElementById('unverified-banner');
+        const b = document.getElementById('unverified-banner');
         try{ if(sessionStorage.getItem('unverified_closed') === '1') b.style.display = 'none'; }catch(e){}
         document.getElementById('unverified-close').addEventListener('click', function(){
           b.style.display = 'none';

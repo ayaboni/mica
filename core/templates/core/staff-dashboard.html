@@ -6816,32 +6816,32 @@ let staffNotifInitialized = false;
 /* Remember where the staff member was, so a browser refresh puts them back on the same page.
    Stored per tab (sessionStorage) and per user, so a new tab or another account starts on the dashboard. */
 (function(){
-  var KEY = 'mica_staff_view_{{ request.user.id }}';
+  const KEY = 'mica_staff_view_{{ request.user.id }}';
   function read(){ try{ return JSON.parse(sessionStorage.getItem(KEY)) || {}; }catch(e){ return {}; } }
-  function save(k, v){ try{ var o = read(); o[k] = v; sessionStorage.setItem(KEY, JSON.stringify(o)); }catch(e){} }
+  function save(k, v){ try{ const o = read(); o[k] = v; sessionStorage.setItem(KEY, JSON.stringify(o)); }catch(e){} }
 
-  var _goTo = goTo, _showTab = showTab, _showMonitorTab = showMonitorTab, _showReportTab = showReportTab;
+  const _goTo = goTo, _showTab = showTab, _showMonitorTab = showMonitorTab, _showReportTab = showReportTab;
   goTo = function(section){ _goTo(section); save('section', section); };
   showTab = function(tab, el){ _showTab(tab, el); save('settings', tab); };
   showMonitorTab = function(tab, el){ _showMonitorTab(tab, el); save('mon', tab); };
   showReportTab = function(tab, el){ _showReportTab(tab, el); save('rep', tab); };
 
   function tabButton(sel, tab){
-    var list = document.querySelectorAll(sel);
-    for(var i = 0; i < list.length; i++){
-      var oc = list[i].getAttribute('onclick') || '';
+    const list = document.querySelectorAll(sel);
+    for(let i = 0; i < list.length; i++){
+      const oc = list[i].getAttribute('onclick') || '';
       if(oc.indexOf("'" + tab + "'") !== -1) return list[i];
     }
     return null;
   }
 
-  var st = read(), section = st.section;
+  const st = read(), section = st.section;
   if(!section || section === 'dashboard' || !titles[section]) return;
-  var nav = document.querySelector('.nav-item[data-section="' + section + '"]');
+  const nav = document.querySelector('.nav-item[data-section="' + section + '"]');
   if(!nav || getComputedStyle(nav).display === 'none') return;     // e.g. a page this role can't see
 
   try{
-    var b;
+    let b;
     if(section === 'settings' && st.settings && (b = document.querySelector('.tab-btn[data-tab="' + st.settings + '"]'))) _showTab(st.settings, b);
     if(section === 'mood' && st.mon && (b = tabButton('.mtab-btn', st.mon))) _showMonitorTab(st.mon, b);
     if(section === 'reports' && st.rep && (b = tabButton('.rtab-btn', st.rep))) _showReportTab(st.rep, b);
