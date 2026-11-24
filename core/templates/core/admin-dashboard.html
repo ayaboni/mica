@@ -2952,7 +2952,7 @@ function loadIntegrations(){
 /* =========================================================
    DASHBOARD (real data)
 ========================================================= */
-const HEALTH_UI = {ok:['stable','Operational'], warn:['watch','Check needed'], down:['urgent','Down']};
+const HEALTH_UI = {ok:['stable','Operational'], warn:['watch','Check needed'], down:['urgent','Down'], off:['stable','Not in use']};
 
 function loadDashboard(){
   return api('/api/admin/dashboard/').then(r=>{

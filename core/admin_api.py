@@ -303,15 +303,17 @@ def _service_health():
         health.append({"name": "Database (PostgreSQL)", "status": "down", "meta": "Not responding"})
     health.append({"name": "Mica chat (Gemini)", "status": "ok" if settings.GEMINI_API_KEY else "down",
                    "meta": "API key set" if settings.GEMINI_API_KEY else "No API key set"})
-    smtp = settings.EMAIL_BACKEND.endswith("smtp.EmailBackend")
-    health.append({"name": "Email (sign-in and reset links)", "status": "ok" if smtp else "warn",
-                   "meta": "SMTP configured" if smtp else "Console only: emails are printed, not sent"})
-    health.append({"name": "Firebase (Google sign-in and reset codes)",
-                   "status": "ok" if firebase_admin._apps else "down",
-                   "meta": "Initialized" if firebase_admin._apps else "Not initialized"})
+    backend = settings.EMAIL_BACKEND
+    provider = getattr(settings, "EMAIL_PROVIDER", "")
+    local_only = backend.endswith(("console.EmailBackend", "locmem.EmailBackend",
+                                   "dummy.EmailBackend", "filebased.EmailBackend"))
+    sends = bool(provider) or not local_only
+    health.append({"name": "Email (sign-in and reset links)", "status": "ok" if sends else "warn",
+                   "meta": ("Sending through %s" % provider.title()) if provider
+                           else ("Email configured" if sends else "Console only: emails are printed, not sent")})
     vosk = (Path(settings.VOSK_MODEL_PATH) / "am" / "final.mdl").is_file()
-    health.append({"name": "Voice input (Vosk)", "status": "ok" if vosk else "warn",
-                   "meta": "Speech model installed" if vosk else "Speech model not found"})
+    health.append({"name": "Voice input (Vosk)", "status": "ok" if vosk else "off",
+                   "meta": "Speech model installed" if vosk else "Not installed on this host (model too big for the free tier)"})
     return health
 
 

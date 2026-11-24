@@ -2293,7 +2293,7 @@ def speech_to_text(request):
     model_path = Path(settings.VOSK_MODEL_PATH)
     if not (model_path / "am" / "final.mdl").is_file():
         return JsonResponse(
-            {"error": "Offline speech recognition is not set up. Install Vosk and its English model on the server."},
+            {"error": "Voice input isn't available on this site right now. Please type your message instead."},
             status=503,
         )
 
