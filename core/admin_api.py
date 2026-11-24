@@ -376,7 +376,7 @@ def dashboard_stats(request):
 
     # ---- recent activity feed
     state = {"active": "Active", "inactive": "Archived", "graduated": "Graduated"}
-    what = {"view_profile": "profile", "open_chat": "chat", "view_notes": "notes", "view_assessment": "assessment"}
+    what = {"view_profile": "profile", "open_chat": "chat", "view_notes": "notes", "view_assessment": "assessment", "view_emergency_contact": "emergency contact"}
     feed = []
     for u in students.order_by("-date_joined")[:5]:
         feed.append((u.date_joined, "🫶", "%s registered" % person(u)))
@@ -570,6 +570,7 @@ AUDIT_ACTIONS = [
     ("open_chat", "Opened guidance chat"),
     ("view_notes", "Viewed student notes"),
     ("view_assessment", "Viewed assessment"),
+    ("view_emergency_contact", "Viewed emergency contact"),
     ("status_change", "Changed account status"),
 ]
 AUDIT_LABEL = dict(AUDIT_ACTIONS)
