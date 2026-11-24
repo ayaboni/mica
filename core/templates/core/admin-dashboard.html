@@ -53,13 +53,149 @@
   @keyframes pulseDot{0%,100%{transform:scale(1); opacity:1;} 50%{transform:scale(1.7); opacity:.35;}}
   @media (prefers-reduced-motion: reduce){ .badge .dot.pulse{animation:none;} }
 
-  /* Courses tab */
-  #tab-courses.active, #courseList{display:flex; flex-direction:column; gap:24px;}
-  #tab-courses .card{margin:0;}
-  .course-table{table-layout:fixed; width:100%; min-width:760px;}
-  .course-table td{word-break:break-word;}
-  .course-table td.course-actions{white-space:nowrap; text-align:right;}
-  .course-table th:last-child{text-align:right;}
+  /* ---------- Courses tab: college rail + course table ---------- */
+  .cm{display:grid; grid-template-columns:minmax(280px,360px) minmax(0,1fr); gap:20px; align-items:start;}
+  .cm-side{padding:14px; position:sticky; top:12px; display:flex; flex-direction:column; gap:10px; min-width:0;}
+  .cm-side-head{display:flex; gap:8px; align-items:center;}
+  .cm-side-head .rb-search{flex:1; min-width:0;}
+  .cm-iconbtn{width:40px; height:40px; border-radius:50%; border:none; background:var(--sage-deep); color:#fff; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; transition:background .15s ease, transform .15s ease;}
+  .cm-iconbtn:hover{background:var(--brown-deep);}
+  .cm-iconbtn:active{transform:scale(.94);}
+  .cm-list{display:flex; flex-direction:column; gap:2px; max-height:min(62vh,560px); overflow-y:auto; margin:0 -4px; padding:0 4px; overscroll-behavior:contain;}
+  .cm-pick{display:none;}
+  .cm-item{display:flex; align-items:center; gap:11px; width:100%; padding:10px 12px; border:none; border-radius:12px; background:none; color:var(--ink); font:inherit; text-align:left; position:relative; min-width:0; cursor:pointer; transition:background .12s ease;}
+  .cm-item:hover{background:var(--peach);}
+  .cm-item:focus-visible{outline:2px solid var(--sky-deep); outline-offset:-2px;}
+  .cm-item[aria-current="true"]{background:color-mix(in srgb, var(--sage) 24%, var(--paper));}
+  .cm-item[aria-current="true"]::before{content:""; position:absolute; left:0; top:10px; bottom:10px; width:3px; border-radius:3px; background:var(--sage-deep);}
+  .cm-mark{width:34px; height:34px; border-radius:10px; background:var(--sage); color:#0f130f; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:12px; flex-shrink:0; letter-spacing:.02em;}
+  .cm-mark.all{background:var(--sky-pale); color:var(--sky-deep);}
+  .cm-item.off .cm-mark{background:var(--line); color:var(--ink-soft);}
+  .cm-txt{min-width:0; flex:1;}
+  .cm-name{display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; line-clamp:2; overflow:hidden; font-size:14px; font-weight:600; line-height:1.3; overflow-wrap:anywhere;}
+  .cm-meta{display:block; font-size:12px; color:var(--ink-soft); margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .cm-item .badge{padding:2px 9px; font-size:11px; flex-shrink:0;}
+  .cm-none{padding:22px 10px; text-align:center; font-size:13px; color:var(--ink-soft);}
+
+  .cm-main{padding:0; min-width:0; overflow:hidden;}
+  .cm-head{display:flex; gap:16px; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; padding:22px 24px 18px; border-bottom:1px solid var(--line);}
+  .cm-id{display:flex; gap:14px; align-items:flex-start; min-width:0; flex:1 1 320px;}
+  .cm-id .cm-mark{width:46px; height:46px; border-radius:14px; font-size:15px;}
+  .cm-id h3{font-size:19px; font-weight:700; line-height:1.25; overflow-wrap:anywhere; display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
+  .cm-stats{display:flex; flex-wrap:wrap; gap:4px 16px; margin-top:6px; font-size:12.5px; color:var(--ink-soft);}
+  .cm-stats b{color:var(--ink); font-weight:600;}
+  .cm-acts{display:flex; gap:8px; flex-wrap:wrap;}
+  .cm-tools{display:flex; gap:12px; align-items:center; flex-wrap:wrap; padding:14px 24px; border-bottom:1px solid var(--line);}
+  .cm-tools .rb-search{flex:1 1 180px; min-width:180px; max-width:360px;}
+  .cm-clear{border:none; background:none; color:var(--ink-soft); width:24px; height:24px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; padding:0;}
+  .cm-clear:hover{background:var(--line); color:var(--ink);}
+  .cm-clear[hidden]{display:none;}
+  .cm-seg button{display:inline-flex; align-items:center; gap:6px;}
+  .cm-seg .n{font-size:11.5px; opacity:.75; font-variant-numeric:tabular-nums;}
+  .cm-tools .cm-add{margin-left:auto;}
+  .cm-sortsel{display:none;}
+  .cm-filterline{display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:10px 24px; font-size:12.5px; color:var(--ink-soft); background:color-mix(in srgb, var(--sky) 14%, var(--paper)); border-bottom:1px solid var(--line);}
+  .cm-filterline[hidden]{display:none;}
+  .cm-link{border:none; background:none; color:var(--sky-deep); font:inherit; font-weight:600; padding:2px 4px; border-radius:6px; text-decoration:underline; text-underline-offset:2px;}
+  body.dark .cm-link{color:var(--sky);}
+  .cm-link:focus-visible{outline:2px solid var(--sky-deep); outline-offset:2px;}
+
+  .cm-scroll{overflow-x:auto;}
+  .cm-table{table-layout:fixed; width:100%; min-width:640px;}
+  .cm-table thead th{padding:12px 16px; border-bottom:1.5px solid var(--line);}
+  .cm-table tbody td{padding:12px 16px; word-break:break-word;}
+  .cm-table .c-code{width:140px;} .cm-table .c-stu{width:92px;} .cm-table .c-status{width:130px;} .cm-table .c-act{width:92px;}
+  .cm-table th.c-act{text-align:right;} .cm-table td.c-act{text-align:right; white-space:nowrap;}
+  .cm-sort{all:unset; cursor:pointer; display:inline-flex; align-items:center; gap:5px; border-radius:6px; text-transform:inherit; letter-spacing:inherit; font-weight:inherit; color:inherit;}
+  .cm-sort:hover{color:var(--ink);}
+  .cm-sort:focus-visible{outline:2px solid var(--sky-deep); outline-offset:3px;}
+  .cm-sort .ar{font-size:9px; width:9px;}
+  .cm-codechip{display:inline-block; font-family:'IBM Plex Mono',monospace; font-size:12.5px; font-weight:600; padding:3px 9px; border-radius:8px; background:var(--cream); border:1px solid var(--line);}
+  .cm-cn{font-weight:600; font-size:13.5px;}
+  .cm-cs{font-size:12px; color:var(--ink-soft); margin-top:2px;}
+  .cm-table tr.is-hidden .cm-cn{color:var(--ink-soft); font-weight:500;}
+  .cm-table tr.is-hidden .cm-codechip{opacity:.65;}
+  .cm-num{font-variant-numeric:tabular-nums; font-weight:600;}
+  .cm-stu-l{display:none; color:var(--ink-soft);}
+  .cm-st{display:inline-flex; align-items:center; gap:9px; font-size:13px; color:var(--ink-soft);}
+  .cm-st .on-t{color:var(--ink);}
+  .cm-st .switch:focus-visible, .cm-act:focus-visible, .cm-item:focus-visible, .cm-iconbtn:focus-visible, .cm-clear:focus-visible, .cm-snack button:focus-visible{outline:2px solid var(--sky-deep); outline-offset:2px;}
+  .switch{transition:background .15s ease;}
+  .cm-act{width:34px; height:34px; border-radius:50%; border:1.5px solid transparent; background:none; color:var(--ink-soft); display:inline-flex; align-items:center; justify-content:center; transition:background .12s ease, color .12s ease, border-color .12s ease;}
+  .cm-act:hover{background:var(--peach); color:var(--peach-text); border-color:var(--peach-deep);}
+  .cm-act.del:hover{background:var(--alert-pale); color:var(--alert); border-color:transparent;}
+  .cm-act-t{display:none;}
+  .list-pager.cm-pager{margin:0; padding:14px 24px; border-top:1px solid var(--line);}
+  .cm-table tbody tr:last-child td{border-bottom:none;}
+  .cm-empty{padding:52px 24px; text-align:center; color:var(--ink-soft); font-size:14px;}
+  .cm-empty strong{display:block; color:var(--ink); font-family:'Baloo 2',sans-serif; font-size:17px; margin-bottom:4px;}
+  .cm-empty .pill-btn{margin:16px 4px 0;}
+  .cm-p{font-size:14px; line-height:1.55; color:var(--ink); margin-bottom:6px;}
+  .cm-hint{font-size:12px; color:var(--ink-soft); margin-top:6px;}
+  .cm-err{min-height:20px; margin-top:10px; font-size:13px; font-weight:600; color:var(--alert);}
+  .field input.invalid, .field select.invalid{border-color:var(--alert);}
+  .field input[readonly]{opacity:.65; cursor:not-allowed;}
+  #cmModalOverlay .modal{max-width:480px;}
+  #cmModalOverlay .modal-foot{border-top:none; padding-top:6px;}
+  #cmModalOverlay .field{margin-bottom:16px;}
+  #cmModalOverlay .modal-body{padding-bottom:6px;}
+  #cmModalOverlay .pill-btn[hidden]{display:none;}
+
+  .cm-snack{position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px); background:#3A2E28; color:#fff; padding:8px 8px 8px 20px; border-radius:999px; font-size:13.5px; font-weight:600; display:flex; align-items:center; gap:14px; opacity:0; pointer-events:none; z-index:300; max-width:calc(100vw - 24px);}
+  .cm-snack.show{opacity:1; pointer-events:auto; transform:translateX(-50%) translateY(0);}
+  .cm-snack button{border:none; background:rgba(255,255,255,.16); color:#fff; font:inherit; font-weight:700; padding:6px 14px; border-radius:999px;}
+  .cm-snack button:hover{background:rgba(255,255,255,.28);}
+  .cm-snack button[hidden]{display:none;}
+
+  .cm-skel td{padding:16px;}
+  .cm-skel span{display:block; height:16px; border-radius:8px; background:linear-gradient(90deg, var(--line) 25%, color-mix(in srgb, var(--line) 40%, var(--paper)) 50%, var(--line) 75%); background-size:200% 100%;}
+  .cm-skel-i{height:50px; border-radius:12px; background:linear-gradient(90deg, var(--line) 25%, color-mix(in srgb, var(--line) 40%, var(--paper)) 50%, var(--line) 75%); background-size:200% 100%; opacity:.6;}
+  @keyframes cmShimmer{from{background-position:200% 0;} to{background-position:-200% 0;}}
+  @keyframes cmFlash{from{background:color-mix(in srgb, var(--sky) 38%, transparent);} to{background:transparent;}}
+  @keyframes cmIn{from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:none;}}
+  @media (prefers-reduced-motion:no-preference){
+    .cm-skel span, .cm-skel-i{animation:cmShimmer 1.4s linear infinite;}
+    .cm-table tr.cm-flash td{animation:cmFlash 1.8s ease-out;}
+    #cmRows.cm-enter tr{animation:cmIn .18s ease-out;}
+    .cm-snack{transition:opacity .22s ease, transform .22s ease;}
+    .cm-act, .cm-item{transition:background .12s ease, color .12s ease;}
+  }
+
+  @media (max-width:900px){
+    .cm{grid-template-columns:1fr;}
+    .cm-side{position:static;}
+    .cm-side .cm-list, .cm-side .rb-search{display:none;}
+    .cm-side-head{justify-content:space-between;}
+    .cm-pick{display:block; flex:1; min-width:0; width:auto;}
+    .cm-head{padding:18px 18px 14px;}
+    .cm-tools{padding:12px 18px;}
+    .cm-tools .cm-add{margin-left:0;}
+    .cm-filterline, .list-pager.cm-pager{padding-left:18px; padding-right:18px;}
+  }
+  @media (max-width:700px){
+    .cm-sortsel{display:block;}
+    .cm-tools .rb-search{max-width:none; flex:1 1 100%;}
+    .cm-tools .cm-add{flex:1 1 140px; justify-content:center; height:41px;}
+    .cm-sortsel{flex:1 1 140px; min-width:0;}
+    .cm-table{min-width:0;}
+    .cm-table, .cm-table tbody{display:block;}
+    .cm-table thead, .cm-table colgroup{display:none;}
+    .cm-table tbody tr{display:grid; grid-template-columns:minmax(0,1fr) auto; grid-template-areas:"code status" "name name" "stu act"; gap:8px 12px; align-items:center; padding:14px 18px; border-bottom:1px solid var(--line);}
+    .cm-table tbody td{display:block; padding:0; border:none;}
+    .cm-table td.c-code{grid-area:code;} .cm-table td.c-status{grid-area:status; text-align:right;} .cm-table td.c-name{grid-area:name;}
+    .cm-table td.c-stu{grid-area:stu; font-size:12.5px;} .cm-table td.c-act{grid-area:act; width:auto; display:flex; gap:6px; justify-content:flex-end;}
+    .cm-stu-l{display:inline;}
+    .cm-act{width:auto; height:38px; padding:0 14px; border-radius:999px; gap:6px; border-color:var(--line); font:600 13px 'Baloo 2',sans-serif;}
+    .cm-act-t{display:inline;}
+    .cm-act.del .cm-act-t{display:none;}
+    .cm-act.del{width:38px; padding:0;}
+    .cm-skel td{display:block;}
+  }
+  @media (max-width:560px){
+    #cmModalOverlay{align-items:flex-end; padding:0;}
+    #cmModalOverlay .modal{max-width:none; border-radius:22px 22px 0 0;}
+    #cmModalOverlay .modal-foot .pill-btn{flex:1 1 auto; justify-content:center;}
+  }
 
   .pill-btn{
     font-family:'Baloo 2',sans-serif;
@@ -1393,31 +1529,64 @@ a.pill-btn{ text-decoration:none; }
 
         <!-- COURSES -->
         <div class="subpanel" id="tab-courses">
-          <div class="card panel">
-            <div class="panel-head"><div><h3>Add a college</h3><div class="sub">A college or department. Courses go under it. Students pick the college first, then the course.</div></div></div>
-            <div class="field-grid">
-              <div class="field"><label>College name</label><input id="colName" maxlength="150" placeholder="College of Computer Studies"></div>
-            </div>
-            <div style="margin-top:16px; display:flex; gap:12px; align-items:center;">
-              <button class="pill-btn solid sm" id="colAddBtn" onclick="addCollege()">Add college</button>
-              <span id="colMsg" style="font-size:12.5px; color:var(--ink-soft);"></span>
-            </div>
-          </div>
+          <div class="cm">
+            <aside class="card cm-side" aria-label="Colleges">
+              <div class="cm-side-head">
+                <label class="rb-search">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+                  <span class="rb-sr">Find a college</span>
+                  <input id="cmColSearch" type="search" placeholder="Find a college" autocomplete="off">
+                </label>
+                <select class="filter-select cm-pick" id="cmColPick" aria-label="College"></select>
+                <button type="button" class="cm-iconbtn" id="cmAddCollege" title="Add a college" aria-label="Add a college">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                </button>
+              </div>
+              <div class="cm-list" id="cmColList"></div>
+            </aside>
 
-          <div class="card panel">
-            <div class="panel-head"><div><h3>Add a course</h3><div class="sub">The code can't be changed later, because students' records use it. Example: BSIT</div></div></div>
-            <div class="field-grid">
-              <div class="field"><label>College</label><select id="crsCollege"><option value="">Select college</option></select></div>
-              <div class="field"><label>Code</label><input id="crsCode" maxlength="30" placeholder="BSIT" style="text-transform:uppercase;"></div>
-              <div class="field"><label>Course name</label><input id="crsName" maxlength="150" placeholder="Information Technology"></div>
-            </div>
-            <div style="margin-top:16px; display:flex; gap:12px; align-items:center;">
-              <button class="pill-btn solid sm" id="crsAddBtn" onclick="addCourse()">Add course</button>
-              <span id="crsMsg" style="font-size:12.5px; color:var(--ink-soft);"></span>
-            </div>
+            <section class="card cm-main" id="cmMain" aria-label="Courses">
+              <div class="cm-head" id="cmHead"></div>
+              <div class="cm-tools">
+                <label class="rb-search">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+                  <span class="rb-sr">Search courses</span>
+                  <input id="cmSearch" type="text" placeholder="Search courses" autocomplete="off" spellcheck="false">
+                  <button type="button" class="cm-clear" id="cmClear" hidden aria-label="Clear search">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                  </button>
+                </label>
+                <div class="rb-views cm-seg" id="cmStatus" role="group" aria-label="Filter by status"></div>
+                <select class="filter-select cm-sortsel" id="cmSortSel" aria-label="Sort courses">
+                  <option value="order">Sort: Default</option>
+                  <option value="code">Sort: Code (A to Z)</option>
+                  <option value="name">Sort: Name (A to Z)</option>
+                  <option value="students">Sort: Most students</option>
+                </select>
+                <button type="button" class="pill-btn solid sm cm-add" id="cmAddCourse">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                  Add course
+                </button>
+              </div>
+              <div class="cm-filterline" id="cmFilterLine" hidden role="status"></div>
+              <div class="cm-scroll">
+                <table class="cm-table">
+                  <caption class="rb-sr">Courses</caption>
+                  <colgroup><col class="c-code"><col class="c-name"><col class="c-stu"><col class="c-status"><col class="c-act"></colgroup>
+                  <thead><tr id="cmThead">
+                    <th class="c-code" scope="col" aria-sort="none"><button type="button" class="cm-sort" data-sort="code">Code <span class="ar" aria-hidden="true"></span></button></th>
+                    <th class="c-name" scope="col" aria-sort="none"><button type="button" class="cm-sort" data-sort="name">Course <span class="ar" aria-hidden="true"></span></button></th>
+                    <th class="c-stu" scope="col" aria-sort="none"><button type="button" class="cm-sort" data-sort="students">Students <span class="ar" aria-hidden="true"></span></button></th>
+                    <th class="c-status" scope="col" aria-sort="none"><button type="button" class="cm-sort" data-sort="status">Status <span class="ar" aria-hidden="true"></span></button></th>
+                    <th class="c-act" scope="col"><span class="rb-sr">Actions</span></th>
+                  </tr></thead>
+                  <tbody id="cmRows"></tbody>
+                </table>
+              </div>
+              <div id="cmEmpty"></div>
+              <div class="list-pager cm-pager" id="cmPager"></div>
+            </section>
           </div>
-
-          <div id="courseList"></div>
         </div>
 
       </section>
@@ -1425,6 +1594,27 @@ a.pill-btn{ text-decoration:none; }
     </div>
   </div>
 </div>
+
+<!-- ================= COURSES: SHARED FORM / CONFIRM MODAL + UNDO BAR ================= -->
+<div class="modal-overlay" id="cmModalOverlay" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="cmModalTitle">
+    <form id="cmModalForm" novalidate>
+      <div class="modal-head">
+        <div><h2 id="cmModalTitle"></h2><div class="sub" id="cmModalSub"></div></div>
+        <button type="button" class="modal-close" id="cmModalX" aria-label="Close">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="modal-body" id="cmModalBody"></div>
+      <div class="modal-foot">
+        <button type="submit" class="pill-btn solid" id="cmModalSubmit"></button>
+        <button type="button" class="pill-btn ghost" id="cmModalAlt" hidden></button>
+        <button type="button" class="pill-btn ghost" id="cmModalCancel">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+<div class="cm-snack" id="cmSnack" role="status" aria-live="polite"><span id="cmSnackTxt"></span><button type="button" id="cmSnackUndo" hidden>Undo</button></div>
 
 <!-- ================= STAFF ACCOUNT MODAL ================= -->
 <div class="modal-overlay" id="acctModalOverlay">
@@ -1718,6 +1908,7 @@ function goTab(tab){
   document.getElementById('tab-'+tab).classList.add('active');
   document.querySelectorAll('#sec-settings .tab-btn').forEach(b=>b.classList.remove('active'));
   document.querySelector('#sec-settings .tab-btn[data-tab="'+tab+'"]').classList.add('active');
+  if(tab === 'courses' && typeof cmOnShow === 'function') cmOnShow();
 }
 
 /* =========================================================
@@ -3229,130 +3420,567 @@ function deleteSemester(id){
 
 /* =========================================================
    COURSES
+   College rail + searchable, sortable, paged course table.
+   Add / rename / delete use in-page dialogs, Hide / Show can be undone.
 ========================================================= */
-let courseData = [];
-function setCourseData(d){ courseData = d.colleges || []; renderCourses(); }
+let courseData = null, courseLoadFailed = false;
+const CM_SIZES = [10, 25, 50];
+const cm = {sel:'all', q:'', status:'all', sort:'order', dir:1, page:1, size:10, colQ:'', flash:null};
+try{
+  const s = +localStorage.getItem('mica.cm.sel'); if(s) cm.sel = s;
+  const z = +localStorage.getItem('mica.cm.size'); if(CM_SIZES.includes(z)) cm.size = z;
+}catch(e){}
+function cmSave(){ try{ localStorage.setItem('mica.cm.sel', String(cm.sel)); localStorage.setItem('mica.cm.size', String(cm.size)); }catch(e){} }
+const cmEl = id => document.getElementById(id);
+
+const CM_ICON = {
+  edit:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg>',
+  del:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>',
+  grid:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>'
+};
+
+/* ---------- data ---------- */
+function setCourseData(d){
+  courseData = d.colleges || [];
+  courseLoadFailed = false;
+  courseData.forEach(col => col.courses.forEach(c => { c.college_id = col.id; c.college_name = col.name; }));
+  if(cm.sel !== 'all' && !findCollege(cm.sel)) cm.sel = 'all';
+  renderCourses();
+}
 function loadCourses(){
-  return api('/api/admin/courses/').then(r=>{ if(r.ok) setCourseData(r.data); });
+  return api('/api/admin/courses/').then(r=>{
+    if(r.ok) setCourseData(r.data);
+    else if(courseData === null){ courseLoadFailed = true; renderCourses(); }
+  });
 }
-function findCollege(id){ return courseData.find(c=>c.id===id); }
+function cmOnShow(){            // refresh quietly each time the tab opens
+  if(courseData !== null) api('/api/admin/courses/').then(r=>{ if(r.ok) setCourseData(r.data); });
+}
+function findCollege(id){ return (courseData || []).find(c=>c.id===id); }
 function findCourse(id){
-  for(const c of courseData){ const x = c.courses.find(k=>k.id===id); if(x) return x; }
+  for(const col of (courseData || [])){ const x = col.courses.find(k=>k.id===id); if(x) return x; }
 }
-function courseCall(url, body, okMsg){
-  return api(url, body).then(r=>{
-    if(!r.ok){ showToast(r.data.error || 'Could not save.'); return r; }
-    setCourseData(r.data);
-    if(okMsg) showToast(okMsg);
-    return r;
-  });
+const cmPlural = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
+function cmInitials(name){
+  const w = String(name).replace(/\(.*?\)/g, '').split(/[\s,\/&-]+/).filter(x => /^[A-Za-z]/.test(x) && !/^(of|and|the|for|in)$/i.test(x));
+  return (w.slice(0, 3).map(x => x[0]).join('') || '?').toUpperCase();
 }
+function cmScope(){
+  const cols = cm.sel === 'all' ? courseData : courseData.filter(c => c.id === cm.sel);
+  return cols.flatMap(col => col.courses);
+}
+function cmFiltered(){
+  const q = cm.q.trim().toLowerCase();
+  let list = cmScope().filter(c =>
+    (cm.status === 'all' || (cm.status === 'active') === c.is_active) &&
+    (!q || (c.code + ' ' + c.name + ' ' + (cm.sel === 'all' ? c.college_name : '')).toLowerCase().includes(q)));
+  if(cm.sort !== 'order'){
+    const by = {
+      code:(a,b)=>a.code.localeCompare(b.code, undefined, {numeric:true, sensitivity:'base'}),
+      name:(a,b)=>a.name.localeCompare(b.name, undefined, {sensitivity:'base'}),
+      students:(a,b)=>a.students - b.students,
+      status:(a,b)=>(+b.is_active) - (+a.is_active)
+    }[cm.sort];
+    list = list.map((c,i)=>[c,i]).sort((x,y)=> cm.dir * by(x[0], y[0]) || x[1] - y[1]).map(x=>x[0]);
+  }
+  return list;
+}
+
+/* ---------- render ---------- */
 function renderCourses(){
-  const sel = document.getElementById('crsCollege'), keep = sel.value;
-  sel.innerHTML = '<option value="">Select college</option>'
-    + courseData.map(c=>`<option value="${c.id}">${esc(c.name)}${c.is_active ? '' : ' (hidden)'}</option>`).join('');
-  sel.value = keep;
-
-  document.getElementById('courseList').innerHTML = courseData.length ? courseData.map(col=>`
-    <div class="card panel">
-      <div class="panel-head">
-        <div>
-          <h3>${esc(col.name)} ${col.is_active ? '' : '<span class="badge neutral">Hidden</span>'}</h3>
-          <div class="sub">${col.courses.length} course${col.courses.length === 1 ? '' : 's'}</div>
-        </div>
-        <div style="display:flex; gap:8px; flex-wrap:wrap;">
-          <button class="pill-btn ghost sm" onclick="renameCollege(${col.id})">Rename</button>
-          <button class="pill-btn ghost sm" onclick="toggleCollege(${col.id})">${col.is_active ? 'Hide' : 'Show'}</button>
-          <button class="pill-btn ghost sm" onclick="deleteCollege(${col.id})">Delete</button>
-        </div>
-      </div>
-      <div style="overflow-x:auto;">
-        <table class="course-table">
-          <colgroup>
-            <col style="width:130px"><col><col style="width:100px"><col style="width:130px"><col style="width:270px">
-          </colgroup>
-          <thead><tr><th>Code</th><th>Course</th><th>Students</th><th>Status</th><th></th></tr></thead>
-          <tbody>${col.courses.length ? col.courses.map(c=>`
-            <tr>
-              <td class="mono-cell">${esc(c.code)}</td>
-              <td>${esc(c.name)}</td>
-              <td>${c.students}</td>
-              <td><span class="badge ${c.is_active ? 'stable' : 'neutral'}"><span class="dot"></span>${c.is_active ? 'Shown' : 'Hidden'}</span></td>
-              <td class="course-actions">
-                <button class="pill-btn ghost sm" onclick="renameCourse(${c.id})">Rename</button>
-                <button class="pill-btn ghost sm" onclick="toggleCourse(${c.id})">${c.is_active ? 'Hide' : 'Show'}</button>
-                <button class="pill-btn ghost sm" onclick="deleteCourse(${c.id})">Delete</button>
-              </td>
-            </tr>`).join('')
-            : '<tr><td colspan="5" style="color:var(--ink-soft);">No courses yet. Add one above.</td></tr>'}
-          </tbody>
-        </table>
-      </div>
-    </div>`).join('')
-    : '<div class="card panel" style="color:var(--ink-soft);">No colleges yet. Add one above.</div>';
+  if(!cmEl('cmMain')) return;
+  cmRenderRail();
+  cmRenderHead();
+  cmRenderTools();
+  cmRenderRows();
 }
 
-function addCollege(){
-  const msg = document.getElementById('colMsg'), btn = document.getElementById('colAddBtn');
-  btn.disabled = true; msg.style.color = 'var(--ink-soft)'; msg.textContent = 'Saving…';
-  api('/api/admin/colleges/create/', {name: document.getElementById('colName').value}).then(r=>{
-    btn.disabled = false;
-    if(!r.ok){ msg.style.color = 'var(--alert)'; msg.textContent = r.data.error || 'Could not save.'; return; }
-    msg.textContent = '';
-    document.getElementById('colName').value = '';
-    setCourseData(r.data);
-    showToast('College added');
+function cmRailItem(id, mark, name, meta, o){
+  o = o || {};
+  const cur = cm.sel === id;
+  return `<button type="button" class="cm-item ${o.off ? 'off' : ''}" data-id="${id}" ${cur ? 'aria-current="true"' : ''}>
+    <span class="cm-mark ${id === 'all' ? 'all' : ''}">${mark}</span>
+    <span class="cm-txt"><span class="cm-name">${esc(name)}</span><span class="cm-meta">${esc(meta)}</span></span>
+    ${o.off ? '<span class="badge neutral">Hidden</span>' : ''}
+  </button>`;
+}
+function cmRenderRail(){
+  const list = cmEl('cmColList'), pick = cmEl('cmColPick');
+  if(courseData === null){
+    list.innerHTML = courseLoadFailed ? '' : '<div class="cm-skel-i"></div><div class="cm-skel-i"></div><div class="cm-skel-i"></div>';
+    pick.innerHTML = '<option>' + (courseLoadFailed ? 'Could not load' : 'Loading…') + '</option>';
+    return;
+  }
+  const total = courseData.reduce((n, c) => n + c.courses.length, 0);
+  const q = cm.colQ.trim().toLowerCase();
+  let html = cmRailItem('all', CM_ICON.grid, 'All colleges', cmPlural(total, 'course') + ' in ' + cmPlural(courseData.length, 'college'));
+  let shown = 0;
+  courseData.forEach(col => {
+    let meta = cmPlural(col.courses.length, 'course');
+    const hid = col.courses.filter(c => !c.is_active).length;
+    if(hid) meta += ' · ' + hid + ' hidden';
+    if(q && !col.name.toLowerCase().includes(q)){
+      const k = col.courses.filter(c => (c.code + ' ' + c.name).toLowerCase().includes(q)).length;
+      if(!k) return;
+      meta = cmPlural(k, 'matching course');
+    }
+    shown++;
+    html += cmRailItem(col.id, esc(cmInitials(col.name)), col.name, meta, {off:!col.is_active});
+  });
+  if(q && !shown) html += '<div class="cm-none">No college matches “' + esc(cm.colQ.trim()) + '”.</div>';
+  const hadFocus = list.contains(document.activeElement) ? (document.activeElement.dataset || {}).id : null;
+  list.innerHTML = html;
+  if(hadFocus != null){ const f = list.querySelector('.cm-item[data-id="' + hadFocus + '"]'); if(f) f.focus(); }
+  pick.innerHTML = '<option value="all">All colleges (' + total + ')</option>' + courseData.map(c =>
+    `<option value="${c.id}">${esc(c.name)}${c.is_active ? '' : ' (hidden)'} (${c.courses.length})</option>`).join('');
+  pick.value = String(cm.sel);
+}
+
+function cmRenderHead(){
+  const head = cmEl('cmHead');
+  if(courseData === null){
+    head.innerHTML = '<div class="cm-id"><div class="cm-skel-i" style="width:46px;height:46px;"></div><div style="flex:1;max-width:320px;"><div class="cm-skel-i" style="height:20px;margin-bottom:8px;"></div><div class="cm-skel-i" style="height:14px;width:70%;"></div></div></div>';
+    return;
+  }
+  if(cm.sel === 'all'){
+    const total = courseData.reduce((n, c) => n + c.courses.length, 0);
+    const hid = courseData.reduce((n, c) => n + c.courses.filter(k => !k.is_active).length, 0);
+    const stu = courseData.reduce((n, c) => n + c.courses.reduce((m, k) => m + k.students, 0), 0);
+    head.innerHTML = `<div class="cm-id"><div class="cm-mark all">${CM_ICON.grid}</div><div>
+      <h3>All courses</h3>
+      <div class="cm-stats"><span><b>${courseData.length}</b> colleges</span><span><b>${total}</b> courses</span><span><b>${hid}</b> hidden</span><span><b>${stu}</b> students</span></div>
+    </div></div>`;
+    return;
+  }
+  const col = findCollege(cm.sel);
+  const hid = col.courses.filter(c => !c.is_active).length;
+  const stu = col.courses.reduce((m, k) => m + k.students, 0);
+  head.innerHTML = `<div class="cm-id"><div class="cm-mark ${col.is_active ? '' : 'off'}">${esc(cmInitials(col.name))}</div><div>
+      <h3>${esc(col.name)} ${col.is_active ? '' : '<span class="badge neutral">Hidden</span>'}</h3>
+      <div class="cm-stats"><span><b>${col.courses.length}</b> course${col.courses.length === 1 ? '' : 's'}</span><span><b>${hid}</b> hidden</span><span><b>${stu}</b> student${stu === 1 ? '' : 's'}</span>${col.is_active ? '' : '<span>Not shown at registration</span>'}</div>
+    </div></div>
+    <div class="cm-acts">
+      <button type="button" class="pill-btn ghost sm" data-hact="rename">Rename</button>
+      <button type="button" class="pill-btn ghost sm" data-hact="toggle" ${col._busy ? 'disabled' : ''}>${col.is_active ? 'Hide college' : 'Show college'}</button>
+      <button type="button" class="pill-btn ghost sm" data-hact="delete">Delete</button>
+    </div>`;
+}
+
+function cmRenderTools(){
+  const ready = courseData !== null;
+  const base = ready ? cmScope() : [];
+  const n = {all:base.length, active:base.filter(c => c.is_active).length};
+  n.hidden = n.all - n.active;
+  cmEl('cmStatus').innerHTML = [['all','All'],['active','Shown'],['hidden','Hidden']].map(s =>
+    `<button type="button" data-st="${s[0]}" aria-pressed="${cm.status === s[0]}">${s[1]} <span class="n">${n[s[0]]}</span></button>`).join('');
+  const inp = cmEl('cmSearch');
+  if(inp.value !== cm.q) inp.value = cm.q;
+  cmEl('cmClear').hidden = !cm.q;
+  cmEl('cmColSearch').value === cm.colQ || (cmEl('cmColSearch').value = cm.colQ);
+  cmEl('cmSortSel').value = cm.sort;
+  cmEl('cmAddCourse').disabled = !ready;
+  document.querySelectorAll('#cmThead th[aria-sort]').forEach(th => {
+    const k = th.querySelector('[data-sort]').dataset.sort, on = cm.sort === k;
+    th.setAttribute('aria-sort', on ? (cm.dir === 1 ? 'ascending' : 'descending') : 'none');
+    th.querySelector('.ar').textContent = on ? (cm.dir === 1 ? '▲' : '▼') : '';
   });
 }
-function addCourse(){
-  const msg = document.getElementById('crsMsg'), btn = document.getElementById('crsAddBtn');
-  btn.disabled = true; msg.style.color = 'var(--ink-soft)'; msg.textContent = 'Saving…';
-  api('/api/admin/courses/create/', {
-    college_id: document.getElementById('crsCollege').value,
-    code: document.getElementById('crsCode').value,
-    name: document.getElementById('crsName').value
-  }).then(r=>{
-    btn.disabled = false;
-    if(!r.ok){ msg.style.color = 'var(--alert)'; msg.textContent = r.data.error || 'Could not save.'; return; }
-    msg.textContent = '';
-    document.getElementById('crsCode').value = '';
-    document.getElementById('crsName').value = '';
+
+function cmRenderRows(){
+  const tbody = cmEl('cmRows'), empty = cmEl('cmEmpty'), line = cmEl('cmFilterLine');
+  if(courseData === null){
+    empty.innerHTML = '';
+    cmEl('cmPager').innerHTML = '';
+    line.hidden = true;
+    if(courseLoadFailed){
+      tbody.innerHTML = '';
+      empty.innerHTML = '<div class="cm-empty"><strong>Couldn’t load courses</strong>Check your connection and try again.<br><button type="button" class="pill-btn solid sm" data-eact="retry">Try again</button></div>';
+    }else{
+      tbody.innerHTML = Array(6).fill('<tr class="cm-skel"><td colspan="5"><span></span></td></tr>').join('');
+    }
+    return;
+  }
+  const flash = cm.flash; cm.flash = null;
+  const all = cmFiltered();
+  const total = all.length;
+  const pages = Math.max(1, Math.ceil(total / cm.size));
+  if(flash){ const i = all.findIndex(c => c.code === flash); if(i >= 0) cm.page = Math.floor(i / cm.size) + 1; }
+  cm.page = Math.min(Math.max(1, cm.page), pages);
+  const slice = all.slice((cm.page - 1) * cm.size, cm.page * cm.size);
+  const inAll = cm.sel === 'all';
+
+  tbody.innerHTML = slice.map(c => {
+    const on = c.is_active;
+    return `<tr class="${on ? '' : 'is-hidden'} ${flash === c.code ? 'cm-flash' : ''}" data-id="${c.id}">
+      <td class="c-code"><span class="cm-codechip">${esc(c.code)}</span></td>
+      <td class="c-name"><div class="cm-cn">${esc(c.name)}</div>${inAll ? `<div class="cm-cs">${esc(c.college_name)}</div>` : ''}</td>
+      <td class="c-stu"><span class="cm-num">${c.students}</span><span class="cm-stu-l"> student${c.students === 1 ? '' : 's'}</span></td>
+      <td class="c-status"><span class="cm-st"><button type="button" class="switch ${on ? 'on' : ''}" role="switch" aria-checked="${on}" data-act="toggle" ${c._busy ? 'disabled' : ''} aria-label="Show ${esc(c.code)} to students"><span class="knob"></span></button><span class="${on ? 'on-t' : ''}">${on ? 'Shown' : 'Hidden'}</span></span></td>
+      <td class="c-act">
+        <button type="button" class="cm-act" data-act="edit" title="Edit ${esc(c.code)}" aria-label="Edit ${esc(c.code)}">${CM_ICON.edit}<span class="cm-act-t">Edit</span></button>
+        <button type="button" class="cm-act del" data-act="delete" title="Delete ${esc(c.code)}" aria-label="Delete ${esc(c.code)}">${CM_ICON.del}</button>
+      </td>
+    </tr>`;
+  }).join('');
+  tbody.classList.remove('cm-enter'); void tbody.offsetWidth; tbody.classList.add('cm-enter');
+
+  /* empty states */
+  const scopeN = cmScope().length, filtered = !!(cm.q.trim() || cm.status !== 'all');
+  if(total){ empty.innerHTML = ''; }
+  else if(!courseData.length){
+    empty.innerHTML = '<div class="cm-empty"><strong>No colleges yet</strong>Add a college first, then put courses under it.<br><button type="button" class="pill-btn solid sm" data-eact="add-college">Add a college</button></div>';
+  }else if(!scopeN){
+    const col = findCollege(cm.sel);
+    empty.innerHTML = '<div class="cm-empty"><strong>' + (col ? 'No courses in ' + esc(col.name) + ' yet' : 'No courses yet') + '</strong>Students can’t choose this college until it has a course.<br><button type="button" class="pill-btn solid sm" data-eact="add-course">Add a course</button></div>';
+  }else{
+    const q = cm.q.trim();
+    empty.innerHTML = '<div class="cm-empty"><strong>No courses match</strong>' + (q ? 'Nothing for “' + esc(q) + '”' + (cm.status !== 'all' ? ' with this status' : '') + '.' : 'No ' + (cm.status === 'hidden' ? 'hidden' : 'shown') + ' courses here.') + '<br>' +
+      (q && cm.sel !== 'all' ? '<button type="button" class="pill-btn ghost sm" data-eact="search-all">Search all colleges</button>' : '') +
+      '<button type="button" class="pill-btn ghost sm" data-eact="clear">Clear filters</button></div>';
+  }
+  cmEl('cmThead').closest('table').style.display = total ? '' : 'none';
+
+  /* filter summary */
+  if(filtered && scopeN){
+    line.hidden = false;
+    line.innerHTML = `<span><b>${total}</b> of ${scopeN} course${scopeN === 1 ? '' : 's'} match</span><button type="button" class="cm-link" data-eact="clear">Clear filters</button>`;
+  }else line.hidden = true;
+
+  renderListPager('cmPager', {page:cm.page, pages, total, size:cm.size}, CM_SIZES,
+    n => { cm.page = n; cmRenderRows(); cmTop(); },
+    n => { cm.size = n; cm.page = 1; cmSave(); cmRenderRows(); cmTop(); });
+  if(flash){ const r = tbody.querySelector('.cm-flash'); if(r) r.scrollIntoView({block:'nearest'}); }
+}
+function cmTop(){
+  const m = cmEl('cmMain');
+  if(m.getBoundingClientRect().top < 0) m.scrollIntoView({block:'start'});
+}
+
+/* ---------- interactions ---------- */
+function cmSelect(id){
+  cm.sel = id === 'all' ? 'all' : +id;
+  cm.q = ''; cm.status = 'all'; cm.page = 1; cmSave();
+  renderCourses();
+}
+function cmClearFilters(){ cm.q = ''; cm.status = 'all'; cm.page = 1; renderCourses(); }
+
+let cmInited = false;
+function cmInit(){
+  if(cmInited) return; cmInited = true;
+  let t1 = null, t2 = null;
+  cmEl('cmColSearch').addEventListener('input', e => {
+    clearTimeout(t1); const v = e.target.value;
+    t1 = setTimeout(() => { cm.colQ = v; cmRenderRail(); }, 120);
+  });
+  cmEl('cmSearch').addEventListener('input', e => {
+    clearTimeout(t2); const v = e.target.value;
+    cmEl('cmClear').hidden = !v;
+    t2 = setTimeout(() => { cm.q = v; cm.page = 1; cmRenderTools(); cmRenderRows(); }, 120);
+  });
+  cmEl('cmSearch').addEventListener('keydown', e => { if(e.key === 'Escape' && e.target.value){ e.target.value = ''; cm.q = ''; cm.page = 1; cmRenderTools(); cmRenderRows(); e.stopPropagation(); } });
+  cmEl('cmClear').onclick = () => { cm.q = ''; cm.page = 1; cmRenderTools(); cmRenderRows(); cmEl('cmSearch').focus(); };
+  cmEl('cmColPick').onchange = e => cmSelect(e.target.value);
+  cmEl('cmSortSel').onchange = e => { cm.sort = e.target.value; cm.dir = cm.sort === 'students' ? -1 : 1; cm.page = 1; cmRenderTools(); cmRenderRows(); };
+  cmEl('cmAddCollege').onclick = () => cmCollegeModal();
+  cmEl('cmAddCourse').onclick = () => cmCourseModal();
+  cmEl('cmStatus').onclick = e => {
+    const b = e.target.closest('[data-st]'); if(!b) return;
+    cm.status = b.dataset.st; cm.page = 1; cmRenderTools(); cmRenderRows();
+  };
+  cmEl('cmThead').onclick = e => {
+    const b = e.target.closest('[data-sort]'); if(!b) return;
+    const k = b.dataset.sort, first = k === 'students' ? -1 : 1;
+    if(cm.sort !== k){ cm.sort = k; cm.dir = first; }
+    else if(cm.dir === first){ cm.dir = -first; }
+    else { cm.sort = 'order'; cm.dir = 1; }
+    cm.page = 1; cmRenderTools(); cmRenderRows();
+  };
+  const rail = cmEl('cmColList');
+  rail.onclick = e => { const b = e.target.closest('.cm-item'); if(b) cmSelect(b.dataset.id); };
+  rail.onkeydown = e => {
+    const items = [...rail.querySelectorAll('.cm-item')], i = items.indexOf(document.activeElement);
+    if(i < 0) return;
+    let j = null;
+    if(e.key === 'ArrowDown') j = Math.min(items.length - 1, i + 1);
+    else if(e.key === 'ArrowUp') j = Math.max(0, i - 1);
+    else if(e.key === 'Home') j = 0;
+    else if(e.key === 'End') j = items.length - 1;
+    if(j !== null){ e.preventDefault(); items[j].focus(); }
+  };
+  cmEl('cmHead').onclick = e => {
+    const b = e.target.closest('[data-hact]'); if(!b) return;
+    const col = findCollege(cm.sel); if(!col) return;
+    if(b.dataset.hact === 'rename') cmCollegeModal(col);
+    else if(b.dataset.hact === 'toggle') cmSetActive('college', col.id, !col.is_active);
+    else cmAskDeleteCollege(col);
+  };
+  cmEl('cmRows').onclick = e => {
+    const b = e.target.closest('[data-act]'); if(!b) return;
+    const c = findCourse(+b.closest('tr').dataset.id); if(!c) return;
+    if(b.dataset.act === 'edit') cmCourseModal(c);
+    else if(b.dataset.act === 'toggle') cmSetActive('course', c.id, !c.is_active);
+    else cmAskDeleteCourse(c);
+  };
+  cmEl('cmEmpty').onclick = e => {
+    const b = e.target.closest('[data-eact]'); if(!b) return;
+    const a = b.dataset.eact;
+    if(a === 'retry'){ courseLoadFailed = false; renderCourses(); loadCourses(); }
+    else if(a === 'add-college') cmCollegeModal();
+    else if(a === 'add-course') cmCourseModal();
+    else if(a === 'clear') cmClearFilters();
+    else if(a === 'search-all'){ cm.sel = 'all'; cm.status = 'all'; cm.page = 1; cmSave(); renderCourses(); }
+  };
+  cmEl('cmFilterLine').onclick = e => { if(e.target.closest('[data-eact="clear"]')) cmClearFilters(); };
+
+  /* dialog + undo bar */
+  cmEl('cmModalForm').addEventListener('submit', cmSubmit);
+  cmEl('cmModalX').onclick = cmEl('cmModalCancel').onclick = () => cmCloseModal();
+  cmEl('cmModalAlt').onclick = () => { const a = cmM && cmM.alt; if(a){ cmCloseModal(); a.run(); } };
+  const ov = cmEl('cmModalOverlay');
+  let downOnBackdrop = false;
+  ov.addEventListener('mousedown', e => { downOnBackdrop = e.target === ov; });
+  ov.addEventListener('click', e => { if(e.target === ov && downOnBackdrop) cmCloseModal(); });
+  document.addEventListener('keydown', e => {
+    if(!ov.classList.contains('active')) return;
+    if(e.key === 'Escape'){ cmCloseModal(); return; }
+    if(e.key === 'Tab'){
+      const f = [...ov.querySelectorAll('input:not([readonly]):not([type=hidden]), select, button:not([hidden]):not(:disabled)')].filter(x => x.offsetParent !== null);
+      if(!f.length) return;
+      const first = f[0], last = f[f.length - 1];
+      if(e.shiftKey && document.activeElement === first){ e.preventDefault(); last.focus(); }
+      else if(!e.shiftKey && document.activeElement === last){ e.preventDefault(); first.focus(); }
+    }
+  });
+  cmEl('cmSnackUndo').onclick = () => { const fn = cmSnackFn; cmHideSnack(); if(fn) fn(); };
+}
+
+/* ---------- undo bar ---------- */
+let cmSnackT = null, cmSnackFn = null;
+function cmSnack(msg, undoFn){
+  cmEl('cmSnackTxt').textContent = msg;
+  cmSnackFn = undoFn || null;
+  cmEl('cmSnackUndo').hidden = !undoFn;
+  cmEl('cmSnack').classList.add('show');
+  clearTimeout(cmSnackT);
+  cmSnackT = setTimeout(cmHideSnack, 6000);
+}
+function cmHideSnack(){ clearTimeout(cmSnackT); cmEl('cmSnack').classList.remove('show'); cmSnackFn = null; }
+
+/* ---------- hide / show (instant, with undo) ---------- */
+function cmSetActive(kind, id, active, noUndo){
+  const obj = kind === 'college' ? findCollege(id) : findCourse(id);
+  if(!obj || obj._busy) return;
+  const prev = obj.is_active, label = kind === 'college' ? obj.name : obj.code;
+  obj.is_active = active; obj._busy = true;
+  renderCourses();
+  api('/api/admin/' + (kind === 'college' ? 'colleges' : 'courses') + '/' + id + '/update/', {is_active: active}).then(r=>{
+    if(!r.ok){
+      obj.is_active = prev; obj._busy = false; renderCourses();
+      showToast(r.data.error || 'Could not save. Try again.');
+      return;
+    }
     setCourseData(r.data);
-    showToast('Course added');
+    if(noUndo){ showToast(label + (active ? ' is shown again' : ' is hidden again')); return; }
+    cmSnack(kind === 'college'
+      ? (active ? label + ' is now shown at registration.' : label + ' is hidden. Its courses no longer appear at registration.')
+      : (active ? label + ' is now shown to students.' : label + ' is hidden from students.'),
+      () => cmSetActive(kind, id, !active, true));
   });
 }
 
-function renameCollege(id){
-  const c = findCollege(id); if(!c) return;
-  const n = prompt('Rename college:', c.name);
-  if(n === null || !n.trim()) return;
-  courseCall('/api/admin/colleges/' + id + '/update/', {name: n}, 'College renamed');
+/* ---------- dialog ---------- */
+let cmM = null, cmFocusBack = null, cmSaving = false;
+function cmOpenModal(cfg){
+  cmM = cfg; cmSaving = false; cmFocusBack = document.activeElement;
+  const ov = cmEl('cmModalOverlay');
+  cmEl('cmModalTitle').textContent = cfg.title;
+  cmEl('cmModalSub').textContent = cfg.sub || '';
+  cmEl('cmModalBody').innerHTML = cfg.body;
+  const sub = cmEl('cmModalSubmit'), alt = cmEl('cmModalAlt');
+  sub.hidden = !cfg.submit; sub.disabled = false;
+  sub.textContent = cfg.submit || '';
+  sub.className = 'pill-btn ' + (cfg.danger ? 'danger' : 'solid');
+  alt.hidden = !cfg.alt;
+  if(cfg.alt){ alt.textContent = cfg.alt.label; alt.className = 'pill-btn ' + (cfg.submit ? 'ghost' : 'solid'); }
+  cmEl('cmModalCancel').textContent = cfg.submit || cfg.alt ? 'Cancel' : 'Close';
+  ov.classList.add('active'); ov.setAttribute('aria-hidden', 'false');
+  setTimeout(() => {
+    const f = ov.querySelector('input:not([readonly]):not([type=checkbox]), select') || (cfg.submit ? sub : (cfg.alt ? alt : cmEl('cmModalCancel')));
+    f.focus(); if(f.tagName === 'INPUT') f.select();
+  }, 30);
 }
-function toggleCollege(id){
-  const c = findCollege(id); if(!c) return;
-  if(c.is_active && !confirm('Hide "' + c.name + '"? Its courses will no longer show when students register. Existing students are not affected.')) return;
-  courseCall('/api/admin/colleges/' + id + '/update/', {is_active: !c.is_active}, c.is_active ? 'College hidden' : 'College shown');
+function cmCloseModal(){
+  if(cmSaving) return;
+  const ov = cmEl('cmModalOverlay');
+  ov.classList.remove('active'); ov.setAttribute('aria-hidden', 'true');
+  cmM = null;
+  if(cmFocusBack && document.contains(cmFocusBack)) cmFocusBack.focus();
+  cmFocusBack = null;
 }
-function deleteCollege(id){
-  const c = findCollege(id); if(!c) return;
-  if(!confirm('Delete "' + c.name + '"?')) return;
-  courseCall('/api/admin/colleges/' + id + '/delete/', {}, 'College deleted');
+function cmFail(msg, fieldId){
+  const err = cmEl('cmErr'); if(err) err.textContent = msg || '';
+  document.querySelectorAll('#cmModalBody .invalid').forEach(x => x.classList.remove('invalid'));
+  if(fieldId && cmEl(fieldId)){ cmEl(fieldId).classList.add('invalid'); cmEl(fieldId).focus(); }
 }
-function renameCourse(id){
-  const c = findCourse(id); if(!c) return;
-  const n = prompt('Rename course (' + c.code + '):', c.name);
-  if(n === null || !n.trim()) return;
-  courseCall('/api/admin/courses/' + id + '/update/', {name: n}, 'Course renamed');
+function cmSubmit(e){
+  e.preventDefault();
+  const cfg = cmM; if(!cfg || cmSaving || !cfg.onSubmit) return;
+  cmFail('');
+  const bad = cfg.validate && cfg.validate();
+  if(bad){ cmFail(bad.msg, bad.field); return; }
+  cmSaving = true;
+  const btn = cmEl('cmModalSubmit'), label = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Saving…';
+  cfg.onSubmit().then(r=>{
+    cmSaving = false; btn.disabled = false; btn.textContent = label;
+    if(!r.ok){ cmFail(r.error || 'Could not save. Try again.', r.field); return; }
+    if(!r.keepOpen) cmCloseModal();
+  });
 }
-function toggleCourse(id){
-  const c = findCourse(id); if(!c) return;
-  if(c.is_active && !confirm('Hide ' + c.code + '? It will no longer show when students register. Existing students keep it.')) return;
-  courseCall('/api/admin/courses/' + id + '/update/', {is_active: !c.is_active}, c.is_active ? 'Course hidden' : 'Course shown');
+const cmErrBox = '<div class="cm-err" id="cmErr" role="alert"></div>';
+
+/* ---------- college dialogs ---------- */
+function cmCollegeModal(col){
+  const edit = !!col;
+  cmOpenModal({
+    title: edit ? 'Rename college' : 'Add a college',
+    sub: edit ? '' : 'A college or department. Courses go under it. Students pick the college first, then the course.',
+    body: `<div class="field"><label for="cmfName">College name</label>
+      <input id="cmfName" maxlength="150" autocomplete="off" placeholder="College of Computer Studies" value="${edit ? esc(col.name) : ''}"></div>${cmErrBox}`,
+    submit: edit ? 'Save name' : 'Add college',
+    validate(){
+      const n = cmEl('cmfName').value.trim().replace(/\s+/g, ' ');
+      if(n.length < 2 || n.length > 150) return {msg:'College name must be 2–150 characters.', field:'cmfName'};
+      if(courseData.some(c => c.name.toLowerCase() === n.toLowerCase() && (!edit || c.id !== col.id))) return {msg:'That college already exists.', field:'cmfName'};
+    },
+    onSubmit(){
+      const name = cmEl('cmfName').value.trim().replace(/\s+/g, ' ');
+      if(edit && name === col.name) return Promise.resolve({ok:true});
+      const url = edit ? '/api/admin/colleges/' + col.id + '/update/' : '/api/admin/colleges/create/';
+      return api(url, {name}).then(r=>{
+        if(!r.ok) return {ok:false, error:r.data.error, field:'cmfName'};
+        if(!edit){
+          const made = (r.data.colleges || []).find(c => c.name.toLowerCase() === name.toLowerCase());
+          if(made){ cm.sel = made.id; cm.q = ''; cm.status = 'all'; cm.page = 1; cmSave(); }
+          cm.colQ = '';
+        }
+        setCourseData(r.data);
+        showToast(edit ? 'College renamed' : 'College added');
+        return {ok:true};
+      });
+    }
+  });
 }
-function deleteCourse(id){
-  const c = findCourse(id); if(!c) return;
-  if(!confirm('Delete ' + c.code + ' - ' + c.name + '?')) return;
-  courseCall('/api/admin/courses/' + id + '/delete/', {}, 'Course deleted');
+function cmAskDeleteCollege(col){
+  const n = col.courses.length;
+  if(n){
+    cmOpenModal({
+      title: 'Can’t delete ' + col.name,
+      sub: '',
+      body: `<p class="cm-p">It still has ${cmPlural(n, 'course')}. Delete or move those first.</p>
+             <p class="cm-p" style="color:var(--ink-soft);">To stop students from choosing it, hide it instead. Existing students keep their course.</p>`,
+      alt: col.is_active ? {label:'Hide college', run:() => cmSetActive('college', col.id, false)} : null
+    });
+    return;
+  }
+  cmOpenModal({
+    title: 'Delete ' + col.name + '?',
+    body: '<p class="cm-p">This removes the college. This can’t be undone.</p>' + cmErrBox,
+    submit: 'Delete college', danger: true,
+    onSubmit(){
+      return api('/api/admin/colleges/' + col.id + '/delete/', {}).then(r=>{
+        if(!r.ok) return {ok:false, error:r.data.error};
+        cm.sel = 'all'; cmSave(); setCourseData(r.data);
+        showToast('College deleted');
+        return {ok:true};
+      });
+    }
+  });
+}
+
+/* ---------- course dialogs ---------- */
+function cmCourseModal(course){
+  if(!courseData.length){ showToast('Add a college first.'); cmCollegeModal(); return; }
+  const edit = !!course;
+  const defCol = edit ? course.college_id : (cm.sel !== 'all' ? cm.sel : '');
+  cmOpenModal({
+    title: edit ? 'Edit ' + course.code : 'Add a course',
+    sub: edit ? '' : 'The code can’t be changed later, because students’ records use it.',
+    body: `<div class="field"><label for="cmfCollege">College</label>
+        <select id="cmfCollege"><option value="">Select college</option>${courseData.map(c =>
+          `<option value="${c.id}" ${c.id === defCol ? 'selected' : ''}>${esc(c.name)}${c.is_active ? '' : ' (hidden)'}</option>`).join('')}</select></div>
+      <div class="field"><label for="cmfCode">Code</label>
+        <input id="cmfCode" maxlength="30" autocomplete="off" spellcheck="false" placeholder="BSIT" style="text-transform:uppercase;" value="${edit ? esc(course.code) : ''}" ${edit ? 'readonly aria-describedby="cmfCodeHint"' : ''}>
+        ${edit ? '<div class="cm-hint" id="cmfCodeHint">The code can’t be changed because student records use it.</div>' : ''}</div>
+      <div class="field"><label for="cmfName">Course name</label>
+        <input id="cmfName" maxlength="150" autocomplete="off" placeholder="Information Technology" value="${edit ? esc(course.name) : ''}"></div>
+      ${edit ? '' : '<label class="mx-opt"><input type="checkbox" id="cmfAgain"> Keep this open to add another</label>'}
+      ${cmErrBox}`,
+    submit: edit ? 'Save changes' : 'Add course',
+    validate(){
+      const col = cmEl('cmfCollege').value, code = cmEl('cmfCode').value.trim().toUpperCase(), name = cmEl('cmfName').value.trim();
+      if(!col) return {msg:'Pick a college.', field:'cmfCollege'};
+      if(!edit){
+        if(!/^[A-Z0-9][A-Z0-9._-]{1,29}$/.test(code)) return {msg:'Code must be 2–30 characters: letters, numbers, dots, dashes (example: BSIT).', field:'cmfCode'};
+        if(courseData.some(c => c.courses.some(k => k.code.toUpperCase() === code))) return {msg:'That course code already exists.', field:'cmfCode'};
+      }
+      if(name.length < 2 || name.length > 150) return {msg:'Course name must be 2–150 characters.', field:'cmfName'};
+    },
+    onSubmit(){
+      const colId = +cmEl('cmfCollege').value, code = cmEl('cmfCode').value.trim().toUpperCase(), name = cmEl('cmfName').value.trim().replace(/\s+/g, ' ');
+      if(edit){
+        const body = {};
+        if(name !== course.name) body.name = name;
+        if(colId !== course.college_id) body.college_id = colId;
+        if(!Object.keys(body).length) return Promise.resolve({ok:true});
+        return api('/api/admin/courses/' + course.id + '/update/', body).then(r=>{
+          if(!r.ok) return {ok:false, error:r.data.error};
+          cm.flash = course.code; setCourseData(r.data);
+          showToast(body.college_id ? course.code + ' moved to ' + findCollege(colId).name : 'Course updated');
+          return {ok:true};
+        });
+      }
+      const again = cmEl('cmfAgain').checked;
+      return api('/api/admin/courses/create/', {college_id:colId, code, name}).then(r=>{
+        if(!r.ok) return {ok:false, error:r.data.error, field:/code/i.test(r.data.error || '') ? 'cmfCode' : null};
+        cm.flash = code; cm.q = ''; cm.status = 'all';
+        if(cm.sel !== 'all') cm.sel = colId;
+        cmSave(); setCourseData(r.data);
+        if(again){
+          cmEl('cmfCode').value = ''; cmEl('cmfName').value = ''; cmEl('cmfCode').focus();
+          showToast(code + ' added');
+          return {ok:true, keepOpen:true};
+        }
+        showToast('Course added');
+        return {ok:true};
+      });
+    }
+  });
+}
+function cmAskDeleteCourse(c){
+  if(c.students){
+    cmOpenModal({
+      title: 'Can’t delete ' + c.code,
+      body: `<p class="cm-p">${cmPlural(c.students, 'student')} ${c.students === 1 ? 'uses' : 'use'} this course.</p>
+             <p class="cm-p" style="color:var(--ink-soft);">Hide it instead. It will stop showing at registration and their records stay correct.</p>`,
+      alt: c.is_active ? {label:'Hide ' + c.code, run:() => cmSetActive('course', c.id, false)} : null
+    });
+    return;
+  }
+  cmOpenModal({
+    title: 'Delete ' + c.code + '?',
+    sub: c.name,
+    body: '<p class="cm-p">This removes the course. This can’t be undone.</p>' + cmErrBox,
+    submit: 'Delete course', danger: true,
+    onSubmit(){
+      return api('/api/admin/courses/' + c.id + '/delete/', {}).then(r=>{
+        if(!r.ok) return {ok:false, error:r.data.error};
+        setCourseData(r.data);
+        showToast('Course deleted');
+        return {ok:true};
+      });
+    }
+  });
 }
 
 /* =========================================================
@@ -3766,6 +4394,7 @@ function initAll(){
   loadHotlines();
   loadPrivacy();
   loadSemesters();
+  cmInit();
   loadCourses();
   loadSubclasses().then(loadStaffAccounts);
   loadEnrollment();
