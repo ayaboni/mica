@@ -77,7 +77,7 @@
 {% block extra_js %}
 <script>
 (function(){
-  var form = document.getElementById('setupForm'), btn = document.getElementById('setupBtn'), sent = false;
+  let form = document.getElementById('setupForm'), btn = document.getElementById('setupBtn'), sent = false;
   form.addEventListener('submit', function(e){
     if (sent) { e.preventDefault(); return; }     // never post twice
     sent = true; btn.disabled = true; btn.textContent = 'Saving…';

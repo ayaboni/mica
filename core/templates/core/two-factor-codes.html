@@ -47,20 +47,20 @@
 {% block extra_js %}
 <script>
 (function(){
-  var items = Array.prototype.map.call(document.querySelectorAll('#codeList li'), function(li){ return li.textContent.trim(); });
-  var text = 'MICA admin recovery codes (each works once)\n\n' + items.join('\n') + '\n';
+  const items = Array.prototype.map.call(document.querySelectorAll('#codeList li'), function(li){ return li.textContent.trim(); });
+  const text = 'MICA admin recovery codes (each works once)\n\n' + items.join('\n') + '\n';
   document.getElementById('copyBtn').addEventListener('click', function(){
-    var b = this;
+    const b = this;
     function done(){ b.textContent = 'Copied'; setTimeout(function(){ b.textContent = 'Copy'; }, 1500); }
     if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done); }
   });
   document.getElementById('dlBtn').addEventListener('click', function(){
-    var url = URL.createObjectURL(new Blob([text], {type: 'text/plain'}));
-    var a = document.createElement('a'); a.href = url; a.download = 'mica-recovery-codes.txt';
+    const url = URL.createObjectURL(new Blob([text], {type: 'text/plain'}));
+    const a = document.createElement('a'); a.href = url; a.download = 'mica-recovery-codes.txt';
     document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
   });
   document.getElementById('printBtn').addEventListener('click', function(){ window.print(); });
-  var box = document.getElementById('savedBox'), go = document.getElementById('continueBtn');
+  const box = document.getElementById('savedBox'), go = document.getElementById('continueBtn');
   box.addEventListener('change', function(){
     go.style.pointerEvents = box.checked ? '' : 'none'; go.style.opacity = box.checked ? '' : '.5';
     go.setAttribute('aria-disabled', box.checked ? 'false' : 'true');
