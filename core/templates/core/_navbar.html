@@ -43,13 +43,13 @@
 </header>
 <script>
 (function(){
-  var btn = document.getElementById('navUserBtn');
-  var menu = document.getElementById('navUserMenu');
+  const btn = document.getElementById('navUserBtn');
+  const menu = document.getElementById('navUserMenu');
   if(!btn || !menu) return;
   function close(){ menu.hidden = true; btn.setAttribute('aria-expanded', 'false'); }
   btn.addEventListener('click', function(e){
     e.stopPropagation();
-    var opening = menu.hidden;
+    const opening = menu.hidden;
     menu.hidden = !opening;
     btn.setAttribute('aria-expanded', opening ? 'true' : 'false');
   });

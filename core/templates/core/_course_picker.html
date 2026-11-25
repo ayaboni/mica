@@ -20,17 +20,17 @@
 
 <script>
 (function () {
-  var groups = JSON.parse(document.getElementById('course-groups-data').textContent);
-  var current = "{{ selected_course|default:''|escapejs }}";
-  var college = document.getElementById('college');
-  var course = document.getElementById('course');
+  const groups = JSON.parse(document.getElementById('course-groups-data').textContent);
+  const current = "{{ selected_course|default:''|escapejs }}";
+  const college = document.getElementById('college');
+  const course = document.getElementById('course');
 
   function fill(idx, keep) {
     course.length = 1;                       /* keep the placeholder option */
-    var items = groups[idx] ? groups[idx][1] : [];
-    var found = false;
+    const items = groups[idx] ? groups[idx][1] : [];
+    let found = false;
     items.forEach(function (c) {
-      var opt = new Option(c[1], c[0]);
+      const opt = new Option(c[1], c[0]);
       if (c[0] === keep) { opt.selected = true; found = true; }
       course.add(opt);
     });

@@ -28,7 +28,7 @@
 <script>
 /* A logged-in page follows the student's saved dark mode, same as the dashboard */
 (function () {
-  var t = '{{ profile.dark_mode|yesno:"dark,light" }}';
+  const t = '{{ profile.dark_mode|yesno:"dark,light" }}';
   document.documentElement.setAttribute('data-theme', t);
   try { localStorage.setItem('mica_theme', t); } catch (e) {}
 })();
@@ -266,23 +266,23 @@
 <script>
 /* Helpers the photo script expects (showToast, getCookie) */
 function getCookie(name){
-  var m = document.cookie.match('(?:^|; )' + name + '=([^;]*)');
+  const m = document.cookie.match('(?:^|; )' + name + '=([^;]*)');
   return m ? decodeURIComponent(m[1]) : '';
 }
-var _toastTimer;
+let _toastTimer;
 function showToast(msg){
-  var t = document.getElementById('micaToast');
+  const t = document.getElementById('micaToast');
   t.textContent = msg; t.classList.add('show');
   clearTimeout(_toastTimer); _toastTimer = setTimeout(function(){ t.classList.remove('show'); }, 2800);
 }
 
 /* Toggling dark mode here also saves it, so the dashboard matches */
 (function () {
-  var csrf = document.querySelector('[name=csrfmiddlewaretoken]');
+  const csrf = document.querySelector('[name=csrfmiddlewaretoken]');
   document.querySelectorAll('.theme-toggle:not(.dys-toggle)').forEach(function (btn) {
     btn.addEventListener('click', function () {
       setTimeout(function () {
-        var dark = document.documentElement.getAttribute('data-theme') === 'dark';
+        const dark = document.documentElement.getAttribute('data-theme') === 'dark';
         try {
           localStorage.setItem('mica_theme', dark ? 'dark' : 'light');
           localStorage.setItem('mica_dark', dark ? '1' : '0');
@@ -300,7 +300,7 @@ function showToast(msg){
 <script>
 /* Live preview of the chat background. Nothing is saved until "Save changes". */
 (function () {
-  var wall = document.getElementById('themeWall');
+  const wall = document.getElementById('themeWall');
   if (!wall) return;
   function apply(r) { wall.style.setProperty('--tile', "url('" + r.dataset.tile + "')"); }
   document.querySelectorAll('input[name="chat_theme"]').forEach(function (r) {

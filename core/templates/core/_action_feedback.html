@@ -9,15 +9,15 @@
 (function(){
   if (window.__micaFeedback) return;
   window.__micaFeedback = true;
-  var realFetch = window.fetch;
+  const realFetch = window.fetch;
   if (!realFetch) return;
 
   // Background calls and calls whose pages already explain failures in their own way.
-  var QUIET = /\/api\/(keepalive|preferences\/dark-mode|exercises\/log|notifications\/mark-read|console\/notifications\/read|chatbot|speech-to-text|tutorial)|\/auth\/google|\/api\/staff\/students\/\d+\/access\//;
+  const QUIET = /\/api\/(keepalive|preferences\/dark-mode|exercises\/log|notifications\/mark-read|console\/notifications\/read|chatbot|speech-to-text|tutorial)|\/auth\/google|\/api\/staff\/students\/\d+\/access\//;
 
-  var lastPoll = 0;
+  let lastPoll = 0;
   function say(msg, poll){
-    if (poll){ var now = Date.now(); if (now - lastPoll < 30000) return; lastPoll = now; }
+    if (poll){ const now = Date.now(); if (now - lastPoll < 30000) return; lastPoll = now; }
     if (typeof window.showToast === 'function') window.showToast(msg);
   }
 
@@ -31,14 +31,14 @@
   }
 
   window.fetch = function(input, init){
-    var url = typeof input === 'string' ? input : (input && input.url) || '';
-    var method = String((init && init.method) || (input && input.method) || 'GET').toUpperCase();
-    var isGet = method === 'GET' || method === 'HEAD';
-    var sameOrigin = url.charAt(0) === '/' || url.indexOf(location.origin) === 0;
+    const url = typeof input === 'string' ? input : (input && input.url) || '';
+    const method = String((init && init.method) || (input && input.method) || 'GET').toUpperCase();
+    const isGet = method === 'GET' || method === 'HEAD';
+    const sameOrigin = url.charAt(0) === '/' || url.indexOf(location.origin) === 0;
     if (!sameOrigin || QUIET.test(url)) return realFetch.apply(this, arguments);
 
     return realFetch.apply(this, arguments).then(function(res){
-      var path = ''; try { path = new URL(res.url).pathname; } catch (e) {}
+      let path = ''; try { path = new URL(res.url).pathname; } catch (e) {}
       if (res.redirected && /^\/(login|signin)/.test(path)){          // signed out in the background
         say(messageFor(401), false);
         return res;
@@ -46,7 +46,7 @@
       if (res.ok) return res;
       if (isGet && res.status < 500) return res;                       // reads: only announce server trouble
       res.clone().json().then(function(d){
-        var text = d && typeof d.error === 'string' && d.error.length < 140 ? d.error : '';
+        const text = d && typeof d.error === 'string' && d.error.length < 140 ? d.error : '';
         if (d && d.needs_confirm) return;                             // an expected "are you sure?" step
         say(messageFor(res.status, text), isGet);
       }).catch(function(){ say(messageFor(res.status, ''), isGet); });
