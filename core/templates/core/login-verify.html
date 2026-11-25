@@ -57,11 +57,11 @@
 <script src="{% static 'core/js/no-resubmit.js' %}"></script>
 <script>
 (function(){
-  var LEN = {{ code_length }};
-  var input = document.getElementById('codeInput');
-  var btn = document.getElementById('codeBtn');
-  var form = document.getElementById('codeForm');
-  var sent = false;                    // true once the code has been posted: never post it twice
+  const LEN = {{ code_length }};
+  const input = document.getElementById('codeInput');
+  const btn = document.getElementById('codeBtn');
+  const form = document.getElementById('codeForm');
+  let sent = false;                    // true once the code has been posted: never post it twice
   function clean(){
     // Keep letters/digits only, so a pasted "ABC-DEF" or " abc def " still works.
     input.value = input.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, LEN);
@@ -88,8 +88,8 @@
   });
   clean();
 
-  var resend = document.getElementById('resendBtn');
-  var left = parseInt(resend.getAttribute('data-cooldown') || '0', 10);
+  const resend = document.getElementById('resendBtn');
+  let left = parseInt(resend.getAttribute('data-cooldown') || '0', 10);
   if (!left) return;
   function tick(){
     if (left <= 0) { resend.disabled = false; resend.textContent = 'Send a new code'; return; }

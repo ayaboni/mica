@@ -56,10 +56,10 @@
 <script src="{% static 'core/js/no-resubmit.js' %}"></script>
 <script>
 (function(){
-  var form = document.getElementById('totpForm');
-  var input = document.getElementById('totpInput');
-  var btn = document.getElementById('totpBtn');
-  var sent = false;
+  const form = document.getElementById('totpForm');
+  const input = document.getElementById('totpInput');
+  const btn = document.getElementById('totpBtn');
+  let sent = false;
   form.addEventListener('submit', function(e){
     // Never post twice: a second POST of the same code is refused as already used.
     if (sent || !input.value.trim()) { e.preventDefault(); return; }
@@ -67,7 +67,7 @@
   });
   input.addEventListener('input', function(){
     // Six digits typed or pasted (what an authenticator shows): sign in straight away.
-    var v = input.value.replace(/\s/g, '');
+    const v = input.value.replace(/\s/g, '');
     if (/^[0-9]{6}$/.test(v) && !sent) { if (form.requestSubmit) { form.requestSubmit(); } else { form.submit(); } }
   });
   window.addEventListener('pageshow', function(e){
@@ -75,9 +75,9 @@
     sent = false; btn.disabled = false; btn.textContent = 'Sign in'; input.value = ''; input.focus();
   });
 
-  var msg = document.getElementById('lockoutMsg');
+  const msg = document.getElementById('lockoutMsg');
   if (!msg) return;
-  var left = parseInt(msg.dataset.seconds, 10);
+  let left = parseInt(msg.dataset.seconds, 10);
   function tick(){
     if (left > 0) {
       msg.textContent = 'Too many wrong codes. Try again in ' + left + ' second' + (left === 1 ? '' : 's') + '.';
