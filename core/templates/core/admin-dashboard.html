@@ -449,6 +449,77 @@
     .content{padding:20px 16px 50px;}
   }
 
+
+  /* ---- Semesters ---- */
+  #tab-semesters .card.panel{margin-bottom:18px;}
+  .sm-fields{display:grid; grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1fr) auto; gap:14px 16px; align-items:end;}
+  .sm-fields .field{margin-bottom:0; min-width:0;}
+  .sm-fields .field input{height:46px;}
+  .sm-fields .field input.invalid{border-color:var(--alert);}
+  .sm-submit{height:46px; justify-content:center; white-space:nowrap;}
+  .sm-msg{min-height:20px; margin-top:12px; font-size:13px; font-weight:600; color:var(--ink-soft);}
+  .sm-msg.err{color:var(--alert);}
+  .sm-list.panel{padding:0; overflow:hidden;}
+  .sm-head{padding:22px 24px 4px;}
+  .sm-head h3{font-size:16px; font-weight:700;}
+  .sm-head .sub{font-size:12.5px; color:var(--ink-soft); margin-top:2px;}
+  .sm-tools{display:flex; gap:12px; align-items:center; flex-wrap:wrap; padding:14px 24px 16px; border-bottom:1px solid var(--line);}
+  .sm-tools .rb-search{flex:1 1 200px; min-width:180px; max-width:340px;}
+  .sm-tools .rb-views{max-width:100%;}
+  .sm-tools .rb-views button{display:inline-flex; align-items:center; gap:6px;}
+  .sm-tools .rb-views .n{font-size:11.5px; opacity:.75; font-variant-numeric:tabular-nums;}
+  .sm-scroll{overflow-x:auto;}
+  .sm-table thead th{padding:12px 16px; background:color-mix(in srgb, var(--cream) 60%, var(--paper));}
+  .sm-table thead th:first-child, .sm-table tbody td:first-child{padding-left:24px;}
+  .sm-table thead th:last-child, .sm-table tbody td:last-child{padding-right:24px;}
+  .sm-table tbody td{padding:14px 16px;}
+  .sm-table tbody tr:last-child td{border-bottom:none;}
+  .sm-table .sm-c-act{width:64px; text-align:right;}
+  .sm-name{font-weight:600; font-size:14px; overflow-wrap:anywhere;}
+  .sm-len{font-size:12px; color:var(--ink-soft); margin-top:2px;}
+  .sm-table td.mono-cell{white-space:nowrap;}
+  .sm-del{width:34px; height:34px; border-radius:50%; border:1.5px solid transparent; background:none; color:var(--ink-soft); display:inline-flex; align-items:center; justify-content:center; transition:background .12s ease, color .12s ease;}
+  .sm-del:hover{background:var(--alert-pale); color:var(--alert);}
+  .sm-del:focus-visible, .sm-tools .rb-views button:focus-visible{outline:2px solid var(--sky-deep); outline-offset:2px;}
+  .sm-empty{padding:48px 24px; text-align:center; color:var(--ink-soft); font-size:14px;}
+  .sm-empty strong{display:block; color:var(--ink); font-family:'Baloo 2',sans-serif; font-size:17px; margin-bottom:4px;}
+  .sm-empty .pill-btn{margin-top:16px;}
+  .sm-skel span{display:block; height:16px; border-radius:8px; background:linear-gradient(90deg, var(--line) 25%, color-mix(in srgb, var(--line) 40%, var(--paper)) 50%, var(--line) 75%); background-size:200% 100%;}
+  .sm-pager.list-pager{margin:0; padding:14px 24px; border-top:1px solid var(--line);}
+  @media (prefers-reduced-motion:no-preference){
+    .sm-skel span{animation:cmShimmer 1.4s linear infinite;}
+    .sm-table tr.sm-flash td{animation:cmFlash 1.8s ease-out;}
+  }
+  @media (max-width:1080px){
+    .sm-fields{grid-template-columns:minmax(0,1fr) minmax(0,1fr);}
+    .sm-f-name{grid-column:1 / -1;}
+    .sm-submit{grid-column:1 / -1;}
+  }
+  @media (max-width:700px){
+    .sm-fields{grid-template-columns:1fr;}
+    .sm-submit{width:100%;}
+    .sm-head{padding:18px 18px 4px;}
+    .sm-tools{padding:12px 18px 14px;}
+    .sm-tools .rb-search{flex:1 1 100%; max-width:none;}
+    .sm-tools .rb-views{display:flex; width:100%;}
+    .sm-tools .rb-views button{flex:1 1 0; min-width:0; justify-content:center; padding:6px 4px; font-size:12.5px; gap:4px;}
+    .sm-pager.list-pager{padding-left:18px; padding-right:18px;}
+    /* table rows become stacked cards */
+    .sm-scroll{overflow:visible;}
+    .sm-table, .sm-table tbody{display:block;}
+    .sm-table thead{display:none;}
+    .sm-table tbody tr{display:grid; grid-template-columns:1fr 1fr; gap:10px 14px; padding:16px 18px; border-bottom:1px solid var(--line); position:relative;}
+    .sm-table tbody tr:last-child{border-bottom:none;}
+    .sm-table tbody td, .sm-table tbody td:first-child, .sm-table tbody td:last-child{display:block; padding:0; border:none;}
+    .sm-table td[data-label]::before{content:attr(data-label); display:block; font-size:10.5px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--ink-soft); margin-bottom:3px;}
+    .sm-table td.sm-c-name{grid-column:1 / -1; padding-right:44px;}
+    .sm-table td.sm-c-name::before{display:none;}
+    .sm-table td.sm-c-act{position:absolute; top:10px; right:12px; width:auto;}
+    .sm-table td.sm-c-status{grid-column:1 / -1;}
+    .sm-table td.sm-c-status::before{display:none;}
+    .sm-empty{padding:40px 18px;}
+  }
+
   /* Staff roles (subclasses) */
   .sc-head{display:flex; justify-content:space-between; align-items:flex-end; gap:16px; flex-wrap:wrap; margin:34px 0 16px;}
   .sc-head h3{font-size:17px; font-weight:700;}
@@ -1505,25 +1576,47 @@ a.pill-btn{ text-decoration:none; }
 
         <!-- SEMESTERS -->
         <div class="subpanel" id="tab-semesters">
-          <div class="card panel">
-            <div class="panel-head"><div><h3>Semesters</h3><div class="sub">Used by the staff report period dropdowns. Example: 1st Sem AY 2026-2027</div></div></div>
-            <div class="field-grid">
-              <div class="field"><label>Name</label><input id="semName" maxlength="80" placeholder="1st Sem AY 2026-2027"></div>
-              <div class="field"><label>Start date</label><input id="semStart" type="date"></div>
-              <div class="field"><label>End date</label><input id="semEnd" type="date"></div>
-            </div>
-            <div style="margin-top:16px; display:flex; gap:12px; align-items:center;">
-              <button class="pill-btn solid sm" id="semAddBtn" onclick="addSemester()">Add semester</button>
-              <span id="semMsg" style="font-size:12.5px; color:var(--ink-soft);"></span>
-            </div>
+          <div class="card panel sm-add">
+            <div class="panel-head"><div><h3>Add a semester</h3><div class="sub">Staff report period dropdowns use these. Example: 1st Sem AY 2026-2027</div></div></div>
+            <form id="semForm" novalidate>
+              <div class="sm-fields">
+                <div class="field sm-f-name"><label for="semName">Name</label><input id="semName" maxlength="80" placeholder="1st Sem AY 2026-2027" autocomplete="off"></div>
+                <div class="field"><label for="semStart">Start date</label><input id="semStart" type="date"></div>
+                <div class="field"><label for="semEnd">End date</label><input id="semEnd" type="date"></div>
+                <button type="submit" class="pill-btn solid sm-submit" id="semAddBtn">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                  Add semester
+                </button>
+              </div>
+              <div class="sm-msg" id="semMsg" role="alert" aria-live="polite"></div>
+            </form>
           </div>
-          <div class="card panel">
-            <div style="overflow-x:auto;">
-              <table>
-                <thead><tr><th>Name</th><th>Start</th><th>End</th><th></th></tr></thead>
+
+          <div class="card panel sm-list">
+            <div class="sm-head">
+              <div>
+                <h3>All semesters</h3>
+                <div class="sub" id="semSummary">Loading…</div>
+              </div>
+            </div>
+            <div class="sm-tools">
+              <label class="rb-search">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+                <span class="rb-sr">Search semesters</span>
+                <input id="semSearch" type="text" placeholder="Search semesters" autocomplete="off" spellcheck="false">
+                <button type="button" class="cm-clear" id="semClear" hidden aria-label="Clear search">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                </button>
+              </label>
+              <div class="rb-views cm-seg" id="semFilter" role="group" aria-label="Filter by status"></div>
+            </div>
+            <div class="sm-scroll">
+              <table class="sm-table">
+                <thead><tr><th>Semester</th><th>Start</th><th>End</th><th>Status</th><th class="sm-c-act"><span class="rb-sr">Actions</span></th></tr></thead>
                 <tbody id="semTbody"></tbody>
               </table>
             </div>
+            <div class="list-pager sm-pager" id="semPager"></div>
           </div>
         </div>
 
@@ -3372,49 +3465,163 @@ function saveHotlines(){
 
 /* =========================================================
    SEMESTERS
+   Server-side paging, search and status filter. The server returns one page plus counts for the filter tabs.
 ========================================================= */
-let semList = [];
+const sem = {page:1, size:10, q:'', status:'all', counts:{all:0,current:0,upcoming:0,past:0}, rows:[], total:0, loaded:false, req:0, timer:null};
+const SEM_SIZES = [10, 25, 50];
+const SEM_STATUS = {current:['stable','Current'], upcoming:['watch','Upcoming'], past:['neutral','Past']};
+const SEM_FILTERS = [['all','All'],['current','Current'],['upcoming','Upcoming'],['past','Past']];
+
 function fmtDate(iso){
   return new Date(iso + 'T00:00:00').toLocaleDateString(undefined, {year:'numeric', month:'short', day:'numeric'});
 }
+function semLength(days){
+  if(days < 14) return days + (days === 1 ? ' day' : ' days');
+  const w = Math.round(days / 7);
+  return w + ' weeks';
+}
+function semEl(id){ return document.getElementById(id); }
+
+function renderSemFilters(){
+  semEl('semFilter').innerHTML = SEM_FILTERS.map(f =>
+    `<button type="button" data-st="${f[0]}" aria-pressed="${sem.status === f[0]}">${f[1]} <span class="n">${sem.counts[f[0]]}</span></button>`
+  ).join('');
+}
+
+function renderSemSummary(){
+  const c = sem.counts;
+  semEl('semSummary').textContent = !c.all ? 'Nothing added yet'
+    : c.all + (c.all === 1 ? ' semester' : ' semesters') + (c.current ? ' · ' + c.current + ' running now' : '');
+}
+
 function renderSemesters(){
-  document.getElementById('semTbody').innerHTML = semList.length ? semList.map(s=>`
-    <tr>
-      <td>${esc(s.name)}</td>
-      <td class="mono-cell">${fmtDate(s.start)}</td>
-      <td class="mono-cell">${fmtDate(s.end)}</td>
-      <td><button class="pill-btn ghost sm" onclick="deleteSemester(${s.id})">Delete</button></td>
-    </tr>`).join('')
-    : '<tr><td colspan="4" style="color:var(--ink-soft);">No semesters yet. Add one above.</td></tr>';
+  const body = semEl('semTbody');
+  renderSemFilters();
+  renderSemSummary();
+  if(!sem.rows.length){
+    const filtered = sem.q || sem.status !== 'all';
+    body.innerHTML = `<tr><td colspan="5" style="padding:0; border:none;"><div class="sm-empty">${
+      filtered
+        ? '<strong>No semesters match</strong>Try a different search or filter.<br><button type="button" class="pill-btn ghost sm" data-sem-reset>Clear filters</button>'
+        : '<strong>No semesters yet</strong>Add your first one above and it will show up in the staff report dropdowns.<br><button type="button" class="pill-btn solid sm" data-sem-focus>Add a semester</button>'
+    }</div></td></tr>`;
+    semEl('semPager').innerHTML = '';
+    return;
+  }
+  body.innerHTML = sem.rows.map(s => {
+    const st = SEM_STATUS[s.status] || SEM_STATUS.past;
+    return `<tr data-id="${s.id}">
+      <td class="sm-c-name"><div class="sm-name">${esc(s.name)}</div><div class="sm-len">${semLength(s.days)}</div></td>
+      <td class="mono-cell" data-label="Start">${fmtDate(s.start)}</td>
+      <td class="mono-cell" data-label="End">${fmtDate(s.end)}</td>
+      <td class="sm-c-status" data-label="Status"><span class="badge ${st[0]}"><span class="dot"></span>${st[1]}</span></td>
+      <td class="sm-c-act"><button type="button" class="sm-del" data-del="${s.id}" aria-label="Delete ${esc(s.name)}" title="Delete">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v6M14 11v6"/></svg>
+      </button></td>
+    </tr>`;
+  }).join('');
+  renderListPager('semPager', {page:sem.page, pages:sem.pages, total:sem.total, size:sem.size}, SEM_SIZES,
+    n => loadSemesters(n), n => { sem.size = n; loadSemesters(1); });
 }
-function loadSemesters(){
-  return api('/api/admin/semesters/').then(r=>{
-    if(r.ok){ semList = r.data.semesters; renderSemesters(); }
+
+function semSkeleton(){
+  semEl('semTbody').innerHTML = [0,1,2].map(() =>
+    '<tr class="sm-skel"><td><span style="width:70%"></span></td><td><span style="width:80px"></span></td><td><span style="width:80px"></span></td><td><span style="width:64px"></span></td><td></td></tr>').join('');
+}
+
+function loadSemesters(page, flashId){
+  if(page) sem.page = page;
+  const mine = ++sem.req;
+  if(!sem.loaded) semSkeleton();
+  const q = new URLSearchParams({q:sem.q, status:sem.status, page:sem.page, size:sem.size});
+  return api('/api/admin/semesters/?' + q).then(r=>{
+    if(mine !== sem.req) return;            // a newer request is already on its way
+    if(!r.ok){
+      semEl('semTbody').innerHTML = '<tr><td colspan="5" style="padding:0; border:none;"><div class="sm-empty"><strong>Could not load semesters</strong>Check your connection and try again.<br><button type="button" class="pill-btn ghost sm" data-sem-retry>Try again</button></div></td></tr>';
+      return;
+    }
+    const d = r.data;
+    sem.rows = d.semesters; sem.page = d.page; sem.pages = d.pages; sem.total = d.total;
+    sem.size = d.size; sem.counts = d.counts; sem.loaded = true;
+    renderSemesters();
+    if(flashId){
+      const row = semEl('semTbody').querySelector('tr[data-id="' + flashId + '"]');
+      if(row){ row.classList.add('sm-flash'); row.scrollIntoView({block:'nearest', behavior:'smooth'}); }
+    }
   });
 }
-function addSemester(){
-  const msg = document.getElementById('semMsg'), btn = document.getElementById('semAddBtn');
-  btn.disabled = true; msg.style.color = 'var(--ink-soft)'; msg.textContent = 'Saving…';
-  api('/api/admin/semesters/create/', {
-    name: document.getElementById('semName').value,
-    start_date: document.getElementById('semStart').value,
-    end_date: document.getElementById('semEnd').value
-  }).then(r=>{
+
+function semMessage(text, isErr){
+  const m = semEl('semMsg');
+  m.textContent = text || '';
+  m.classList.toggle('err', !!isErr);
+}
+
+function addSemester(e){
+  if(e) e.preventDefault();
+  const nameEl = semEl('semName'), startEl = semEl('semStart'), endEl = semEl('semEnd'), btn = semEl('semAddBtn');
+  [nameEl, startEl, endEl].forEach(x => x.classList.remove('invalid'));
+  const name = nameEl.value.replace(/\s+/g, ' ').trim();
+  let problem = '', bad = null;
+  if(name.length < 2 || name.length > 80){ problem = 'Name must be 2\u201380 characters.'; bad = nameEl; }
+  else if(!startEl.value){ problem = 'Pick a start date.'; bad = startEl; }
+  else if(!endEl.value){ problem = 'Pick an end date.'; bad = endEl; }
+  else if(endEl.value < startEl.value){ problem = "The end date can't be before the start date."; bad = endEl; }
+  if(problem){ semMessage(problem, true); bad.classList.add('invalid'); bad.focus(); return; }
+
+  btn.disabled = true; semMessage('Saving…', false);
+  api('/api/admin/semesters/create/', {name:name, start_date:startEl.value, end_date:endEl.value}).then(r=>{
     btn.disabled = false;
-    if(!r.ok){ msg.style.color = 'var(--alert)'; msg.textContent = r.data.error || 'Could not save.'; return; }
-    msg.textContent = '';
-    ['semName','semStart','semEnd'].forEach(id=>document.getElementById(id).value = '');
+    if(!r.ok){ semMessage(r.data.error || 'Could not save.', true); return; }
+    semMessage('', false);
+    [nameEl, startEl, endEl].forEach(x => x.value = '');
+    endEl.min = '';
     showToast('Semester added');
-    loadSemesters();
+    // clear filters so the new term is visible, then jump to the page that holds it
+    sem.q = ''; sem.status = 'all'; semEl('semSearch').value = ''; semEl('semClear').hidden = true;
+    loadSemesters(1, r.data.semester && r.data.semester.id);
   });
 }
+
 function deleteSemester(id){
-  const s = semList.find(x=>x.id===id);
+  const s = sem.rows.find(x => x.id === id);
   if(!s || !confirm('Delete "' + s.name + '"? It will disappear from the report dropdowns.')) return;
   api('/api/admin/semesters/' + id + '/delete/', {}).then(r=>{
     if(!r.ok){ showToast(r.data.error || 'Could not delete.'); return; }
     showToast('Semester deleted');
-    loadSemesters();
+    loadSemesters();                      // the server clamps the page if this was the last row on it
+  });
+}
+
+function semInit(){
+  semEl('semForm').addEventListener('submit', addSemester);
+  ['semName','semStart','semEnd'].forEach(id => semEl(id).addEventListener('input', e => {
+    e.target.classList.remove('invalid');
+    if(semEl('semMsg').classList.contains('err')) semMessage('', false);
+  }));
+  semEl('semStart').addEventListener('change', e => { semEl('semEnd').min = e.target.value; });
+  semEl('semSearch').addEventListener('input', e => {
+    semEl('semClear').hidden = !e.target.value;
+    clearTimeout(sem.timer);
+    sem.timer = setTimeout(() => { sem.q = e.target.value.trim(); loadSemesters(1); }, 250);
+  });
+  semEl('semClear').onclick = () => {
+    const i = semEl('semSearch'); i.value = ''; semEl('semClear').hidden = true; i.focus();
+    sem.q = ''; loadSemesters(1);
+  };
+  semEl('semFilter').addEventListener('click', e => {
+    const b = e.target.closest('[data-st]');
+    if(!b || b.dataset.st === sem.status) return;
+    sem.status = b.dataset.st; loadSemesters(1);
+  });
+  semEl('semTbody').addEventListener('click', e => {
+    const del = e.target.closest('[data-del]');
+    if(del){ deleteSemester(+del.dataset.del); return; }
+    if(e.target.closest('[data-sem-reset]')){
+      sem.q = ''; sem.status = 'all'; semEl('semSearch').value = ''; semEl('semClear').hidden = true; loadSemesters(1); return;
+    }
+    if(e.target.closest('[data-sem-focus]')){ semEl('semName').focus(); semEl('semName').scrollIntoView({block:'center', behavior:'smooth'}); return; }
+    if(e.target.closest('[data-sem-retry]')){ sem.loaded = false; loadSemesters(); }
   });
 }
 
@@ -4393,6 +4600,7 @@ function initAll(){
   loadSiteSettings();
   loadHotlines();
   loadPrivacy();
+  semInit();
   loadSemesters();
   cmInit();
   loadCourses();

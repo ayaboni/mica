@@ -784,8 +784,19 @@ def privacy_overview(request):
     })
 
 
-def _semester_json(s):
-    return {"id": s.id, "name": s.name, "start": s.start_date.isoformat(), "end": s.end_date.isoformat()}
+def _semester_status(s, today):
+    """'current' while today falls inside the term, 'upcoming' before it starts, 'past' after it ends."""
+    if s.end_date < today:
+        return "past"
+    if s.start_date > today:
+        return "upcoming"
+    return "current"
+
+
+def _semester_json(s, today=None):
+    today = today or timezone.localdate()
+    return {"id": s.id, "name": s.name, "start": s.start_date.isoformat(), "end": s.end_date.isoformat(),
+            "days": (s.end_date - s.start_date).days + 1, "status": _semester_status(s, today)}
 
 
 def _date(value):
@@ -797,7 +808,41 @@ def _date(value):
 
 @_admin
 def semesters_list(request):
-    return JsonResponse({"semesters": [_semester_json(s) for s in Semester.objects.all()]})
+    """One page of semesters for the admin table.
+    ?q= searches the name, ?status= is all / current / upcoming / past, ?page= and ?size= page the list.
+    `counts` always covers the whole list so the filter tabs can show their totals."""
+    today = timezone.localdate()
+    status = request.GET.get("status", "all")
+    q = " ".join((request.GET.get("q") or "").split())[:80]
+
+    qs = Semester.objects.all()
+    if q:
+        qs = qs.filter(name__icontains=q)
+    if status == "current":
+        qs = qs.filter(start_date__lte=today, end_date__gte=today)
+    elif status == "upcoming":
+        qs = qs.filter(start_date__gt=today)
+    elif status == "past":
+        qs = qs.filter(end_date__lt=today)
+    else:
+        status = "all"
+
+    everything = Semester.objects.all()
+    counts = {
+        "all": everything.count(),
+        "current": everything.filter(start_date__lte=today, end_date__gte=today).count(),
+        "upcoming": everything.filter(start_date__gt=today).count(),
+        "past": everything.filter(end_date__lt=today).count(),
+    }
+    pg = Paginator(qs.order_by("-start_date", "-id"), _page_size(request, 10, (10, 25, 50))).get_page(request.GET.get("page"))
+    return JsonResponse({
+        "semesters": [_semester_json(s, today) for s in pg.object_list],
+        "page": pg.number,
+        "pages": pg.paginator.num_pages,
+        "total": pg.paginator.count,
+        "size": pg.paginator.per_page,
+        "counts": counts,
+    })
 
 
 @_admin
