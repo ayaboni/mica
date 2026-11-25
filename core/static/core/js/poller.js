@@ -14,7 +14,7 @@
 (function () {
   'use strict';
 
-  var handles = [];
+  const handles = [];
 
   function stopAll() {
     handles.slice().forEach(function (h) { h.stop(); });
@@ -32,23 +32,23 @@
         if (r.status === 401) {
           return r.json().catch(function () { return {}; }).then(function (d) {
             if (d && (d.expired || d.suspended)) toLogin(d.suspended ? 'suspended' : 'expired');
-            var e = new Error('unauthorized'); e.status = 401; throw e;
+            const e = new Error('unauthorized'); e.status = 401; throw e;
           });
         }
-        if (!r.ok) { var err = new Error('http ' + r.status); err.status = r.status; throw err; }
+        if (!r.ok) { const err = new Error('http ' + r.status); err.status = r.status; throw err; }
         return r.json();
       });
   }
 
   function every(fn, opts) {
     opts = opts || {};
-    var active = opts.active || 10000;
-    var hidden = opts.hidden === undefined ? active * 4 : opts.hidden;   // null = pause while hidden
-    var enabled = opts.enabled || function () { return true; };
-    var fails = 0, timer = null, running = false, dead = false;
+    const active = opts.active || 10000;
+    const hidden = opts.hidden === undefined ? active * 4 : opts.hidden;   // null = pause while hidden
+    const enabled = opts.enabled || function () { return true; };
+    let fails = 0, timer = null, running = false, dead = false;
 
     function delay() {
-      var d = document.hidden ? hidden : active;
+      let d = document.hidden ? hidden : active;
       if (d === null) return null;
       if (fails) d = Math.min(d * Math.pow(2, fails), 60000);
       return d;
@@ -57,7 +57,7 @@
     function schedule() {
       if (dead) return;
       clearTimeout(timer);
-      var d = delay();
+      const d = delay();
       if (d !== null) timer = setTimeout(tick, d);       // null: paused, visibilitychange restarts us
     }
 
@@ -65,7 +65,7 @@
       if (dead || running) return;
       if (!enabled() || (document.hidden && hidden === null)) { schedule(); return; }
       running = true;
-      var p;
+      let p;
       try { p = Promise.resolve(fn()); } catch (e) { p = Promise.reject(e); }
       p.then(function () { fails = 0; }, function () { fails = Math.min(fails + 1, 5); })
         .then(function () { running = false; schedule(); });
@@ -76,13 +76,13 @@
     }
     document.addEventListener('visibilitychange', onVisible);
 
-    var handle = {
+    const handle = {
       now: function () { if (!dead) { clearTimeout(timer); tick(); } },
       stop: function () {
         dead = true;
         clearTimeout(timer);
         document.removeEventListener('visibilitychange', onVisible);
-        var i = handles.indexOf(handle);
+        const i = handles.indexOf(handle);
         if (i > -1) handles.splice(i, 1);
       }
     };

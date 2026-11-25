@@ -40,9 +40,9 @@ function initScrollReveal() {
 
 /* ---------- Theme toggle (landing pages) ---------- */
 (function () {
-  var KEY = 'mica_theme';
-  var root = document.documentElement;
-  var mq = window.matchMedia('(prefers-color-scheme: dark)');
+  const KEY = 'mica_theme';
+  const root = document.documentElement;
+  const mq = window.matchMedia('(prefers-color-scheme: dark)');
 
   function apply(theme) {
     root.setAttribute('data-theme', theme);
@@ -53,9 +53,9 @@ function initScrollReveal() {
   apply(root.getAttribute('data-theme') || 'light');
 
   document.addEventListener('click', function (e) {
-    var btn = e.target.closest('[data-theme-toggle]');
+    const btn = e.target.closest('[data-theme-toggle]');
     if (!btn) return;
-    var next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
     try { localStorage.setItem(KEY, next); } catch (err) {}
     apply(next);
   });
@@ -69,27 +69,27 @@ function initScrollReveal() {
 
 /* Show / hide password eye on every password field (skips ones that already have one) */
 document.addEventListener('DOMContentLoaded', function () {
-  var svg = function (inner) {
+  const svg = function (inner) {
     return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + inner + '</svg>';
   };
-  var eye = svg('<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>');
-  var eyeOff = svg('<path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>');
+  const eye = svg('<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>');
+  const eyeOff = svg('<path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>');
 
   document.querySelectorAll('input[type="password"]:not([data-no-eye])').forEach(function (input) {
     if (input.parentNode.querySelector('.pw-toggle')) return;   // already has one (login, register)
-    var wrap = document.createElement('div');
+    const wrap = document.createElement('div');
     wrap.className = 'pw-wrap';
     input.parentNode.insertBefore(wrap, input);
     wrap.appendChild(input);
     input.style.paddingRight = '46px';
 
-    var btn = document.createElement('button');
+    const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'pw-toggle';
     btn.setAttribute('aria-label', 'Show or hide password');
     btn.innerHTML = eyeOff;
     btn.addEventListener('click', function () {
-      var show = input.type === 'password';
+      const show = input.type === 'password';
       input.type = show ? 'text' : 'password';
       btn.innerHTML = show ? eye : eyeOff;
     });

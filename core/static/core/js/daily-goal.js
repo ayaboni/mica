@@ -4,12 +4,12 @@
    request to a feature endpoint (exercise, mood, chat, guidance) by watching window.fetch. */
 (function () {
   'use strict';
-  var cfg = window.MICA_DAILY_GOAL;
+  const cfg = window.MICA_DAILY_GOAL;
   if (!cfg) return;
 
-  var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  var css = '' +
+  const css = '' +
     /* badge lives in the header (never over the sidebar / username) */
     '.dg-badge{position:relative;flex-shrink:0;margin-left:auto;margin-right:14px;display:flex;align-items:center;gap:6px;padding:6px 13px;border:0;border-radius:999px;background:#F0C13F;color:#4A3426;font:800 14px Nunito,sans-serif;box-shadow:0 2px 8px rgba(60,45,20,.22);cursor:pointer;transition:background .3s}' +
     '.dg-badge.dg-floating{position:fixed;top:12px;right:12px;margin:0;z-index:200}' +
@@ -56,17 +56,17 @@
     '.dg-close{position:absolute;top:4px;right:6px;width:40px;height:40px;border:0;background:none;font-size:26px;line-height:1;color:inherit;cursor:pointer;z-index:3}' +
     '@media (max-height:520px){.dg-stage{height:110px}.dg-modal p{margin:6px 0 10px}}' +
     '@media (prefers-reduced-motion:reduce){.dg-panel,.dg-panel *,.dg-badge .dg-caret{transition:none !important}.dg-badge.dg-pop,.dg-task.dg-new b{animation:none}.dg-badge.dg-pop::after,.dg-plus{display:none}.dg-banner{transition:none}}';
-  var st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
+  const st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
 
   /* ---------- badge + panel ---------- */
-  var badge = document.createElement('button');
+  let badge = document.createElement('button');
   badge.type = 'button'; badge.className = 'dg-badge'; badge.setAttribute('aria-label', 'Daily goal');
-  var panel = document.createElement('div'); panel.className = 'dg-panel'; panel.setAttribute('aria-hidden', 'true');
+  let panel = document.createElement('div'); panel.className = 'dg-panel'; panel.setAttribute('aria-hidden', 'true');
   badge.setAttribute('aria-expanded', 'false');
   document.body.appendChild(panel);
 
-  var header = document.querySelector('.content-header');
-  var clock = document.getElementById('liveTime');
+  const header = document.querySelector('.content-header');
+  const clock = document.getElementById('liveTime');
   if (header) {
     header.insertBefore(badge, clock && clock.parentNode === header ? clock : null);
   } else {
@@ -77,12 +77,12 @@
   function placePanel() {
     // Keep the whole panel inside the screen: pick its width from the viewport, line its right edge
     // up with the badge, then slide it back in if that would push it off either side.
-    var vw = document.documentElement.clientWidth, vh = window.innerHeight;
-    var r = badge.getBoundingClientRect();
-    var w = Math.min(290, vw - 16);
-    var left = Math.min(Math.max(8, r.right - w), vw - w - 8);
-    var top = Math.round(r.bottom + 10);
-    var center = r.left + r.width / 2;
+    const vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    const r = badge.getBoundingClientRect();
+    const w = Math.min(290, vw - 16);
+    const left = Math.min(Math.max(8, r.right - w), vw - w - 8);
+    const top = Math.round(r.bottom + 10);
+    const center = r.left + r.width / 2;
     panel.style.width = w + 'px';
     panel.style.left = Math.round(left) + 'px';
     panel.style.right = 'auto';
@@ -105,23 +105,23 @@
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && isOpen()) setOpen(false); });
   window.addEventListener('resize', function () { if (isOpen()) placePanel(); });
 
-  function esc(t) { var d = document.createElement('div'); d.textContent = t == null ? '' : String(t); return d.innerHTML; }
+  function esc(t) { const d = document.createElement('div'); d.textContent = t == null ? '' : String(t); return d.innerHTML; }
 
   /* ---------- sound: a short synthesized fanfare (no audio file needed) ---------- */
-  var ac = null;
+  let ac = null;
   function soundAllowed() {
     try { return localStorage.getItem('notif_sound') !== 'false'; } catch (e) { return true; }
   }
   function playFanfare() {
     if (!soundAllowed()) return;
     try {
-      var AC = window.AudioContext || window.webkitAudioContext;
+      const AC = window.AudioContext || window.webkitAudioContext;
       if (!AC) return;
       if (!ac) ac = new AC();
       if (ac.state === 'suspended') ac.resume();
-      var t0 = ac.currentTime + 0.02;
+      const t0 = ac.currentTime + 0.02;
       function tone(freq, start, dur, type, vol) {
-        var o = ac.createOscillator(), g = ac.createGain();
+        const o = ac.createOscillator(), g = ac.createGain();
         o.type = type; o.frequency.value = freq;
         g.gain.setValueAtTime(0.0001, t0 + start);
         g.gain.exponentialRampToValueAtTime(vol, t0 + start + 0.02);
@@ -139,13 +139,13 @@
 
   /* ---------- confetti ---------- */
   function launchConfetti() {
-    var cv = document.createElement('canvas'); cv.className = 'dg-confetti';
-    var dpr = window.devicePixelRatio || 1, W = window.innerWidth, H = window.innerHeight;
+    const cv = document.createElement('canvas'); cv.className = 'dg-confetti';
+    const dpr = window.devicePixelRatio || 1, W = window.innerWidth, H = window.innerHeight;
     cv.width = W * dpr; cv.height = H * dpr;
     document.body.appendChild(cv);
-    var ctx = cv.getContext('2d'); ctx.scale(dpr, dpr);
-    var colors = ['#F0C13F', '#8EAE88', '#F3C6CE', '#6FA8DC', '#EE8A5B', '#A99BDB', '#FFFFFF'];
-    var parts = [], N = reduceMotion ? 40 : 170;
+    const ctx = cv.getContext('2d'); ctx.scale(dpr, dpr);
+    const colors = ['#F0C13F', '#8EAE88', '#F3C6CE', '#6FA8DC', '#EE8A5B', '#A99BDB', '#FFFFFF'];
+    const parts = [], N = reduceMotion ? 40 : 170;
     function add(x, y, angle, speed) {
       parts.push({
         x: x, y: y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
@@ -153,20 +153,20 @@
         c: colors[(Math.random() * colors.length) | 0], circle: Math.random() < .25, life: 0
       });
     }
-    for (var i = 0; i < N; i++) {
+    for (let i = 0; i < N; i++) {
       if (i % 3 === 0) add(W * .5, H * .35, -Math.PI / 2 + (Math.random() - .5) * 2.2, 7 + Math.random() * 9);        // centre burst
       else if (i % 3 === 1) add(0, H, -Math.PI / 4 - Math.random() * .6, 11 + Math.random() * 10);                    // left cannon
       else add(W, H, -3 * Math.PI / 4 + Math.random() * .6, 11 + Math.random() * 10);                                  // right cannon
     }
-    var start = performance.now(), DURATION = 4200;
+    const start = performance.now(), DURATION = 4200;
     (function frame(now) {
-      var el = now - start;
+      const el = now - start;
       ctx.clearRect(0, 0, W, H);
-      var alive = false;
+      let alive = false;
       parts.forEach(function (p) {
         p.vy += 0.28; p.vx *= 0.992; p.vy *= 0.992;
         p.x += p.vx; p.y += p.vy; p.rot += p.vr; p.life++;
-        var fade = el > DURATION - 900 ? Math.max(0, (DURATION - el) / 900) : 1;
+        const fade = el > DURATION - 900 ? Math.max(0, (DURATION - el) / 900) : 1;
         if (p.y < H + 30 && fade > 0) alive = true;
         ctx.save(); ctx.globalAlpha = fade; ctx.translate(p.x, p.y); ctx.rotate(p.rot);
         ctx.fillStyle = p.c;
@@ -181,7 +181,7 @@
   function celebrate(d, afterMs) {
     launchConfetti();
     playFanfare();
-    var b = document.createElement('div'); b.className = 'dg-banner'; b.setAttribute('role', 'status');
+    const b = document.createElement('div'); b.className = 'dg-banner'; b.setAttribute('role', 'status');
     b.textContent = '\uD83C\uDF89 Daily quest complete! ' + d.target + '/' + d.target + ' \uD83C\uDF89';
     document.body.appendChild(b);
     requestAnimationFrame(function () { requestAnimationFrame(function () { b.classList.add('dg-show'); }); });
@@ -189,39 +189,39 @@
   }
 
   /* ---------- rendering ---------- */
-  var lastPoints = null, lastDone = {}, popupShown = false;
+  let lastPoints = null, lastDone = {}, popupShown = false;
 
   function pointFeedback(gained) {
     badge.classList.remove('dg-pop'); void badge.offsetWidth; badge.classList.add('dg-pop');
     setTimeout(function () { badge.classList.remove('dg-pop'); }, 900);
-    var plus = document.createElement('span'); plus.className = 'dg-plus'; plus.textContent = '+' + gained;
+    const plus = document.createElement('span'); plus.className = 'dg-plus'; plus.textContent = '+' + gained;
     badge.appendChild(plus);
     setTimeout(function () { plus.remove(); }, 1000);
   }
 
   function render(d) {
-    var gained = lastPoints === null ? 0 : d.points - lastPoints;
-    var justCompleted = lastPoints !== null && lastPoints < d.target && d.points >= d.target;
+    const gained = lastPoints === null ? 0 : d.points - lastPoints;
+    const justCompleted = lastPoints !== null && lastPoints < d.target && d.points >= d.target;
 
-    var label = '\u2B50 ' + d.points + '/' + d.target;
+    let label = '\u2B50 ' + d.points + '/' + d.target;
     // keep any floating "+1" child; replace only the text node
     if (badge.firstChild && badge.firstChild.nodeType === 3) badge.firstChild.nodeValue = label;
     else badge.insertBefore(document.createTextNode(label), badge.firstChild);
     if (!badge.querySelector('.dg-caret')) {
-      var caret = document.createElement('span'); caret.className = 'dg-caret'; caret.textContent = '\u25BE';
+      const caret = document.createElement('span'); caret.className = 'dg-caret'; caret.textContent = '\u25BE';
       badge.insertBefore(caret, badge.querySelector('.dg-plus'));
     }
     badge.classList.toggle('dg-full', d.points >= d.target);
     badge.title = d.points >= d.target ? 'Daily quest complete!' : 'Daily goal: ' + d.points + ' of ' + d.target + ' points';
 
-    var left = d.days_needed - Math.min(d.days_reached, d.days_needed);
-    var sub = d.points >= d.target
+    const left = d.days_needed - Math.min(d.days_reached, d.days_needed);
+    const sub = d.points >= d.target
       ? 'Daily quest complete! ' + (left > 0 ? left + ' more day' + (left === 1 ? '' : 's') + ' to unlock a surprise.' : '')
       : 'Earn ' + d.target + ' points today (1 per task). Reach it on ' + d.days_needed + ' days for a surprise!';
     panel.innerHTML = '<h4>Daily goal: ' + d.points + '/' + d.target + '</h4><p>' + esc(sub) + '</p>' +
       '<div class="dg-bar"><i style="width:' + Math.round(100 * d.points / d.target) + '%"></i></div>' +
       d.tasks.map(function (t, i) {
-        var isNew = t.done && lastPoints !== null && !lastDone[t.key];
+        const isNew = t.done && lastPoints !== null && !lastDone[t.key];
         return '<div style="--i:' + (i + 1) + '" class="dg-task' + (t.done ? ' dg-done' : '') + (isNew ? ' dg-new' : '') + '"><b>' + (t.done ? '\u2713' : '') + '</b>' + esc(t.label) + '</div>';
       }).join('');
 
@@ -239,13 +239,13 @@
   }
 
   function markSeen() {
-    var m = document.cookie.match(/(?:^|; )csrftoken=([^;]+)/);
+    const m = document.cookie.match(/(?:^|; )csrftoken=([^;]+)/);
     fetch(cfg.seenUrl, { method: 'POST', credentials: 'same-origin', headers: { 'X-CSRFToken': m ? decodeURIComponent(m[1]) : '' } })
       .catch(function () {});
   }
 
   function showReward(d) {
-    var o = document.createElement('div'); o.className = 'dg-overlay';
+    const o = document.createElement('div'); o.className = 'dg-overlay';
     o.setAttribute('role', 'dialog'); o.setAttribute('aria-modal', 'true');
     o.innerHTML = '<div class="dg-modal"><button class="dg-close" type="button" aria-label="Close">\u00D7</button>' +
       '<div class="dg-stage"><img src="' + esc(cfg.mascot) + '" alt="Mica">' +
@@ -259,7 +259,7 @@
     document.body.appendChild(o);
   }
 
-  var inflight = false, again = false;
+  let inflight = false, again = false;
   function refresh() {
     if (inflight) { again = true; return; }
     inflight = true;
@@ -271,12 +271,12 @@
   }
 
   // Refresh after any call to a feature that can earn a point.
-  var TRACKED = [/\/api\/exercises\/log\//, /\/api\/breathe\/save\//, /\/api\/mood\/save\//,
+  const TRACKED = [/\/api\/exercises\/log\//, /\/api\/breathe\/save\//, /\/api\/mood\/save\//,
                  /\/api\/chatbot\//, /\/api\/guidance\/(send|request)\//];
-  var realFetch = window.fetch.bind(window);
+  const realFetch = window.fetch.bind(window);
   window.fetch = function (input, init) {
-    var url = typeof input === 'string' ? input : (input && input.url) || '';
-    var p = realFetch(input, init);
+    const url = typeof input === 'string' ? input : (input && input.url) || '';
+    const p = realFetch(input, init);
     if (TRACKED.some(function (re) { return re.test(url); })) {
       p.then(function () { setTimeout(refresh, 400); }, function () {});
     }

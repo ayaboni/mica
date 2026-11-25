@@ -12,15 +12,15 @@
   if (!window.fetch || !window.FormData) return;
 
   document.addEventListener('submit', function (e) {
-    var form = e.target;
+    const form = e.target;
     if (e.defaultPrevented || !form.hasAttribute || !form.hasAttribute('data-no-resubmit')) return;
     e.preventDefault();
 
-    var data = new FormData(form);
+    const data = new FormData(form);
     if (e.submitter && e.submitter.name) data.append(e.submitter.name, e.submitter.value);
     // fetch() would send this as multipart; the views read request.POST, which accepts both,
     // but url-encoding matches what a browser form sends.
-    var body = new URLSearchParams();
+    const body = new URLSearchParams();
     data.forEach(function (v, k) { if (typeof v === 'string') body.append(k, v); });
 
     fetch(form.action, {
